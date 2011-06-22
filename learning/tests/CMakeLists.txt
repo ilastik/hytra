@@ -17,7 +17,7 @@ INCLUDE_DIRECTORIES(
     ${CPLEX_BASE_PATH}/concert/include
     ../include
     ../external
-    ${PROJECT_SOURCE_DIR}/../include)
+    ${PROJECT_SOURCE_DIR}/external/object_features/include)
 
 # Specify where to search for libraries
 LINK_DIRECTORIES(
