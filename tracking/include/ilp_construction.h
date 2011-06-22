@@ -9,7 +9,6 @@
 
 #include "energy.h"
 #include "event.h"
-#include "matching_pars.h"
 #include "traxels.h"
 
 namespace Tracking {
