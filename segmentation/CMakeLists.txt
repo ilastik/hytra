@@ -17,7 +17,7 @@ SET(ADDITIONAL_INSTALL_PATH "~/local" CACHE PATH "Additional install path for lo
 # Specify the include directories here. Just adjust your local include directory.
 INCLUDE_DIRECTORIES(
         ./src 
-        ../3rd_party/maxflow-v3.0
+        extern/maxflow-v3.0
         ${ADDITIONAL_INSTALL_PATH}/include 
         /usr/include
 )
@@ -30,8 +30,8 @@ LINK_DIRECTORIES(
 # executable: single volume processing
 ADD_EXECUTABLE(segmentation_single 
     ./apps/segmentation_single.cxx
-    ../3rd_party/maxflow-v3.0/graph.cpp
-    ../3rd_party/maxflow-v3.0/maxflow.cpp)
+    extern/maxflow-v3.0/graph.cpp
+    extern/maxflow-v3.0/maxflow.cpp)
 
 # executable: block processing for large volumes
 #ADD_EXECUTABLE(segmentation_block
@@ -42,8 +42,8 @@ ADD_EXECUTABLE(segmentation_single
 # executable: block processing for large volumes, using the block processor class
 ADD_EXECUTABLE(segmentation_block_processor
     ./apps/segmentation_block_processor.cxx
-    ../3rd_party/maxflow-v3.0/graph.cpp
-    ../3rd_party/maxflow-v3.0/maxflow.cpp)
+    extern/maxflow-v3.0/graph.cpp
+    extern/maxflow-v3.0/maxflow.cpp)
     
 # link all libraries to this executable (hdf5 (2x), vigra, own libraries)
 TARGET_LINK_LIBRARIES(segmentation_single hdf5 hdf5_hl vigraimpex)
