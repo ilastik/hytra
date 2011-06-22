@@ -1,0 +1,209 @@
+#!/usr/bin/env python
+import sys
+sys.path.append('../.')
+sys.path.append('.')
+
+import collections
+import cPickle
+import os
+import os.path as path
+import optparse
+from empryonic import io
+from empryonic.learning import match
+from empryonic.learning import quantification as quant
+        
+if __name__=="__main__":
+    usage = """%prog [options]  (PREV_MATCH CURR_MATCH | PREV_BASE PREV_CONTESTANT) BASE CONTESTANT
+Quantify tracking performance.
+
+PREV_MATCH and CURR_MATCH can be computed with the 'match_traxels' tool.
+"""
+
+    parser = optparse.OptionParser(usage=usage)
+    parser.add_option('--no-detailed-stats', action='store_true', dest='no_detailed_stats', help="don't write detailed statistics into an output file")
+    parser.add_option('-o', type='str', dest='output_fn', default='tracking_performance.txt', help='output file for detailed stats; no effect if "--no-detailed-stats" is set [default: %default]')
+    parser.add_option('--precomputed-match', action='store_true', dest='precomputed_match', help="interpret first two arguments as precomputed match files")
+    parser.add_option('-t', '--threshold', type='float', dest='threshold', default=25, help='distance threshold for the matching (matching only below the threshold) [default: %default] [no effect if match files are given]')
+    parser.add_option('--swap-xy', action='store_true', dest='swap_xy', help='switches x and y coordinates of the traxels in FILE1 [no effect if match files are given]')
+    parser.add_option('--ignore-z', action='store_true', dest='ignore_z', help='only match in the x-y subspace [no effect if match files are given]')
+
+    options, args = parser.parse_args()
+
+    numArgs = len(args)
+    if numArgs == 4:
+        fn0 = args[0]
+        fn1 = args[1]
+        base_fn = args[2]
+        cont_fn = args[3]
+    else:
+        parser.print_help()
+        sys.exit(1)
+
+    # Matching
+    print "Matching..."
+    if options.precomputed_match:
+        with open(fn0, 'r') as f:
+            prev_assoc = cPickle.load(f)
+        with open(fn1, 'r') as f:
+            curr_assoc = cPickle.load(f)
+        print "-> Precomputed associations loaded"
+    else:
+        print "-- Previous traxels:"
+        with io.LineageH5(fn0, 'r') as f:
+            traxels1 = f.Tracklets(position='max', add_features_as_meta=False)
+        del f
+
+        with io.LineageH5(fn1, 'r') as f:
+            traxels2 = f.Tracklets(position='max', add_features_as_meta=False)
+        del f
+        prev_assoc = match.match( traxels1, traxels2, options.threshold, options.ignore_z, options.swap_xy )
+        print
+
+        print "-- Current traxels:"
+        with io.LineageH5(base_fn, 'r') as f:
+            traxels1 = f.Tracklets(position='max', add_features_as_meta=False)
+        del f
+        with io.LineageH5(cont_fn, 'r') as f:
+            traxels2 = f.Tracklets(position='max', add_features_as_meta=False)
+        del f
+        curr_assoc = match.match( traxels1, traxels2, options.threshold, options.ignore_z, options.swap_xy )
+    print
+
+    # Loading input data
+    print "Loading events..."
+    base_f = io.LineageH5(base_fn, 'r')
+    cont_f = io.LineageH5(cont_fn, 'r')
+
+    # convert from tracklet based to id based assoc
+    prev_assoc = match.idAssoc_from_trackletAssoc( prev_assoc )
+    curr_assoc = match.idAssoc_from_trackletAssoc( curr_assoc )
+
+    # some sanity checks
+    if base_f["features/labelcount"].value != len(curr_assoc['lhs']):
+        print "-> Error: CURR_MATCH doesn't fit to BASE"
+        print "-> Aborted."
+        sys.exit(1)
+    base_lc = base_f["features/labelcontent"].value
+    for i,v in enumerate(base_lc):
+        if v == 1:
+            if not(curr_assoc['lhs'].has_key(i + 1)):
+                print "-> Error: CURR_MATCH doesn't fit to BASE"
+                print "-> Aborted."
+                sys.exit(1)
+
+    if cont_f["features/labelcount"].value != len(curr_assoc['rhs']):
+        print "-> Error: CURR_MATCH doesn't fit to CONTESTANT"
+        print "-> Aborted."
+        sys.exit(1)
+    cont_lc = cont_f["features/labelcontent"].value
+    for i,v in enumerate(cont_lc):
+        if v == 1:
+            if not(curr_assoc['rhs'].has_key(i + 1)):
+                print "-> Error: CURR_MATCH doesn't fit to CONTESTANT"
+                print "-> Aborted."
+                sys.exit(1)
+    print
+
+    ### determine event sets
+    # basic sets
+    base_events = quant.event_set_from( base_f )
+    cont_events = quant.event_set_from( cont_f )
+    base_f.close()
+    cont_f.close()
+
+    print "Building event taxonomy..."
+    t = quant.classify_event_sets(base_events, cont_events, prev_assoc, curr_assoc)
+    print "Measuring performance..."
+    print "-> Precision: %.3f" % t.precision()
+    print "-> Recall: %.3f" % t.recall()
+    print "-> F-measure %.3f: " % t.f_measure()
+    print
+
+    ### write detailed stats to output file
+    if not options.no_detailed_stats:
+        print "Detailed stats..."
+        vals = t.all_stats()
+        vals["base"] = base_fn
+        vals["cont"] = cont_fn
+        print "-> calculated"
+
+        print "-- writing detailed stats to %s..." % path.basename(options.output_fn)
+        stats = '''[context]
+base = %(base)s
+contestant = %(cont)s
+
+[overall]
+n_base = %(n_base)d
+n_contestant = %(n_cont)d
+precision = %(precision).4f
+recall = %(recall).4f
+f_measure = %(f_measure).4f:
+
+[move]
+n_base = %(mov_n_base)d
+n_contestant = %(mov_n_cont)d
+precision = %(mov_prec).4f
+recall = %(mov_rec).4f
+f_measure = %(mov_f).4f
+
+[division]
+n_base = %(div_n_base)d
+n_contestant = %(div_n_cont)d
+precision = %(div_prec).4f
+recall = %(div_rec).4f
+f_measure = %(div_f).4f
+
+[appearance]
+n_base = %(app_n_base)d
+n_contestant = %(app_n_cont)d
+precision = %(app_prec).4f
+recall = %(app_rec).4f
+f_measure = %(app_f).4f
+
+[disappearance]
+n_base = %(dis_n_base)d
+n_contestant = %(dis_n_cont)d
+precision = %(dis_prec).4f
+recall = %(dis_rec).4f
+f_measure = %(dis_f).4f
+
+[overall|visibility]
+n_base = %(n_base_v)d
+n_contestant = %(n_cont_v)d
+precision = %(precision_v).4f
+recall = %(recall_v).4f
+f_measure = %(f_measure_v).4f
+
+[move|visibility]
+n_base = %(mov_n_base_v)d
+n_contestant = %(mov_n_cont_v)d
+precision = %(mov_prec_v).4f
+recall = %(mov_rec_v).4f
+f_measure = %(mov_f_v).4f
+
+[division|visibility]
+n_base = %(div_n_base_v)d
+n_contestant = %(div_n_cont_v)d
+precision = %(div_prec_v).4f
+recall = %(div_rec_v).4f
+f_measure = %(div_f_v).4f
+
+[appearance|visibility]
+n_base = %(app_n_base_v)d
+n_contestant = %(app_n_cont_v)d
+precision = %(app_prec_v).4f
+recall = %(app_rec_v).4f
+f_measure = %(app_f_v).4f
+
+[disappearance|visibility]
+n_base = %(dis_n_base_v)d
+n_contestant = %(dis_n_cont_v)d
+precision = %(dis_prec_v).4f
+recall = %(dis_rec_v).4f
+f_measure = %(dis_f_v).4f
+''' % vals
+
+        with open(options.output_fn, 'w') as f:
+            f.write(stats)
+        
+    print "Finished quantification!"

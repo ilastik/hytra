@@ -1,0 +1,117 @@
+#!/usr/bin/env python
+import sys
+sys.path.append('../.')
+sys.path.append('.')
+import numpy as np
+import glob
+import os
+import os.path as path
+import optparse
+import h5py
+from empryonic import io
+
+
+def pt_measure(filenames):
+    """
+    Calculates the Perfect Tree Measure on the given filenames.
+    It is assumed that the filenames are in the correct order.
+    """
+    # prepare the active sets for the first time step
+    active_sets = set()
+
+    # init with all objects of first file
+    f = io.LineageH5( filenames[0] , mode="r")
+    initcount = f["features"]["labelcount"][0]
+    for i in range(initcount):
+        active_sets.add( (i+1,) )
+    f.close()
+    del f
+
+       
+    # go through all files and update the active sets
+    for fn in filenames[1:]:
+        f = io.LineageH5( fn , mode="r")
+        mv = f.get_moves()
+        dv = f.get_divisions()
+        f.close()
+        del f
+
+        # check for empty moves or divisions
+        if len(mv) == 0:
+            mv = np.zeros([0,2])
+        if len(dv) == 0:
+            dv = np.zeros([0,3])
+
+        new_active_sets = set()
+
+        # go through all active sets
+        for ac in active_sets:
+            new_ac = ()
+            # for every id in active set
+            for ids in ac:
+                # check if id is in moves or divisions and record new ids
+                if ids in mv[:,0]: 
+                    new_ac = new_ac + (mv[mv[:,0]==ids,1][0],)
+                elif ids in dv[:,0]:
+                    new_ac = new_ac + (dv[dv[:,0]==ids,1][0],dv[dv[:,0]==ids,2][0],)
+                else:
+                    new_ac = new_ac + (-1,)
+                    break
+
+            # keep the set with new ids as active set if no track is lost
+            if not -1 in new_ac:
+                new_active_sets.add(new_ac)
+
+        # update active sets
+        active_sets = new_active_sets
+
+    # check if the active sets are actually complete
+    complete_sets = set()
+    for ac in active_sets:
+        if len(ac) == 4:
+            complete_sets.add(ac)
+
+    return len(complete_sets)
+
+
+
+
+
+if __name__=="__main__":
+    usage = """%prog FILES
+Calculates the "Perfect Tree Measure" on a set of 
+subsequent, tracked timesteps
+
+The "Perfect Tree Measure" counts the number of
+lineage trees without any flaws like false divisions
+or missing links.
+
+FILES: Files to analyze.
+"""
+    
+    parser = optparse.OptionParser(usage=usage)
+
+    parser.add_option('-o', type='str', dest='out_fn', default='perfect_trees.csv', help='[default: %default]')
+    options, args = parser.parse_args()
+    
+    numArgs = len(args)
+    if numArgs  > 0:
+        filenames = []
+        for arg in args:
+            filenames.extend(glob.glob(arg))
+    else:
+        parser.print_help()
+        sys.exit(1)
+    filenames.sort()
+
+    ptm = pt_measure(filenames)
+
+    with open(options.out_fn, 'w') as f:
+        f.write(str(ptm))
+    print "-> Found %i perfect trees." % ptm
+    print "-> Success!"
+
+                    
+                    
+            
+    

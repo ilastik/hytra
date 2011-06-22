@@ -1,0 +1,1 @@
+./segmentation_single file=scripts/keller_animal_0030-0074.ini time=30 bottomleft="385, 585, 0" topright="615, 815, 215

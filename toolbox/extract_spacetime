@@ -1,0 +1,53 @@
+#!/usr/bin/env python
+import h5py
+import sys
+import optparse
+import os.path as path
+import glob
+
+from empryonic import io, analysis
+    
+if __name__=="__main__":
+    # option parser
+    usage = """%prog [options] H5FILE(S)
+Convert HDF5 volumetric datasets to a single volumetric dataset by maximum intensity projection.
+
+Standard unix GLOB matching (i.e. "*.h5") as well as several filenames are supported as arguments.
+"""
+
+    parser = optparse.OptionParser(usage=usage)
+    parser.add_option('-d', '--dataset', type='string', dest='src', default='/raw/volume', help='path to HDF5 dataset [default: %default]')
+    parser.add_option('-a', '--axis', type='choice', dest='axis', choices=['0','1','2'], default='2', help='0,1 or 2 - convert along axis [default: %default]')
+    parser.add_option('-o', type='string', dest='out_fn', default='spactime.h5', help='output filename [default: %default]')
+    options, args = parser.parse_args()
+
+    numArgs = len(args)
+    if numArgs > 0:
+        fns = []
+        for arg in args:
+            fns.extend(glob.glob(arg))
+    else:
+        parser.print_help()
+        sys.exit(1)
+
+    projector = analysis.makeMaxIntensityProjector(int(options.axis))
+    def iterData( filenames, h5path = options.src ):
+        for filename in filenames:
+            print "-> Loading " + path.basename(filename)
+            sys.stdout.flush()
+            yield io.__loadDatasets( filename, h5path )
+
+    loader = iterData( fns )
+
+    print "Extracting spacetime..."
+    sys.stdout.flush()
+    st = analysis.spacetime(loader, projector)
+    print "done!"
+
+    print "Saving spacetime to " + options.out_fn + "...",
+    f = h5py.File(options.out_fn, 'w')
+    sys.stdout.flush() # wouldn't print else
+    f.create_dataset('spacetime', data=st)
+    f.close()
+    print "done!"
+

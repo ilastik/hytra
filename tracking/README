@@ -1,0 +1,32 @@
+ C/C++ implementation of the module track2.m (see comments in this file)
+
+ Track cells in a greedy fashion (time slice by time slice) by 
+ minimizing a simple energy function (mainly based on distances) via
+ Integer Linear Programming.
+
+ Implementation is geared towards trivial (data-parallel) parallelization.
+
+  Requires the following 3rd party libraries:
+ - LP_SOLVE or CPLEX for mixed-integer programming 
+   http:lpsolve.sourceforge.net/5.5/
+   http:www.ilog.com/products/cplex/
+ - HDF5 for input and output data storage
+   http:www.hdfgroup.org/HDF5/
+ - ANN for efficient nearest-neighbor search
+   http:www.cs.umd.edu/~mount/ANN/
+
+ Frederik Orlando Kaster, 2010 <frederik.kaster@iwr.uni-heidelberg.de>
+
+ If CPLEX shall be used as optimization engine, this program has to be built
+ with the USE_CPLEX flag.
+
+ Changelog:
+ 1.4 -- program structure refactoring and CMake support
+ 1.3 -- optional support for using CPLEX as a MIP engine
+ 1.2 -- allow for nonisotropic voxel sizes
+
+If you want to use CPLEX, you must export an environment variable ILOG_LICENSE_FILE
+that has to give the path of your personal copy of access.ilm.
+
+
+

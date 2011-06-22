@@ -1,0 +1,177 @@
+#!/usr/bin/env python
+import sys
+sys.path.append('../.')
+sys.path.append('.')
+
+import cPickle
+import collections
+import multiprocessing
+import os
+import os.path as path
+import optparse
+from empryonic import io
+from empryonic.learning import match as m
+from empryonic.learning import quantification as quant
+
+def match(fn_pair):
+    assoc = m.match_files(fn_pair[0], fn_pair[1], options.threshold, options.ignore_z, options.swap_xy, verbose=False)
+    print "-> matched: " + path.basename(fn_pair[0]) + " <-> " + path.basename(fn_pair[1])
+    return assoc
+
+
+
+if __name__=="__main__":
+    usage = """%prog [options] BASE_DIR CONTESTANT_DIR
+Quantify tracking performance.
+"""
+
+    parser = optparse.OptionParser(usage=usage)
+    parser.add_option('--no-detailed-stats', action='store_true', dest='no_detailed_stats', help="don't write detailed statistics into an output file")
+    parser.add_option('-o', type='str', dest='output_fn', default='batch_performance.txt', help='output file for detailed stats; no effect if "--no-detailed-stats" is set [default: %default]')
+    parser.add_option('-t', '--threshold', type='float', dest='threshold', default=25, help='distance threshold for the matching (matching only below the threshold) [default: %default]')
+    parser.add_option('--swap-xy', action='store_true', dest='swap_xy', help='switches x and y coordinates of the traxels in FILE1')
+    parser.add_option('--ignore-z', action='store_true', dest='ignore_z', help='only match in the x-y subspace')
+    parser.add_option('--precomputed-match', action='store_true', dest='precomputed_match', help='match files will be loaded from ./matched/ [invalidates all match related options]')
+
+    options, args = parser.parse_args()
+
+    numArgs = len(args)
+    if numArgs == 2:
+        base_dir = args[0]
+        cont_dir = args[1]
+
+        base_fns = [path.abspath(path.join(base_dir, fn)) for fn in os.listdir(base_dir)]
+        base_fns.sort()
+        cont_fns = [path.abspath(path.join(cont_dir, fn)) for fn in os.listdir(cont_dir)]
+        cont_fns.sort()
+    else:
+        parser.print_help()
+        sys.exit(1)
+
+    if len(base_fns) < 2:
+        print "Abort: at least two base files needed."
+    if len(cont_fns) < 2:
+        print "Abort: at least two contestant files needed."
+    if len(base_fns) != len(cont_fns):
+        print "Abort: number of base files has to match number of contestant files."
+
+    if options.precomputed_match:
+        assocs = []
+        print "Loading precomputed matches..."
+        for t in range(len(base_fns)):
+            with open("./matched/%04i" % i, 'r') as f:
+                m = cPickle.load(f)
+                assocs.append(m)
+        print
+    else:
+        fn_pairs = zip(base_fns, cont_fns)
+        p = multiprocessing.Pool()
+        assocs = p.map(match, fn_pairs) 
+        print
+            
+    ts = []
+    print "Computing statistics..."
+    for i,v in enumerate(fn_pairs[1:]):
+        t = quant.compute_taxonomy(assocs[i], assocs[i+1], v[0], v[1])
+        ts.append(t)
+        sys.stdout.write('.')
+        sys.stdout.flush()
+    sys.stdout.write('\n')
+    sys.stdout.flush()
+    overall = reduce( quant.Taxonomy.union, ts )
+
+    def total_elements( taxonomy ):
+        return len(taxonomy.base_basic) + len(taxonomy.cont_basic)
+    assert(sum((total_elements(t) for t in ts)) == total_elements(overall))
+    
+    
+    print "Measuring performance..."
+    print "-> Precision: %.3f" % overall.precision()
+    print "-> Recall: %.3f" % overall.recall()
+    print "-> F-measure %.3f: " % overall.f_measure()
+    print
+    
+     ### write detailed stats to output file
+    if not options.no_detailed_stats:
+        print "Detailed stats..."
+        vals = overall.all_stats()
+        print "-> calculated"
+        
+        print "-- writing detailed stats to %s..." % path.basename(options.output_fn)
+        stats = '''[context]
+
+[overall]
+n_base = %(n_base)d
+n_contestant = %(n_cont)d
+precision = %(precision).4f
+recall = %(recall).4f
+f_measure = %(f_measure).4f:
+
+[move]
+n_base = %(mov_n_base)d
+n_contestant = %(mov_n_cont)d
+precision = %(mov_prec).4f
+recall = %(mov_rec).4f
+f_measure = %(mov_f).4f
+
+[division]
+n_base = %(div_n_base)d
+n_contestant = %(div_n_cont)d
+precision = %(div_prec).4f
+recall = %(div_rec).4f
+f_measure = %(div_f).4f
+
+[appearance]
+n_base = %(app_n_base)d
+n_contestant = %(app_n_cont)d
+precision = %(app_prec).4f
+recall = %(app_rec).4f
+f_measure = %(app_f).4f
+
+[disappearance]
+n_base = %(dis_n_base)d
+n_contestant = %(dis_n_cont)d
+precision = %(dis_prec).4f
+recall = %(dis_rec).4f
+f_measure = %(dis_f).4f
+
+[overall|visibility]
+n_base = %(n_base_v)d
+n_contestant = %(n_cont_v)d
+precision = %(precision_v).4f
+recall = %(recall_v).4f
+f_measure = %(f_measure_v).4f
+
+[move|visibility]
+n_base = %(mov_n_base_v)d
+n_contestant = %(mov_n_cont_v)d
+precision = %(mov_prec_v).4f
+recall = %(mov_rec_v).4f
+f_measure = %(mov_f_v).4f
+
+[division|visibility]
+n_base = %(div_n_base_v)d
+n_contestant = %(div_n_cont_v)d
+precision = %(div_prec_v).4f
+recall = %(div_rec_v).4f
+f_measure = %(div_f_v).4f
+
+[appearance|visibility]
+n_base = %(app_n_base_v)d
+n_contestant = %(app_n_cont_v)d
+precision = %(app_prec_v).4f
+recall = %(app_rec_v).4f
+f_measure = %(app_f_v).4f
+
+[disappearance|visibility]
+n_base = %(dis_n_base_v)d
+n_contestant = %(dis_n_cont_v)d
+precision = %(dis_prec_v).4f
+recall = %(dis_rec_v).4f
+f_measure = %(dis_f_v).4f
+''' % vals
+
+        with open(options.output_fn, 'w') as f:
+            f.write(stats)
+        
+    print "Finished quantification!"

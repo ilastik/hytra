@@ -1,0 +1,141 @@
+#!/usr/bin/env python
+import sys
+sys.path.append('../.')
+sys.path.append('.')
+
+import csv
+import optparse
+import numpy as np
+
+from empryonic import io
+from empryonic import events
+from empryonic.learning import match
+
+if __name__=="__main__":
+    usage = """%prog [options] PREV_FILE CURR_FILE
+    Write out events in tabular text format. 
+
+    *_FILE has to contain 'features' and CURR_FILE 'tracking'.
+    Output files will not be overwritten, but appended to.
+    """
+
+    parser = optparse.OptionParser(usage=usage)
+    parser.add_option('-m', type='str', dest='mov_fn', default='mov.csv', help='[default: %default]')
+    parser.add_option('-s', type='str', dest='div_fn', default='div.csv', help='[default: %default]')
+    parser.add_option('-a', type='str', dest='app_fn', default='app.csv', help='[default: %default]')
+    parser.add_option('-d', type='str', dest='dis_fn', default='dis.csv', help='[default: %default]')
+    parser.add_option('--t_prev', type='float', dest='t_prev', default=0, help='[default: %default]')    
+    parser.add_option('--t_curr', type='float', dest='t_curr', default=1, help='[default: %default]')    
+    parser.add_option('--without-field-names', action='store_true', dest='without_fields', help="don't write field names in first row")
+    parser.add_option('--position', type='str', dest='pos', default='mean', help='mean or max [default: %default]')
+
+    options, args = parser.parse_args()
+
+    numArgs = len(args)
+    if numArgs == 2:
+        prev_fn = args[0]
+        curr_fn = args[1]
+    else:
+        parser.print_help()
+        sys.exit(1)
+
+    # load events
+    with io.LineageH5( prev_fn ) as f:
+        prev_traxels = f.Tracklets(timestep=options.t_prev, position = options.pos)
+    del f
+
+    with io.LineageH5( curr_fn ) as f:
+        mov_ids = f.get_moves()
+        mov_eners = f.get_move_energies()
+        div_ids = f.get_divisions()
+        div_eners = f.get_division_energies()
+        app_ids = f.get_appearances()
+        app_eners = f.get_appearance_energies()
+        dis_ids = f.get_disappearances()
+        dis_eners = f.get_disappearance_energies()
+        curr_traxels = f.Tracklets(timestep=options.t_curr, position = options.pos)
+    del f
+
+    movs = [events.move_from(prev_traxels, curr_traxels, mov) for mov in mov_ids]
+    divs = [events.division_from(prev_traxels, curr_traxels, e) for e in div_ids]
+    apps = [events.appearance_from(curr_traxels, e) for e in app_ids]
+    diss = [events.disappearance_from(prev_traxels, e) for e in dis_ids]
+
+    with open(options.mov_fn, 'a') as f:
+        fields = ['origin_id', 'to_id',
+                  'distance',
+                  'energy',
+                  'origin_t', 'to_t',
+                  'vec_x', 'vec_y', 'vec_z',
+                  'origin_x', 'origin_y', 'origin_z']
+        w = csv.writer(f)
+        if not options.without_fields:
+            w.writerow(fields)
+        for mov in movs:
+            vec = mov.vec()
+            poo = mov.point_of_origin()
+            entries = [mov.origin.id, mov.to.id,
+                       mov.distance(),
+                       mov.energy,
+                       mov.origin.t, mov.to.t,
+                       vec[0], vec[1], vec[2],
+                       poo[0], poo[1], poo[2]]
+            w.writerow(entries)
+
+    with open(options.div_fn, 'a') as f:
+        fields = ['origin_id', 'to1_id', 'to2_id',
+                  'distance1', 'distance2', 'children_distance',
+                  'angle',
+                  'energy',
+                  'origin_t', 'to1_t', 'to2_t',
+                  'vec1_x', 'vec1_y', 'vec1_z',
+                  'vec2_x', 'vec2_y', 'vec2_z',                  
+                  'origin_x', 'origin_y', 'origin_z']
+        w = csv.writer(f)
+        if not options.without_fields:
+            w.writerow(fields)
+        for div in divs:
+            vec1 = div.vec1()
+            vec2 = div.vec2()
+            poo = div.point_of_origin()
+            entries = [div.origin.id, div.to1.id, div.to2.id,
+                       div.distance1(), div.distance2(), div.child_distance(),
+                       div.angle(),
+                       div.energy,
+                       div.origin.t, div.to1.t, div.to2.t,
+                       vec1[0], vec1[1], vec1[2],
+                       vec2[0], vec2[1], vec2[2],                       
+                       poo[0], poo[1], poo[2]]
+            w.writerow(entries)
+
+    with open(options.app_fn, 'a') as f:
+        fields = ['id',
+                  'energy',
+                  't',
+                  'x', 'y', 'z']
+        w = csv.writer(f)
+        if not options.without_fields:
+            w.writerow(fields)
+        for e in apps:
+            poo = e.point_of_origin()
+            entries = [e.to.id,
+                       e.energy,
+                       e.to.t,
+                       poo[0], poo[1], poo[2]]
+            w.writerow(entries)
+
+    with open(options.dis_fn, 'a') as f:
+        fields = ['id',
+                  'energy',
+                  't',
+                  'x', 'y', 'z']
+        w = csv.writer(f)
+        if not options.without_fields:        
+            w.writerow(fields)
+        for e in diss:
+            poo = e.point_of_origin()
+            entries = [e.origin.id,
+                       e.energy,
+                       e.origin.t,
+                       poo[0], poo[1], poo[2]]
+            w.writerow(entries)

@@ -1,0 +1,217 @@
+#!/usr/bin/env python
+import sys
+sys.path.append('../.')
+sys.path.append('.')
+
+import os
+import os.path as path
+import getpass
+import glob
+import optparse
+import socket
+import time
+import numpy as np
+import h5py
+from empryonic import track
+from empryonic import io
+
+
+class Tracker( object ):
+    def __init__( self, rf_file, div1, div2, mov, app, dis, threshold):
+        self._rf_file = rf_file
+        self._div1 = div1
+        self._div2 = div2
+        self._mov = mov
+        self._dis = dis
+        self._app = app
+        self._threshold = threshold
+        self.method = "MIP cellness tracking"
+        self.user = "unknown"
+        self.date = "unknown"
+        self.machine = "unknown"
+        self.comment = "none"
+        
+        self.ctrack = track.CellnessTracking(rf_file, div1, div2, mov, app, dis, threshold)
+        
+    def track( self, fn_prev, fn_curr):
+        with io.LineageH5(fn_prev) as f_prev:
+            print "-- Reading traxels in previous timestep...",
+            prev = f_prev.cTraxels()
+            print "done!"
+        with io.LineageH5(fn_curr) as f_curr:
+            print "-- Reading traxels in current timestep...",
+            curr = f_curr.cTraxels()
+            print "done!"
+        del f_prev, f_curr
+
+        print "-- Associating traxels..."
+        events = self.ctrack(prev, curr)
+        print "-> finished association"
+        dis = []
+        app = []
+        div = []
+        mov = []
+        print "-- Writing results to " + path.basename(fn_curr)
+        for event in events:
+            if event.type == track.EventType.Appearance:
+                app.append( (event.tracklet_ids[0], event.energy) )
+            if event.type == track.EventType.Disappearance:
+                dis.append( (event.tracklet_ids[0], event.energy) )
+            if event.type == track.EventType.Division:
+                div.append( (event.tracklet_ids[0], event.tracklet_ids[1],event.tracklet_ids[2],event.energy))
+            if event.type == track.EventType.Move:
+                mov.append( (event.tracklet_ids[0],event.tracklet_ids[1], event.energy))
+
+        # convert to ndarray for better indexing
+        dis = np.asarray(dis)
+        app = np.asarray(app)
+        div = np.asarray(div)
+        mov = np.asarray(mov)
+
+        # write only if file exists
+        with io.LineageH5(fn_curr, 'r+') as f_curr:
+            tg = f_curr.create_group("tracking")
+            # write meta data to group
+            tg.attrs["Method"] = self.method
+            tg.attrs["User"] = self.user
+            tg.attrs["Date"] = self.date
+            tg.attrs["Machine"] = self.machine
+            tg.attrs["Comment"] = self.comment
+            tg.attrs["Param random_forest_file"] = self._rf_file
+            tg.attrs["Param division1"] = self._div1
+            tg.attrs["Param division2"] = self._div2
+            tg.attrs["Param move"] = self._mov
+            tg.attrs["Param disappearance"] = self._dis
+            tg.attrs["Param appearance"] = self._app
+            tg.attrs["Param threshold"] = self._threshold
+
+            
+            # write associations
+            if len(app):
+                ds = tg.create_dataset("Appearances", data=app[:,:-1], dtype=np.int32)
+                ds.attrs["Format"] = "cell label appeared in current file"
+
+                ds = tg.create_dataset("Appearances-Energy", data=app[:,-1], dtype=np.double)
+                ds.attrs["Format"] = "lower energy -> higher confidence"
+
+            if len(dis):
+                ds = tg.create_dataset("Disappearances", data=dis[:,:-1], dtype=np.int32)
+                ds.attrs["Format"] = "cell label disappeared in current file"
+
+                ds = tg.create_dataset("Disappearances-Energy", data=dis[:,-1], dtype=np.double)
+                ds.attrs["Format"] = "lower energy -> higher confidence"
+
+
+            if len(mov):
+                ds = tg.create_dataset("Moves", data=mov[:,:-1], dtype=np.int32)
+                ds.attrs["Format"] = "from (previous file), to (current file)"
+
+                ds = tg.create_dataset("Moves-Energy", data=mov[:,-1], dtype=np.double)
+                ds.attrs["Format"] = "lower energy -> higher confidence"
+
+                
+            if len(div):
+                ds = tg.create_dataset("Splits", data=div[:,:-1], dtype=np.int32)
+                ds.attrs["Format"] = "ancestor (previous file), descendant (current file), descendant (current file)"
+
+                ds = tg.create_dataset("Splits-Energy", data=div[:,-1], dtype=np.double)
+                ds.attrs["Format"] = "lower energy -> higher confidence"
+
+        print "-> results successfully written"
+        
+if __name__=="__main__":
+    usage = """%prog [options] FILES
+Track cells using the MIP cellness tracking method.
+
+Before processing, input files are copied to OUT_DIR. Groups, that will not be modified are not
+copied but linked to the original files to improve execution speed and storage requirements.
+"""
+
+    parser = optparse.OptionParser(usage=usage)
+    parser.add_option('-f', '--random-forest-file', type='str', dest='rf_file', default='RandomForest.h5', help='[default: %default]')
+    parser.add_option('-c', '--division1', type='float', dest='div1', default=1461, help="weight for the difference of the children's cellness [default: %default]")
+    parser.add_option('-p', '--division2', type='float', dest='div2', default=190, help='weight for the parent cellness [default: %default]')
+    parser.add_option('-m', '--move', type='float', dest='mov', default=1140, help='weight for the cellness difference [default: %default]')
+    parser.add_option('-a', '--appearance', type='float', dest='app', default=1000, help='scale of appearance cost [default: %default]')
+    parser.add_option('-d', '--disappearance', type='float', dest='dis', default=1000, help='scale of disappearance cost [default: %default]')
+    parser.add_option('-t', '--threshold', type='float', dest='threshold', default=100, help='distance threshold (runtime optimization param) [default: %default]')
+    parser.add_option('-o', '--output-dir', type='str', dest='out_dir', default='tracked', help='[default: %default]')
+    parser.add_option('--with-visbricks', action='store_true', dest='with_visbricks', help='write out a "time dependent HDF5" file for visbricks')
+    parser.add_option('--with-rel-linking', action='store_true', dest='with_rel_linking', help='link hdf5 files relative instead of absolute')
+    parser.add_option('--user', type='str', dest='user', default=getpass.getuser(), help='user to log [default: %default]')
+    parser.add_option('--date', type='str', dest='date', default=time.ctime(), help='datetime to log [default: %default]')
+    parser.add_option('--machine', type='str', dest='machine', default=socket.gethostname(), help='machine to log [default: %default]')
+    parser.add_option('--comment', type='str', dest='comment', default='none', help='some comment to log [default: %default]')
+
+    options, args = parser.parse_args()
+
+    numArgs = len(args)
+    if numArgs > 0:
+        fns = []
+        for arg in args:
+            fns.extend(glob.glob(arg))
+        fns.sort()
+    else:
+        parser.print_help()
+        sys.exit(1)
+        
+    if not path.exists( options.out_dir ):
+        os.makedirs( options.out_dir )
+
+    ### Copy input data
+    print "Copying input data..."
+    working_fns = []
+    for fn in fns:
+        out_fn = path.join(options.out_dir, path.basename(fn))
+
+        # test, if fn is a valid h5 file
+        try:
+            f_in = io.LineageH5( fn, 'r' )
+        except:
+            print "!! Not a valid H5 file: " + fn + " -> skipped"
+            continue
+        f_in.close()
+        del f_in
+
+        print "-- Link/copy: " + fn + " -> " + out_fn
+        with io.LineageH5( out_fn, 'w' ) as f_out:
+            if options.with_rel_linking:
+                link_to = path.relpath(path.abspath(path.dirname(fn)), start=path.abspath(path.dirname(out_fn)))
+            else:
+                link_to = path.abspath(path.dirname(fn))
+            link_fn = path.join(link_to, path.basename(fn))
+            f_out["features"] = h5py.ExternalLink( link_fn, "features")
+            f_out["segmentation"] = h5py.ExternalLink( link_fn, "segmentation")
+            f_out["raw"] = h5py.ExternalLink( link_fn, "raw")
+            f_out["objects"] = h5py.ExternalLink( link_fn, "objects")
+        del f_out
+        
+        #store out-filename for later use
+        working_fns.append(out_fn)
+    working_fns.sort()
+    print
+
+    ### Do the tracking
+    tracker =  Tracker( options.rf_file, options.div1 , options.div2, options.mov, options.app, options.dis, options.threshold )
+    tracker.user = options.user
+    tracker.date = options.date
+    tracker.machine = options.machine
+    tracker.comment = options.comment
+
+    start = time.time()
+    n_fns = len(working_fns)
+    for i in xrange(n_fns-1):
+        print "Tracking " + path.basename(working_fns[i]) + " -> " + path.basename(working_fns[i+1])
+        tracker.track(working_fns[i], working_fns[i+1])        
+        print
+    stop = time.time()
+    since = stop - start
+    print "Elapsed time [s]: " + str(int(since))
+    print "Elapsed time [min]: " + str(int(since) / 60)
+    print "Elapsed time [h]: " + str(int(since) / 3600)
+    print
+
+    ### visbricks file
+    if options.with_visbricks: 
+        io.write_visbricks_file( working_fns, options.out_dir )
+        print "Visbricks file written in '" + options.out_dir + "'"

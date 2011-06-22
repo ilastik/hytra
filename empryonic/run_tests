@@ -1,0 +1,17 @@
+#!/usr/bin/env python
+import unittest as ut
+
+modules = [
+    'empryonic.tracklets',
+    'empryonic.io',
+    'empryonic.learning.match',
+    'empryonic.learning.optimal_matching_test',
+    'empryonic.learning.quantification',
+    'empryonic.conversion_test'
+    ]
+
+ts = ut.defaultTestLoader.loadTestsFromNames( modules )
+
+if __name__=="__main__":
+    runner = ut.TextTestRunner(verbosity=2).run(ts)
+
