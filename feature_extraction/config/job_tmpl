@@ -1,0 +1,16 @@
+[Recipe]
+Name = vegetal100
+Description = First 100 time frames of vegetal Digital Embryo dataset.
+SlaveTempPath = /export/home/bkausler/tmp/
+NumberOfTasks = 1
+Verbosity = Loud
+
+[Task0]
+DataPath = /export/home/bkausler/data/vegetal100/
+BlockSize = 200
+Type = Template
+Template = ct-keller-vegetal_%04i.h5
+FromTimeFrame = 0
+ToTimeFrame = 100
+TimeFrameStep = 1
+
