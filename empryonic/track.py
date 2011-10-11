@@ -22,7 +22,6 @@ try:
    from ctracking import FixedCostTracking
    from ctracking import ShortestDistanceTracking
    from ctracking import CellnessTracking
-   from ctracking import MultiTrack
    from ctracking import MrfTracking
    
 except ImportError:
