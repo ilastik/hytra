@@ -5,21 +5,26 @@
 import h5py
 import vigra
 import sys
+import os
+import os.path
 import numpy as np
 
 if __name__ == '__main__':
     if len(sys.argv) == 1:
-        print "Arguments: in_filname (one file of the stack to be loaded) [out_filename] (default: out.h5)"
+        print "Arguments: multipage-tiffs"
         sys.exit(1)
 
-    in_fn = sys.argv[1]
-    out_fn = sys.argv[2] if len(sys.argv) > 2 else 'out.h5'
+    in_tiffs = sys.argv[1:]
+    for t in in_tiffs:
 
-    v = vigra.readVolume( in_fn , dtype='UINT8')
+        out_fn = os.path.splitext(os.path.basename(t))[0] + ".h5"
+        print out_fn
+        nslices = vigra.impex.numberImages(t)
+        v = [vigra.readImage( t , dtype='UINT8', index=i ) for i in range(nslices)]
+        v = np.dstack(v)
 
-    # convert to ilastik shape format (t,x,y,z,c)
-    a = v[np.newaxis,:]
-
-    f = h5py.File(out_fn, 'w')
-    f.create_dataset('/volume/data', data=a, compression=1)
-    
+        # convert to ilastik shape format (t,x,y,z,c)
+        a = v[np.newaxis,:,:,:, np.newaxis]
+        print a.shape
+        f = h5py.File(out_fn, 'w')
+        f.create_dataset('/volume/data', data=a, compression=1)
