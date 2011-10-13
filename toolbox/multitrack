@@ -178,7 +178,7 @@ copied but linked to the original files to improve execution speed and storage r
     if(options.rf_fn):
 	    tracker = track.MrfTracking(options.rf_fn, options.app, options.dis, options.det, options.mis, True, options.opp,options.mdd,options.ma)
     else:
-	    tracker = track.MrfTracking("none", options.app, options.dis, options.det, options.mis, False, options.opp)
+	    tracker = track.MrfTracking("none", options.app, options.dis, options.det, options.mis, False, options.opp, options.mdd,options.ma)
     events = tracker(ts)
 
     print "Length of events " + str(len(events))
