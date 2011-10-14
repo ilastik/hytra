@@ -1,3 +1,4 @@
+import sys
 
 import vigra
 import numpy
@@ -53,15 +54,33 @@ def objectsSlow3d(cc, mingoodsize = None, maxgoodsize = None, outputfile=None):
     return objs
 
 
+
+def objects_from( threshold_overlay, threshold ):
+    assert(len(threshold) == 2)
+
+    threshold_overlay.setThresholds(threshold)
+    accessor = thresholdOverlay.MultivariateThresholdAccessor(threshold_overlay)
+    data = numpy.asarray(accessor[0, :, :, :, 0], dtype='uint8')
+    data = data.swapaxes(0,2).view()
+    cc = vigra.analysis.labelVolumeWithBackground(data, 6, 2)
+    cc = cc.swapaxes(0,2).view()
+    return objectsSlow3d(cc)
+
+
+
 def findObjectsNew(h5file, synapselabel, thresh):
+    assert(len(thresh) == 2)
+
     f2 = h5py.File(h5file, "r")
-    pred = f2["/volume/prediction"]
-    print "loading prediction for object class... ",
+    pred = f2["/volume/prediction"].value
+    print "loading prediction for object class...",
+    sys.stdout.flush()
     foreground = dummyOverlay(pred[:, :, :, :, synapselabel], synapselabel+1)
     print "done!"
 
     backgrounds = []
-    print "loading prediction for background class(es)... ",
+    print "loading prediction for background class(es)...",
+    sys.stdout.flush()
     for i in range(pred.shape[4]):
             #collect background labels
             if i!=synapselabel:
@@ -69,24 +88,18 @@ def findObjectsNew(h5file, synapselabel, thresh):
                 backgrounds.append(label)
     print "done!"
 
-    th_over = thresholdOverlay.ThresholdOverlay([foreground], backgrounds, 5)   
-    objs_user = []
-    objs_ref = []
-    for th in thresh:
-        print th
-        th_over.setThresholds(th)
-        accessor = thresholdOverlay.MultivariateThresholdAccessor(th_over)
-        data = numpy.asarray(accessor[0, :, :, :, 0], dtype='uint8')
-        data = data.swapaxes(0,2).view()
-        cc = vigra.analysis.labelVolumeWithBackground(data, 6, 2)
-        cc = cc.swapaxes(0,2).view()
-        print "calling objectsSlow3d"
-        objs = objectsSlow3d(cc)
-        print "objectsSlow3d called"
-        if (abs(th[0]/th[1]-1)<0.01):
-            objs_ref.extend(objs)
-        else:
-            objs_user.append(objs)
+    print "init thresholding...",
+    sys.stdout.flush()
+    th_over = thresholdOverlay.ThresholdOverlay([foreground], backgrounds, 5)
+    print "done!"
+    print "extracting objects"
+    sys.stdout.flush()
+    objs_ref = objects_from( th_over, thresh[0])
+    print "done!"
+    print "extracting selection objects"
+    sys.stdout.flush()
+    objs_user = objects_from( th_over, thresh[1])
+    print "done!"
     return (objs_ref, objs_user, pred.shape)
     
 def findObjects(foreground, backgrounds, thresh):
@@ -119,7 +132,10 @@ def findObjectsFile(thresh_file):
     fin.close()
     return objs
     
-        
+    
+#def filter_by_size(objs, minsize, maxsize):
+#   return (obj for obj in objs if 
+    
 def filterObjects3d(objssmall, objsref, mingoodsize, maxgoodsize):
     '''Filter connected components
 
@@ -128,7 +144,6 @@ def filterObjects3d(objssmall, objsref, mingoodsize, maxgoodsize):
     an object from the other list inside. 
     last step throws out the too big ones.
     
-    objssmall -- have to be contained in these objects
     objsref -- filter these objects
     '''
     goodobjs = []
