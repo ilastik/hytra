@@ -185,8 +185,7 @@ int segmentationLabeling(FileConfiguration fc, TaskConfiguration tc){
 
     // create new dataset for labels
     volume_shape dim_size (dim_shape[0],dim_shape[1],dim_shape[2]);
-    seg_file.createDataset<3,seg_type>(fc.LabelsPath,dim_size,0, 200, 2);
-
+    seg_file.createDataset<3,seg_type>(fc.LabelsPath,dim_size,0, volume_shape(32,32,32), 2);
 
 
     // blocks counter
