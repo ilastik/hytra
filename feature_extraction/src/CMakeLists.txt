@@ -19,5 +19,5 @@ TARGET_LINK_LIBRARIES(featureExtractor readSuperVoxels features vigraimpex)
 TARGET_LINK_LIBRARIES(interfaces readSuperVoxels features featureExtractor segmentationLabeling)
 
 IF(WITH_BOOSTMPI)
-  TARGET_LINK_LIBRARIES(mpiMS featureExtractor segmentationLabeling readSuperVoxels boost_mpi)
+  TARGET_LINK_LIBRARIES(mpiMS featureExtractor segmentationLabeling readSuperVoxels boost_mpi boost_serialization mpi mpi_cxx hdf5 hdf5_hl)
 ENDIF(WITH_BOOSTMPI)
