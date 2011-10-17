@@ -15,7 +15,7 @@ ADD_LIBRARY(argParser ArgParser.cpp)
 
 ADD_LIBRARY(interfaces interfaces.cxx)
 
-TARGET_LINK_LIBRARIES(featureExtractor readSuperVoxels features)
+TARGET_LINK_LIBRARIES(featureExtractor readSuperVoxels features vigraimpex)
 TARGET_LINK_LIBRARIES(interfaces readSuperVoxels features featureExtractor segmentationLabeling)
 
 IF(WITH_BOOSTMPI)
