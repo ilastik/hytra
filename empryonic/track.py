@@ -22,6 +22,7 @@ try:
    from ctracking import FixedCostTracking
    from ctracking import ShortestDistanceTracking
    from ctracking import CellnessTracking
+   from ctracking import BotTracking
    from ctracking import MrfTracking
    
 except ImportError:

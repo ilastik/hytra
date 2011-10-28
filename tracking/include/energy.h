@@ -7,37 +7,24 @@
 
 namespace Tracking {
 
+class BotAppearance {
+ public:
+    double operator()( const Traxel& ) const { return 1000; }
+};
 
-//
-// Energy Functor concept
-//
-// class Energy {
-//    public:
-//    Energy();
-//    template<typename InputIt>
-//    virtual double operator(InputIt traxel_begin, InputIt traxel_end) const = 0;
-// }
+class BotDisappearance {
+ public:
+    double operator()( const Traxel& ) const { return 1000; }
+};
 
-class FixedEnergy {
-    public:
-    FixedEnergy() : e_(0) {}; 
-    FixedEnergy(double e) : e_(e) {};
-    template<typename InputIt>
-    double operator()(InputIt, InputIt) const {
-	return e_;
-    }
+class BotMove {
+ public:
+    double operator()( const Traxel&, const Traxel& ) const { return 200; }
+};
 
-    FixedEnergy& set(double e) {
-	e_ = e;
-	return *this;
-    }
-
-    double get() const {
-	return e_;
-    }
-
-    private:
-    double e_;
+class BotDivision {
+ public:
+    double operator()( const Traxel&, const Traxel&, const Traxel& ) const { return 700; }
 };
 
 
@@ -52,7 +39,7 @@ class GeometryDivision2 {
     double mean_div_dist_, min_angle_;
 };
 
- class KasterDivision2 {
+class KasterDivision2 {
  public:
  KasterDivision2(double weight, double div_cost) : w_(weight), div_cost_(div_cost) {};
     double operator()(const Traxel& ancestor,
@@ -79,56 +66,6 @@ class NegLnOneMinusCellness {
   double w_;
 };
 
-
-
-////
-//// Energy Decorators
-////
-template<typename Energy>
-class neg_ln_of : public Energy {
-	public:
-	    template<typename InputIt>
-	    double operator()(InputIt traxel_begin, InputIt traxel_end) const {
-		return -1.*std::log(Energy::operator()(traxel_begin, traxel_end));
-	    }
-};
-
-template<typename Energy>
-class complementary_event : public Energy {
-    public:
-	template<typename InputIt>
-	double operator()(InputIt traxel_begin, InputIt traxel_end) const {
-		double e = Energy::operator()(traxel_begin, traxel_end);
-		if( 0. <= e && e <= 1.0) {
-		    return 1. - e;
-		} else {
-		    throw std::runtime_error("complementary_event::operator(): energy has to be between 0 and 1");
-		}
-    }
-};
-
-template<int M, typename Energy>
-class multiply_by : public Energy {
-    public:
-	template<typename InputIt>
-	double operator()(InputIt traxel_begin, InputIt traxel_end) const {
-	return M * Energy::operator()(traxel_begin, traxel_end);
-	}
-};
-
-////
-//// Energy Adaptors
-////
-template<typename Energy>
-class binarify : public Energy {
-    public:
-    double operator()(const Traxel& t1, const Traxel& t2) const {
-	std::vector<Traxel> v;
-	v.push_back(t1);
-	v.push_back(t2);
-	return Energy::operator()(v.begin(), v.end());
-    }
-};
 
 
 ////
