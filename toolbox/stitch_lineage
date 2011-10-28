@@ -6,6 +6,7 @@ import numpy as np
 import os
 import os.path as path
 import optparse
+import sys
 
 from empryonic import io
 
