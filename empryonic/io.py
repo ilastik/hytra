@@ -337,9 +337,9 @@ class LineageH5( h5py.File ):
                 tr.Id = int(ids[idx])
                 tr.Timestep = self.timestep
                 for name_value in features.items():
-                    tr.add_feature_array(name_value[0], len(name_value[1][idx]))
+                    tr.add_feature_array(str(name_value[0]), len(name_value[1][idx]))
                     for i,v in enumerate(name_value[1][idx]):
-                        tr.set_feature_value(name_value[0], i, float(v))
+                        tr.set_feature_value(str(name_value[0]), i, float(v))
                 if as_python_list:
                     ts.append(tr)
                 else:
