@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+import argparse
+import os
+import os.path as path
 import h5py
 import vigra
 import numpy
@@ -65,44 +68,31 @@ def process(h5file, synapselabel, threshold, mingoodsize, maxgoodsize, outputfil
     print "done!"
     print
 
-
-'''
-if len(sys.argv) != 7:
-    print len(sys.argv)
-    print 'Usage: synapse_detection_script_final.py h5_processed_file_path synapse_label_number threshold min_synapse_size max_synapse_size outputfile(optional)'
-    print 'For example: python synapse_detection_script.py test1.h5_processed.h5 2 9.0 1000 250000 test1_output.h5'
-    print '\n'
-    #ilastik.core.jobMachine.GLOBAL_WM.stopWorkers()
-    #del ilastik.core.jobMachine.GLOBAL_WM
-    #ilastik.core.jobMachine.GLOBAL_WM = None
-    sys.exit(1)
-
- 
-h5file = sys.argv[1]
-synapselabel = int(sys.argv[2])
-threshold = float(sys.argv[3])
-mingoodsize = int(sys.argv[4])
-maxgoodsize = int(sys.argv[5])
-outputfile = sys.argv[6]
-
-assert(threshold >= 0. and threshold < 1.)
-'''
-
-synapselabel = 0
-threshold = 0.4
-mingoodsize = 600
-maxgoodsize = 100000
-
-fn = "/home/bkausler/data/hufnagel_2011-10-06_drosophila-syncytial-blastoderm/experiment1/classified/Time0000%02d_00.h5_processed.h5" 
-outfn = "/home/bkausler/data/hufnagel_2011-10-06_drosophila-syncytial-blastoderm/experiment1/segmented/%02d.h5"
-
-def func(i):
-    process(fn %i, synapselabel, threshold, mingoodsize, maxgoodsize, outfn % i)
-
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Extract objects from probability maps.')
+    parser.add_argument('--threshold', '-t', type=float, default=0.5, help='minimal probability (default: %(default)s)')
+    parser.add_argument('--minsize', type=int, default=0, help='minimal voxel number (default: %(default)s)')
+    parser.add_argument('--maxsize', type=int, default=100000, help='maximal voxel number (default: %(default)s)')
+    parser.add_argument('--label', type=int, default=0, help='label corresponding to the object class (default: %(default)s)')
+    parser.add_argument('-o', default='./objects', help='output directory (default: %(default)s)')
+    parser.add_argument('ih5s', nargs='+', help='files containing probability maps (ilastik h5 format)')
+
+    if(len(sys.argv) == 1):
+        parser.print_help()
+        sys.exit(1)
+
+    args = parser.parse_args()
+
+    # output dir
+    if(not path.exists(args.o)):
+        os.mkdir(args.o)
+
+    def func(fn):
+        process(fn, args.label, args.threshold, args.minsize, args.maxsize, path.join(args.o, "objects_" + path.basename(fn)))
+
     from multiprocessing import Pool
-    p = Pool(4)
-    p.map(func, range(60,100))
+    p = Pool()
+    p.map(func, args.ih5s)
     
 ilastik.core.jobMachine.GLOBAL_WM.stopWorkers()
 del ilastik.core.jobMachine.GLOBAL_WM
