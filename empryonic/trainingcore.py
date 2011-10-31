@@ -85,7 +85,7 @@ class trainingcore():
         """
         # create an array containing 'index'
         index = np.array([index], dtype=np.int32)
-        
+
         # set the bounding box of the volume to be displayed
         bbox = self.bbox[index-1,:].squeeze()
 
@@ -93,7 +93,6 @@ class trainingcore():
 
         #enlarge the bounding box
         # make sure that bbox[0..2] >= 0 (no array bound violation)
-
         bbox[0] = bbox[0] - min(self.borderSize, bbox[0]) 
         bbox[1] = bbox[1] - min(self.borderSize, bbox[1])
         bbox[2] = bbox[2] - min(self.borderSize, bbox[2])
@@ -101,10 +100,12 @@ class trainingcore():
         bbox[3] = bbox[3] + min(self.borderSize, self.shape[2]-bbox[3]) 
         bbox[4] = bbox[4] + min(self.borderSize, self.shape[1]-bbox[4])
         bbox[5] = bbox[5] + min(self.borderSize, self.shape[0]-bbox[5])
-        
+
+
         # load the data
-        seg1 = self.h5file["segmentation"]["labels"][bbox[2]:bbox[5],bbox[1]:bbox[4],bbox[0]:bbox[3]]
-        raw = self.h5file["raw"]["volume"][bbox[2]:bbox[5],bbox[1]:bbox[4],bbox[0]:bbox[3]]
+        ibbox = map(int, bbox)
+        seg1 = self.h5file["segmentation"]["labels"][ibbox[2]:ibbox[5],ibbox[1]:ibbox[4],ibbox[0]:ibbox[3]]
+        raw = self.h5file["raw"]["volume"][ibbox[2]:ibbox[5],ibbox[1]:ibbox[4],ibbox[0]:ibbox[3]]
         
         print "Drawing cell number",index
         t0 = time.time()
