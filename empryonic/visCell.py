@@ -1,7 +1,7 @@
 import numpy as np
 import time
 import h5py
-from enthought.mayavi import mlab
+from mayavi import mlab
 
 
     

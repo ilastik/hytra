@@ -1,4 +1,4 @@
-from enthought.mayavi import mlab
+from mayavi import mlab
 import h5py
 import numpy as np
 import vigra
@@ -8,10 +8,8 @@ import visCell
 import hdf5io
 
 
-from enthought.traits.api import *
-from enthought.traits.ui.api import *
-
-
+from traits.api import *
+from traitsui.api import Label, View, Item
 
 class msgdialog(HasTraits):
     message = Label("")
