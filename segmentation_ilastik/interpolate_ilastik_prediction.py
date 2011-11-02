@@ -27,6 +27,7 @@ def interpolate( fn ):
     sys.stdout.flush()
     f.create_dataset(interp_dsn, data=interp, compression=1)
     f.close()
+    del interp
     print "done:", fn
 
 if __name__ == '__main__':
