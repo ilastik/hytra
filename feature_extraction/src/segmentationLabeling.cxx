@@ -175,7 +175,7 @@ int segmentationLabeling(FileConfiguration fc, TaskConfiguration tc){
     hssize_t num_dimensions = seg_file.getDatasetDimensions(NAME_SEG);
     vigra::ArrayVector<hsize_t> dim_shape = seg_file.getDatasetShape(NAME_SEG);
     if(tc.Verbose){
-      std::cout << "Shape: (" << dim_shape[0] << "," << dim_shape[1]<< "," << dim_shape[2] << ")" << std::endl;
+      std::cout << "Shape: (" << dim_shape[2] << "," << dim_shape[1]<< "," << dim_shape[0] << ")" << std::endl;
     }
 
     //hssize_t num_dimensions = seg_file.getDatasetDimensions(fc.SegmentationPath);
@@ -325,7 +325,9 @@ int segmentationLabeling(FileConfiguration fc, TaskConfiguration tc){
         }
     }
 
+    ///
     // write out geometry information
+    //
 
     // set the max-labels entry
     label_array max_labels (array_shape(4));
