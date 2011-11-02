@@ -174,6 +174,10 @@ int segmentationLabeling(FileConfiguration fc, TaskConfiguration tc){
     // get volume size
     hssize_t num_dimensions = seg_file.getDatasetDimensions(NAME_SEG);
     vigra::ArrayVector<hsize_t> dim_shape = seg_file.getDatasetShape(NAME_SEG);
+    if(tc.Verbose){
+      std::cout << "Shape: (" << dim_shape[0] << "," << dim_shape[1]<< "," << dim_shape[2] << ")" << std::endl;
+    }
+
     //hssize_t num_dimensions = seg_file.getDatasetDimensions(fc.SegmentationPath);
     //vigra::ArrayVector<hsize_t> dim_shape = seg_file.getDatasetShape(fc.SegmentationPath);
     //seg_file.get_dataset_size("volume",num_dimensions,dim_shape);
@@ -401,7 +405,7 @@ int segmentationLabeling(FileConfiguration fc, TaskConfiguration tc){
 // Label a complete volume at once
 int segmentationLabelingAtOnce(FileConfiguration fc, TaskConfiguration tc){
     if(tc.Verbose){
-        std::cout << "- Labeling segmentation data.\n";
+        std::cout << "-- Labeling segmentation data.\n";
     }
 
     vigra::HDF5File seg_file (tc.Filename,vigra::HDF5File::Open);
@@ -410,7 +414,6 @@ int segmentationLabelingAtOnce(FileConfiguration fc, TaskConfiguration tc){
     // get volume size
     hssize_t num_dimensions = seg_file.getDatasetDimensions(NAME_SEG);
     vigra::ArrayVector<hsize_t> dim_shape = seg_file.getDatasetShape(NAME_SEG);
-
 
     // preconditions
     if(num_dimensions != 3){
