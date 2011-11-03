@@ -95,6 +95,9 @@ copied but linked to the original files to improve execution speed and storage r
     parser.add_option('--mean_div_dist', type='float', dest='mdd', default=25, help='average division distance [default: %default]')
     parser.add_option('--min_angle', type='float', dest='ma', default=0, help='minimal division angle [default: %default]')
     parser.add_option('--random-forest', type='string', dest='rf_fn', default=None, help='use cellness prediction instead of indicator function for (mis-)detection energy')
+    parser.add_option('--x-scale', type='float', dest='x_scale', default=1., help='[default: %default]')
+    parser.add_option('--y-scale', type='float', dest='y_scale', default=1., help='[default: %default]')
+    parser.add_option('--z-scale', type='float', dest='z_scale', default=1., help='[default: %default]')
     parser.add_option('--with-visbricks', action='store_true', dest='with_visbricks', help='write out a "time dependent HDF5" file for visbricks')
     parser.add_option('--with-rel-linking', action='store_true', dest='with_rel_linking', help='link hdf5 files relative instead of absolute')
     parser.add_option('--full-copy', action='store_true', dest='full_copy', help='do not link to but copy input files completely')
@@ -168,6 +171,9 @@ copied but linked to the original files to improve execution speed and storage r
     for i,fn in enumerate(working_fns):
         print "-- reading Traxels from " + fn
         f = io.LineageH5(fn, 'r', timestep=i)
+	f.x_scale = options.x_scale
+	f.y_scale = options.y_scale
+	f.z_scale = options.z_scale
         traxels = f.cTraxels()
         ts.add_from_Traxels(traxels)
         f.close()
