@@ -147,11 +147,11 @@ def set_labels(handle, category, labels):
         sys.exit(1)
 
     if not category in group:
-        lset = group.create_dataset(category, labels.shape, dtype = np.int32)
+        lset = group.create_dataset(category, labels.shape, dtype = np.int32, chunks=True)
         lset[:] = labels
     else:
-        lset = group[description]
-        lset.resize(shape)
+        lset = group[category]
+        lset.resize(labels.shape)
         lset[:] = labels.astype(np.int32)
 
 
@@ -177,11 +177,11 @@ def set_probabilities(handle, category, probabilities):
         sys.exit(1)
 
     if not category in group:
-        lset = group.create_dataset(category, probabilities.shape, dtype = np.float32)
+        lset = group.create_dataset(category, probabilities.shape, dtype = np.float32, chunks = True)
         lset[:] = probabilities
     else:
-        lset = group[description]
-        lset.resize(shape)
+        lset = group[category]
+        lset.resize(probabilities.shape)
         lset[:] = probabilities.astype(np.float32)
 
 
