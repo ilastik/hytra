@@ -105,13 +105,13 @@ def drawLabels(figure, handle, vol, bbox):
         mlab.text3d(com[2]-bbox[2]+1,com[1]-bbox[1]+1,com[0]-bbox[0]+1, str(i), color=(1,1,1), figure=figure)
         
 
-def drawImagePlane(figure, raw, colmap='jet', planeOrientation = 'x_axes'):
+def drawImagePlane(figure, raw, colmap='jet', planeOrientation = 'z_axes'):
     """
     Draw an image plane of the volume data 'raw' into figure 'figure'.
     Colormap can be specified by setting 'colormap', starting plane orientation
     is set in 'planeOrientation'.
     """
-    mlab.pipeline.image_plane_widget(mlab.pipeline.scalar_field(raw), figure=figure, colormap=colmap, vmin = 0, vmax = 4500, plane_orientation = planeOrientation)
+    mlab.pipeline.image_plane_widget(mlab.pipeline.scalar_field(raw), figure=figure, colormap=colmap, vmin = 0, vmax = 255, plane_orientation = planeOrientation)
 
 
 def draw2DView(figure, raw, seg, index, color=(1,0,0)):
@@ -119,7 +119,7 @@ def draw2DView(figure, raw, seg, index, color=(1,0,0)):
     Draw a 2D maximum intensity projection of the raw data and create 
     a segmentation overlay
     """
-    raw2d = np.max(raw, axis = 0)
+    raw2d = np.max(raw, axis = 2)
     mlab.imshow(raw2d, colormap='gray', figure=figure)
     sother = np.multiply( (seg != 0).astype(np.int32),(seg != index).astype(np.int32) )
     ##max1 = np.max(np.where(np.max(np.max((seg == index).astype(np.int32), axis = 0), axis = 0)!=0))+1
@@ -136,8 +136,8 @@ def draw2DView(figure, raw, seg, index, color=(1,0,0)):
     ##seg2dother = np.max(sother, axis = 0)
     ##seg2dother[min2:max2,min1:max1]=1
     sindex = (seg == index).astype(np.int32)
-    seg2dother = np.max(sother, axis = 0)
-    seg2dindex = np.max(sindex, axis = 0)
+    seg2dother = np.max(sother, axis = 2)
+    seg2dindex = np.max(sindex, axis = 2)
     mlab.contour_surf(seg2dother, color = (0,0,1), contours = 2, warp_scale = 0, figure=figure)
     mlab.contour_surf(seg2dindex, color = color, contours = 2, warp_scale = 0, figure=figure)
     #figure.scene.z_plus_view()
