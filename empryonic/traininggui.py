@@ -98,9 +98,8 @@ class traininggui(HasTraits):
 
     def __init__(self, files):
         self.files = files
-        self.h5file = h5py.File(files[0], 'r+')
         self.fileIndex = 0
-        self.t = trainingcore.trainingcore(self.h5file, scene3d=self.scene3d, scene2d=self.scene2d)
+        self.t = trainingcore.trainingcore(self.files[self.fileIndex], scene3d=self.scene3d, scene2d=self.scene2d)
         self.t.jump_to_cell(self.index)
         self.prepareRF()
         self.update_info()
@@ -110,12 +109,7 @@ class traininggui(HasTraits):
 
     def _btnLoadFile_fired(self):
         if self.fileIndex >= 0 and self.fileIndex < len(self.files):
-            if self.h5file != None:
-                self.h5file.close()
-            
-            self.h5file = h5py.File(self.files[self.fileIndex], 'r+')
-            
-            self.t = trainingcore.trainingcore(self.h5file, self.index)
+            self.t = trainingcore.trainingcore(self.files[self.fileIndex], self.index)
             self.t.jump_to_cell(self.index)
             self.update_info()
             self.t.borderSize = self.borderSize
@@ -127,13 +121,7 @@ class traininggui(HasTraits):
     def _btnLoadNextFile_fired(self):
         if self.fileIndex+1 < len(self.files):
             self.fileIndex = self.fileIndex +1
-            
-            if self.h5file != None:
-                self.h5file.close()
-            
-            self.h5file = h5py.File(self.files[self.fileIndex], 'r+')
-            
-            self.t = trainingcore.trainingcore(self.h5file, self.index)
+            self.t = trainingcore.trainingcore(self.files[self.fileIndex], self.index)
             self.t.jump_to_cell(self.index)
             self.update_info()
             self.t.borderSize = self.borderSize
@@ -144,13 +132,7 @@ class traininggui(HasTraits):
     def _btnLoadPreviousFile_fired(self):
         if self.fileIndex > 0:
             self.fileIndex = self.fileIndex -1
-            
-            if self.h5file != None:
-                self.h5file.close()
-            
-            self.h5file = h5py.File(self.files[self.fileIndex], 'r+')
-            
-            self.t = trainingcore.trainingcore(self.h5file, self.index)
+            self.t = trainingcore.trainingcore(self.files[self.fileIndex], self.index)
             self.t.jump_to_cell(self.index)
             self.update_info()
             self.t.borderSize = self.borderSize
@@ -162,7 +144,7 @@ class traininggui(HasTraits):
     def _btnNextHere_fired(self):
         if self.fileIndex+1 < len(self.files):
             currentBBox = self.t.currentBBox
-            glanceFile = h5py.File(self.files[self.fileIndex+1], 'r+')
+            glanceFile = self.files[self.fileIndex+1]
             t = trainingcore.trainingcore(glanceFile)
             t.borderSize = self.borderSize
             t.show_volume(currentBBox)
@@ -174,7 +156,7 @@ class traininggui(HasTraits):
     def _btnPrevHere_fired(self):
         if self.fileIndex-1 >= 0:
             currentBBox = self.t.currentBBox
-            glanceFile = h5py.File(self.files[self.fileIndex-1], 'r+')
+            glanceFile = self.files[self.fileIndex-1]
             t = trainingcore.trainingcore(glanceFile)
             t.borderSize = self.borderSize
             t.show_volume(currentBBox)
@@ -235,10 +217,12 @@ class traininggui(HasTraits):
 
 
     def _btnOne_fired(self):
-        hdf5io.set_one_label(self.h5file,self.datasetTraining,self.index,1)
+        with h5py.File(self.files[self.fileIndex], 'a') as f:
+            hdf5io.set_one_label(f,self.datasetTraining,self.index,1)
+            newf = hdf5io.load_features_one_object(f,self.index)
         
         self.labels = np.append(self.labels,[[1]],axis=0).astype(np.int32)
-        newf = hdf5io.load_features_one_object(self.h5file,self.index)
+
         self.features = np.append(self.features, newf, axis=0).astype(np.float32)
         
         if self.useRandomForest and self.RF != None:
@@ -254,10 +238,12 @@ class traininggui(HasTraits):
 
 
     def _btnZero_fired(self):
-        hdf5io.set_one_label(self.h5file,self.datasetTraining,self.index,0)
+        with h5py.File(self.files[self.fileIndex], 'a') as f:
+            hdf5io.set_one_label(f,self.datasetTraining,self.index,0)
+            newf = hdf5io.load_features_one_object(f,self.index)
         
         self.labels = np.append(self.labels,[[0]],axis=0).astype(np.int32)
-        newf = hdf5io.load_features_one_object(self.h5file,self.index)
+
         self.features = np.append(self.features, newf, axis=0).astype(np.float32)
         
         if self.useRandomForest and self.RF != None:
@@ -273,11 +259,13 @@ class traininggui(HasTraits):
 
 
     def _btnLblAs_fired(self):
-        hdf5io.set_one_label(self.h5file,self.datasetTraining,self.index,self.labelAs)
+        with h5py.File(self.files[self.fileIndex], 'a') as f:
+            hdf5io.set_one_label(f,self.datasetTraining,self.index,self.labelAs)
         
         if self.labelAs >= 0:
             self.labels = np.append(self.labels,[[self.labelAs]],axis=0).astype(np.int32)
-            newf = hdf5io.load_features_one_object(self.h5file,self.index)
+            with h5py.File(self.files[self.fileIndex], 'r') as f:
+                newf = hdf5io.load_features_one_object(f,self.index)
             self.features = np.append(self.features, newf, axis=0).astype(np.float32)
         
         if self.useRandomForest and self.RF != None:
@@ -327,12 +315,14 @@ class traininggui(HasTraits):
     def _btnTrainExtern_fired(self):
         """
         """
-        l = hdf5io.get_labels(self.h5file,self.extLabelSource).astype(np.int32)
+        with h5py.File(self.files[self.fileIndex], 'r') as f:
+            l = hdf5io.get_labels(f,self.extLabelSource).astype(np.int32)
         indices = l >= 0
         l = l[indices]
 
         if np.unique(l).shape[0] >= 2:
-            f = hdf5io.load_object_features(self.h5file)[indices,:]
+            with h5py.File(self.files[self.fileIndex], 'r') as fl:
+                f = hdf5io.load_object_features(fl)[indices,:]
             self.seriousRF = vigra.learning.RandomForest(treeCount=self.randomForestTrees)
             self.seriousRF.learnRF(f, l.astype(np.uint32))
             showmessage("Training successful. Used %i trees and %i training samples of %i classes."%(self.randomForestTrees,l.shape[0],np.unique(l).shape[0]))
@@ -367,14 +357,17 @@ class traininggui(HasTraits):
         """
         """
         if self.seriousRF != None:
-            f = hdf5io.load_object_features(self.h5file)
+            with h5py.File(self.files[self.fileIndex], 'a') as fl:
+                f = hdf5io.load_object_features(fl)
             if self.predType == 'Class':
                 l = self.seriousRF.predictLabels(f)
-                hdf5io.set_labels(self.h5file,self.predDestination,l)
+                with h5py.File(self.files[self.fileIndex], 'a') as fl:
+                    hdf5io.set_labels(fl,self.predDestination,l)
                 showmessage('Successfully predicted labels of %i objects.'%f.shape[0])
             if self.predType == 'Class Probabilities':
                 l = self.seriousRF.predictProbabilities(f)
-                hdf5io.set_probabilities(self.h5file,self.predDestination,l)
+                with h5py.File(self.files[self.fileIndex], 'a') as fl:
+                    hdf5io.set_probabilities(fl,self.predDestination,l)
                 showmessage('Successfully predicted probabilities of %i objects.'%f.shape[0])
         else:
             showmessage('Error: train the Random Forest first.')
@@ -386,9 +379,10 @@ class traininggui(HasTraits):
         Returns the predicted label. If not available, it returns the
         trained label. If no label is found, -1 is returned.
         """
-        l = hdf5io.get_labels(self.h5file,self.datasetPrediction)[index-1,0]
-        if l == -1:
-            l = hdf5io.get_labels(self.h5file,self.datasetTraining)[index-1,0]
+        with h5py.File(self.files[self.fileIndex], 'r') as f:
+            l = hdf5io.get_labels(f,self.datasetPrediction)[index-1,0]
+            if l == -1:
+                l = hdf5io.get_labels(f,self.datasetTraining)[index-1,0]
         return l
     
     
@@ -421,7 +415,8 @@ class traininggui(HasTraits):
     def prepareRF(self):
         # prepare the random forest based on the features in h5file
         self.RF = vigra.learning.RandomForest(treeCount=80)
-        nfeatures = hdf5io.load_features_one_object(self.h5file, 1).size
+        with h5py.File(self.files[self.fileIndex], 'r') as f:
+            nfeatures = hdf5io.load_features_one_object(f, 1).size
         self.features = np.zeros([0,nfeatures], dtype=np.float32)
         self.labels = np.zeros([0,1], dtype=np.int32)
 

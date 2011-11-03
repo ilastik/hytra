@@ -32,20 +32,20 @@ class trainingcore():
     RF = None
     color = (0.5,1,0)
        
-    def __init__(self, filehandle, index = 1, scene3d=None, scene2d=None):
+    def __init__(self, filename, index = 1, scene3d=None, scene2d=None):
         """
         initialize variables, load data, etc.
         """
-        self.h5file = filehandle
+        self.h5fn = filename
 
-        self.maxLabel = self.h5file["features"]["labelcount"][0]
-        self.isValid = self.h5file["features"]["labelcontent"][:]
-        self.shape = self.h5file["segmentation"]["labels"].shape
-        self.bbox = hdf5io.load_single_feature(self.h5file, "bbox")
+        with h5py.File(self.h5fn, 'r') as f:
+            self.maxLabel = f["features"]["labelcount"][0]
+            self.isValid = f["features"]["labelcontent"][:]
+            self.shape = f["segmentation"]["labels"].shape
+            self.bbox = hdf5io.load_single_feature(f, "bbox")
+            self.features = hdf5io.load_object_features(f)
+
         self.index = index
-        
-        self.features = hdf5io.load_object_features(self.h5file)
-
         self.currentBBox = np.zeros((2,3))
         
         self.set_std_color()
@@ -104,8 +104,9 @@ class trainingcore():
 
         # load the data
         ibbox = map(int, bbox)
-        seg1 = self.h5file["segmentation"]["labels"][ibbox[2]:ibbox[5],ibbox[1]:ibbox[4],ibbox[0]:ibbox[3]]
-        raw = self.h5file["raw"]["volume"][ibbox[2]:ibbox[5],ibbox[1]:ibbox[4],ibbox[0]:ibbox[3]]
+        with h5py.File(self.h5fn, 'r') as f:
+            seg1 = f["segmentation"]["labels"][ibbox[2]:ibbox[5],ibbox[1]:ibbox[4],ibbox[0]:ibbox[3]]
+            raw = f["raw"]["volume"][ibbox[2]:ibbox[5],ibbox[1]:ibbox[4],ibbox[0]:ibbox[3]]
         
         print "Drawing cell number",index
         t0 = time.time()
@@ -133,8 +134,9 @@ class trainingcore():
         show the volume with the given bounding box
         """
         # load the data
-        seg1 = self.h5file["segmentation"]["labels"][bbox[2]:bbox[5],bbox[1]:bbox[4],bbox[0]:bbox[3]]
-        raw = self.h5file["raw"]["volume"][bbox[2]:bbox[5],bbox[1]:bbox[4],bbox[0]:bbox[3]]
+        with h5py.File(self.h5fn, 'r') as f:
+            seg1 = f["segmentation"]["labels"][bbox[2]:bbox[5],bbox[1]:bbox[4],bbox[0]:bbox[3]]
+            raw = f["raw"]["volume"][bbox[2]:bbox[5],bbox[1]:bbox[4],bbox[0]:bbox[3]]
         
         print "Drawing volume"
         t0 = time.time()
@@ -144,7 +146,8 @@ class trainingcore():
         mlab.clf(fig1)
         visCell.drawImagePlane(fig1, raw, 'gist_ncar')
         visCell.drawVolumeWithoutReferenceCell(fig1, seg1, np.array((-1,)), (0,0,1),0.5)
-        visCell.drawLabels(fig1, self.h5file, seg1, bbox)
+        with h5py.File(self.h5fn, 'r') as f:
+            visCell.drawLabels(fig1, f, seg1, bbox)
 
         fig2 = mlab.figure(2, size=(500,450))
         mlab.clf(fig2)
@@ -201,7 +204,8 @@ class trainingcore():
         """
         Finds and displays the next valid cell labeled as 'label'
         """
-        labels = hdf5io.get_labels(self.h5file, category)
+        with h5py.File(self.h5fn, 'r') as f:
+            labels = hdf5io.get_labels(f, category)
 
         nextIdx = 0
         for idx in range(self.index+1, self.maxLabel+1):
@@ -224,7 +228,8 @@ class trainingcore():
         """
         Finds and displays the previous valid cell labeled as 'label'
         """
-        labels = hdf5io.get_labels(self.h5file, category)
+        with h5py.File(self.h5fn, 'r') as f:
+            labels = hdf5io.get_labels(f, category)
 
         nextIdx = 0
         for idx in range(self.index-1, 0, -1):
@@ -309,7 +314,8 @@ class trainingcore():
         """
         if index == -1:
             index = self.index
-        feats = hdf5io.load_features_one_object(self.h5file, index)
+        with h5py.File(self.h5fn, 'r') as f:
+            feats = hdf5io.load_features_one_object(f, index)
         probs = self.RF.predictProbabilities(feats)
         return probs[0][1]
 
