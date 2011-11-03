@@ -6,7 +6,7 @@ import time
 
 import visCell
 import hdf5io
-
+from cfg.trainingcore import cfg
 
 from traits.api import *
 from traitsui.api import Label, View, Item
@@ -28,7 +28,7 @@ def showmessage(message):
 
 
 class trainingcore():
-    borderSize = 30
+    borderSize = 75
     RF = None
     color = (0.5,1,0)
        
@@ -113,13 +113,15 @@ class trainingcore():
         #draw everything
         fig1 = mlab.figure(1, size=(500,450))
         mlab.clf(fig1)
-        visCell.drawImagePlane(fig1, raw, 'gist_ncar')
+
         visCell.drawVolumeWithoutReferenceCell(fig1, seg1, index, (0,0,1),0.2)
         visCell.drawReferenceCell(fig1, seg1, index, self.color, 0.4)
+        visCell.drawImagePlane(fig1, raw, cfg.get('display', 'colormap3d'))
         
         fig2 = mlab.figure(2, size=(500,450))
         mlab.clf(fig2)
-        visCell.draw2DView(fig2, raw[20:-20,:,:], seg1[20:-20,:,:], index, self.color)
+        middle = int(raw.shape[2]/2)
+        visCell.draw2DView(fig2, raw[:,:,middle-2:middle+2], seg1[:,:,:], index, self.color)
         
         t = time.time() - t0
         print "Time for drawing:",t
