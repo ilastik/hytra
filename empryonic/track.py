@@ -12,6 +12,8 @@ try:
    import ctracking as _ct
 
 
+   from ctracking import ComLocator
+   from ctracking import IntmaxposLocator
    from ctracking import Traxel as cTraxel
    from ctracking import Traxels as cTraxels
    from ctracking import TraxelStore
@@ -25,6 +27,7 @@ try:
    from ctracking import BotTracking
    from ctracking import MrfTracking
    
-except ImportError:
+except ImportError as error:
    if VERBOSE:
-      print "-! ctracking module not found or incompatible. Related functionality not available."
+      print "-! ctracking module not found or incompatible. Related functionality not available.: %s" % error 
+      
