@@ -152,6 +152,27 @@ class LineageH5( h5py.File ):
     feat_gn = "/features"
     track_gn = "/tracking/"
 
+    @property
+    def x_scale( self ):
+        return self._locator.x_scale
+    @x_scale.setter
+    def x_scale( self, scale ):
+        self._locator.x_scale = scale
+
+    @property
+    def y_scale( self ):
+        return self._locator.y_scale
+    @y_scale.setter
+    def y_scale( self, scale ):
+        self._locator.y_scale = scale
+
+    @property
+    def z_scale( self ):
+        return self._locator.z_scale
+    @z_scale.setter
+    def z_scale( self, scale ):
+        self._locator.z_scale = scale
+        
     # timestep will be set in loaded traxels accordingly
     def __init__( self, *args, **kwargs):
         h5py.File.__init__(self, *args, **kwargs)
@@ -159,6 +180,11 @@ class LineageH5( h5py.File ):
             self.timestep = kwargs["timestep"]
         else:
             self.timestep = 0
+        
+        self._locator = _track.ComLocator()
+        self._x_scale = self._locator.x_scale
+        self._y_scale = self._locator.y_scale
+        self._z_scale = self._locator.z_scale
 
     def init_tracking( self, div=np.empty(0), mov=np.empty(0), dis=np.empty(0), app=np.empty(0)):
         if "tracking" in self.keys():
@@ -184,7 +210,7 @@ class LineageH5( h5py.File ):
             self[self.track_gn].create_dataset("Moves", data=np.asarray( mov_pairs, dtype=np.int32))
 
     def get_moves( self ):
-        if _path.basename(self.mov_ds) in self[self.track_gn].keys():
+        if self.has_tracking() and _path.basename(self.mov_ds) in self[self.track_gn].keys():
             return self[self.mov_ds].value
         else:
             return np.empty(0)
@@ -200,7 +226,7 @@ class LineageH5( h5py.File ):
         
 
     def get_divisions( self ):
-        if _path.basename(self.div_ds) in self[self.track_gn].keys():
+        if self.has_tracking() and _path.basename(self.div_ds) in self[self.track_gn].keys():
             return self[self.div_ds].value
         else:
             return np.empty(0)
@@ -222,7 +248,7 @@ class LineageH5( h5py.File ):
             return np.empty(0)
 
     def get_disappearances( self ):
-        if _path.basename(self.dis_ds) in self[self.track_gn].keys():
+        if self.has_tracking() and _path.basename(self.dis_ds) in self[self.track_gn].keys():
             dis = self[self.dis_ds].value
             if isinstance(dis, np.ndarray):
                 return dis
@@ -249,7 +275,7 @@ class LineageH5( h5py.File ):
 
 
     def get_appearances( self ):
-        if _path.basename(self.app_ds) in self[self.track_gn].keys():
+        if self.has_tracking() and _path.basename(self.app_ds) in self[self.track_gn].keys():
             app = self[self.app_ds].value
             if isinstance(app, np.ndarray):
                 return app
