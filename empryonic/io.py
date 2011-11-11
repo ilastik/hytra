@@ -406,9 +406,9 @@ class LineageH5( h5py.File ):
                     pass
                 else:
                     feature_name = _path.basename(name)
-                    self.current_ctracklet.add_feature_array(feature_name, len(obj.value))
+                    self.current_ctracklet.add_feature_array(str(feature_name), len(obj.value))
                     for i,v in enumerate(obj.value):
-                        self.current_ctracklet.set_feature_value(feature_name, i, float(v))
+                        self.current_ctracklet.set_feature_value(str(feature_name), i, float(v))
         harvest = Harvester(invalid_labels, self.timestep)
         features_group.visititems(harvest)
 
