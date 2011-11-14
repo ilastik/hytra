@@ -40,6 +40,10 @@ def write_events(events, fn):
 
         # write only if file exists
         with io.LineageH5(fn, 'r+') as f_curr:
+            # delete old tracking
+            if "tracking" in f_curr.keys():
+                del f_curr["tracking"]
+
             tg = f_curr.create_group("tracking")
             
             # write associations
