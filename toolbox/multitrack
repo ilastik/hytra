@@ -16,6 +16,28 @@ import h5py
 from empryonic import track
 from empryonic import io
 
+def write_detections(detections, fn):
+	with io.LineageH5(fn, 'r') as f:
+		traxel_ids = f['objects/meta/id'].value
+		valid = f['objects/meta/valid'].value
+	assert(len(traxel_ids) == len(valid))
+	assert(len(detections) == len(np.flatnonzero(valid)))
+
+	detection_indicator = np.zeros(len(traxel_ids), dtype=np.uint16)
+
+	for i, traxel_id in enumerate(traxel_ids):
+		if valid[i] != 0:
+			if detections[int(traxel_id)]:
+				detection_indicator[i] = 1
+			else:
+				detection_indicator[i] = 0
+	
+	with io.LineageH5(fn, 'r+') as f:
+            # delete old dataset
+            if "detection" in f['objects/meta'].keys():
+                del f["objects/meta/detection"]
+	    f.create_dataset('objects/meta/detection', data=detection_indicator)
+
 def write_events(events, fn):
         dis = []
         app = []
@@ -157,9 +179,7 @@ copied but linked to the original files to improve execution speed and storage r
                 f_out["raw"] = h5py.ExternalLink( link_fn, "raw")
                 
                 with io.LineageH5( fn, 'r' ) as f_in:
-                    has_objects = "objects" in f_in.keys()
-                if has_objects:
-                    f_out["objects"] = h5py.ExternalLink( link_fn, "objects")
+			f_in.copy("objects", f_out)
             del f_out
         
         #store out-filename for later use
@@ -191,6 +211,12 @@ copied but linked to the original files to improve execution speed and storage r
 	    tracker = track.MrfTracking("none", options.app, options.dis, options.det, options.mis, False, options.opp, options.mdd,options.ma)
     events = tracker(ts)
 
+    print "Saving detections..."
+    detections = tracker.detections()
+    for i, detections_at in enumerate(detections):
+	    write_detections(detections_at, working_fns[i])
+
+    print "Saving events..."
     print "Length of events " + str(len(events))
     assert(len(events) +1 == len(working_fns))
     for i,events_at in enumerate(events):
