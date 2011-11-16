@@ -49,7 +49,7 @@ class Move( Event ):
         origin_translated = origin_match[self.ids[0]]
         to_translated = to_match[self.ids[1]]
         translated_move = Move( (origin_translated, to_translated) )
-        return translated_move == other
+        return (translated_move == other)
 
     def visible_in_other( self, origin_match, to_match):
         return origin_match[self.ids[0]] and to_match[self.ids[1]]
@@ -380,6 +380,79 @@ class Taxonomy( object ):
             "dis_f_v": self.f_measure_given_visibility(Disappearance)
             }
 
+    def __str__( self ):
+        pretty = \
+'''[overall]
+n_base = %(n_base)d
+n_contestant = %(n_cont)d
+precision = %(precision).4f
+recall = %(recall).4f
+f_measure = %(f_measure).4f:
+
+[move]
+n_base = %(mov_n_base)d
+n_contestant = %(mov_n_cont)d
+precision = %(mov_prec).4f
+recall = %(mov_rec).4f
+f_measure = %(mov_f).4f
+
+[division]
+n_base = %(div_n_base)d
+n_contestant = %(div_n_cont)d
+precision = %(div_prec).4f
+recall = %(div_rec).4f
+f_measure = %(div_f).4f
+
+[appearance]
+n_base = %(app_n_base)d
+n_contestant = %(app_n_cont)d
+precision = %(app_prec).4f
+recall = %(app_rec).4f
+f_measure = %(app_f).4f
+
+[disappearance]
+n_base = %(dis_n_base)d
+n_contestant = %(dis_n_cont)d
+precision = %(dis_prec).4f
+recall = %(dis_rec).4f
+f_measure = %(dis_f).4f
+
+[overall|visibility]
+n_base = %(n_base_v)d
+n_contestant = %(n_cont_v)d
+precision = %(precision_v).4f
+recall = %(recall_v).4f
+f_measure = %(f_measure_v).4f
+
+[move|visibility]
+n_base = %(mov_n_base_v)d
+n_contestant = %(mov_n_cont_v)d
+precision = %(mov_prec_v).4f
+recall = %(mov_rec_v).4f
+f_measure = %(mov_f_v).4f
+
+[division|visibility]
+n_base = %(div_n_base_v)d
+n_contestant = %(div_n_cont_v)d
+precision = %(div_prec_v).4f
+recall = %(div_rec_v).4f
+f_measure = %(div_f_v).4f
+
+[appearance|visibility]
+n_base = %(app_n_base_v)d
+n_contestant = %(app_n_cont_v)d
+precision = %(app_prec_v).4f
+recall = %(app_rec_v).4f
+f_measure = %(app_f_v).4f
+
+[disappearance|visibility]
+n_base = %(dis_n_base_v)d
+n_contestant = %(dis_n_cont_v)d
+precision = %(dis_prec_v).4f
+recall = %(dis_rec_v).4f
+f_measure = %(dis_f_v).4f
+''' % self.all_stats()
+        return pretty
 
 
 def classify_event_sets(base_events, cont_events, prev_assoc, curr_assoc):    
@@ -397,9 +470,11 @@ def classify_event_sets(base_events, cont_events, prev_assoc, curr_assoc):
     # 'positive' sets, that contain (partially) matched events
     t["base_v"] = subset_by_visibility(prev_assoc['lhs'], curr_assoc['lhs'], t["base_basic"])
     t["base_c"] = subset_by_correspondence(prev_assoc['lhs'], curr_assoc['lhs'], t["base_basic"], t["cont_basic"])
+
     t["cont_v"] = subset_by_visibility(prev_assoc['rhs'], curr_assoc['rhs'], t["cont_basic"])
     t["cont_c"] = subset_by_correspondence(prev_assoc['rhs'], curr_assoc['rhs'], t["cont_basic"], t["base_basic"])
-                                           
+    assert(len(t["base_c"]) == len(t["cont_c"])), str(len(t["base_c"])) + " " +str(len(t["cont_c"]))
+
     # intersections from the 'positive' sets, that contain spurious events
     # dd: deficient due to detection error
     # dt: deficient due to tracking error (given correct detection)
