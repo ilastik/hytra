@@ -213,6 +213,7 @@ copied but linked to the original files to improve execution speed and storage r
 
     print "Saving detections..."
     detections = tracker.detections()
+    assert(len(detections) == len(working_fns))
     for i, detections_at in enumerate(detections):
 	    write_detections(detections_at, working_fns[i])
 
