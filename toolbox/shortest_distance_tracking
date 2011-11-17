@@ -33,13 +33,13 @@ class Tracker( object ):
         self.ctrack = track.ShortestDistanceTracking(div, dis, app, threshold, max_nearest_neighbors)
         
     def track( self, fn_prev, fn_curr):
-        with io.LineageH5(fn_prev) as f_prev:
+        with io.LineageH5(fn_prev, 'r') as f_prev:
             print "-- Reading traxels in previous timestep...",
             sys.stdout.flush()
             prev = f_prev.cTraxels()
             print "done!"
             sys.stdout.flush()
-        with io.LineageH5(fn_curr) as f_curr:
+        with io.LineageH5(fn_curr, 'r') as f_curr:
             print "-- Reading traxels in current timestep...",
             sys.stdout.flush()
             curr = f_curr.cTraxels()
@@ -192,8 +192,9 @@ copied but linked to the original files to improve execution speed and storage r
                 
                 with io.LineageH5( fn, 'r' ) as f_in:
                     has_objects = "objects" in f_in.keys()
-                if has_objects:
-                    f_out["objects"] = h5py.ExternalLink( link_fn, "objects")
+                    if has_objects:
+                        f_in.copy("objects", f_out)
+                del f_in
             del f_out
         
         #store out-filename for later use
