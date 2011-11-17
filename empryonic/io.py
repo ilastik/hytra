@@ -333,22 +333,28 @@ class LineageH5( h5py.File ):
     def Traxels( self , timestep=None, position='mean', add_features_as_meta=True):
         return self.Tracklets( timestep, position, add_features_as_meta )
 
-    def cTraxels( self, as_python_list=False ):
+    def cTraxels( self, as_python_list=False, prediction_threshold=None ):
+        if prediction_threshold:
+            print "LineageH5::cTraxels: predicition threshold %f" % prediction_threshold
         # probe for objects group (higher io performance than features group)
         if 'objects' in self.keys():
-            print "-> 'objects' format detected -> will use instead of 'features'"
-            return self._cTraxels_from_objects_group( as_python_list )
+            return self._cTraxels_from_objects_group( as_python_list, prediction_threshold )
         # use old 'features' format for traxels
         else:
-            if as_python_list:
-                raise Exception("LineageH5::cTraxels: old format -> can't return as python list (not implemented yet)")
+            if as_python_list or prediction_threshold:
+                raise Exception("LineageH5::cTraxels: old format: requested options not implemented")
             return self._cTraxels_from_features_group()
 
-    def _cTraxels_from_objects_group( self , as_python_list = False):
+    def _cTraxels_from_objects_group( self , as_python_list = False, prediction_threshold=None):
         objects_g = self["objects"]
         features_g = self["objects/features"]
         ids = objects_g["meta/id"].value
         valid = objects_g["meta/valid"].value
+        prediction = None
+        if "prediction" in objects_g["meta"]:
+            prediction = objects_g["meta/prediction"]
+        elif prediction_threshold:
+            raise Exception("prediction_threshold set, but no prediction dataset found")
         features = {}
         for name in features_g.keys():
             features[name] = features_g[name].value
@@ -358,6 +364,9 @@ class LineageH5( h5py.File ):
         else:
             ts = _track.cTraxels()
         for idx, is_valid in enumerate(valid):
+            if prediction_threshold:
+                if prediction[idx] < prediction_threshold:
+                    is_valid = False
             if is_valid:
                 tr = _track.cTraxel()
                 tr.Id = int(ids[idx])
