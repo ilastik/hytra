@@ -101,7 +101,7 @@ Compare two tracking results, based only on the association information in the t
     ts = []
     for i,v in enumerate(fn_pairs[1:]):
         print path.basename(v[0]), path.basename(v[1])
-        t = quant.compute_taxonomy(assocs[i], assocs[i+1], v[0], v[1], i)
+        t = quant.compute_taxonomy(assocs[i], assocs[i+1], v[0], v[1], i+1)
         ts.append(t)
         #sys.stdout.write('%d ' % i)
         sys.stdout.flush()
@@ -119,5 +119,6 @@ Compare two tracking results, based only on the association information in the t
     print "-> Precision: %.3f" % overall.precision()
     print "-> Recall: %.3f" % overall.recall()
     print "-> F-measure %.3f: " % overall.f_measure()
+    print "Check", 2.*overall.precision() * overall.recall() / (overall.precision() + overall.recall())
     print
     print overall

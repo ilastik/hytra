@@ -1,29 +1,36 @@
 import unittest as _ut
 import numpy as np
 from empryonic import io as _io
+import math
 
 ###
 ### Events as members of sets for the calculation of performance measures
 ###
 class Event( object ):
     @property
+    def setid( self ):
+        return self._setid
+
+    @property
     def timestep( self ):
         return self._timestep
 
-    def __init__( self, ids, timestep ):
+    def __init__( self, ids, timestep, setid='base' ):
         self._ids = tuple(ids)
         self._timestep = timestep
+        self._setid = setid
+
     def __eq__(self, other):
         '''Attention: operator is not commutative!'''
         if isinstance(other, self.__class__):
-            return self.ids == other.ids
+            return self.ids == other.ids and self.timestep == other.timestep
         else:
             return False
     def __ne__( self, other):
         return not(self == other)
 
     def __hash__( self ):
-        return hash((self._ids, self._timestep))
+        return hash((self._ids, self._timestep, self.__class__, self._setid))
 
     @property
     def ids( self ):
@@ -57,15 +64,15 @@ class Event( object ):
         raise NotImplementedError
 
 class Move( Event ):
-    def translate( self, origin_match, to_match ):
+    def translate( self, origin_match, to_match, setid ):
         origin_translated = origin_match[self.ids[0]]
         to_translated = to_match[self.ids[1]]
-        return Move( (origin_translated, to_translated), self.timestep )
+        return Move( (origin_translated, to_translated), self.timestep, setid )
         
     def equivalent_to( self, origin_match, to_match, other):
         origin_translated = origin_match[self.ids[0]]
         to_translated = to_match[self.ids[1]]
-        translated_move = Move( (origin_translated, to_translated), self.timestep )
+        translated_move = Move( (origin_translated, to_translated), self.timestep, other.setid )
         return (translated_move == other)
 
     def visible_in_other( self, origin_match, to_match):
@@ -81,23 +88,24 @@ class Move( Event ):
         return "Move((" + str(self.ids[0]) + ", "+ str(self.ids[1])+ "))"
 
 class Division( Event ):
-    def __init__( self, ids, timestep ):
+    def __init__( self, ids, timestep, setid='base' ):
         children = list(ids[1:3])
         children.sort()
         self._ids = (ids[0], children[0], children[1])
         self._timestep = timestep
+        self._setid = setid
 
-    def translate( self, origin_match, to_match ):
+    def translate( self, origin_match, to_match, setid ):
         origin_translated = origin_match[self.ids[0]]
         to1_translated = to_match[self.ids[1]]
         to2_translated = to_match[self.ids[2]]
-        return Division( (origin_translated, to1_translated, to2_translated), self.timestep )
+        return Division( (origin_translated, to1_translated, to2_translated), self.timestep, setid )
 
     def equivalent_to( self, origin_match, to_match, other):
         origin_translated = origin_match[self.ids[0]]
         to1_translated = to_match[self.ids[1]]
         to2_translated = to_match[self.ids[2]]
-        translated_division = Division( (origin_translated, to1_translated, to2_translated), self.timestep )
+        translated_division = Division( (origin_translated, to1_translated, to2_translated), self.timestep, other.setid )
         return translated_division == other
 
     def visible_in_other( self, origin_match, to_match):
@@ -115,13 +123,13 @@ class Division( Event ):
 
         
 class Appearance( Event ):
-    def translate( self, origin_match, to_match):
+    def translate( self, origin_match, to_match, setid):
         origin_translated = to_match[self.ids[0]]
-        return Appearance( (origin_translated,), self.timestep )
+        return Appearance( (origin_translated,), self.timestep, setid )
 
     def equivalent_to( self, origin_match, to_match, other):
         origin_translated = to_match[self.ids[0]]
-        translated_appearance = Appearance( (origin_translated,), self.timestep )
+        translated_appearance = Appearance( (origin_translated,), self.timestep, other.setid )
         return translated_appearance == other
 
     def visible_in_other( self, origin_match, to_match):
@@ -138,13 +146,13 @@ class Appearance( Event ):
 
 
 class Disappearance( Event ):
-    def translate( self, origin_match, to_match):
+    def translate( self, origin_match, to_match, setid):
         origin_translated = origin_match[self.ids[0]]
-        return Disappearance( (origin_translated,), self.timestep )
+        return Disappearance( (origin_translated,), self.timestep, setid )
 
     def equivalent_to( self, origin_match, to_match, other):
         origin_translated = origin_match[self.ids[0]]
-        translated_disappearance = Disappearance( (origin_translated,), self.timestep )
+        translated_disappearance = Disappearance( (origin_translated,), self.timestep, other.setid )
         return translated_disappearance == other
 
     def visible_in_other( self, origin_match, to_match):
@@ -162,7 +170,7 @@ class Disappearance( Event ):
 ###
 ### routines to create and work with Event Sets
 ###
-def event_set_from( lineageH5 ):
+def event_set_from( lineageH5, setid='base' ):
     '''Extract tracking results from a lineageH5 file as Events.
 
     Tracking information has to be present, of course.
@@ -173,26 +181,26 @@ def event_set_from( lineageH5 ):
 
     mov_ids = lineageH5.get_moves()
     for mov in mov_ids:
-        e = Move((mov[0], mov[1]), lineageH5.timestep)
+        e = Move((mov[0], mov[1]), lineageH5.timestep, setid)
         events.add(e)
     
     div_ids = lineageH5.get_divisions()
     for div in div_ids:
-        e = Division((div[0], div[1], div[2]), lineageH5.timestep)
+        e = Division((div[0], div[1], div[2]), lineageH5.timestep, setid)
         events.add(e)
 
     app_ids = lineageH5.get_appearances()
     for app in app_ids:
         if isinstance(app, np.ndarray):
             app = app[0]
-        e = Appearance((app,), lineageH5.timestep)
+        e = Appearance((app,), lineageH5.timestep, setid)
         events.add(e)
 
     dis_ids = lineageH5.get_disappearances()
     for dis in dis_ids:
         if isinstance(dis, np.ndarray):
             dis = dis[0]
-        e = Disappearance((dis,), lineageH5.timestep)
+        e = Disappearance((dis,), lineageH5.timestep, setid)
         events.add(e)
     return events
 
@@ -208,8 +216,13 @@ def subset_by_correspondence(match_prev, match_curr, events, other_events):
     Return subset of matched events.
     '''
     ret = set()
+    if not other_events:
+        return ret
+    for oe in other_events:
+        setid = oe.setid
+        break
     def reducer( e ):
-        translated = e.translate(match_prev, match_curr)
+        translated = e.translate(match_prev, match_curr, setid)
         if translated and translated in other_events:
             ret.add(e)
 
@@ -245,7 +258,8 @@ def subset_by_visibility(match_prev, match_curr, events):
 def by_type( events, type=Event ):
     '''Filter iterable events by type (Move, Division etc.) and return a list
     of passed Events.'''
-    return set([ e for e in events if isinstance(e, type) ])
+    s = set([ e for e in events if isinstance(e, type) ])
+    return s
 
 
 ###
@@ -349,8 +363,15 @@ class Taxonomy( object ):
 
     def f_measure(self, type=Event):
         enum = len(by_type(self.base_c, type).union(by_type(self.cont_c, type)))
+        a = (len(by_type(self.base_c, type)) + len(by_type(self.cont_c, type)))
+        assert(enum == a ), str(enum) + " " + str(a)
         denom = len(by_type(self.base_basic, type).union(by_type(self.cont_basic, type)))
-        return self._safe_frac(enum, denom)
+        f = self._safe_frac(enum, denom)
+        if not math.isnan(f):
+            f_check = 2 * self.precision(type) * self.recall(type) / (self.precision(type) + self.recall(type))
+            if not math.isnan(f_check):
+                assert( abs(f - f_check) < 0.0000001), str(f) + " - " + str(f_check)
+        return f
 
     def f_measure_given_visibility(self, type=Event):
         enum = len(by_type(self.base_c, type).union(by_type(self.cont_c, type)))
@@ -539,10 +560,10 @@ def compute_taxonomy(prev_assoc, curr_assoc, base_fn, cont_fn, timestep=0):
     *_fn - LineageH5 filename
     '''
     with _io.LineageH5(base_fn, 'r', timestep=timestep) as f:
-        base_events = event_set_from( f )
+        base_events = event_set_from( f, 'base' )
     del f
     with _io.LineageH5(cont_fn, 'r', timestep=timestep) as f:
-        cont_events = event_set_from( f )
+        cont_events = event_set_from( f, 'cont' )
     del f
 
     # check, if events and assocs fit together
