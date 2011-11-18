@@ -6,7 +6,11 @@ from empryonic import io as _io
 ### Events as members of sets for the calculation of performance measures
 ###
 class Event( object ):
-    def __init__( self, ids, timestep=0 ):
+    @property
+    def timestep( self ):
+        return self._timestep
+
+    def __init__( self, ids, timestep ):
         self._ids = tuple(ids)
         self._timestep = timestep
     def __eq__(self, other):
@@ -56,12 +60,12 @@ class Move( Event ):
     def translate( self, origin_match, to_match ):
         origin_translated = origin_match[self.ids[0]]
         to_translated = to_match[self.ids[1]]
-        return Move( (origin_translated, to_translated) )
+        return Move( (origin_translated, to_translated), self.timestep )
         
     def equivalent_to( self, origin_match, to_match, other):
         origin_translated = origin_match[self.ids[0]]
         to_translated = to_match[self.ids[1]]
-        translated_move = Move( (origin_translated, to_translated) )
+        translated_move = Move( (origin_translated, to_translated), self.timestep )
         return (translated_move == other)
 
     def visible_in_other( self, origin_match, to_match):
@@ -77,7 +81,7 @@ class Move( Event ):
         return "Move((" + str(self.ids[0]) + ", "+ str(self.ids[1])+ "))"
 
 class Division( Event ):
-    def __init__( self, ids, timestep=0 ):
+    def __init__( self, ids, timestep ):
         children = list(ids[1:3])
         children.sort()
         self._ids = (ids[0], children[0], children[1])
@@ -87,13 +91,13 @@ class Division( Event ):
         origin_translated = origin_match[self.ids[0]]
         to1_translated = to_match[self.ids[1]]
         to2_translated = to_match[self.ids[2]]
-        return Division( (origin_translated, to1_translated, to2_translated) )
+        return Division( (origin_translated, to1_translated, to2_translated), self.timestep )
 
     def equivalent_to( self, origin_match, to_match, other):
         origin_translated = origin_match[self.ids[0]]
         to1_translated = to_match[self.ids[1]]
         to2_translated = to_match[self.ids[2]]
-        translated_division = Division( (origin_translated, to1_translated, to2_translated) )
+        translated_division = Division( (origin_translated, to1_translated, to2_translated), self.timestep )
         return translated_division == other
 
     def visible_in_other( self, origin_match, to_match):
@@ -113,11 +117,11 @@ class Division( Event ):
 class Appearance( Event ):
     def translate( self, origin_match, to_match):
         origin_translated = to_match[self.ids[0]]
-        return Appearance( (origin_translated,) )
+        return Appearance( (origin_translated,), self.timestep )
 
     def equivalent_to( self, origin_match, to_match, other):
         origin_translated = to_match[self.ids[0]]
-        translated_appearance = Appearance( (origin_translated,) )
+        translated_appearance = Appearance( (origin_translated,), self.timestep )
         return translated_appearance == other
 
     def visible_in_other( self, origin_match, to_match):
@@ -136,11 +140,11 @@ class Appearance( Event ):
 class Disappearance( Event ):
     def translate( self, origin_match, to_match):
         origin_translated = origin_match[self.ids[0]]
-        return Disappearance( (origin_translated,) )
+        return Disappearance( (origin_translated,), self.timestep )
 
     def equivalent_to( self, origin_match, to_match, other):
         origin_translated = origin_match[self.ids[0]]
-        translated_disappearance = Disappearance( (origin_translated,) )
+        translated_disappearance = Disappearance( (origin_translated,), self.timestep )
         return translated_disappearance == other
 
     def visible_in_other( self, origin_match, to_match):
@@ -558,12 +562,14 @@ def compute_taxonomy(prev_assoc, curr_assoc, base_fn, cont_fn, timestep=0):
 ###
 class TestDivision( _ut.TestCase ):
     def testEq( self ):
-        d1 = Division([11,15,17])
-        d2 = Division([11,17,15])
-        d3 = Division([15,11,17])
+        d1 = Division([11,15,17], 0)
+        d2 = Division([11,17,15], 0)
+        d3 = Division([15,11,17], 0)
+        d4 = Division([15,11,17], 1)
         self.assertTrue(d1 == d1)
         self.assertTrue(d1 == d2)
         self.assertFalse(d1 == d3)
+        self.assertFalse(d1 == d4)
 
 class TestTaxonomy( _ut.TestCase ):
     def setUp( self ):
@@ -629,17 +635,17 @@ class TestTaxonomy( _ut.TestCase ):
 class Test_classify_event_sets( _ut.TestCase ):
     def test_typical( self ):
         base_events = set((
-                Move((1,1)),
-                Disappearance((2,)),
-                Appearance((3,)),
-                Division((4,5,6)),
-                Appearance((7,))
+                Move((1,1), 0),
+                Disappearance((2,), 0),
+                Appearance((3,), 0),
+                Division((4,5,6), 0),
+                Appearance((7,), 0)
                 ))
         cont_events = set((
-                Move((10,10)),
-                Move((20,30)),
-                Division((40,50,60)),
-                Move((80,90))
+                Move((10,10), 0),
+                Move((20,30), 0),
+                Division((40,50,60), 0),
+                Move((80,90), 0)
                 ))
         prev_assoc = {
             'lhs': {
