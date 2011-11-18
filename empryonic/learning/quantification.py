@@ -6,8 +6,9 @@ from empryonic import io as _io
 ### Events as members of sets for the calculation of performance measures
 ###
 class Event( object ):
-    def __init__( self, ids ):
+    def __init__( self, ids, timestep=0 ):
         self._ids = tuple(ids)
+        self._timestep = timestep
     def __eq__(self, other):
         '''Attention: operator is not commutative!'''
         if isinstance(other, self.__class__):
@@ -17,9 +18,16 @@ class Event( object ):
     def __ne__( self, other):
         return not(self == other)
 
+    def __hash__( self ):
+        return hash((self._ids, self._timestep))
+
     @property
     def ids( self ):
         return self._ids
+
+    def translate( self, origin_match, to_match ):
+        ''' Create a new equivalent event. '''
+        raise NotImplementedError
 
     def equivalent_to(self, origin_match, to_match, other):
         '''Check, if the 'other' Event corresponds to the given one.
@@ -45,6 +53,11 @@ class Event( object ):
         raise NotImplementedError
 
 class Move( Event ):
+    def translate( self, origin_match, to_match ):
+        origin_translated = origin_match[self.ids[0]]
+        to_translated = to_match[self.ids[1]]
+        return Move( (origin_translated, to_translated) )
+        
     def equivalent_to( self, origin_match, to_match, other):
         origin_translated = origin_match[self.ids[0]]
         to_translated = to_match[self.ids[1]]
@@ -64,13 +77,24 @@ class Move( Event ):
         return "Move((" + str(self.ids[0]) + ", "+ str(self.ids[1])+ "))"
 
 class Division( Event ):
+    def __init__( self, ids, timestep=0 ):
+        children = list(ids[1:3])
+        children.sort()
+        self._ids = (ids[0], children[0], children[1])
+        self._timestep = timestep
+
+    def translate( self, origin_match, to_match ):
+        origin_translated = origin_match[self.ids[0]]
+        to1_translated = to_match[self.ids[1]]
+        to2_translated = to_match[self.ids[2]]
+        return Division( (origin_translated, to1_translated, to2_translated) )
+
     def equivalent_to( self, origin_match, to_match, other):
         origin_translated = origin_match[self.ids[0]]
         to1_translated = to_match[self.ids[1]]
         to2_translated = to_match[self.ids[2]]
-        translated_division_variant1 = Division( (origin_translated, to1_translated, to2_translated) )
-        translated_division_variant2 = Division( (origin_translated, to2_translated, to1_translated) )
-        return translated_division_variant1 == other or translated_division_variant2 == other 
+        translated_division = Division( (origin_translated, to1_translated, to2_translated) )
+        return translated_division == other
 
     def visible_in_other( self, origin_match, to_match):
         return origin_match[self.ids[0]] and to_match[self.ids[1]] and to_match[self.ids[2]]
@@ -84,8 +108,13 @@ class Division( Event ):
     def __repr__( self ):
         return "Division((" + str(self.ids[0]) + ", "+ str(self.ids[1])+", "+ str(self.ids[2])+ "))"
 
+
         
 class Appearance( Event ):
+    def translate( self, origin_match, to_match):
+        origin_translated = to_match[self.ids[0]]
+        return Appearance( (origin_translated,) )
+
     def equivalent_to( self, origin_match, to_match, other):
         origin_translated = to_match[self.ids[0]]
         translated_appearance = Appearance( (origin_translated,) )
@@ -105,6 +134,10 @@ class Appearance( Event ):
 
 
 class Disappearance( Event ):
+    def translate( self, origin_match, to_match):
+        origin_translated = origin_match[self.ids[0]]
+        return Disappearance( (origin_translated,) )
+
     def equivalent_to( self, origin_match, to_match, other):
         origin_translated = origin_match[self.ids[0]]
         translated_disappearance = Disappearance( (origin_translated,) )
@@ -136,26 +169,26 @@ def event_set_from( lineageH5 ):
 
     mov_ids = lineageH5.get_moves()
     for mov in mov_ids:
-        e = Move((mov[0], mov[1]))
+        e = Move((mov[0], mov[1]), lineageH5.timestep)
         events.add(e)
     
     div_ids = lineageH5.get_divisions()
     for div in div_ids:
-        e = Division((div[0], div[1], div[2]))
+        e = Division((div[0], div[1], div[2]), lineageH5.timestep)
         events.add(e)
 
     app_ids = lineageH5.get_appearances()
     for app in app_ids:
         if isinstance(app, np.ndarray):
             app = app[0]
-        e = Appearance((app,))
+        e = Appearance((app,), lineageH5.timestep)
         events.add(e)
 
     dis_ids = lineageH5.get_disappearances()
     for dis in dis_ids:
         if isinstance(dis, np.ndarray):
             dis = dis[0]
-        e = Disappearance((dis,))
+        e = Disappearance((dis,), lineageH5.timestep)
         events.add(e)
     return events
 
@@ -171,10 +204,16 @@ def subset_by_correspondence(match_prev, match_curr, events, other_events):
     Return subset of matched events.
     '''
     ret = set()
-    for e in events:
-        for other in other_events:
-            if e.equivalent_to(match_prev, match_curr, other):
-                ret.add(e)
+    def reducer( e ):
+        translated = e.translate(match_prev, match_curr)
+        if translated and translated in other_events:
+            ret.add(e)
+
+    map(reducer, events)
+    #for e in events:
+    #    translated = e.translate(match_prev, match_curr)
+    #    if translated and translated in list(other_events): # sets compare by hash, lists by eq
+    #        ret.add(e)
     return ret
 
 
@@ -490,15 +529,15 @@ def classify_event_sets(base_events, cont_events, prev_assoc, curr_assoc):
 
 
 
-def compute_taxonomy(prev_assoc, curr_assoc, base_fn, cont_fn):
+def compute_taxonomy(prev_assoc, curr_assoc, base_fn, cont_fn, timestep=0):
     ''' Convenience function around 'classify_event_sets'.
 
     *_fn - LineageH5 filename
     '''
-    with _io.LineageH5(base_fn, 'r') as f:
+    with _io.LineageH5(base_fn, 'r', timestep=timestep) as f:
         base_events = event_set_from( f )
     del f
-    with _io.LineageH5(cont_fn, 'r') as f:
+    with _io.LineageH5(cont_fn, 'r', timestep=timestep) as f:
         cont_events = event_set_from( f )
     del f
 
@@ -517,6 +556,15 @@ def compute_taxonomy(prev_assoc, curr_assoc, base_fn, cont_fn):
 ###
 ### Tests
 ###
+class TestDivision( _ut.TestCase ):
+    def testEq( self ):
+        d1 = Division([11,15,17])
+        d2 = Division([11,17,15])
+        d3 = Division([15,11,17])
+        self.assertTrue(d1 == d1)
+        self.assertTrue(d1 == d2)
+        self.assertFalse(d1 == d3)
+
 class TestTaxonomy( _ut.TestCase ):
     def setUp( self ):
         self.empty = {
