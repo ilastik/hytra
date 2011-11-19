@@ -367,10 +367,10 @@ class Taxonomy( object ):
         assert(enum == a ), str(enum) + " " + str(a)
         denom = len(by_type(self.base_basic, type).union(by_type(self.cont_basic, type)))
         f = self._safe_frac(enum, denom)
-        if not math.isnan(f):
-            f_check = 2 * self.precision(type) * self.recall(type) / (self.precision(type) + self.recall(type))
-            if not math.isnan(f_check):
-                assert( abs(f - f_check) < 0.0000001), str(f) + " - " + str(f_check)
+        #if not math.isnan(f):
+        #    f_check = 2 * self.precision(type) * self.recall(type) / (self.precision(type) + self.recall(type))
+        #    if not math.isnan(f_check):
+        #        assert( abs(f - f_check) < 0.0000001), str(f) + " - " + str(f_check)
         return f
 
     def f_measure_given_visibility(self, type=Event):
