@@ -369,6 +369,7 @@ class LineageH5( h5py.File ):
                     is_valid = False
             if is_valid:
                 tr = _track.cTraxel()
+                tr.set_intmaxpos_locator()
                 tr.Id = int(ids[idx])
                 tr.Timestep = self.timestep
                 for name_value in features.items():
