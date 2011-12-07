@@ -1,0 +1,69 @@
+#!/usr/bin/env python
+import sys
+import h5py
+import csv
+from collections import namedtuple
+
+Record = namedtuple('Record', 'timestep id parent child1 child2')
+records = dict()
+
+if __name__=="__main__":
+   fns = sys.argv[1:]
+
+   # init
+   with h5py.File(fns[0], 'r') as first:
+       ids = first['objects/meta/id'].value
+       detections = first['objects/meta/detection'].value
+       for idx, id in enumerate(ids):
+           if detections[idx] == 1:
+               records[(0,id)] = Record(0, id, -1, -1, -1)
+
+   for t_prev, fn_pair in enumerate(zip(fns[0:-1], fns[1:])):
+       prev = h5py.File(fn_pair[0], 'r')
+       curr = h5py.File(fn_pair[1], 'r')                       
+
+       if "Appearances" in curr['tracking'].keys():
+           apps = curr['tracking/Appearances'].value
+           for app in apps:
+               # add new record
+               records[(t_prev+1, app)] = Record(t_prev + 1, app, -1, -1, -1)
+
+       # if "Disappearances" in curr['tracking'].keys():
+       #     diss = curr['tracking/Disappearances'].value
+       #     for dis in diss:
+       #         pass
+
+       if "Moves" in curr['tracking'].keys():
+           moves = curr['tracking/Moves'].value
+           for move in moves:
+               # add new record
+               records[(t_prev+1, move[1])] = Record(t_prev + 1, move[1], move[0], -1, -1)
+               # update prev records with children
+               ancestor = records[(t_prev, move[0])]
+               assert(ancestor.child1 == -1 and ancestor.child2 == -1), ancestor
+               records[(t_prev, move[0])] = ancestor._replace(child1 = move[1])
+
+       if "Splits" in curr['tracking'].keys():
+           splits = curr['tracking/Splits'].value
+           for split in splits:
+               # add new records
+               records[(t_prev+1, split[1])] = Record(t_prev + 1, split[1], split[0], -1, -1)
+               records[(t_prev+1, split[2])] = Record(t_prev + 1, split[2], split[0], -1, -1)
+               # update prev records with children
+               ancestor = records[(t_prev, split[0])]
+               assert(ancestor.child1 == -1 and ancestor.child2 == -1), ancestor
+               records[(t_prev, split[0])] = ancestor._replace(child1 = split[1], child2=split[2])
+               ancestor = records[(t_prev, split[0])]
+               assert(not (ancestor.child1 == -1 and ancestor.child2 == -1)), ancestor
+
+       prev.close()
+       del prev
+       curr.close()
+       del curr
+
+   records = records.values()
+   records.sort(key=lambda x: x.timestep)
+   with open("lineage.csv", 'w') as f:
+      f.write('# timestep id parent child1 child2\n')
+      for record in records:
+          f.write(' '.join([str(entry) for entry in [record.timestep, record.id, record.parent, record.child1, record.child2]]) + '\n')
