@@ -37,10 +37,6 @@ if(WITH_SEGMENTATION)
   add_subdirectory( segmentation )
 endif()
 
-if(WITH_FEATURE_EXTRACTION)
-  add_subdirectory( feature_extraction)
-endif()
-
 if(WITH_TRACKING)
   add_subdirectory( tracking )
 endif()
