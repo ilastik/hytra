@@ -7,6 +7,15 @@ namespace Tracking {
 ////
 //// class KanadeIlp
 ////
+  KanadeIlp::KanadeIlp( unsigned int n_tracklets ) : n_tracklets_(n_tracklets) {
+    model_ = IloModel(env_);
+  }
+
+  KanadeIlp::~KanadeIlp() {
+    env_.end();
+  }
+
+
   KanadeIlp& KanadeIlp::add_init_hypothesis(double cost) {
     return *this;
   }
