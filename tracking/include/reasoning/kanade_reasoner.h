@@ -38,6 +38,8 @@ class KanadeIlp {
   IloObjective obj_;
   IloBoolVarArray x_;
   IloRangeArray c_;
+  IloNumArray sol_;
+  IloCplex cplex_;
 };
 
 
@@ -68,6 +70,9 @@ class Kanade : public Reasoner {
    KanadeIlp::KanadeIlp( iterator begin, iterator end ) : n_tracklets_(distance(begin, end)), n_hypotheses_(0) {
     model_ = IloModel(env_);
     obj_ = IloMaximize( env_ );
+    cplex_ = IloCplex( env_ );
+    x_ = IloBoolVarArray( env_, 0);
+    sol_ = IloNumArray( env_, 0);
 
     // 2 * n constraints: sum == 1
     c_ = IloRangeArray( env_, 2 * n_tracklets_, 1, 1);
