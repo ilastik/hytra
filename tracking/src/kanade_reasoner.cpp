@@ -87,9 +87,32 @@ namespace Tracking {
 
   ////
   //// class Kanade
-  ////  
+  ////
+  Kanade::~Kanade() {
+    if(ilp_ != NULL) {
+      delete ilp_;
+      ilp_ = NULL;
+    }
+  }
+  
   void Kanade::formulate( const HypothesesGraph& g ) {
-    vector<double> fp_costs = false_positive_costs( g );
+    reset();
+
+    // flase positive hypotheses
+    size_t count = 0;
+    for(HypothesesGraph::NodeIt n(g); n!=lemon::INVALID; ++n) {
+      tracklet_idx_map_[n] = count;
+      hyp2type_[count] = FP;
+      fp2node_[count] = n;
+      ++count;
+    }
+    vector<double> fp_costs(lemon::countNodes( g ), log(misdetection_rate_));
+    
+    ilp_ = new KanadeIlp( fp_costs.begin(), fp_costs.end());
+
+    for(HypothesesGraph::NodeIt n(g); n!=lemon::INVALID; ++n) {
+      add_hypotheses(g, n);
+    }
   }
 
   void Kanade::infer() {
@@ -98,12 +121,64 @@ namespace Tracking {
   void Kanade::conclude( HypothesesGraph& /*g*/ ) {
 }
 
-  vector<double> Kanade::false_positive_costs( const HypothesesGraph& g) {
-    // currently, our 'tracklets' consist of single traxel
-    // therefore, the false positive energy is just the log of the
-    // misdetection rate
-    // FIXME: Use proper detection energies here
-    return vector<double>(lemon::countNodes( g ), log(misdetection_rate_));
+  void Kanade::reset() {
+    if(ilp_ != NULL) {
+      delete ilp_;
+      ilp_ = NULL;
+    }
+  }
+
+  Kanade& Kanade::add_hypotheses( const HypothesesGraph& g, const HypothesesGraph::Node& n) {
+    double COST = 100.2;
+    size_t hyp = 0;
+
+    // init hypothesis
+    hyp = ilp_->add_init_hypothesis( tracklet_idx_map_[n], COST ); 
+    hyp2type_[hyp] = INIT;
+
+    // collect and count outgoing arcs
+    vector<HypothesesGraph::Arc> arcs; 
+    size_t count = 0;
+    for(HypothesesGraph::OutArcIt a(g, n); a != lemon::INVALID; ++a) {
+      arcs.push_back(a);
+      ++count;
+    }
+
+    if(count == 0) {
+      hyp = ilp_->add_term_hypothesis(tracklet_idx_map_[n], COST );
+      hyp2type_[hyp] = TERM;
+    } else if(count == 1) {
+      hyp = ilp_->add_term_hypothesis( tracklet_idx_map_[n], COST );
+      hyp2type_[hyp] = TERM;
+      
+      hyp = ilp_->add_trans_hypothesis( tracklet_idx_map_[n], tracklet_idx_map_[g.target(arcs[0])], COST);
+      hyp2type_[hyp] = TRANS;
+      trans2arc_[hyp] = arcs[0];
+    } else {
+      hyp = ilp_->add_term_hypothesis( tracklet_idx_map_[n], COST );
+      hyp2type_[hyp] = TERM;
+      
+      // translation hypotheses
+      for(size_t i = 0; i < count; ++i) {
+	hyp = ilp_->add_trans_hypothesis( tracklet_idx_map_[n], tracklet_idx_map_[g.target(arcs[i])], COST);
+	hyp2type_[hyp] = TRANS;
+	trans2arc_[hyp] = arcs[i];
+      }
+
+      // division hypotheses
+      for(size_t i = 0; i < count - 1; ++i) {
+	for(size_t j = i; j < count; ++j) {
+	  hyp = ilp_->add_div_hypothesis( tracklet_idx_map_[n], 
+				    tracklet_idx_map_[g.target(arcs[i])],
+				    tracklet_idx_map_[g.target(arcs[j])],
+				    COST);
+	  hyp2type_[hyp] = DIV;
+	  div2arcs_[hyp] = pair<HypothesesGraph::Arc, HypothesesGraph::Arc>(arcs[i], arcs[j]);
+	}
+      }
+    }
+
+    return *this;
   }
 
 } /* namespace Tracking */ 

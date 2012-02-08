@@ -3,6 +3,7 @@
 
 #include <iterator>
 #include <map>
+#include <utility>
 #include <vector>
 #include <ilcplex/ilocplex.h>
 #include "reasoning/reasoner.h"
@@ -50,13 +51,15 @@ class Kanade : public Reasoner {
  public:
  Kanade(double misdetection_rate = 0.1 )
    : misdetection_rate_(misdetection_rate), ilp_(NULL) {}
+  ~Kanade();
 
     virtual void formulate( const HypothesesGraph& );
     virtual void infer();
     virtual void conclude( HypothesesGraph& );
 
  protected:
-    std::vector<double> false_positive_costs( const HypothesesGraph& );
+    void reset();
+    Kanade& add_hypotheses( const HypothesesGraph&, const HypothesesGraph::Node& );
 
  private:
     // copy and assingment have to be implemented, yet
@@ -68,10 +71,15 @@ class Kanade : public Reasoner {
 
     KanadeIlp* ilp_;
 
-    // map false positive hypothesis to node
-    std::map<size_t, HypothesesGraph::Node> node_map_; 
-    // map association hypothesis to arc
-    std::map<size_t, HypothesesGraph::Arc> arc_map_;
+    // map nodes to KanadeIlp tracklet indices
+    std::map<HypothesesGraph::Node, size_t> tracklet_idx_map_;
+
+    // hypotheses maps
+    enum hyp_type {TERM, INIT, TRANS, DIV, FP};
+    std::map<size_t, hyp_type> hyp2type_;
+    std::map<size_t, HypothesesGraph::Node> fp2node_;
+    std::map<size_t, HypothesesGraph::Arc> trans2arc_;
+    std::map<size_t, std::pair<HypothesesGraph::Arc,HypothesesGraph::Arc> > div2arcs_;
 };
 
 
