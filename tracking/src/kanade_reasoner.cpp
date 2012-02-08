@@ -40,7 +40,7 @@ namespace Tracking {
     assert(from_idx < n_tracklets_);
     assert(to_idx1 < n_tracklets_);
     assert(to_idx2 < n_tracklets_);
-    x_.add(IloBoolVar( obj_(cost) + c_[from_idx](1) + c_[n_tracklets_ + to_idx1](1) + c_[n_tracklets_ + to_idx1](1) ));
+    x_.add(IloBoolVar( obj_(cost) + c_[from_idx](1) + c_[n_tracklets_ + to_idx1](1) + c_[n_tracklets_ + to_idx2](1) ));
     n_hypotheses_ += 1;
     return n_hypotheses_ - 1;
   }
@@ -72,7 +72,7 @@ namespace Tracking {
   }
 
   size_t KanadeIlp::solution_size() {
-    return 0;
+    return sol_.getSize();
   }
   
   bool KanadeIlp::hypothesis_is_active( size_t idx ) {
