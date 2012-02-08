@@ -11,20 +11,18 @@ class HypothesesGraph;
 
 class KanadeIlp {
  public:
-  /** ids will be assumed to lie consecutivly in the range 0 ... (n_tracklets-1) **/
+  /** idxs will be assumed to lie consecutivly in the range 0 ... (n_tracklets-1) **/
   KanadeIlp( size_t n_tracklets );
   ~KanadeIlp();
 
-  KanadeIlp& add_init_hypothesis(size_t id, double cost); // initialization
-  KanadeIlp& add_term_hypothesis(size_t id, double cost); // termination
-  KanadeIlp& add_trans_hypothesis(size_t from_id, size_t to_id, double cost); // translation
-  KanadeIlp& add_div_hypothesis(size_t from_id, size_t to_id1, size_t to_id2, double cost); // division
-
-  // this is not necessary, since all tracklets can be false positives...
-  KanadeIlp& add_fp_hypothesis(size_t id, double cost); // false positive
+  size_t add_init_hypothesis(size_t idx, double cost); // initialization
+  size_t add_term_hypothesis(size_t idx, double cost); // termination
+  size_t add_trans_hypothesis(size_t from_idx, size_t to_idx, double cost); // translation
+  size_t add_div_hypothesis(size_t from_idx, size_t to_idx1, size_t to_idx2, double cost); // division
 
   KanadeIlp& solve();
-  std::vector<int> get_solution();
+  size_t solution_size();
+  bool hypothesis_is_active( size_t hypothesis_id );
 
  private:
   size_t n_tracklets_;

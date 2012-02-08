@@ -27,44 +27,32 @@ namespace Tracking {
     env_.end();
   }
 
-
-  KanadeIlp& KanadeIlp::add_init_hypothesis(size_t id, double cost) {
-    return *this;
+  size_t KanadeIlp::add_init_hypothesis(size_t id, double cost) {
+    return 0;
   }
 
-
-
-  KanadeIlp& KanadeIlp::add_term_hypothesis(size_t id, double cost) {
-    return *this;
+  size_t KanadeIlp::add_term_hypothesis(size_t id, double cost) {
+    return 0;
   }
 
-
-
-  KanadeIlp& KanadeIlp::add_trans_hypothesis(size_t from_id, size_t to_id, double cost) {
-    return *this;
+  size_t KanadeIlp::add_trans_hypothesis(size_t from_id, size_t to_id, double cost) {
+    return 0;
   }
 
-
-
-  KanadeIlp& KanadeIlp::add_div_hypothesis(size_t from_id, size_t to_id1, size_t to_id2, double cost) {
-    return *this;
+  size_t KanadeIlp::add_div_hypothesis(size_t from_id, size_t to_id1, size_t to_id2, double cost) {
+    return 0;
   }
-
-
-
-  KanadeIlp& KanadeIlp::add_fp_hypothesis(size_t id, double cost) {
-    
-    return *this;
-  }
-
-
 
   KanadeIlp& KanadeIlp::solve() {
     return *this;
   }
 
-  vector<int> KanadeIlp::get_solution() {
-    return vector<int>();
+  size_t KanadeIlp::solution_size() {
+    return 0;
+  }
+  
+  bool KanadeIlp::hypothesis_is_active( size_t id ) {
+    return false;
   }
 
   
