@@ -116,16 +116,63 @@ namespace Tracking {
   }
 
   void Kanade::infer() {
-}
+    ilp_->solve();
+  }
 
-  void Kanade::conclude( HypothesesGraph& /*g*/ ) {
-}
+  void Kanade::conclude( HypothesesGraph& g ) {
+    // add active property to graph and init nodes/arcs as active/inactive
+    g.add(node_active()).add(arc_active());
+    property_map<node_active, HypothesesGraph::base_graph>::type& active_nodes = g.get(node_active());
+    property_map<arc_active, HypothesesGraph::base_graph>::type& active_arcs = g.get(arc_active());
+
+    for(HypothesesGraph::NodeIt n(g); n!=lemon::INVALID; ++n) {
+      active_nodes.set(n, true);
+    }
+    for(HypothesesGraph::ArcIt a(g); a!=lemon::INVALID; ++a) {
+      active_arcs.set(a, false);
+    }
+
+
+    // go thru all hyps
+    for(size_t hyp = 0; hyp < ilp_->solution_size(); ++hyp) {
+      if(ilp_->hypothesis_is_active( hyp )) {
+	  // mark corresponding nodes/arcs as active
+	  switch( hyp2type_[hyp] ) {
+	  case TERM:
+	    // do nothing, because all arcs are inactive by default
+	    break;
+	  case INIT:
+	    // do nothing, because all arcs are inactive by default
+	    break;
+	  case TRANS:
+	    active_arcs.set(trans2arc_[hyp], true); 
+	    break;
+	  case DIV:
+	    active_arcs.set(div2arcs_[hyp].first, true);
+	    active_arcs.set(div2arcs_[hyp].second, true);
+	    break;
+	  case FP:
+	    active_nodes.set(fp2node_[hyp], false);
+	    break;
+	  default:
+	    throw runtime_error("Kanade::conclude(): unknown hypothesis type");
+	    break;
+	  }
+	}
+    }
+  }
 
   void Kanade::reset() {
     if(ilp_ != NULL) {
       delete ilp_;
       ilp_ = NULL;
     }
+
+    tracklet_idx_map_.clear();
+    hyp2type_.clear();
+    fp2node_.clear();
+    trans2arc_.clear();
+    div2arcs_.clear();
   }
 
   Kanade& Kanade::add_hypotheses( const HypothesesGraph& g, const HypothesesGraph::Node& n) {
