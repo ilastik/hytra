@@ -1,6 +1,7 @@
 #ifndef KANADE_REASONER_H
 #define KANADE_REASONER_H
 
+#include <vector>
 #include <ilcplex/ilocplex.h>
 #include "reasoning/reasoner.h"
 
@@ -10,20 +11,28 @@ class HypothesesGraph;
 
 class KanadeIlp {
  public:
-  KanadeIlp( unsigned int n_tracklets );
+  /** ids will be assumed to lie consecutivly in the range 0 ... (n_tracklets-1) **/
+  KanadeIlp( size_t n_tracklets );
   ~KanadeIlp();
 
-  KanadeIlp& add_init_hypothesis(double cost); // initialization
-  KanadeIlp& add_term_hypothesis(double cost); // termination
-  KanadeIlp& add_trans_hypothesis(double cost); // translation
-  KanadeIlp& add_div_hypothesis(double cost); // division
-  KanadeIlp& add_fp_hypothesis(double cost); // false positive
+  KanadeIlp& add_init_hypothesis(size_t id, double cost); // initialization
+  KanadeIlp& add_term_hypothesis(size_t id, double cost); // termination
+  KanadeIlp& add_trans_hypothesis(size_t from_id, size_t to_id, double cost); // translation
+  KanadeIlp& add_div_hypothesis(size_t from_id, size_t to_id1, size_t to_id2, double cost); // division
+
+  // this is not necessary, since all tracklets can be false positives...
+  KanadeIlp& add_fp_hypothesis(size_t id, double cost); // false positive
+
+  KanadeIlp& solve();
+  std::vector<int> get_solution();
 
  private:
-  unsigned int n_tracklets_;
+  size_t n_tracklets_;
   
   IloEnv env_;
   IloModel model_;
+  IloBoolVarArray x_;
+  IloObjective obj_;
 };
 
 
