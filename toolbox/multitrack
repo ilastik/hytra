@@ -207,7 +207,7 @@ copied but linked to the original files to improve execution speed and storage r
 
     print "Start tracking..."
     if(options.kanade):
-	    tracker = track.Kanade()
+	    tracker = track.KanadeTracking()
     elif(options.rf_fn):
 	    tracker = track.MrfTracking(options.rf_fn, options.app, options.dis, options.det, options.mis, True, options.opp,options.mdd,options.ma)
     else:
