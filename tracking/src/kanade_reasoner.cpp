@@ -1,4 +1,5 @@
 #include <cassert>
+#include <cmath>
 #include <stdexcept>
 #include <ostream>
 #include "reasoning/kanade_reasoner.h"
@@ -84,18 +85,25 @@ namespace Tracking {
 
 
 
-  void Kanade::formulate( const HypothesesGraph& /*hypotheses*/ ) {
+  ////
+  //// class Kanade
+  ////  
+  void Kanade::formulate( const HypothesesGraph& g ) {
+    vector<double> fp_costs = false_positive_costs( g );
+  }
+
+  void Kanade::infer() {
 }
-
-
-
-void Kanade::infer() {
-}
-
 
   void Kanade::conclude( HypothesesGraph& /*g*/ ) {
 }
 
-
+  vector<double> Kanade::false_positive_costs( const HypothesesGraph& g) {
+    // currently, our 'tracklets' consist of single traxel
+    // therefore, the false positive energy is just the log of the
+    // misdetection rate
+    // FIXME: Use proper detection energies here
+    return vector<double>(lemon::countNodes( g ), log(misdetection_rate_));
+  }
 
 } /* namespace Tracking */ 

@@ -2,9 +2,11 @@
 #define KANADE_REASONER_H
 
 #include <iterator>
+#include <map>
 #include <vector>
 #include <ilcplex/ilocplex.h>
 #include "reasoning/reasoner.h"
+#include "hypotheses.h"
 
 namespace Tracking {
 class Traxel;
@@ -45,19 +47,31 @@ class KanadeIlp {
 
 
 class Kanade : public Reasoner {
-    public:
- Kanade() : ilp_(NULL) {}
+ public:
+ Kanade(double misdetection_rate = 0.1 )
+   : misdetection_rate_(misdetection_rate), ilp_(NULL) {}
 
     virtual void formulate( const HypothesesGraph& );
     virtual void infer();
     virtual void conclude( HypothesesGraph& );
 
-    private:
+ protected:
+    std::vector<double> false_positive_costs( const HypothesesGraph& );
+
+ private:
     // copy and assingment have to be implemented, yet
     Kanade(const Kanade&) {};
     Kanade& operator=(const Kanade&) { return *this;};
 
+    // method parameters
+    double misdetection_rate_;
+
     KanadeIlp* ilp_;
+
+    // map false positive hypothesis to node
+    std::map<size_t, HypothesesGraph::Node> node_map_; 
+    // map association hypothesis to arc
+    std::map<size_t, HypothesesGraph::Arc> arc_map_;
 };
 
 
