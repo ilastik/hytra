@@ -26,6 +26,7 @@ try:
    from ctracking import CellnessTracking
    from ctracking import BotTracking
    from ctracking import MrfTracking
+   from ctracking import KanadeTracking   
    
 except ImportError as error:
    if VERBOSE:
