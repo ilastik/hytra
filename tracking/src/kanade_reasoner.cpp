@@ -66,18 +66,20 @@ namespace Tracking {
     env_.out() << "Kanade solution status = " << cplex_.getStatus() << "\n";
     env_.out() << "Kanade objective value: " << cplex_.getObjValue() << "\n"; 
     cplex_.getValues(sol_, x_);
-    env_.out() << "Kanade solution: " << sol_ << "\n";
+    //env_.out() << "Kanade solution: " << sol_ << "\n";
 
     return *this;
   }
 
   size_t KanadeIlp::solution_size() {
-    return sol_.getSize();
+    size_t size = static_cast<size_t>(sol_.getSize());
+    assert(size == n_hypotheses_);
+    return size;
   }
   
   bool KanadeIlp::hypothesis_is_active( size_t idx ) {
     assert(idx < n_hypotheses_);
-    return false;
+    return static_cast<bool>(sol_[idx]);
   }
 
 
