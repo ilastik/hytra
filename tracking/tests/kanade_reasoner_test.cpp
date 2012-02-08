@@ -12,14 +12,12 @@ using namespace Tracking;
 using namespace std;
 using namespace boost;
 
-BOOST_AUTO_TEST_CASE( KanadeIlp_construction ) {
-  KanadeIlp ilp(7);
-
-}
-
 BOOST_AUTO_TEST_CASE( KanadeIlp_example_problem ) {
-  size_t n_tracklets = 7;
-  KanadeIlp ilp(n_tracklets);
+  double fp_costs[] = { 0.2,0.8,0.1,0.1,0.1,0.1,0.1 };
+  size_t n_tracklets = sizeof(fp_costs)/sizeof(double);
+  BOOST_REQUIRE_EQUAL( n_tracklets, 7);
+
+  KanadeIlp ilp(fp_costs, fp_costs + n_tracklets);
 
   size_t hyp_idx = 0;
   hyp_idx = ilp.add_init_hypothesis(0, 0.7);
