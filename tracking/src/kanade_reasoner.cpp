@@ -106,7 +106,7 @@ namespace Tracking {
       fp2node_[count] = n;
       ++count;
     }
-    vector<double> fp_costs(lemon::countNodes( g ), log(misdetection_rate_));
+    vector<double> fp_costs(lemon::countNodes( g ), log(1000));
     
     ilp_ = new KanadeIlp( fp_costs.begin(), fp_costs.end());
 

@@ -5,6 +5,7 @@
 #include <map>
 #include <utility>
 #include <vector>
+#include <boost/function.hpp>
 #include <ilcplex/ilocplex.h>
 #include "reasoning/reasoner.h"
 #include "hypotheses.h"
@@ -49,8 +50,20 @@ class KanadeIlp {
 
 class Kanade : public Reasoner {
  public:
- Kanade(double misdetection_rate = 0.1 )
-   : misdetection_rate_(misdetection_rate), ilp_(NULL) {}
+ Kanade(boost::function<double (const Traxel&)> ini_energy,
+	boost::function<double (const Traxel&)> term_energy,
+	boost::function<double (const Traxel&, const Traxel&)> link_energy,
+	boost::function<double (const Traxel&, const Traxel&, const Traxel&)> div_energy,
+	boost::function<double (const Traxel&)> tp_energy,
+	boost::function<double (const Traxel&)> fp_energy    
+	)
+   : ini_energy_(ini_energy),
+    term_energy_(term_energy),
+    link_energy_(link_energy),
+    div_energy_(div_energy),
+    tp_energy_(tp_energy),
+    fp_energy_(fp_energy),    
+    ilp_(NULL) {}
   ~Kanade();
 
     virtual void formulate( const HypothesesGraph& );
@@ -66,12 +79,16 @@ class Kanade : public Reasoner {
     Kanade(const Kanade&) {};
     Kanade& operator=(const Kanade&) { return *this;};
 
-    // method parameters
-    double misdetection_rate_;
+    // energy functions
+    boost::function<double (const Traxel&)> ini_energy_;
+    boost::function<double (const Traxel&)> term_energy_;
+    boost::function<double (const Traxel&, const Traxel&)> link_energy_;
+    boost::function<double (const Traxel&, const Traxel&, const Traxel&)> div_energy_;
+    boost::function<double (const Traxel&)> tp_energy_;
+    boost::function<double (const Traxel&)> fp_energy_;    
 
+    // ilp related
     KanadeIlp* ilp_;
-
-    // map nodes to KanadeIlp tracklet indices
     std::map<HypothesesGraph::Node, size_t> tracklet_idx_map_;
 
     // hypotheses maps
