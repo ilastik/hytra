@@ -98,15 +98,17 @@ namespace Tracking {
   void Kanade::formulate( const HypothesesGraph& g ) {
     reset();
 
-    // flase positive hypotheses
+    // false positive hypotheses
     size_t count = 0;
+    vector<double> fp_costs;
+    property_map<node_traxel, HypothesesGraph::base_graph>::type& traxel_map = g.get(node_traxel());
     for(HypothesesGraph::NodeIt n(g); n!=lemon::INVALID; ++n) {
       tracklet_idx_map_[n] = count;
       hyp2type_[count] = FP;
       fp2node_[count] = n;
+      fp_costs.push_back(log(fp_potential_(traxel_map[n])));
       ++count;
     }
-    vector<double> fp_costs(lemon::countNodes( g ), log(1000));
     
     ilp_ = new KanadeIlp( fp_costs.begin(), fp_costs.end());
 
@@ -176,11 +178,13 @@ namespace Tracking {
   }
 
   Kanade& Kanade::add_hypotheses( const HypothesesGraph& g, const HypothesesGraph::Node& n) {
-    double COST = 100.2;
     size_t hyp = 0;
+    property_map<node_traxel, HypothesesGraph::base_graph>::type& traxel_map = g.get(node_traxel());
+    double cost = 0;
 
     // init hypothesis
-    hyp = ilp_->add_init_hypothesis( tracklet_idx_map_[n], COST ); 
+    cost = log(ini_potential_(traxel_map[n])) + 0.5 * log(tp_potential_(traxel_map[n]));
+    hyp = ilp_->add_init_hypothesis( tracklet_idx_map_[n], cost ); 
     hyp2type_[hyp] = INIT;
 
     // collect and count outgoing arcs
@@ -192,22 +196,27 @@ namespace Tracking {
     }
 
     if(count == 0) {
-      hyp = ilp_->add_term_hypothesis(tracklet_idx_map_[n], COST );
+      cost = log(term_potential_(traxel_map[n])) + 0.5 * log(tp_potential_(traxel_map[n]));
+      hyp = ilp_->add_term_hypothesis(tracklet_idx_map_[n], cost );
       hyp2type_[hyp] = TERM;
     } else if(count == 1) {
-      hyp = ilp_->add_term_hypothesis( tracklet_idx_map_[n], COST );
+      cost = log(term_potential_(traxel_map[n])) + 0.5 * log(tp_potential_(traxel_map[n]));
+      hyp = ilp_->add_term_hypothesis( tracklet_idx_map_[n], cost );
       hyp2type_[hyp] = TERM;
       
-      hyp = ilp_->add_trans_hypothesis( tracklet_idx_map_[n], tracklet_idx_map_[g.target(arcs[0])], COST);
+      cost = log(link_potential_(traxel_map[n], traxel_map[g.target(arcs[0])])) + 0.5 * log(tp_potential_(traxel_map[n])) + 0.5 * log(tp_potential_(traxel_map[g.target(arcs[0])]));
+      hyp = ilp_->add_trans_hypothesis( tracklet_idx_map_[n], tracklet_idx_map_[g.target(arcs[0])], cost);
       hyp2type_[hyp] = TRANS;
       trans2arc_[hyp] = arcs[0];
     } else {
-      hyp = ilp_->add_term_hypothesis( tracklet_idx_map_[n], COST );
+      cost = log(term_potential_(traxel_map[n])) + 0.5 * log(tp_potential_(traxel_map[n]));
+      hyp = ilp_->add_term_hypothesis( tracklet_idx_map_[n], cost );
       hyp2type_[hyp] = TERM;
       
       // translation hypotheses
       for(size_t i = 0; i < count; ++i) {
-	hyp = ilp_->add_trans_hypothesis( tracklet_idx_map_[n], tracklet_idx_map_[g.target(arcs[i])], COST);
+	cost = log(link_potential_(traxel_map[n], traxel_map[g.target(arcs[i])])) + 0.5 * log(tp_potential_(traxel_map[n])) + 0.5 * log(tp_potential_(traxel_map[g.target(arcs[i])]));
+	hyp = ilp_->add_trans_hypothesis( tracklet_idx_map_[n], tracklet_idx_map_[g.target(arcs[i])], cost);
 	hyp2type_[hyp] = TRANS;
 	trans2arc_[hyp] = arcs[i];
       }
@@ -215,10 +224,12 @@ namespace Tracking {
       // division hypotheses
       for(size_t i = 0; i < count - 1; ++i) {
 	for(size_t j = i; j < count; ++j) {
+
+	  cost = log(div_potential_(traxel_map[n], traxel_map[g.target(arcs[i])], traxel_map[g.target(arcs[j])])) + 0.5 * log(tp_potential_(traxel_map[n])) + 0.5 * log(tp_potential_(traxel_map[g.target(arcs[i])])) * log(tp_potential_(traxel_map[g.target(arcs[j])]));
 	  hyp = ilp_->add_div_hypothesis( tracklet_idx_map_[n], 
 				    tracklet_idx_map_[g.target(arcs[i])],
 				    tracklet_idx_map_[g.target(arcs[j])],
-				    COST);
+				    cost);
 	  hyp2type_[hyp] = DIV;
 	  div2arcs_[hyp] = pair<HypothesesGraph::Arc, HypothesesGraph::Arc>(arcs[i], arcs[j]);
 	}

@@ -50,19 +50,19 @@ class KanadeIlp {
 
 class Kanade : public Reasoner {
  public:
- Kanade(boost::function<double (const Traxel&)> ini_energy,
-	boost::function<double (const Traxel&)> term_energy,
-	boost::function<double (const Traxel&, const Traxel&)> link_energy,
-	boost::function<double (const Traxel&, const Traxel&, const Traxel&)> div_energy,
-	boost::function<double (const Traxel&)> tp_energy,
-	boost::function<double (const Traxel&)> fp_energy    
+ Kanade(boost::function<double (const Traxel&)> ini_potential,
+	boost::function<double (const Traxel&)> term_potential,
+	boost::function<double (const Traxel&, const Traxel&)> link_potential,
+	boost::function<double (const Traxel&, const Traxel&, const Traxel&)> div_potential,
+	boost::function<double (const Traxel&)> tp_potential,
+	boost::function<double (const Traxel&)> fp_potential    
 	)
-   : ini_energy_(ini_energy),
-    term_energy_(term_energy),
-    link_energy_(link_energy),
-    div_energy_(div_energy),
-    tp_energy_(tp_energy),
-    fp_energy_(fp_energy),    
+   : ini_potential_(ini_potential),
+    term_potential_(term_potential),
+    link_potential_(link_potential),
+    div_potential_(div_potential),
+    tp_potential_(tp_potential),
+    fp_potential_(fp_potential),    
     ilp_(NULL) {}
   ~Kanade();
 
@@ -79,13 +79,13 @@ class Kanade : public Reasoner {
     Kanade(const Kanade&) {};
     Kanade& operator=(const Kanade&) { return *this;};
 
-    // energy functions
-    boost::function<double (const Traxel&)> ini_energy_;
-    boost::function<double (const Traxel&)> term_energy_;
-    boost::function<double (const Traxel&, const Traxel&)> link_energy_;
-    boost::function<double (const Traxel&, const Traxel&, const Traxel&)> div_energy_;
-    boost::function<double (const Traxel&)> tp_energy_;
-    boost::function<double (const Traxel&)> fp_energy_;    
+    // potential functions
+    boost::function<double (const Traxel&)> ini_potential_;
+    boost::function<double (const Traxel&)> term_potential_;
+    boost::function<double (const Traxel&, const Traxel&)> link_potential_;
+    boost::function<double (const Traxel&, const Traxel&, const Traxel&)> div_potential_;
+    boost::function<double (const Traxel&)> tp_potential_;
+    boost::function<double (const Traxel&)> fp_potential_;    
 
     // ilp related
     KanadeIlp* ilp_;
