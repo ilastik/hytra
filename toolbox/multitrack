@@ -118,6 +118,8 @@ copied but linked to the original files to improve execution speed and storage r
     parser.add_option('-e', '--detection', type='float', dest='det', default=10, help='detection weight [default: %default]')
     parser.add_option('-m', '--misdetection', type='float', dest='mis', default=200, help='misdetection weight [default: %default]')
     parser.add_option('-p', '--opportunity_cost', type='float', dest='opp', default=0, help='opportunity cost [default: %default]')
+    parser.add_option('-f', '--forbidden_cost', type='float', dest='forb', default=0, help='forbidden cost [default: %default]')
+    parser.add_option('--without-hard-constraints', action='store_true', dest='without_constraints', help='without hard constraints')
     parser.add_option('--mean_div_dist', type='float', dest='mdd', default=25, help='average division distance [default: %default]')
     parser.add_option('--min_angle', type='float', dest='ma', default=0, help='minimal division angle [default: %default]')
     parser.add_option('--random-forest', type='string', dest='rf_fn', default=None, help='use cellness prediction instead of indicator function for (mis-)detection energy')
@@ -209,9 +211,9 @@ copied but linked to the original files to improve execution speed and storage r
     if(options.kanade):
 	    tracker = track.KanadeTracking()
     elif(options.rf_fn):
-	    tracker = track.MrfTracking(options.rf_fn, options.app, options.dis, options.det, options.mis, True, options.opp,options.mdd,options.ma)
+	    tracker = track.MrfTracking(options.rf_fn, options.app, options.dis, options.det, options.mis, True, options.opp, options.forb, not(options.without_constraints), options.mdd,options.ma)
     else:
-	    tracker = track.MrfTracking("none", options.app, options.dis, options.det, options.mis, False, options.opp, options.mdd,options.ma)
+	    tracker = track.MrfTracking("none", options.app, options.dis, options.det, options.mis, False, options.opp, options.forb, not(options.without_constraints), options.mdd,options.ma)
     events = tracker(ts)
 
     print "Saving detections..."
