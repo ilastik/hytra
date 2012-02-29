@@ -4,61 +4,105 @@
 #include <stdexcept>
 #include <traxels.h>
 #include <cmath>
+#include <sstream>
+
+#include "field_of_view.h"
 
 namespace Tracking {
 
   class KanadeIniPotential {
   public:
-    KanadeIniPotential(	double temporal_threshold,
-			double earliest_timestep,
-			double otherwise,
-			double lambda)
-      : temporal_threshold_(temporal_threshold),
-      earliest_timestep_(earliest_timestep),
+  KanadeIniPotential( FieldOfView fov,	
+		      double temporal_threshold = 15,
+		      double spatial_threshold = 40,
+		      double otherwise = 0.000000001,
+		      double lambda_temporal = 5,
+		      double lambda_spatial = 30)
+    : fov_(fov),
+      temporal_threshold_(temporal_threshold),
+      spatial_threshold_(spatial_threshold),
       otherwise_(otherwise),
-      lambda_(lambda) {}
+      lambda_temporal_(lambda_temporal),
+      lambda_spatial_(lambda_spatial)
+	{}
 
     double operator()( const Traxel& tr ) {
-      double dt = (tr.Timestep - earliest_timestep_);
-      if( dt < temporal_threshold_) {
-	return exp(-1*(dt / lambda_ ));
+      if(! fov_.contains(tr.Timestep, tr.X(), tr.Y(), tr.Z())) {
+	std::stringstream ss;
+	ss << "KanadeIniPotential::operator()(): traxel not contained in field of view: " << tr;
+	throw std::runtime_error(ss.str());
+      }
+      double dt = (tr.Timestep - fov_.lower_bound()[0]);
+      double ds = fov_.spatial_margin(tr.Timestep, tr.X(), tr.Y(), tr.Z());
+
+      double pt = exp(-1*(dt / lambda_temporal_ ));
+      double ps = exp(-1*(ds / lambda_spatial_ ));;
+
+      if( dt < temporal_threshold_ && ds < spatial_threshold_) {
+	return pt < ps ? ps : pt;
+      } else if( dt < temporal_threshold_ ) {
+	return pt;
+      } else if(ds < spatial_threshold_) {
+	return ds;
       } else {
 	return otherwise_;
       }
     }
 
   private:
+    FieldOfView fov_;
     double temporal_threshold_;
-    double earliest_timestep_;
+    double spatial_threshold_;
     double otherwise_;
-    double lambda_;
+    double lambda_temporal_;
+    double lambda_spatial_;
   };
 
   class KanadeTermPotential {
   public:
-    KanadeTermPotential(double temporal_threshold,
-			double latest_timestep,
-			double otherwise,
-			double lambda)
-      : temporal_threshold_(temporal_threshold),
-      latest_timestep_(latest_timestep),
+  KanadeTermPotential(FieldOfView fov,	
+		      double temporal_threshold = 15,
+		      double spatial_threshold = 40,
+		      double otherwise = 0.000000001,
+		      double lambda_temporal = 5,
+		      double lambda_spatial = 30)
+    : fov_(fov),
+      temporal_threshold_(temporal_threshold),
+      spatial_threshold_(spatial_threshold),
       otherwise_(otherwise),
-      lambda_(lambda) {}
+      lambda_temporal_(lambda_temporal),
+      lambda_spatial_(lambda_spatial) {}
 
     double operator()( const Traxel& tr ) {
-      double dt = (latest_timestep_ - tr.Timestep);
-      if( dt < temporal_threshold_) {
-	return exp(-1*(dt / lambda_ ));
+      if(! fov_.contains(tr.Timestep, tr.X(), tr.Y(), tr.Z())) {
+	std::stringstream ss;
+	ss << "KanadeTermPotential::operator()(): traxel not contained in field of view: " << tr;
+	throw std::runtime_error(ss.str());
+      }
+      double dt = fov_.upper_bound()[0] - tr.Timestep;
+      double ds = fov_.spatial_margin(tr.Timestep, tr.X(), tr.Y(), tr.Z());
+
+      double pt = exp(-1*(dt / lambda_temporal_ ));
+      double ps = exp(-1*(ds / lambda_spatial_ ));;
+
+      if( dt < temporal_threshold_ && ds < spatial_threshold_) {
+	return pt < ps ? ps : pt;
+      } else if( dt < temporal_threshold_ ) {
+	return pt;
+      } else if(ds < spatial_threshold_) {
+	return ds;
       } else {
 	return otherwise_;
       }
     }
 
   private:
+    FieldOfView fov_;
     double temporal_threshold_;
-    double latest_timestep_;
+    double spatial_threshold_;
     double otherwise_;
-    double lambda_;
+    double lambda_temporal_;
+    double lambda_spatial_;
   };
 
   class KanadeLinkPotential {

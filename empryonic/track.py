@@ -11,6 +11,7 @@ if(os.path.exists(module_path_in_source) or os.path.exists('../' + module_path_i
 try:
    import ctracking as _ct
 
+   from ctracking import FieldOfView
 
    from ctracking import ComLocator
    from ctracking import IntmaxposLocator
