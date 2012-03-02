@@ -137,6 +137,12 @@ copied but linked to the original files to improve execution speed and storage r
 
     kanadeopts = optparse.OptionGroup(parser, "Kanade", "these options are evaluated, when the --kanade switch is given")
     kanadeopts.add_option('--fov', type='int', action='store', nargs=8, help='field of view: lt lx ly lz ut ux uy uz')
+    kanadeopts.add_option('--misdetection_rate', type='float', default=0.1265, help='[default: %default]')
+    kanadeopts.add_option('--temporal_lambda', type='float', default=5, help='[default: %default]')
+    kanadeopts.add_option('--spatial_lambda', type='float', default=30, help='[default: %default]')
+    kanadeopts.add_option('--link_lambda', type='float', default=25, help='[default: %default]')
+    kanadeopts.add_option('--temporal_cutoff', type='float', default=15, help='[default: %default]')
+    kanadeopts.add_option('--spatial_cutoff', type='float', default=40, help='[default: %default]')
 
 
     parser.add_option_group(kanadeopts)
@@ -217,7 +223,7 @@ copied but linked to the original files to improve execution speed and storage r
     print "Start tracking..."
     if(options.kanade):
 	    fov = track.FieldOfView(*options.fov)
-	    tracker = track.KanadeTracking(fov)
+	    tracker = track.KanadeTracking(fov, options.misdetection_rate, options.temporal_lambda, options.spatial_lambda, options.link_lambda, options.temporal_cutoff, options.spatial_cutoff)
     elif(options.rf_fn):
 	    tracker = track.MrfTracking(options.rf_fn, options.app, options.dis, options.det, options.mis, True, options.opp, options.forb, not(options.without_constraints), options.mdd,options.ma)
     else:

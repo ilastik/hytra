@@ -70,7 +70,7 @@ namespace Tracking {
   KanadeTermPotential(FieldOfView fov,	
 		      double temporal_threshold = 15,
 		      double spatial_threshold = 40,
-		      double otherwise = 0.000000001,
+		      double otherwise = 0.000001,
 		      double lambda_temporal = 5,
 		      double lambda_spatial = 30)
     : fov_(fov),
