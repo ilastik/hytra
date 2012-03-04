@@ -134,6 +134,7 @@ copied but linked to the original files to improve execution speed and storage r
     chaingraphopts.add_option('-p', '--opportunity_cost', type='float', dest='opp', default=0, help='opportunity cost [default: %default]')
     chaingraphopts.add_option('-f', '--forbidden_cost', type='float', dest='forb', default=0, help='forbidden cost [default: %default]')
     chaingraphopts.add_option('--without-hard-constraints', action='store_true', dest='without_constraints', help='without hard constraints')
+    chaingraphopts.add_option('--fixed-detections', action='store_true', dest='fixed_detections', help='set all detections to active via hard constraint; not affected by --withour-hard-constraints')    
     chaingraphopts.add_option('--mean_div_dist', type='float', dest='mdd', default=25, help='average division distance [default: %default]')
     chaingraphopts.add_option('--min_angle', type='float', dest='ma', default=0, help='minimal division angle [default: %default]')
     chaingraphopts.add_option('--random-forest', type='string', dest='rf_fn', default=None, help='use cellness prediction instead of indicator function for (mis-)detection energy')
@@ -230,7 +231,7 @@ copied but linked to the original files to improve execution speed and storage r
 	    tracker = track.KanadeTracking(fov, options.misdetection_rate, options.temporal_lambda, options.spatial_lambda, options.link_lambda, options.temporal_cutoff, options.spatial_cutoff)
     elif(options.method == "chaingraph"):
 	    if(options.rf_fn):
-		    tracker = track.MrfTracking(options.rf_fn, options.app, options.dis, options.det, options.mis, True, options.opp, options.forb, not(options.without_constraints), options.mdd,options.ma)
+		    tracker = track.MrfTracking(options.rf_fn, options.app, options.dis, options.det, options.mis, True, options.opp, options.forb, not(options.without_constraints), options.fixed_detections, options.mdd,options.ma)
 	    else:
 		    tracker = track.MrfTracking("none", options.app, options.dis, options.det, options.mis, False, options.opp, options.forb, not(options.without_constraints), options.mdd,options.ma)
     else:
