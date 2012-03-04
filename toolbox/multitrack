@@ -134,7 +134,7 @@ copied but linked to the original files to improve execution speed and storage r
     chaingraphopts.add_option('-p', '--opportunity_cost', type='float', dest='opp', default=0, help='opportunity cost [default: %default]')
     chaingraphopts.add_option('-f', '--forbidden_cost', type='float', dest='forb', default=0, help='forbidden cost [default: %default]')
     chaingraphopts.add_option('--without-hard-constraints', action='store_true', dest='without_constraints', help='without hard constraints')
-    chaingraphopts.add_option('--fixed-detections', action='store_true', dest='fixed_detections', help='set all detections to active via hard constraint; not affected by --withour-hard-constraints')    
+    chaingraphopts.add_option('--fixed-detections', action='store_true', dest='fixed_detections', help='set all detections to active via hard constraint; not affected by --without-hard-constraints')    
     chaingraphopts.add_option('--mean_div_dist', type='float', dest='mdd', default=25, help='average division distance [default: %default]')
     chaingraphopts.add_option('--min_angle', type='float', dest='ma', default=0, help='minimal division angle [default: %default]')
     chaingraphopts.add_option('--random-forest', type='string', dest='rf_fn', default=None, help='use cellness prediction instead of indicator function for (mis-)detection energy')
