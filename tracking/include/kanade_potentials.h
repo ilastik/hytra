@@ -5,8 +5,11 @@
 #include <traxels.h>
 #include <cmath>
 #include <sstream>
+#include <ostream>
 
 #include "field_of_view.h"
+
+using namespace std;
 
 namespace Tracking {
 
@@ -15,7 +18,7 @@ namespace Tracking {
   KanadeIniPotential( FieldOfView fov,	
 		      double temporal_threshold = 15,
 		      double spatial_threshold = 40,
-		      double otherwise = 0.000000001,
+		      double otherwise = 0.000001,
 		      double lambda_temporal = 5,
 		      double lambda_spatial = 30)
     : fov_(fov),
@@ -38,15 +41,19 @@ namespace Tracking {
       double pt = exp(-1*(dt / lambda_temporal_ ));
       double ps = exp(-1*(ds / lambda_spatial_ ));;
 
+      double ret = 0;
+
       if( dt < temporal_threshold_ && ds < spatial_threshold_) {
-	return pt < ps ? ps : pt;
+	ret = pt < ps ? ps : pt;
       } else if( dt < temporal_threshold_ ) {
-	return pt;
+	ret = pt;
       } else if(ds < spatial_threshold_) {
-	return ds;
+	ret = ds;
       } else {
-	return otherwise_;
+	ret =  otherwise_;
       }
+
+      return ret;
     }
 
   private:
@@ -63,7 +70,7 @@ namespace Tracking {
   KanadeTermPotential(FieldOfView fov,	
 		      double temporal_threshold = 15,
 		      double spatial_threshold = 40,
-		      double otherwise = 0.000000001,
+		      double otherwise = 0.000001,
 		      double lambda_temporal = 5,
 		      double lambda_spatial = 30)
     : fov_(fov),
@@ -85,15 +92,19 @@ namespace Tracking {
       double pt = exp(-1*(dt / lambda_temporal_ ));
       double ps = exp(-1*(ds / lambda_spatial_ ));;
 
+      double ret = 0;
+
       if( dt < temporal_threshold_ && ds < spatial_threshold_) {
-	return pt < ps ? ps : pt;
+	ret =  pt < ps ? ps : pt;
       } else if( dt < temporal_threshold_ ) {
-	return pt;
+	ret =  pt;
       } else if(ds < spatial_threshold_) {
-	return ds;
+	ret =  ds;
       } else {
-	return otherwise_;
+	ret =  otherwise_;
       }
+
+      return ret;
     }
 
   private:

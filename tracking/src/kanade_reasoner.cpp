@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <ostream>
 #include "reasoning/kanade_reasoner.h"
+#include "log.h"
 
 using namespace std;
 
@@ -135,7 +136,7 @@ namespace Tracking {
     }
 
 
-    // go thru all hyps
+    // go through all hyps
     for(size_t hyp = 0; hyp < ilp_->solution_size(); ++hyp) {
       if(ilp_->hypothesis_is_active( hyp )) {
 	  // mark corresponding nodes/arcs as active
@@ -184,6 +185,7 @@ namespace Tracking {
 
     // init hypothesis
     cost = log(ini_potential_(traxel_map[n])) + 0.5 * log(tp_potential_(traxel_map[n]));
+    LOG(logDEBUG2) << "ini cost: " << cost;
     hyp = ilp_->add_init_hypothesis( tracklet_idx_map_[n], cost ); 
     hyp2type_[hyp] = INIT;
 
@@ -197,10 +199,12 @@ namespace Tracking {
 
     if(count == 0) {
       cost = log(term_potential_(traxel_map[n])) + 0.5 * log(tp_potential_(traxel_map[n]));
+      LOG(logDEBUG2) << "term cost: " << cost;
       hyp = ilp_->add_term_hypothesis(tracklet_idx_map_[n], cost );
       hyp2type_[hyp] = TERM;
     } else if(count == 1) {
       cost = log(term_potential_(traxel_map[n])) + 0.5 * log(tp_potential_(traxel_map[n]));
+      LOG(logDEBUG2) << "term cost: " << cost;
       hyp = ilp_->add_term_hypothesis( tracklet_idx_map_[n], cost );
       hyp2type_[hyp] = TERM;
       
@@ -210,6 +214,7 @@ namespace Tracking {
       trans2arc_[hyp] = arcs[0];
     } else {
       cost = log(term_potential_(traxel_map[n])) + 0.5 * log(tp_potential_(traxel_map[n]));
+      LOG(logDEBUG2) << "term cost: " << cost;
       hyp = ilp_->add_term_hypothesis( tracklet_idx_map_[n], cost );
       hyp2type_[hyp] = TERM;
       

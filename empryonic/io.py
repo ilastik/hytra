@@ -154,24 +154,24 @@ class LineageH5( h5py.File ):
 
     @property
     def x_scale( self ):
-        return self._locator.x_scale
+        return self._x_scale
     @x_scale.setter
     def x_scale( self, scale ):
-        self._locator.x_scale = scale
+        self._x_scale = scale
 
     @property
     def y_scale( self ):
-        return self._locator.y_scale
+        return self._y_scale
     @y_scale.setter
     def y_scale( self, scale ):
-        self._locator.y_scale = scale
+        self._y_scale = scale
 
     @property
     def z_scale( self ):
-        return self._locator.z_scale
+        return self._z_scale
     @z_scale.setter
     def z_scale( self, scale ):
-        self._locator.z_scale = scale
+        self._z_scale = scale
         
     # timestep will be set in loaded traxels accordingly
     def __init__( self, *args, **kwargs):
@@ -181,10 +181,9 @@ class LineageH5( h5py.File ):
         else:
             self.timestep = 0
         
-        self._locator = _track.ComLocator()
-        self._x_scale = self._locator.x_scale
-        self._y_scale = self._locator.y_scale
-        self._z_scale = self._locator.z_scale
+        self._x_scale = 1.0
+        self._y_scale = 1.0
+        self._z_scale = 1.0
 
     def init_tracking( self, div=np.empty(0), mov=np.empty(0), dis=np.empty(0), app=np.empty(0)):
         if "tracking" in self.keys():
@@ -341,9 +340,10 @@ class LineageH5( h5py.File ):
             return self._cTraxels_from_objects_group( as_python_list, prediction_threshold )
         # use old 'features' format for traxels
         else:
-            if as_python_list or prediction_threshold:
-                raise Exception("LineageH5::cTraxels: old format: requested options not implemented")
-            return self._cTraxels_from_features_group()
+            raise Exception("objects group not found")
+            #if as_python_list or prediction_threshold:
+            #    raise Exception("LineageH5::cTraxels: old format: requested options not implemented")
+            #return self._cTraxels_from_features_group()
 
     def _cTraxels_from_objects_group( self , as_python_list = False, prediction_threshold=None):
         objects_g = self["objects"]
@@ -369,7 +369,10 @@ class LineageH5( h5py.File ):
                     is_valid = False
             if is_valid:
                 tr = _track.cTraxel()
-                tr.set_intmaxpos_locator()
+                #tr.set_intmaxpos_locator()
+                tr.set_x_scale(self._x_scale)
+                tr.set_y_scale(self._y_scale)
+                tr.set_z_scale(self._z_scale)
                 tr.Id = int(ids[idx])
                 tr.Timestep = self.timestep
                 for name_value in features.items():
