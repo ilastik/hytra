@@ -117,7 +117,6 @@ copied but linked to the original files to improve execution speed and storage r
     parser.add_option('--x-scale', type='float', dest='x_scale', default=1., help='[default: %default]')
     parser.add_option('--y-scale', type='float', dest='y_scale', default=1., help='[default: %default]')
     parser.add_option('--z-scale', type='float', dest='z_scale', default=1., help='[default: %default]')
-    #parser.add_option('--kanade', action='store_true', dest='kanade', help='activate Takeo Kanade global tracking')
     parser.add_option('--with-visbricks', action='store_true', dest='with_visbricks', help='write out a "time dependent HDF5" file for visbricks')
     parser.add_option('--with-rel-linking', action='store_true', dest='with_rel_linking', help='link hdf5 files relative instead of absolute')
     parser.add_option('--full-copy', action='store_true', dest='full_copy', help='do not link to but copy input files completely')
