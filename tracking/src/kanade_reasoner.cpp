@@ -136,7 +136,7 @@ namespace Tracking {
     }
 
 
-    // go thru all hyps
+    // go through all hyps
     for(size_t hyp = 0; hyp < ilp_->solution_size(); ++hyp) {
       if(ilp_->hypothesis_is_active( hyp )) {
 	  // mark corresponding nodes/arcs as active
