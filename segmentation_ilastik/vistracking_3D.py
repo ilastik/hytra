@@ -5,7 +5,7 @@ import os.path as path
 import vigra
 import numpy as np
 import h5py
-from tracking_io import LineageH5
+from io import LineageH5
 import optparse
 import glob
 
