@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 
 import sys
+sys.path.append('../.')
+sys.path.append('.')
 import os.path as path
 import vigra
 import numpy as np
 import h5py
-from io import LineageH5
+from empryonic.io import LineageH5
 import optparse
 import glob
 
