@@ -26,6 +26,6 @@ if __name__ == "__main__":
     infns = sys.argv[1:]
 
     for infn in infns:
-        outfn = path.basename(infn)
+        outfn = path.basename(infn + 'conv.h5')
         print "-- processing", infn
         ilastik2ebr( infn, outfn )

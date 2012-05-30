@@ -91,7 +91,7 @@ if __name__ == "__main__":
         process(fn, args.label, args.threshold, args.minsize, args.maxsize, path.join(args.o, "objects_" + path.basename(fn)))
 
     from multiprocessing import Pool
-    p = Pool()
+    p = Pool(processes=2)
     p.map(func, args.ih5s)
     
 ilastik.core.jobMachine.GLOBAL_WM.stopWorkers()

@@ -28,3 +28,4 @@ if __name__ == '__main__':
         print a.shape
         f = h5py.File(out_fn, 'w')
         f.create_dataset('/volume/data', data=a, compression=1)
+	f.close()

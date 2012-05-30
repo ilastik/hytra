@@ -111,7 +111,9 @@ def drawImagePlane(figure, raw, colmap='jet', planeOrientation = 'z_axes'):
     Colormap can be specified by setting 'colormap', starting plane orientation
     is set in 'planeOrientation'.
     """
-    mlab.pipeline.image_plane_widget(mlab.pipeline.scalar_field(raw), figure=figure, colormap=colmap, vmin = 0, vmax = 255, plane_orientation = planeOrientation)
+    ipw = mlab.pipeline.image_plane_widget(mlab.pipeline.scalar_field(raw), figure=figure, colormap=colmap, plane_orientation = planeOrientation,vmin = raw.min(), vmax=raw.max())
+    ipw.ipw.color_map.output_format = 'rgb'
+    #mlab.pipeline.image_plane_widget(mlab.pipeline.scalar_field(raw), figure=figure, colormap=colmap, vmin = 0, vmax = 255, plane_orientation = planeOrientation)
 
 
 def draw2DView(figure, raw, seg, index, color=(1,0,0)):
@@ -172,7 +174,7 @@ def drawScene(filename, index, borderSize=25):
     #draw everything
     fig1 = mlab.figure(1, size=(500,450))
     mlab.clf(fig1)
-    drawImagePlane(fig1, raw, 'gist_ncar')
+    drawImagePlane(fig1, raw, 'gist_ncar') 
     drawVolumeWithoutReferenceCell(fig1, seg1, index, (0,0,1),0.2)
     drawReferenceCell(fig1, seg1, index, (0.5,1,0), 0.4)
     
