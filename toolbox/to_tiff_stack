@@ -40,7 +40,7 @@ Standard unix GLOB matching (i.e. "*.h5") as well as several filenames are suppo
     parser = optparse.OptionParser(usage=usage)
     parser.add_option('-d', '--dataset', type='string', dest='src', default='/raw/volume', help='path to HDF5 dataset [default: %default]')
     parser.add_option('-a', '--along', type='int', dest='along', default='2', help='convert along axis [default: %default]')
-    parser.add_option('-p', '--prefix', type='string', dest='prefix', default='0000', help='output files prefix [default: %default]')
+    parser.add_option('-p', '--prefix', type='string', dest='prefix', default='', help='output files prefix [default: %default]')
     parser.add_option('-s', '--suffix', type='string', dest='suffix', default='tif', help='determines image format [default: %default]')
     parser.add_option('-o', type='string', dest='out_dir', default='out', help='output directory [default: %default]')
     parser.add_option('-x', '--x-axis', type='int', dest='x_axis', default=0, help='axis representing x direction')
@@ -62,5 +62,7 @@ Standard unix GLOB matching (i.e. "*.h5") as well as several filenames are suppo
         print "Converting " + fn + "..."
         if not path.exists( options.out_dir ):
             os.makedirs( options.out_dir )
-        to_tiff_stack( fn, options.src, options.out_dir, options.along, options.prefix, options.suffix, options.x_axis, options.y_axis)
+	prefix = options.prefix
+	prefix += fn.split('/')[-1] 
+        to_tiff_stack( fn, options.src, options.out_dir, options.along, prefix, options.suffix, options.x_axis, options.y_axis)
         print
