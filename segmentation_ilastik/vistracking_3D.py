@@ -30,7 +30,6 @@ if __name__ == "__main__":
     usage = """%prog [options] H5 File"""
     parser = optparse.OptionParser(usage=usage)
     
-    parser.add_option('-p', '--prefix', type='string', dest='prefix', default='0000', help='output files prefix [default: %default]')
     parser.add_option('-o', type='string', dest='out_dir', default='.', help='output directory [default: %default]')
     
     options, args = parser.parse_args()
@@ -81,7 +80,6 @@ if __name__ == "__main__":
                 ancestor_color = label2color[-2][division[0]]
                 label2color[-1][division[1]] = ancestor_color
                 label2color[-1][division[2]] = ancestor_color
-            
 
     print "-- creating colored arrays"
     for idx, fn in enumerate(fns):
@@ -92,10 +90,6 @@ if __name__ == "__main__":
             relabeled = relabel(im, label2color[idx])
             for i in range(0, im.shape[2]):
                 out_im = relabeled[:, :, i]
-
-                
-
-                out_fn = edit_path(options.out_dir) + options.prefix + "%04d_vis_" % (idx) + path.basename(fn) + "%04d.tif" % (i)
-                
+                out_fn = edit_path(options.out_dir) + "vis_" + path.basename(fn) + "_%04d.tif" % (i)
                 vigra.impex.writeImage(np.asarray(out_im,dtype=np.uint8), out_fn)
     
