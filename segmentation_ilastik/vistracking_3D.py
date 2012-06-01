@@ -3,6 +3,7 @@
 import sys
 sys.path.append('../.')
 sys.path.append('.')
+import os
 import os.path as path
 import vigra
 import numpy as np
@@ -43,6 +44,8 @@ if __name__ == "__main__":
         parser.print_help()
         sys.exit(1)
 
+    if(not path.exists(options.out_dir)):
+        os.mkdir(options.out_dir)
     
     print "-- mapping to colors"
 
