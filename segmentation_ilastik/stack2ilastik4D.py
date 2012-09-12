@@ -31,7 +31,7 @@ if __name__ == '__main__':
 	if idx == 0:
 	   shape = [len(in_tiffs)]
 	   shape.extend(a.shape)
-           ds = f.create_dataset('/volume/data', shape, compression=1)
+      ds = f.create_dataset('/volume/data', shape, compression=1, dtype=np.uint8, chunks=(1,64,64,64,1))
 	   #ds = f.create_dataset('/volume/data', data=a, compression=1)
 	
 	ds[idx,...] = a
