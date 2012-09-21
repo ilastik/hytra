@@ -12,6 +12,7 @@ CMakeFiles
 .metadata
 doxygenconfig*
 randomforest_test.cpp
+tracking/
 
 
 # Compiled source #
