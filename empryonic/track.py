@@ -22,12 +22,12 @@ try:
    from ctracking import Event
    from ctracking import EventType
    from ctracking import EventVector
-   from ctracking import FixedCostTracking
-   from ctracking import ShortestDistanceTracking
-   from ctracking import CellnessTracking
-   from ctracking import BotTracking
+   #from ctracking import FixedCostTracking
+   #from ctracking import ShortestDistanceTracking
+   #from ctracking import CellnessTracking
+   #from ctracking import BotTracking
    from ctracking import MrfTracking
-   from ctracking import KanadeTracking   
+   #from ctracking import KanadeTracking   
    
 except ImportError as error:
    if VERBOSE:
