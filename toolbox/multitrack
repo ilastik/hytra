@@ -16,6 +16,125 @@ import h5py
 from empryonic import track
 from empryonic import io
 
+def generate_traxelstore(h5file,
+			 feature_path,
+			 time_range,
+			 x_range,
+			 y_range,
+			 z_range,
+			 size_range,
+			 x_scale=1.0,
+			 y_scale=1.0,
+			 z_scale=1.0,
+			 with_div=False,
+			 with_local_centers=False,
+			 median_object_size=None,
+			 max_traxel_id_at=None):
+
+    
+    print "generating traxels"
+    print "fetching region features and division probabilities"
+    print h5file, feature_path
+
+    feats = h5file[feature_path]
+    feats = h5file[feature_path]['samples']
+    
+    if with_div:
+        divProbs = None # self.ClassMapping(time_range).wait()
+	
+    if with_local_centers:
+        localCenters = None # self.RegionLocalCenters(time_range).wait()
+        
+    print "filling traxelstore"
+    ts = track.TraxelStore()
+
+    if x_range is None:
+        x_range = [0, sys.maxint]
+
+    if y_range is None:
+        y_range = [0, sys.maxint]
+
+    if z_range is None:
+        z_range = [0, sys.maxint]
+
+    keys_sorted = sorted(feats.keys(), key=int)
+    if time_range is not None:
+        keys_sorted = [key for key in keys_sorted if int(key) >= time_range[0] and int(key) < time_range[1]]
+    
+    
+    max_traxel_id_at = track.VectorOfInt()  
+    filtered_labels = {}        
+    obj_sizes = []
+    total_count = 0
+    empty_frame = False
+    for t in keys_sorted:
+        rc = feats[t]['0']['RegionCenter']
+        if rc.size:
+	    rc = rc[1:, ...]
+
+        ct = feats[t]['0']['Count']
+        if ct.size:
+	    ct = ct[1:, ...]
+            
+        print "at timestep ", t, rc.shape[0], "traxels found"
+        count = 0
+        filtered_labels[t] = []
+        for idx in range(rc.shape[0]):
+            x, y, z = rc[idx]
+            size = ct[idx]
+            if (x < x_range[0] or x >= x_range[1] or
+                y < y_range[0] or y >= y_range[1] or
+                z < z_range[0] or z >= z_range[1] or
+                size < size_range[0] or size >= size_range[1]):
+                filtered_labels[t].append(int(idx + 1))
+                continue
+            else:
+                count += 1
+            tr = track.Traxel()
+            tr.set_x_scale(x_scale)
+            tr.set_y_scale(y_scale)
+            tr.set_z_scale(z_scale)
+            tr.Id = int(idx + 1)
+            tr.Timestep = int(t)
+            
+            tr.add_feature_array("com", len(rc[idx]))                
+            for i, v in enumerate(rc[idx]):
+                tr.set_feature_value('com', i, float(v))
+            
+            if with_div:
+                tr.add_feature_array("divProb", 1)
+                # idx+1 because rc and ct start from 1, divProbs starts from 0
+                tr.set_feature_value("divProb", 0, float(divProbs[t][idx+1][1]))
+            
+            if with_local_centers:
+                tr.add_feature_array("localCentersX", len(localCenters[t][idx+1]))  
+                tr.add_feature_array("localCentersY", len(localCenters[t][idx+1]))
+                tr.add_feature_array("localCentersZ", len(localCenters[t][idx+1]))            
+                for i, v in enumerate(localCenters[t][idx+1]):
+                    tr.set_feature_value("localCentersX", i, float(v[0]))
+                    tr.set_feature_value("localCentersY", i, float(v[1]))
+                    tr.set_feature_value("localCentersZ", i, float(v[2]))                
+            
+            tr.add_feature_array("count", 1)
+            tr.set_feature_value("count", 0, float(size))
+            if median_object_size is not None:
+                obj_sizes.append(float(size))
+            ts.add(tr)   
+                     
+        print "at timestep ", t, count, "traxels passed filter"
+        max_traxel_id_at.append(int(rc.shape[0]))
+        if count == 0:
+            empty_frame = True
+            
+        total_count += count
+    
+    if median_object_size is not None:
+        median_object_size[0] = np.median(np.array(obj_sizes),overwrite_input=True)
+        print 'median object size = ' + str(median_object_size[0])
+    
+    return ts # , filtered_labels, empty_frame
+
+
 def write_detections(detections, fn):
 	with io.LineageH5(fn, 'r') as f:
 		traxel_ids = f['objects/meta/id'].value
@@ -37,12 +156,14 @@ def write_detections(detections, fn):
             if "detection" in f['objects/meta'].keys():
                 del f["objects/meta/detection"]
 	    f.create_dataset('objects/meta/detection', data=detection_indicator)
+            
 
 def write_events(events, fn):
         dis = []
         app = []
         div = []
         mov = []
+	mer = []
         print "-- Writing results to " + path.basename(fn)
         for event in events:
             if event.type == track.EventType.Appearance:
@@ -53,15 +174,18 @@ def write_events(events, fn):
                 div.append((event.traxel_ids[0], event.traxel_ids[1], event.traxel_ids[2], event.energy))
             if event.type == track.EventType.Move:
                 mov.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
+	    if event.type == track.EventType.Merger:
+                mer.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
 
         # convert to ndarray for better indexing
         dis = np.asarray(dis)
         app = np.asarray(app)
         div = np.asarray(div)
         mov = np.asarray(mov)
+	mer = np.asarray(mer)
 
         # write only if file exists
-        with io.LineageH5(fn, 'r+') as f_curr:
+        with io.LineageH5(fn, 'w') as f_curr:
             # delete old tracking
             if "tracking" in f_curr.keys():
                 del f_curr["tracking"]
@@ -99,6 +223,13 @@ def write_events(events, fn):
                 ds = tg.create_dataset("Splits-Energy", data=div[:, -1], dtype=np.double)
                 ds.attrs["Format"] = "lower energy -> higher confidence"
 
+	    if len(mer):
+                ds = tg.create_dataset("Merger", data=mer[:, :-1], dtype=np.int32)
+		ds.attrs["Format"] = "object is merged"
+		
+                ds = tg.create_dataset("Merger-Energy", data=mer[:, -1], dtype=np.double)
+		ds.attrs["Format"] = "-"
+
         print "-> results successfully written"
 
 
@@ -112,7 +243,7 @@ copied but linked to the original files to improve execution speed and storage r
 """
 
     parser = optparse.OptionParser(usage=usage)
-    parser.add_option('--method', type='str', default='chaingraph', help='chaingraph or kanade [default: %default]')
+    parser.add_option('--method', type='str', default='conservation', help='chaingraph or conservation [default: %default]')
     parser.add_option('-o', '--output-dir', type='str', dest='out_dir', default='tracked', help='[default: %default]')
     parser.add_option('--x-scale', type='float', dest='x_scale', default=1., help='[default: %default]')
     parser.add_option('--y-scale', type='float', dest='y_scale', default=1., help='[default: %default]')
@@ -124,34 +255,45 @@ copied but linked to the original files to improve execution speed and storage r
     parser.add_option('--date', type='str', dest='date', default=time.ctime(), help='datetime to log [default: %default]')
     parser.add_option('--machine', type='str', dest='machine', default=socket.gethostname(), help='machine to log [default: %default]')
     parser.add_option('--comment', type='str', dest='comment', default='none', help='some comment to log [default: %default]')
+    parser.add_option('--random-forest', type='string', dest='rf_fn', default=None, help='use cellness prediction instead of indicator function for (mis-)detection energy')
+    parser.add_option('--ep_gap', type='float', dest='ep_gap', default=0.01, help='stop optimization as soon as a feasible integer solution is found proved to be within the given percent of the optimal solution')
+    parser.add_option('-f', '--forbidden_cost', type='float', dest='forb', default=0, help='forbidden cost [default: %default]')
+    parser.add_option('--min-ts', type='int', dest='mints', default=0, help='[default: %default]')
+    parser.add_option('--max-ts', type='int', dest='maxts', default=-1, help='[default: %default]')
+    
 
     chaingraphopts = optparse.OptionGroup(parser, "chaingraph method")
-    chaingraphopts.add_option('-a', '--appearance', type='float', dest='app', default=500, help='appearance cost [default: %default]')
-    chaingraphopts.add_option('-d', '--disappearance', type='float', dest='dis', default=500, help='disappearance cost [default: %default]')
-    chaingraphopts.add_option('-e', '--detection', type='float', dest='det', default=10, help='detection weight [default: %default]')
-    chaingraphopts.add_option('-m', '--misdetection', type='float', dest='mis', default=200, help='misdetection weight [default: %default]')
     chaingraphopts.add_option('-p', '--opportunity_cost', type='float', dest='opp', default=0, help='opportunity cost [default: %default]')
-    chaingraphopts.add_option('-f', '--forbidden_cost', type='float', dest='forb', default=0, help='forbidden cost [default: %default]')
+    
     chaingraphopts.add_option('--without-hard-constraints', action='store_true', dest='without_constraints', help='without hard constraints')
     chaingraphopts.add_option('--fixed-detections', action='store_true', dest='fixed_detections', help='set all detections to active via hard constraint; not affected by --without-hard-constraints')    
     chaingraphopts.add_option('--mean_div_dist', type='float', dest='mdd', default=25, help='average division distance [default: %default]')
     chaingraphopts.add_option('--min_angle', type='float', dest='ma', default=0, help='minimal division angle [default: %default]')
-    chaingraphopts.add_option('--random-forest', type='string', dest='rf_fn', default=None, help='use cellness prediction instead of indicator function for (mis-)detection energy')
-    chaingraphopts.add_option('--ep_gap', type='float', dest='ep_gap', default=0.01, help='stop optimization as soon as a feasible integer solution is found proved to be within the given percent of the optimal solution')
-    
-    kanadeopts = optparse.OptionGroup(parser, "kanade method")
-    kanadeopts.add_option('--fov', type='int', action='store', nargs=8, help='field of view: lt lx ly lz ut ux uy uz')
-    kanadeopts.add_option('--misdetection_rate', type='float', default=0.1265, help='[default: %default]')
-    kanadeopts.add_option('--temporal_lambda', type='float', default=5, help='[default: %default]')
-    kanadeopts.add_option('--spatial_lambda', type='float', default=30, help='[default: %default]')
-    kanadeopts.add_option('--link_lambda', type='float', default=25, help='[default: %default]')
-    kanadeopts.add_option('--temporal_cutoff', type='float', default=15, help='[default: %default]')
-    kanadeopts.add_option('--spatial_cutoff', type='float', default=40, help='[default: %default]')
+    chaingraphopts.add_option('-a', '--appearance', type='float', dest='app', default=500, help='appearance cost [default: %default]')
+    chaingraphopts.add_option('-d', '--disappearance', type='float', dest='dis', default=500, help='disappearance cost [default: %default]')
+    chaingraphopts.add_option('-e', '--detection', type='float', dest='det', default=10, help='detection weight [default: %default]')
+    chaingraphopts.add_option('-m', '--misdetection', type='float', dest='mis', default=200, help='misdetection weight [default: %default]')
 
+    
+    consopts = optparse.OptionGroup(parser, "conservation tracking")
+    consopts.add_option('--max-number-objects', dest='mno', type='float', default=2, help='Give maximum number of objects one connected component may consist of [default: %default]')
+    consopts.add_option('--max-neighbor-distance', dest='mnd', type='float', default=30, help='[default: %default]')
+    consopts.add_option('--division-threshold', dest='dt', type='float', default=0.5, help='[default: %default]')
+    # detection_rf_filename in general parser options
+    consopts.add_option('--size-dependent-detection-prob', dest='sddp', action='store_true')
+    # forbidden_cost in general parser options
+    # ep_gap in general parser options
+    consopts.add_option('--average-obj-size', dest='aos', type='float', default=0, help='[default: %default]')
+    consopts.add_option('--with-tracklets', dest='wt', action='store_true')
+    consopts.add_option('--division-weight', dest='dw', type='float', default=1.0, help='[default: %default]')
+    consopts.add_option('--transition-weight', dest='tw', type='float', default=1.0, help='[default: %default]')
+    consopts.add_option('--with-divisions', dest='wd', action='store_true')
+    
 
     parser.add_option_group(chaingraphopts)
-    parser.add_option_group(kanadeopts)
+    parser.add_option_group(consopts)
     options, args = parser.parse_args()
+
 
     numArgs = len(args)
     if numArgs > 0:
@@ -167,8 +309,8 @@ copied but linked to the original files to improve execution speed and storage r
         os.makedirs(options.out_dir)
 
     ### Copy input data
-    print "Copying input data..."
-    working_fns = []
+    """print "Copying input data..."
+    fns = []
     for fn in fns:
         out_fn = path.join(options.out_dir, path.basename(fn))
 
@@ -194,24 +336,45 @@ copied but linked to the original files to improve execution speed and storage r
                     link_to = path.abspath(path.dirname(fn))
                 link_fn = path.join(link_to, path.basename(fn))
                 f_out["features"] = h5py.ExternalLink(link_fn, "features")
-                f_out["segmentation"] = h5py.ExternalLink(link_fn, "segmentation")
-                f_out["raw"] = h5py.ExternalLink(link_fn, "raw")
-                
+                f_out["Input Segmentation"] = h5py.ExternalLink(link_fn, "Input Segmentation")
+                f_out["Input Raw"] = h5py.ExternalLink(link_fn, "Input Raw")
+                hdf
                 with io.LineageH5(fn, 'r') as f_in:
                     f_in.copy("objects", f_out)
             del f_out
         
         #store out-filename for later use
         working_fns.append(out_fn)
-    working_fns.sort()
+    working_fns.sort()"""
     print
 
     ### Do the tracking
     start = time.time()
-
+    
+    feature_path='ObjectExtractionMultiClass'
+    if options.method=='chaingraph':
+        feature_path='ObjectExtraction'
     # read all traxels into TraxelStore
-    ts = track.TraxelStore()
-    for i, fn in enumerate(working_fns):
+    print fns[0]
+    time_range=[options.mints, options.maxts]
+    if options.maxts == -1:
+        time_range = None
+    with h5py.File(fns[0], 'r') as h5file:
+        ts = generate_traxelstore(h5file=h5file,
+				  feature_path=feature_path,
+				  time_range = time_range,
+				  x_range = None,
+				  y_range = None,
+				  z_range = None,
+				  size_range = [0, 10000],
+				  x_scale=options.x_scale,
+				  y_scale=options.y_scale,
+				  z_scale=options.z_scale,
+				  with_div=False,
+				  with_local_centers=False,
+				  median_object_size=None,
+				  max_traxel_id_at=None)
+	"""for i, fn in enumerate(working_fns):
         print "-- reading Traxels from " + fn
         f = io.LineageH5(fn, 'r', timestep=i)
         f.x_scale = options.x_scale
@@ -221,44 +384,49 @@ copied but linked to the original files to improve execution speed and storage r
         ts.add_from_Traxels(traxels)
         f.close()
         del f
-        print "-> %d traxels read" % len(traxels)
+        print "-> %d traxels read" % len(traxels)"""
 
-    print "-> Traxelstore bounding box: " + str([ int(x) for x in ts.bounding_box()])
+    info = [int(x) for x in ts.bounding_box()]
+    t0, t1 = (info[0], info[4])
+    print "-> Traxelstore bounding box: " + str(info)
 
+    
     print "Start tracking..."
-    if(options.method == "kanade"):
-        fov = track.FieldOfView(*options.fov)
-        tracker = track.KanadeTracking(fov, options.misdetection_rate, options.temporal_lambda, options.spatial_lambda, options.link_lambda, options.temporal_cutoff, options.spatial_cutoff)
+    if(options.method == "conservation"):
+        rf_fn = 'none'
+	if options.rf_fn:
+            rf_fn = options.rf_fn
+        tracker = track.ConsTracking(options.mno, options.mnd, options.dt, rf_fn, bool(options.sddp), options.forb, options.ep_gap, options.aos, bool(options.wt), options.dw, options.tw, bool(options.wd))
     elif(options.method == "chaingraph"):
         if(options.rf_fn):
-            tracker = track.MrfTracking(options.rf_fn, options.app, options.dis, options.det, options.mis, True, options.opp, options.forb, not(options.without_constraints), options.fixed_detections, options.mdd, options.ma, options.ep_gap)
+            tracker = track.ChaingraphTracking(options.rf_fn, options.app, options.dis, options.det, options.mis, True, options.opp, options.forb, not(options.without_constraints), options.fixed_detections, options.mdd, options.ma, options.ep_gap)
         else:
-            tracker = track.MrfTracking("none", options.app, options.dis, options.det, options.mis, False, options.opp, options.forb, not(options.without_constraints), options.mdd, options.ma, options.ep_gap)
+            tracker = track.ChaingraphTracking("none", options.app, options.dis, options.det, options.mis, False, options.opp, options.forb, not(options.without_constraints), options.mdd, options.ma, options.ep_gap)
     else:
         raise Exception("unknown tracking method: " + options.method)
 
     events = tracker(ts)
 
-    print "Saving detections..."
+    """print "Saving detections..."
     detections = tracker.detections()
     assert(len(detections) == len(working_fns))
     for i, detections_at in enumerate(detections):
-        write_detections(detections_at, working_fns[i])
+        write_detections(detections_at, working_fns[i])"""
 
     print "Saving events..."
     print "Length of events " + str(len(events))
+    working_fns = [options.out_dir.rstrip('/') + "/%04d.h5" % timestep for timestep in xrange(t0,t1+1)]
     assert(len(events) + 1 == len(working_fns))
     for i, events_at in enumerate(events):
         write_events(events_at, working_fns[i + 1])
- 
+        with h5py.File(fns[0], 'r') as src_file:
+            with io.LineageH5(working_fns[i+1]) as dest_file:
+                dg = dest_file.create_group(feature_path)
+		ds = dg.create_dataset("LabelImage", data=src_file[feature_path]['LabelImage'][t0+i+1,...], dtype=np.int32)
+
+
     stop = time.time()
     since = stop - start
     print "Elapsed time [s]: " + str(int(since))
     print "Elapsed time [min]: " + str(int(since) / 60)
     print "Elapsed time [h]: " + str(int(since) / 3600)
-    
-
-    ### visbricks file
-    if options.with_visbricks: 
-        io.write_visbricks_file(working_fns, options.out_dir)
-        print "Visbricks file written in '" + options.out_dir + "'"

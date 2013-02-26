@@ -27,7 +27,10 @@ try:
    #from pgmlink import CellnessTracking
    #from pgmlink import BotTracking
    from pgmlink import ChaingraphTracking
-   #from pgmlink import KanadeTracking   
+   from pgmlink import ConsTracking
+   #from pgmlink import KanadeTracking
+   from pgmlink import VectorOfInt
+   from pgmlink import Traxel
    
 except ImportError as error:
    if VERBOSE:
