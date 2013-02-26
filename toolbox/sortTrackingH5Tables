@@ -1,0 +1,99 @@
+#! /usr/bin/env python
+
+import os
+import glob
+import sys
+import h5py
+import numpy as np
+import shutil
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-i', '--in-dir', dest='src', required=True)
+parser.add_argument('-o', '--out-dir', dest='dest', required=True)
+
+args = vars(parser.parse_args())
+
+h5_filenames = []
+in_dir = args['src']
+out_dir = args['dest']
+
+if not os.path.exists(out_dir):
+   os.mkdir(out_dir)
+
+for infile in glob.glob (os.path.join(in_dir, '*.h5')):
+   shutil.copy(infile, out_dir)
+
+for infile in glob.glob (os.path.join(out_dir, '*.h5')):
+   h5_filenames.append(infile)
+
+h5_filenames.sort()
+
+for idx,fn in enumerate(h5_filenames):
+   f = h5py.File(fn)
+   print 'processing ' + str(f)
+   if "tracking" not in f:
+      print 'skipping ' + str(f)
+      f.close()
+      continue
+   tr = f["tracking"]
+
+   if "Mergers" in tr:
+      print 'sorting mergers'
+      data = np.array(tr["Mergers"])
+      data = np.sort(data)[::-1]
+      del tr["Mergers"]
+      tr["Mergers"] = data
+
+   if "Appearances" in tr:
+      print 'sorting appearances'
+      data = np.array(tr["Appearances"])
+      data = np.sort(data)[::-1]
+      del tr["Appearances"]
+      tr["Appearances"] = data
+
+   if "Disappearances" in tr:
+      print 'sorting disappearances'
+      data = np.array(tr["Disappearances"])
+      data = np.sort(data)[::-1]
+      del tr["Disappearances"]
+      tr["Disappearances"] = data
+
+   if "Moves" in tr:
+      print 'sorting moves'
+      data = np.array(tr["Moves"])
+      data = np.array(sorted(data, key=lambda a_entry: a_entry[0]))[::-1]
+      del tr["Moves"]
+      tr["Moves"] = data
+
+   if "Splits" in tr:
+      print 'sorting divisions'
+      data = np.array(tr["Splits"])
+      data = np.array(sorted(data, key=lambda a_entry: a_entry[0]))[::-1]
+      for idx, el in enumerate(data):
+         el[1:] = np.sort(el[1:])[::-1]
+         data[idx] = el
+      del tr["Splits"]
+      tr["Splits"] = data
+
+
+   meta = None
+   if not "objects/meta" in f:
+      meta = f.create_group('objects/meta')
+   else:
+      meta = f['objects/meta']
+   label_img = np.array(f['segmentation/labels'])
+   ids = np.unique(label_img)
+   ids = ids[ids > 0]
+   valid = np.ones(ids.shape)
+   if 'id' in meta:
+      meta['id'].data = ids
+   else:
+      meta.create_dataset("id", data=ids[::-1], dtype=np.uint32)
+   if 'valid' in meta:
+      meta['valid'].data = valid
+   else:
+      meta.create_dataset("valid", data=valid, dtype=np.uint32)
+      
+   f.close()
+
