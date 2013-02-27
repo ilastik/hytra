@@ -275,6 +275,7 @@ copied but linked to the original files to improve execution speed and storage r
     chaingraphopts.add_option('-d', '--disappearance', type='float', dest='dis', default=500, help='disappearance cost [default: %default]')
     chaingraphopts.add_option('-e', '--detection', type='float', dest='det', default=10, help='detection weight [default: %default]')
     chaingraphopts.add_option('-m', '--misdetection', type='float', dest='mis', default=200, help='misdetection weight [default: %default]')
+    chaingraphopts.add_option('-n', '--n-neighbors', type='int', dest='nnc', default=2, help='number of neighbors taken into account when building hypothesesgraph [default: %default]')
 
     
     consopts = optparse.OptionGroup(parser, "conservation tracking")
@@ -408,10 +409,12 @@ copied but linked to the original files to improve execution speed and storage r
             rf_fn = options.rf_fn
         tracker = track.ConsTracking(int(options.mno), options.mnd, options.dt, rf_fn, bool(options.sddp), options.forb, options.ep_gap, obj_size[0], not bool(options.wot), options.dw, options.tw, not bool(options.wod), options.dis, options.app)
     elif(options.method == "chaingraph"):
-        if(options.rf_fn):
-            tracker = track.ChaingraphTracking(options.rf_fn, options.app, options.dis, options.det, options.mis, True, options.opp, options.forb, not(options.without_constraints), options.fixed_detections, options.mdd, options.ma, options.ep_gap)
-        else:
-            tracker = track.ChaingraphTracking("none", options.app, options.dis, options.det, options.mis, False, options.opp, options.forb, not(options.without_constraints), options.mdd, options.ma, options.ep_gap)
+        rf_fn = 'none'
+        with_rf = False
+        if options.rf_fn:
+            rf_fn = options.rf_fn
+            with_rf = True
+        tracker = track.ChaingraphTracking(rf_fn, options.app, options.dis, options.det, options.mis, with_rf, options.opp, options.forb, not(options.without_constraints), options.fixed_detections, options.mdd, options.ma, options.ep_gap)
     else:
         raise Exception("unknown tracking method: " + options.method)
 
