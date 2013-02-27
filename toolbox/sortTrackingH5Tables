@@ -41,7 +41,7 @@ for idx,fn in enumerate(h5_filenames):
    if "Mergers" in tr:
       print 'sorting mergers'
       data = np.array(tr["Mergers"])
-      data = np.sort(data)[::-1]
+      data = np.array(sorted(data, key=lambda a_entry: a_entry[0]))[::-1]
       del tr["Mergers"]
       tr["Mergers"] = data
 

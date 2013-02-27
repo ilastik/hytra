@@ -143,6 +143,8 @@ def ctracklet_from_labelgroup( h5_labelgroup ):
 class LineageH5( h5py.File ):
     mov_ds = "/tracking/Moves"
     mov_ener_ds = "/tracking/Moves-Energy"
+    merg_ds = "/tracking/Mergers"
+    merg_ener_ds = "tracking/Mergers-Energy"
     app_ds = "/tracking/Appearances"
     app_ener_ds = "/tracking/Appearances-Energy"
     dis_ds = "/tracking/Disappearances"
@@ -213,6 +215,13 @@ class LineageH5( h5py.File ):
             return self[self.mov_ds].value
         else:
             return np.empty(0)
+
+    def get_mergers( self ):
+        if self.has_tracking() and _path.basename(self.merg_ds) in self[self.track_gn].keys():
+            return self[self.merg_ds].value
+        else:
+            return np.empty(0)
+
     def get_move_energies( self ):
         if _path.basename(self.mov_ener_ds) in self[self.track_gn].keys():
             e = self[self.mov_ener_ds].value
