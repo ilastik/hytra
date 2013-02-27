@@ -261,6 +261,7 @@ copied but linked to the original files to improve execution speed and storage r
     parser.add_option('-f', '--forbidden_cost', type='float', dest='forb', default=0, help='forbidden cost [default: %default]')
     parser.add_option('--min-ts', type='int', dest='mints', default=0, help='[default: %default]')
     parser.add_option('--max-ts', type='int', dest='maxts', default=-1, help='[default: %default]')
+    parser.add_option('--min-size', type='int', dest='minsize', default=0, help='minimal size of objects to be tracked [default: %default]')
     
 
     chaingraphopts = optparse.OptionGroup(parser, "chaingraph method")
@@ -364,6 +365,7 @@ copied but linked to the original files to improve execution speed and storage r
     time_range=[options.mints, options.maxts]
     if options.maxts == -1:
         time_range = None
+    obj_size = [0]
     with h5py.File(fns[0], 'r') as h5file:
         ts = generate_traxelstore(h5file=h5file,
 				  feature_path=feature_path,
@@ -371,13 +373,13 @@ copied but linked to the original files to improve execution speed and storage r
 				  x_range = None,
 				  y_range = None,
 				  z_range = None,
-				  size_range = [0, 10000],
+				  size_range = [options.minsize, 10000],
 				  x_scale=options.x_scale,
 				  y_scale=options.y_scale,
 				  z_scale=options.z_scale,
 				  with_div=with_div,
 				  with_local_centers=False,
-				  median_object_size=None,
+				  median_object_size=obj_size,
 				  max_traxel_id_at=None)
 	"""for i, fn in enumerate(working_fns):
         print "-- reading Traxels from " + fn
@@ -391,6 +393,9 @@ copied but linked to the original files to improve execution speed and storage r
         del f
         print "-> %d traxels read" % len(traxels)"""
 
+    if options.aos != 0:
+      obj_size[0] = options.aos
+
     info = [int(x) for x in ts.bounding_box()]
     t0, t1 = (info[0], info[4])
     print "-> Traxelstore bounding box: " + str(info)
@@ -401,7 +406,7 @@ copied but linked to the original files to improve execution speed and storage r
         rf_fn = 'none'
         if options.rf_fn:
             rf_fn = options.rf_fn
-        tracker = track.ConsTracking(int(options.mno), options.mnd, options.dt, rf_fn, bool(options.sddp), options.forb, options.ep_gap, options.aos, not bool(options.wot), options.dw, options.tw, not bool(options.wod), options.dis, options.app)
+        tracker = track.ConsTracking(int(options.mno), options.mnd, options.dt, rf_fn, bool(options.sddp), options.forb, options.ep_gap, obj_size[0], not bool(options.wot), options.dw, options.tw, not bool(options.wod), options.dis, options.app)
     elif(options.method == "chaingraph"):
         if(options.rf_fn):
             tracker = track.ChaingraphTracking(options.rf_fn, options.app, options.dis, options.det, options.mis, True, options.opp, options.forb, not(options.without_constraints), options.fixed_detections, options.mdd, options.ma, options.ep_gap)
