@@ -69,11 +69,11 @@ def generate_traxelstore(h5file,
     total_count = 0
     empty_frame = False
     for t in keys_sorted:
-        rc = feats[t]['0']['RegionCenter']
+        rc = np.array(feats[t]['0']['RegionCenter'])
         if rc.size:
            rc = rc[1:, ...]
 
-        ct = feats[t]['0']['Count']
+        ct = np.array(feats[t]['0']['Count'])
         if ct.size:
            ct = ct[1:, ...]
             
