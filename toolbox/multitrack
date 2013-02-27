@@ -414,7 +414,7 @@ copied but linked to the original files to improve execution speed and storage r
         if options.rf_fn:
             rf_fn = options.rf_fn
             with_rf = True
-        tracker = track.ChaingraphTracking(rf_fn, options.app, options.dis, options.det, options.mis, with_rf, options.opp, options.forb, not(options.without_constraints), options.fixed_detections, options.mdd, options.ma, options.ep_gap)
+        tracker = track.ChaingraphTracking(rf_fn, options.app, options.dis, options.det, options.mis, with_rf, options.opp, options.forb, not(options.without_constraints), options.fixed_detections, options.mdd, options.ma, options.ep_gap, options.nnc)
     else:
         raise Exception("unknown tracking method: " + options.method)
 
