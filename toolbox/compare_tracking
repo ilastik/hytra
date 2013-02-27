@@ -30,6 +30,7 @@ Compare two tracking results, based only on the association information in the t
 """
 
     parser = optparse.OptionParser(usage=usage)
+    parser.add_option('--quietly', action='store_true', dest='quiet', help='non-verbose')
     #parser.add_option('--no-detailed-stats', action='store_true', dest='no_detailed_stats', help="don't write detailed statistics into an output file")
     #parser.add_option('-o', type='str', dest='output_fn', default='batch_performance.txt', help='output file for detailed stats; no effect if "--no-detailed-stats" is set [default: %default]')
     #parser.add_option('-t', '--threshold', type='float', dest='threshold', default=25, help='distance threshold for the matching (matching only below the threshold) [default: %default]')
@@ -38,6 +39,8 @@ Compare two tracking results, based only on the association information in the t
     #parser.add_option('--precomputed-match', action='store_true', dest='precomputed_match', help='match files will be loaded from ./matched/ [invalidates all match related options]')
 
     options, args = parser.parse_args()
+
+    verbose = not bool(options.quiet)
 
     numArgs = len(args)
     if numArgs == 2:
@@ -81,8 +84,8 @@ Compare two tracking results, based only on the association information in the t
             cont_valid = f['objects/meta/valid'].value
             # cont_detection = f['objects/meta/detection'].value
 
-
-        print "sanity checking %d" % t
+        if verbose:
+            print "sanity checking %d" % t
         assert(np.all(base_ids == cont_ids))
         assert(np.all(base_valid == 1))
         assert(np.all(cont_valid == 1))
@@ -100,7 +103,8 @@ Compare two tracking results, based only on the association information in the t
 
     ts = []
     for i,v in enumerate(fn_pairs[1:]):
-        print path.basename(v[0]), path.basename(v[1])
+        if verbose:
+            print path.basename(v[0]), path.basename(v[1])
         t = quant.compute_taxonomy(assocs[i], assocs[i+1], v[0], v[1], i+1)
         ts.append(t)
         #sys.stdout.write('%d ' % i)
@@ -114,11 +118,13 @@ Compare two tracking results, based only on the association information in the t
     ##
     ## report results
     ##
-    
-    print "Measuring performance..."
-    print "-> Precision: %.3f" % overall.precision()
-    print "-> Recall: %.3f" % overall.recall()
-    print "-> F-measure %.3f: " % overall.f_measure()
-    print "Check", 2.*overall.precision() * overall.recall() / (overall.precision() + overall.recall())
-    print
-    print overall
+    if verbose:
+        print "Measuring performance..."
+        print "-> Precision: %.3f" % overall.precision()
+        print "-> Recall: %.3f" % overall.recall()
+        print "-> F-measure %.3f: " % overall.f_measure()
+        print "Check", 2.*overall.precision() * overall.recall() / (overall.precision() + overall.recall())
+        print
+        print overall
+    else:
+        print overall.to_line()

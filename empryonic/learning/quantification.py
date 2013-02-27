@@ -484,6 +484,10 @@ class Taxonomy( object ):
             "dis_rec_v": self.recall_given_visibility(Disappearance),
             "dis_f_v": self.f_measure_given_visibility(Disappearance)
             }
+    
+    def to_line( self ):
+        line = '%(n_base)d,%(n_cont)d,%(precision).4f,%(recall).4f,%(f_measure).4f,%(mov_n_base)d,%(mov_n_cont)d,%(mov_prec).4f,%(mov_rec).4f,%(mov_f).4f,%(merg_n_base)d,%(merg_n_cont)d,%(merg_prec).4f,%(merg_rec).4f,%(merg_f).4f,%(div_n_base)d,%(div_n_cont)d,%(div_prec).4f,%(div_rec).4f,%(div_f).4f,%(app_n_base)d,%(app_n_cont)d,%(app_prec).4f,%(app_rec).4f,%(app_f).4f,%(dis_n_base)d,%(dis_n_cont)d,%(dis_prec).4f,%(dis_rec).4f' % self.all_stats()
+        return line
 
     def __str__( self ):
         pretty = \
