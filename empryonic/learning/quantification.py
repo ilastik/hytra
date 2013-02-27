@@ -87,6 +87,30 @@ class Move( Event ):
     def __repr__( self ):
         return "Move((" + str(self.ids[0]) + ", "+ str(self.ids[1])+ "))"
 
+class Merger( Event ):
+    def translate( self, origin_match, to_match, setid ):
+        if self.ids[0] != to_match[self.ids[0]]:
+            raise RuntimeError('translate: translation not supported')
+        
+        return Merger( tuple(self.ids), self.timestep, setid )
+        
+    def equivalent_to( self, origin_match, to_match, other):
+        if self.ids[0] != to_match[self.ids[0]]:
+            raise RuntimeError('equivalent_to: translation not supported')
+        return (self == other)
+
+    def visible_in_other( self, origin_match, to_match):
+        return True
+
+    def is_matched(self,origin_match, to_match):
+        if to_match.has_key(self.ids[0]):
+            return True
+        else:
+            return False
+
+    def __repr__( self ):
+        return "Merger((" + str(self.ids[0]) + ", "+ str(self.ids[1])+ "))"
+
 class Division( Event ):
     def __init__( self, ids, timestep, setid='base' ):
         children = list(ids[1:3])
@@ -182,6 +206,11 @@ def event_set_from( lineageH5, setid='base' ):
     mov_ids = lineageH5.get_moves()
     for mov in mov_ids:
         e = Move((mov[0], mov[1]), lineageH5.timestep, setid)
+        events.add(e)
+
+    merg_ids = lineageH5.get_mergers()
+    for merg in merg_ids:
+        e = Merger((merg[0], merg[1]), lineageH5.timestep, setid)
         events.add(e)
     
     div_ids = lineageH5.get_divisions()
@@ -395,6 +424,12 @@ class Taxonomy( object ):
             "mov_rec": self.recall(Move),
             "mov_f": self.f_measure(Move),
 
+            "merg_n_base": len(by_type(self.base_basic, Merger)),
+            "merg_n_cont": len(by_type(self.cont_basic, Merger)),            
+            "merg_prec":  self.precision(Merger),
+            "merg_rec": self.recall(Merger),
+            "merg_f": self.f_measure(Merger),
+
             "div_n_base": len(by_type(self.base_basic, Division)),
             "div_n_cont": len(by_type(self.cont_basic, Division)),                        
             "div_prec": self.precision(Division),
@@ -424,6 +459,12 @@ class Taxonomy( object ):
             "mov_prec_v":  self.precision_given_visibility(Move),
             "mov_rec_v": self.recall_given_visibility(Move),
             "mov_f_v": self.f_measure_given_visibility(Move),
+
+            "merg_n_base_v": len(by_type(self.base_basic, Merger)),
+            "merg_n_cont_v": len(by_type(self.cont_basic, Merger)),            
+            "merg_prec_v":  self.precision(Merger),
+            "merg_rec_v": self.recall(Merger),
+            "merg_f_v": self.f_measure(Merger),
 
             "div_n_base_v": len(by_type(self.base_v, Division)),
             "div_n_cont_v": len(by_type(self.cont_v, Division)),                        
@@ -459,6 +500,13 @@ n_contestant = %(mov_n_cont)d
 precision = %(mov_prec).4f
 recall = %(mov_rec).4f
 f_measure = %(mov_f).4f
+
+[merger]
+n_base = %(merg_n_base)d
+n_contestant = %(merg_n_cont)d
+precision = %(merg_prec).4f
+recall = %(merg_rec).4f
+f_measure = %(merg_f).4f
 
 [division]
 n_base = %(div_n_base)d

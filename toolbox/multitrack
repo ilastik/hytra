@@ -39,8 +39,9 @@ def generate_traxelstore(h5file,
     feats = h5file[feature_path]
     feats = h5file[feature_path]['samples']
     
-    if with_div:
-        divProbs = None # self.ClassMapping(time_range).wait()
+    if with_div and 'ClassProbabilities' in h5file[feature_path].keys():
+        #divProbs = None # self.ClassMapping(time_range).wait()
+        divProbs = h5file[feature_path]['ClassProbabilities']
 	
     if with_local_centers:
         localCenters = None # self.RegionLocalCenters(time_range).wait()
@@ -70,11 +71,11 @@ def generate_traxelstore(h5file,
     for t in keys_sorted:
         rc = feats[t]['0']['RegionCenter']
         if rc.size:
-	    rc = rc[1:, ...]
+           rc = rc[1:, ...]
 
         ct = feats[t]['0']['Count']
         if ct.size:
-	    ct = ct[1:, ...]
+           ct = ct[1:, ...]
             
         print "at timestep ", t, rc.shape[0], "traxels found"
         count = 0
@@ -104,7 +105,7 @@ def generate_traxelstore(h5file,
             if with_div:
                 tr.add_feature_array("divProb", 1)
                 # idx+1 because rc and ct start from 1, divProbs starts from 0
-                tr.set_feature_value("divProb", 0, float(divProbs[t][idx+1][1]))
+                tr.set_feature_value("divProb", 0, float(divProbs[str(t)][idx+1][1]))
             
             if with_local_centers:
                 tr.add_feature_array("localCentersX", len(localCenters[t][idx+1]))  
@@ -163,7 +164,7 @@ def write_events(events, fn):
         app = []
         div = []
         mov = []
-	mer = []
+        mer = []
         print "-- Writing results to " + path.basename(fn)
         for event in events:
             if event.type == track.EventType.Appearance:
@@ -174,7 +175,7 @@ def write_events(events, fn):
                 div.append((event.traxel_ids[0], event.traxel_ids[1], event.traxel_ids[2], event.energy))
             if event.type == track.EventType.Move:
                 mov.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
-	    if event.type == track.EventType.Merger:
+            if event.type == track.EventType.Merger:
                 mer.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
 
         # convert to ndarray for better indexing
@@ -182,7 +183,7 @@ def write_events(events, fn):
         app = np.asarray(app)
         div = np.asarray(div)
         mov = np.asarray(mov)
-	mer = np.asarray(mer)
+        mer = np.asarray(mer)
 
         # write only if file exists
         with io.LineageH5(fn, 'w') as f_curr:
@@ -224,11 +225,11 @@ def write_events(events, fn):
                 ds.attrs["Format"] = "lower energy -> higher confidence"
 
 	    if len(mer):
-                ds = tg.create_dataset("Merger", data=mer[:, :-1], dtype=np.int32)
-		ds.attrs["Format"] = "object is merged"
+                ds = tg.create_dataset("Mergers", data=mer[:, :-1], dtype=np.int32)
+                ds.attrs["Format"] = "descendant (current file), number of objects"
 		
-                ds = tg.create_dataset("Merger-Energy", data=mer[:, -1], dtype=np.double)
-		ds.attrs["Format"] = "-"
+                ds = tg.create_dataset("Mergers-Energy", data=mer[:, -1], dtype=np.double)
+                ds.attrs["Format"] = "lower energy -> higher confidence"
 
         print "-> results successfully written"
 
@@ -284,10 +285,10 @@ copied but linked to the original files to improve execution speed and storage r
     # forbidden_cost in general parser options
     # ep_gap in general parser options
     consopts.add_option('--average-obj-size', dest='aos', type='float', default=0, help='[default: %default]')
-    consopts.add_option('--with-tracklets', dest='wt', action='store_true')
-    consopts.add_option('--division-weight', dest='dw', type='float', default=1.0, help='[default: %default]')
-    consopts.add_option('--transition-weight', dest='tw', type='float', default=1.0, help='[default: %default]')
-    consopts.add_option('--with-divisions', dest='wd', action='store_true')
+    consopts.add_option('--without-tracklets', dest='wot', action='store_true')
+    consopts.add_option('--div', dest='dw', type='float', default=1.0, help='division weight [default: %default]')
+    consopts.add_option('--tr', dest='tw', type='float', default=1.0, help='transition weight [default: %default]')
+    consopts.add_option('--without-divisions', dest='wod', action='store_true')
     
 
     parser.add_option_group(chaingraphopts)
@@ -352,8 +353,10 @@ copied but linked to the original files to improve execution speed and storage r
     start = time.time()
     
     feature_path='ObjectExtractionMultiClass'
+    with_div = True
     if options.method=='chaingraph':
         feature_path='ObjectExtraction'
+        with_div = False
     # read all traxels into TraxelStore
     print fns[0]
     time_range=[options.mints, options.maxts]
@@ -370,7 +373,7 @@ copied but linked to the original files to improve execution speed and storage r
 				  x_scale=options.x_scale,
 				  y_scale=options.y_scale,
 				  z_scale=options.z_scale,
-				  with_div=False,
+				  with_div=with_div,
 				  with_local_centers=False,
 				  median_object_size=None,
 				  max_traxel_id_at=None)
@@ -394,9 +397,9 @@ copied but linked to the original files to improve execution speed and storage r
     print "Start tracking..."
     if(options.method == "conservation"):
         rf_fn = 'none'
-	if options.rf_fn:
+        if options.rf_fn:
             rf_fn = options.rf_fn
-        tracker = track.ConsTracking(options.mno, options.mnd, options.dt, rf_fn, bool(options.sddp), options.forb, options.ep_gap, options.aos, bool(options.wt), options.dw, options.tw, bool(options.wd))
+        tracker = track.ConsTracking(int(options.mno), options.mnd, options.dt, rf_fn, bool(options.sddp), options.forb, options.ep_gap, options.aos, not bool(options.wot), options.dw, options.tw, not bool(options.wod))
     elif(options.method == "chaingraph"):
         if(options.rf_fn):
             tracker = track.ChaingraphTracking(options.rf_fn, options.app, options.dis, options.det, options.mis, True, options.opp, options.forb, not(options.without_constraints), options.fixed_detections, options.mdd, options.ma, options.ep_gap)
