@@ -286,8 +286,10 @@ copied but linked to the original files to improve execution speed and storage r
     # ep_gap in general parser options
     consopts.add_option('--average-obj-size', dest='aos', type='float', default=0, help='[default: %default]')
     consopts.add_option('--without-tracklets', dest='wot', action='store_true')
-    consopts.add_option('--div', dest='dw', type='float', default=1.0, help='division weight [default: %default]')
-    consopts.add_option('--tr', dest='tw', type='float', default=1.0, help='transition weight [default: %default]')
+    consopts.add_option('--div', dest='dw', type='float', default=10.0, help='division weight [default: %default]')
+    consopts.add_option('--dis', dest='dis', type='float', default=0.0, help='disappearance cost [default: %default]')
+    consopts.add_option('--app', dest='app', type='float', default=0.0, help='appearance cost [default: %default]')
+    consopts.add_option('--tr', dest='tw', type='float', default=10.0, help='transition weight [default: %default]')
     consopts.add_option('--without-divisions', dest='wod', action='store_true')
     
 
@@ -399,7 +401,7 @@ copied but linked to the original files to improve execution speed and storage r
         rf_fn = 'none'
         if options.rf_fn:
             rf_fn = options.rf_fn
-        tracker = track.ConsTracking(int(options.mno), options.mnd, options.dt, rf_fn, bool(options.sddp), options.forb, options.ep_gap, options.aos, not bool(options.wot), options.dw, options.tw, not bool(options.wod))
+        tracker = track.ConsTracking(int(options.mno), options.mnd, options.dt, rf_fn, bool(options.sddp), options.forb, options.ep_gap, options.aos, not bool(options.wot), options.dw, options.tw, not bool(options.wod), options.dis, options.app)
     elif(options.method == "chaingraph"):
         if(options.rf_fn):
             tracker = track.ChaingraphTracking(options.rf_fn, options.app, options.dis, options.det, options.mis, True, options.opp, options.forb, not(options.without_constraints), options.fixed_detections, options.mdd, options.ma, options.ep_gap)
