@@ -16,7 +16,7 @@ from empryonic.learning import match as m
 from empryonic.learning import quantification as quant
 import h5py
 
-def match(fn_pair):
+def match(fn_pair):    
     assoc = m.match_files(fn_pair[0], fn_pair[1], options.threshold, options.ignore_z, options.swap_xy, verbose=False)
     print "-> matched: " + path.basename(fn_pair[0]) + " <-> " + path.basename(fn_pair[1])
     return assoc

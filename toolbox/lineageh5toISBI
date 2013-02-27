@@ -1,0 +1,175 @@
+#!/usr/bin/env python
+
+import sys
+import h5py
+import numpy as np
+import glob
+from collections import defaultdict, namedtuple
+from functools import total_ordering
+
+
+@total_ordering
+class Lineage():
+    def __init__(self, l_id=0, t_start=0, t_end=0, parent=0, o_id=0):
+        self.id = l_id
+        self.t_start = t_start
+        self.t_end = t_end
+        self.parent = parent
+        self.o_id = o_id
+        self.children = None
+
+    def add_children(self, children):
+        self.children = children
+
+    def set_parent(self, parent):
+        self.parent = parent
+        if children:
+            for child in self.children:
+                child.set_parent(parent)
+
+    def set_o_id(self, o_id):
+        self.o_id = o_id
+
+    def set_t_end(self, t_end):
+        self.t_end = t_end
+
+    def __str__(self):
+        return "%d %d %d %d" % (self.id, self.t_start, self.t_end, self.parent)
+        # return "%d %d %d %d %d" % (self.id, self.t_start, self.t_end, self.parent, self.o_id)
+
+    def __eq__(self, l2):
+        return self.id == l2.id
+
+    def __lt__(self, l2):
+        return self.id < l2.id
+
+    def __hash__(self):
+        return hash(self.id)
+
+    
+def find_lineage_by_o_id(d, o_id):
+    for l in d.keys():
+        if l.o_id == o_id:
+            return l
+    return None
+
+
+def initialize_first(fn, d, t=0):
+    l_id = 1
+    with h5py.File(fn, 'r') as f:
+        if not 'tracking' in f:
+            raise Exception("No tracking group in %s!" % fn)
+        tg = f['tracking']
+        if 'Moves' in tg:
+            moves = tg['Moves'].value
+            for mv in moves:
+                lin = Lineage(l_id=l_id,
+                              t_start=t,
+                              t_end=-1,
+                              parent=0,
+                              o_id=mv[0])
+                d[lin] = mv[0]
+                l_id += 1
+    return l_id
+
+
+def close_open_lineages(d, t_end):
+    for l in d.keys():
+        if l.t_end == -1:
+            l.t_end = t_end
+
+                
+def lineageh5toISBI(folder):
+    fns = sorted(glob.glob(folder + '/*.h5'))
+    t = 1
+    if len(fns) == 0:
+        raise Exception("No h5 files found in %s!" % folder)
+    res = {}
+    
+    print "Initializing first time step with %s ..." % fns[0]
+    l_id = initialize_first(fns[0], res, t-1)
+
+    with h5py.File(fns[0], 'r') as f:
+        m = f['tracking/Moves'].value[0]
+    
+    for fn in fns:
+        print "Processing %s ..." % fn
+        with h5py.File(fn, 'r') as f:
+            if not 'tracking' in f:
+                raise Exception("No tracking group in %s!" % fn)
+            tg = f['tracking']
+            
+            if 'Moves' in tg:
+                moves = tg['Moves'].value
+                for mv in moves:
+                    l = find_lineage_by_o_id(res, mv[0])
+                    if l:
+                        l.set_o_id(mv[1])
+                        res[l] = mv[1]
+                    else:
+                        raise Exception("Invalid move in %s: " %fn + str(mv) +  "!" )
+
+            
+            if 'Splits' in tg:
+                splits = tg['Splits'].value
+                tmp = []
+                for sp in splits:
+                    l = find_lineage_by_o_id(res, sp[0])
+                    if l:
+                        l.set_t_end(t - 1)
+                        # l.set_o_id(-1)
+                        for s in sp[1:]:
+                            child = Lineage(l_id = l_id,
+                                            t_start = t,
+                                            t_end = -1,
+                                            parent = l.id,
+                                            o_id = s)
+                            res[child] = s
+                            l_id += 1
+                        tmp.append(l)
+                        
+                    else:
+                        raise Exception("Invalid split in %s!" %fn)
+                for el in tmp:
+                    el.set_o_id(-1)
+                    
+                    
+            if 'Disappearances' in tg:
+                disappearances = tg['Disappearances']
+                tmp = []
+                for dis in disappearances:
+                    l = find_lineage_by_o_id(res, dis[0])
+                    if l:
+                        tmp.append(l)
+                    else:
+                        raise Exception("Invalid disappearance in %s!" % fn)
+                for el in tmp:
+                    el.set_t_end(t - 1)
+                    el.set_o_id(-1)
+                
+            if 'Appearances' in tg:
+                appearances = tg['Appearances']
+                for app in appearances:
+                    l = Lineage(l_id = l_id,
+                                t_start = t,
+                                t_end = -1,
+                                parent = 0,
+                                o_id = app[0])
+                    if l in res.keys():
+                        raise Exception("Lineage %d already exists in dict!" % l_id)
+                    res[l] = app[0]
+                    l_id += 1
+        t += 1
+    close_open_lineages(res, t-1)
+    return res
+
+    
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--dir', '-d', required=True)
+    args = vars(parser.parse_args())
+    d = lineageh5toISBI(args['dir'].rstrip('/'))
+    for el in d.keys():
+        print el
+
