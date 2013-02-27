@@ -434,7 +434,8 @@ copied but linked to the original files to improve execution speed and storage r
         write_events(events_at, working_fns[i + 1])
         with h5py.File(fns[0], 'r') as src_file:
             with io.LineageH5(working_fns[i+1]) as dest_file:
-                label_img = np.array(src_file[feature_path]['LabelImage'][t0+i+1,...,0])
+                # [t0+1+i,...] or [t0+i,...]?
+                label_img = np.array(src_file[feature_path]['LabelImage'][t0+i,...,0])
                 dg = dest_file.create_group('segmentation')
 		ds = dg.create_dataset("labels", data=label_img, dtype=np.uint32)
 
