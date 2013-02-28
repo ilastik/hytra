@@ -430,10 +430,30 @@ copied but linked to the original files to improve execution speed and storage r
     print "Length of events " + str(len(events))
     working_fns = [options.out_dir.rstrip('/') + "/%04d.h5" % timestep for timestep in xrange(t0,t1+1)]
     assert(len(events) + 1 == len(working_fns))
-    for i, events_at in enumerate(events):
-        write_events(events_at, working_fns[i + 1])
-        with h5py.File(fns[0], 'r') as src_file:
-            with io.LineageH5(working_fns[i+1]) as dest_file:
+    with h5py.File(fns[0], 'r') as src_file:
+        # first timestep without tracking
+        with io.LineageH5(working_fns[0], 'w') as dest_file:
+            print "-- writing empty tracking to base file", working_fns[0]
+            label_img = np.array(src_file[feature_path]['LabelImage'][t0,...,0])
+            dg = dest_file.create_group('segmentation')
+            ds = dg.create_dataset('labels', data=label_img, dtype=np.uint32)
+
+            meta = dest_file.create_group('objects/meta')
+            ids = np.unique(label_img)
+            ids = ids[ids > 0]
+            valid = np.ones(ids.shape)
+            meta.create_dataset("id", data=ids[::-1], dtype=np.uint32)
+            meta.create_dataset("valid", data=valid, dtype=np.uint32)
+
+            # create empty tracking group
+            dest_file.create_group('tracking')
+            print "-> base file successfully written"
+
+            
+        # tracked timesteps
+        for i, events_at in enumerate(events):
+            write_events(events_at, working_fns[i + 1])
+            with io.LineageH5(working_fns[i+1], 'w') as dest_file:
                 # [t0+1+i,...] or [t0+i,...]?
                 label_img = np.array(src_file[feature_path]['LabelImage'][t0+i+1,...,0])
                 dg = dest_file.create_group('segmentation')
