@@ -111,6 +111,32 @@ class Merger( Event ):
     def __repr__( self ):
         return "Merger((" + str(self.ids[0]) + ", "+ str(self.ids[1])+ "))"
 
+
+class MultiFrameMove( Event ):
+    def translate( self, origin_match, to_match, setid ):
+        if self.ids[1] != to_match[self.ids[1]]:
+            raise RuntimeError('translate: translation not supported')
+
+        return MultiFrameMove( tuple(self.ids), self.timestep, setid )
+
+    def equivalent_to( self, origin_match, to_match, other):
+        if self.ids[1] != to_match[self.ids[1]]:
+            raise RuntimeError('equivalent_to: translation not supported')
+        return (self == other)
+
+    def visible_in_other( self, origin_match, to_match):
+        return True
+
+    def is_matched(self,origin_match, to_match):
+        if to_match.has_key(self.ids[1]):
+            return True
+        else:
+            return False
+
+    def __repr__( self ):
+        return "MultiFrameMove((" + str(self.ids[0]) + ", "+ str(self.ids[1]) + "," + str(self.ids[2]) + "))"
+
+
 class Division( Event ):
     def __init__( self, ids, timestep, setid='base' ):
         children = list(ids[1:3])
@@ -211,6 +237,11 @@ def event_set_from( lineageH5, setid='base' ):
     merg_ids = lineageH5.get_mergers()
     for merg in merg_ids:
         e = Merger((merg[0], merg[1]), lineageH5.timestep, setid)
+        events.add(e)
+    
+    mult_ids = lineageH5.get_multiFrameMoves()
+    for mult in mult_ids:
+        e = MultiFrameMove((mult[0], mult[1], mult[2]), lineageH5.timestep, setid)
         events.add(e)
     
     div_ids = lineageH5.get_divisions()
@@ -430,6 +461,12 @@ class Taxonomy( object ):
             "merg_rec": self.recall(Merger),
             "merg_f": self.f_measure(Merger),
 
+            "mult_n_base": len(by_type(self.base_basic, MultiFrameMove)),
+            "mult_n_cont": len(by_type(self.cont_basic, MultiFrameMove)),            
+            "mult_prec":  self.precision(MultiFrameMove),
+            "mult_rec": self.recall(MultiFrameMove),
+            "mult_f": self.f_measure(MultiFrameMove),
+
             "div_n_base": len(by_type(self.base_basic, Division)),
             "div_n_cont": len(by_type(self.cont_basic, Division)),                        
             "div_prec": self.precision(Division),
@@ -460,11 +497,17 @@ class Taxonomy( object ):
             "mov_rec_v": self.recall_given_visibility(Move),
             "mov_f_v": self.f_measure_given_visibility(Move),
 
-            "merg_n_base_v": len(by_type(self.base_basic, Merger)),
-            "merg_n_cont_v": len(by_type(self.cont_basic, Merger)),            
-            "merg_prec_v":  self.precision(Merger),
-            "merg_rec_v": self.recall(Merger),
-            "merg_f_v": self.f_measure(Merger),
+            "merg_n_base_v": len(by_type(self.base_v, Merger)),
+            "merg_n_cont_v": len(by_type(self.cont_v, Merger)),            
+            "merg_prec_v":  self.precision_given_visibility(Merger),
+            "merg_rec_v": self.recall_given_visibility(Merger),
+            "merg_f_v": self.f_measure_given_visibility(Merger),
+
+            "mult_n_base_v": len(by_type(self.base_v, MultiFrameMove)),
+            "mult_n_cont_v": len(by_type(self.cont_v, MultiFrameMove)),            
+            "mult_prec_v":  self.precision_given_visibility(MultiFrameMove),
+            "mult_rec_v": self.recall_given_visibility(MultiFrameMove),
+            "mult_f_v": self.f_measure_given_visibility(MultiFrameMove),
 
             "div_n_base_v": len(by_type(self.base_v, Division)),
             "div_n_cont_v": len(by_type(self.cont_v, Division)),                        
@@ -486,7 +529,7 @@ class Taxonomy( object ):
             }
     
     def to_line( self ):
-        line = '%(n_base)d,%(n_cont)d,%(precision).4f,%(recall).4f,%(f_measure).4f,%(mov_n_base)d,%(mov_n_cont)d,%(mov_prec).4f,%(mov_rec).4f,%(mov_f).4f,%(merg_n_base)d,%(merg_n_cont)d,%(merg_prec).4f,%(merg_rec).4f,%(merg_f).4f,%(div_n_base)d,%(div_n_cont)d,%(div_prec).4f,%(div_rec).4f,%(div_f).4f,%(app_n_base)d,%(app_n_cont)d,%(app_prec).4f,%(app_rec).4f,%(app_f).4f,%(dis_n_base)d,%(dis_n_cont)d,%(dis_prec).4f,%(dis_rec).4f' % self.all_stats()
+        line = '%(n_base)d,%(n_cont)d,%(precision).4f,%(recall).4f,%(f_measure).4f,%(mov_n_base)d,%(mov_n_cont)d,%(mov_prec).4f,%(mov_rec).4f,%(mov_f).4f,%(merg_n_base)d,%(merg_n_cont)d,%(merg_prec).4f,%(merg_rec).4f,%(merg_f).4f,%(div_n_base)d,%(div_n_cont)d,%(div_prec).4f,%(div_rec).4f,%(div_f).4f,%(app_n_base)d,%(app_n_cont)d,%(app_prec).4f,%(app_rec).4f,%(app_f).4f,%(dis_n_base)d,%(dis_n_cont)d,%(dis_prec).4f,%(dis_rec).4f,%(mult_n_base)d,%(mult_n_cont)d,%(mult_prec).4f,%(mult_rec).4f' % self.all_stats()
         return line
 
     def __str__( self ):
@@ -511,6 +554,13 @@ n_contestant = %(merg_n_cont)d
 precision = %(merg_prec).4f
 recall = %(merg_rec).4f
 f_measure = %(merg_f).4f
+
+[multiFrameMove]
+n_base = %(mult_n_base)d
+n_contestant = %(mult_n_cont)d
+precision = %(mult_prec).4f
+recall = %(mult_rec).4f
+f_measure = %(mult_f).4f
 
 [division]
 n_base = %(div_n_base)d

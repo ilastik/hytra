@@ -145,6 +145,8 @@ class LineageH5( h5py.File ):
     mov_ener_ds = "/tracking/Moves-Energy"
     merg_ds = "/tracking/Mergers"
     merg_ener_ds = "tracking/Mergers-Energy"
+    multi_ds = "/tracking/MultiFrameMove"
+    multi_ener_ds = "tracking/MultiFrameMove-Energy"
     app_ds = "/tracking/Appearances"
     app_ener_ds = "/tracking/Appearances-Energy"
     dis_ds = "/tracking/Disappearances"
@@ -220,6 +222,12 @@ class LineageH5( h5py.File ):
         if self.has_tracking() and _path.basename(self.merg_ds) in self[self.track_gn].keys():
             return self[self.merg_ds].value
         else:
+            return np.empty(0)
+
+    def get_multiFrameMoves( self ):
+         if self.has_tracking() and _path.basename(self.multi_ds) in self[self.track_gn].keys():
+            return self[self.multi_ds].value
+         else:
             return np.empty(0)
 
     def get_move_energies( self ):
