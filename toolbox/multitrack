@@ -31,7 +31,7 @@ selected_features_division_detection = sorted(['SquaredDistance01', # 'SquaredDi
 
 
 selected_features_cell_classification = sorted(['Count', 'Mean', 'Variance', \
-                                                'RegionRadii', 'GMM_BIC'])
+                                                'RegionRadii']) # , 'GMM_BIC'])
 
 ilp_feature_path = 'ObjectExtraction/samples/0/%s/0/%s'
 
