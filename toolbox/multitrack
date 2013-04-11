@@ -18,19 +18,19 @@ from empryonic import track
 from empryonic import io
 
 
-selected_features_division_detection = (['SquaredDistance01', # 'SquaredDistance02', \
-                                               'SquaredDistance00', 'AngleDaughters', 'ChildrenSizeRatio', \
-                                               'SquaredDistanceRatio', 'Count', \
-                                               'ParentChildrenSizeRatio', 'Mean', 'Variance', 'ChildrenMeanRatio', \
-                                               'ParentChildrenMeanRatio',\
-                                               'SquaredDistance01_corr', # 'SquaredDistance02_corr', \
-                                               'SquaredDistance00_corr', 'AngleDaughters_corr', 'ChildrenSizeRatio_corr', \
-                                               'SquaredDistanceRatio_corr', \
-                                               'ParentChildrenSizeRatio_corr', 'ChildrenMeanRatio_corr', \
-                                               'ParentChildrenMeanRatio_corr'])
+selected_features_division_detection = sorted(['SquaredDistance01', # 'SquaredDistance02', \
+                                         'SquaredDistance00', 'AngleDaughters', 'ChildrenSizeRatio', \
+                                         'SquaredDistanceRatio', 'Count', \
+                                         'ParentChildrenSizeRatio', 'Mean', 'Variance', 'ChildrenMeanRatio', \
+                                         'ParentChildrenMeanRatio',\
+                                         'SquaredDistance01_corr', # 'SquaredDistance02_corr', \
+                                         'SquaredDistance00_corr', 'AngleDaughters_corr', 'ChildrenSizeRatio_corr', \
+                                         'SquaredDistanceRatio_corr', \
+                                         'ParentChildrenSizeRatio_corr', 'ChildrenMeanRatio_corr', \
+                                         'ParentChildrenMeanRatio_corr'])
 
 
-selected_features_cell_classification = (['Count', 'Mean', 'Variance', \
+selected_features_cell_classification = sorted(['Count', 'Mean', 'Variance', \
                                                 'RegionRadii', 'GMM_BIC'])
 
 ilp_feature_path = 'ObjectExtraction/samples/0/%s/0/%s'
@@ -88,7 +88,8 @@ def generate_traxelstore(h5file,
         h5file = h5py.File(h5filename, 'r')
 
     feats = h5file[feature_path]
-    feats = h5file[feature_path]['samples']
+    feats = h5file[feature_path]['samples/0']
+
     
     if with_div and 'ClassProbabilities' in h5file[feature_path].keys():
         #divProbs = None # self.ClassMapping(time_range).wait()
@@ -119,14 +120,29 @@ def generate_traxelstore(h5file,
     obj_sizes = []
     total_count = 0
     empty_frame = False
+
     for t in keys_sorted:
-        rc = np.array(feats['0'][t]['0']['RegionCenter'])
+        rc = np.array(feats[t]['0']['RegionCenter'])
         if rc.size:
            rc = rc[1:, ...]
 
-        ct = np.array(feats['0'][t]['0']['Count'])
+        ct = np.array(feats[t]['0']['Count'])
         if ct.size:
            ct = ct[1:, ...]
+
+        coordinates_dataset = feats[t]['0']['Coord<ValueList >']
+        stride = coordinates_dataset.attrs['stride']
+        n_obj = coordinates_dataset.attrs['n_objects']
+        coordinates = [[0]]
+        for idx in xrange(stride, stride*n_obj, stride):
+            max_valid = np.where(coordinates_dataset[idx:idx+stride,0] == -1)
+            curr_stride = stride
+            if max_valid[0].shape[0] > 0:
+                curr_stride = max_valid[0][0]
+            coordinates.append(np.array(coordinates_dataset[idx:idx+curr_stride,...]))
+        if len(coordinates):
+            coordinates = coordinates[1:]
+            
             
         print "at timestep ", t, rc.shape[0], "traxels found"
         count = 0
@@ -152,6 +168,13 @@ def generate_traxelstore(h5file,
             tr.add_feature_array("com", len(rc[idx]))                
             for i, v in enumerate(rc[idx]):
                 tr.set_feature_value('com', i, float(v))
+
+                
+            tr.add_feature_array("coordinates", 3*len(coordinates[idx]))
+            for i, v in enumerate(coordinates[idx]):
+                tr.set_feature_value("coordinates", 3*i,   float(v[0]))
+                tr.set_feature_value("coordinates", 3*i+1, float(v[1]))
+                tr.set_feature_value("coordinates", 3*i+2, float(v[2]))
             
             if with_div:
                 tr.add_feature_array("divProb", 1)
@@ -163,6 +186,8 @@ def generate_traxelstore(h5file,
                     for div_feature in selected_features_division_detection:
                         features = np.append(features, get_feature(h5file, ilp_feature_path % (t, div_feature), tr.Id).astype(np.float32))
                     prob = float(rf.predictProbabilities(features[np.newaxis,...])[0][1])
+                    #print selected_features_division_detection
+                    #print features
                 else:
                     prob = float(divProbs[str(t)][idx+1][1])
                 # idx+1 because rc and ct start from 1, divProbs starts from 0
@@ -183,10 +208,12 @@ def generate_traxelstore(h5file,
                     rf = merger_rf # vigra.learning.RandomForest(str(h5file.filename), rf_path)
                     tr.add_feature_array("detProb", rf.labelCount())
                     features = np.array([], dtype=np.float32)
-                    for div_feature in selected_features_division_detection:
+                    for div_feature in selected_features_cell_classification:
                         features = np.append(features, get_feature(h5file, ilp_feature_path % (t, div_feature), tr.Id).astype(np.float32))
+                    # print t, idx
+                    # print selected_features_cell_classification
+                    # print features
                     detProbFeat = rf.predictProbabilities(features[np.newaxis,...])[0]
-                    print detProbFeat
                     for idx in xrange(len(detProbFeat)):
                         tr.set_feature_value("detProb", idx, float(detProbFeat[idx]))
             
@@ -239,6 +266,7 @@ def write_events(events, fn):
         div = []
         mov = []
         mer = []
+        mul = []
         print "-- Writing results to " + path.basename(fn)
         for event in events:
             if event.type == track.EventType.Appearance:
@@ -251,6 +279,8 @@ def write_events(events, fn):
                 mov.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
             if event.type == track.EventType.Merger:
                 mer.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
+            if event.type == track.EventType.MultiFrameMove:
+                mul.append(tuple(event.traxel_ids) + (event.energy,))
 
         # convert to ndarray for better indexing
         dis = np.asarray(dis)
@@ -258,6 +288,7 @@ def write_events(events, fn):
         div = np.asarray(div)
         mov = np.asarray(mov)
         mer = np.asarray(mer)
+        mul = np.asarray(mul)
 
         # write only if file exists
         with io.LineageH5(fn, 'r+') as f_curr:
@@ -304,6 +335,14 @@ def write_events(events, fn):
 		
                 ds = tg.create_dataset("Mergers-Energy", data=mer[:, -1], dtype=np.double)
                 ds.attrs["Format"] = "lower energy -> higher confidence"
+
+            if len(mul):
+                ds = tg.create_dataset("MultiFrameMoves", data=mul[:, :-1], dtype=np.int32)
+                ds.attrs["Format"] = "from (given by timestep), to (current file), timestep"
+
+                ds = tg.create_dataset("MultiFrameMoves-Energy", data=mul[:, -1], dtype=np.double)
+                ds.attrs["Format"] = "lower energy -> higher confidence"
+                
 
         print "-> results successfully written"
 
@@ -363,8 +402,8 @@ copied but linked to the original files to improve execution speed and storage r
     consopts.add_option('--average-obj-size', dest='aos', type='float', default=0, help='[default: %default]')
     consopts.add_option('--without-tracklets', dest='wot', action='store_true')
     consopts.add_option('--div', dest='dw', type='float', default=10.0, help='division weight [default: %default]')
-    consopts.add_option('--dis', dest='dis', type='float', default=0.0, help='disappearance cost [default: %default]')
-    consopts.add_option('--app', dest='app', type='float', default=0.0, help='appearance cost [default: %default]')
+    consopts.add_option('--dis', dest='dis', type='float', default=500.0, help='disappearance cost [default: %default]')
+    consopts.add_option('--app', dest='app', type='float', default=500.0, help='appearance cost [default: %default]')
     consopts.add_option('--tr', dest='tw', type='float', default=10.0, help='transition weight [default: %default]')
     consopts.add_option('--without-divisions', dest='wod', action='store_true')
     consopts.add_option('--means', dest='means', type='float', default=0.0, help='means for detection [default: %default]')
@@ -434,7 +473,7 @@ copied but linked to the original files to improve execution speed and storage r
     ### Do the tracking
     start = time.time()
     
-    feature_path='ObjectExtraction'
+    feature_path='ObjectExtraction/'
     with_div = True
     with_merger_prior = True
     if options.method=='chaingraph':
@@ -447,6 +486,9 @@ copied but linked to the original files to improve execution speed and storage r
         time_range = None
     obj_size = [0]
     with h5py.File(fns[0], 'r') as h5file:
+        ndim = 3
+        if h5file['ObjectExtraction/LabelImage/0/data'].shape[4] == 1:
+            ndim = 3
         ts = generate_traxelstore(h5file=h5file,
 				  feature_path=feature_path,
 				  time_range = time_range,
@@ -487,7 +529,7 @@ copied but linked to the original files to improve execution speed and storage r
         rf_fn = 'none'
         if options.rf_fn:
             rf_fn = options.rf_fn
-        tracker = track.ConsTracking(int(options.mno), options.mnd, options.dt, rf_fn, bool(options.sddp), options.forb, options.ep_gap, obj_size[0], not bool(options.wot), options.dw, options.tw, not bool(options.wod), options.dis, options.app, options.wmr)
+        tracker = track.ConsTracking(int(options.mno), options.mnd, options.dt, rf_fn, bool(options.sddp), options.forb, options.ep_gap, obj_size[0], not bool(options.wot), options.dw, options.tw, not bool(options.wod), options.dis, options.app, options.wmr, ndim)
     elif(options.method == "chaingraph"):
         rf_fn = 'none'
         with_rf = False
