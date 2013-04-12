@@ -13,8 +13,39 @@ import shutil
 import time
 import numpy as np
 import h5py
+import vigra
 from empryonic import track
 from empryonic import io
+
+
+selected_features_division_detection = sorted(['SquaredDistance01', # 'SquaredDistance02', \
+                                         'SquaredDistance00', 'AngleDaughters', 'ChildrenSizeRatio', \
+                                         'SquaredDistanceRatio', 'Count', \
+                                         'ParentChildrenSizeRatio', 'Mean', 'Variance', 'ChildrenMeanRatio', \
+                                         'ParentChildrenMeanRatio',\
+                                         'SquaredDistance01_corr', # 'SquaredDistance02_corr', \
+                                         'SquaredDistance00_corr', 'AngleDaughters_corr', 'ChildrenSizeRatio_corr', \
+                                         'SquaredDistanceRatio_corr', \
+                                         'ParentChildrenSizeRatio_corr', 'ChildrenMeanRatio_corr', \
+                                         'ParentChildrenMeanRatio_corr'])
+
+
+selected_features_cell_classification = sorted(['Count', 'Mean', 'Variance', \
+                                                'RegionRadii']) # , 'GMM_BIC'])
+
+ilp_feature_path = 'ObjectExtraction/samples/0/%s/0/%s'
+
+
+
+def get_feature(h5file, feature_path, object_id):
+    if not feature_path in h5file:
+        raise Exception("Feature %s not found in %s." % (feature_path, h5file.filename))
+    return h5file[feature_path][object_id,...]
+    
+
+
+
+
 
 def generate_traxelstore(h5file,
 			 feature_path,
@@ -26,18 +57,39 @@ def generate_traxelstore(h5file,
 			 x_scale=1.0,
 			 y_scale=1.0,
 			 z_scale=1.0,
-			 with_div=False,
+			 with_div=True,
 			 with_local_centers=False,
 			 median_object_size=None,
-			 max_traxel_id_at=None):
+			 max_traxel_id_at=None,
+                         with_merger_prior=True):
 
     
     print "generating traxels"
     print "fetching region features and division probabilities"
-    print h5file, feature_path
+    print h5file.filename, feature_path
+
+    division_rf = None
+    h5filename = str(h5file.filename)
+    if with_div:
+        rf_path = 'DivisionDetection/ClassifierForests/Forest0000'
+        if  rf_path in h5file:
+            h5file.close()
+            division_rf = vigra.learning.RandomForest(h5filename, rf_path)
+            h5file = h5py.File(h5filename, 'r')
+
+    merger_rf = None
+    if with_merger_prior:
+        print "with_merger_prior"
+        rf_path = 'CellClassification/ClassifierForests/Forest0000'
+        if not rf_path in h5file:
+            raise Exception("%s does not contain path %s" % (h5file.filename, rf_path))
+        h5file.close()
+        merger_rf = vigra.learning.RandomForest(h5filename, rf_path)
+        h5file = h5py.File(h5filename, 'r')
 
     feats = h5file[feature_path]
-    feats = h5file[feature_path]['samples']
+    feats = h5file[feature_path]['samples/0']
+
     
     if with_div and 'ClassProbabilities' in h5file[feature_path].keys():
         #divProbs = None # self.ClassMapping(time_range).wait()
@@ -68,6 +120,7 @@ def generate_traxelstore(h5file,
     obj_sizes = []
     total_count = 0
     empty_frame = False
+
     for t in keys_sorted:
         rc = np.array(feats[t]['0']['RegionCenter'])
         if rc.size:
@@ -76,6 +129,20 @@ def generate_traxelstore(h5file,
         ct = np.array(feats[t]['0']['Count'])
         if ct.size:
            ct = ct[1:, ...]
+
+        coordinates_dataset = feats[t]['0']['Coord<ValueList >']
+        stride = coordinates_dataset.attrs['stride']
+        n_obj = coordinates_dataset.attrs['n_objects']
+        coordinates = [[0]]
+        for idx in xrange(stride, stride*n_obj, stride):
+            max_valid = np.where(coordinates_dataset[idx:idx+stride,0] == -1)
+            curr_stride = stride
+            if max_valid[0].shape[0] > 0:
+                curr_stride = max_valid[0][0]
+            coordinates.append(np.array(coordinates_dataset[idx:idx+curr_stride,...]))
+        if len(coordinates):
+            coordinates = coordinates[1:]
+            
             
         print "at timestep ", t, rc.shape[0], "traxels found"
         count = 0
@@ -101,11 +168,30 @@ def generate_traxelstore(h5file,
             tr.add_feature_array("com", len(rc[idx]))                
             for i, v in enumerate(rc[idx]):
                 tr.set_feature_value('com', i, float(v))
+
+                
+            tr.add_feature_array("coordinates", 3*len(coordinates[idx]))
+            for i, v in enumerate(coordinates[idx]):
+                tr.set_feature_value("coordinates", 3*i,   float(v[0]))
+                tr.set_feature_value("coordinates", 3*i+1, float(v[1]))
+                tr.set_feature_value("coordinates", 3*i+2, float(v[2]))
             
             if with_div:
                 tr.add_feature_array("divProb", 1)
+                prob = 0.0
+
+                if  division_rf:
+                    rf = division_rf # vigra.learning.RandomForest(str(h5file.filename), rf_path)
+                    features = np.array([], dtype=np.float32)
+                    for div_feature in selected_features_division_detection:
+                        features = np.append(features, get_feature(h5file, ilp_feature_path % (t, div_feature), tr.Id).astype(np.float32))
+                    prob = float(rf.predictProbabilities(features[np.newaxis,...])[0][1])
+                    #print selected_features_division_detection
+                    #print features
+                else:
+                    prob = float(divProbs[str(t)][idx+1][1])
                 # idx+1 because rc and ct start from 1, divProbs starts from 0
-                tr.set_feature_value("divProb", 0, float(divProbs[str(t)][idx+1][1]))
+                tr.set_feature_value("divProb", 0, prob)
             
             if with_local_centers:
                 tr.add_feature_array("localCentersX", len(localCenters[t][idx+1]))  
@@ -114,7 +200,22 @@ def generate_traxelstore(h5file,
                 for i, v in enumerate(localCenters[t][idx+1]):
                     tr.set_feature_value("localCentersX", i, float(v[0]))
                     tr.set_feature_value("localCentersY", i, float(v[1]))
-                    tr.set_feature_value("localCentersZ", i, float(v[2]))                
+                    tr.set_feature_value("localCentersZ", i, float(v[2]))
+
+
+            if with_merger_prior:
+                if merger_rf:
+                    rf = merger_rf # vigra.learning.RandomForest(str(h5file.filename), rf_path)
+                    tr.add_feature_array("detProb", rf.labelCount())
+                    features = np.array([], dtype=np.float32)
+                    for div_feature in selected_features_cell_classification:
+                        features = np.append(features, get_feature(h5file, ilp_feature_path % (t, div_feature), tr.Id).astype(np.float32))
+                    # print t, idx
+                    # print selected_features_cell_classification
+                    # print features
+                    detProbFeat = rf.predictProbabilities(features[np.newaxis,...])[0]
+                    for idx in xrange(len(detProbFeat)):
+                        tr.set_feature_value("detProb", idx, float(detProbFeat[idx]))
             
             tr.add_feature_array("count", 1)
             tr.set_feature_value("count", 0, float(size))
@@ -165,6 +266,7 @@ def write_events(events, fn):
         div = []
         mov = []
         mer = []
+        mul = []
         print "-- Writing results to " + path.basename(fn)
         for event in events:
             if event.type == track.EventType.Appearance:
@@ -177,6 +279,8 @@ def write_events(events, fn):
                 mov.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
             if event.type == track.EventType.Merger:
                 mer.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
+            if event.type == track.EventType.MultiFrameMove:
+                mul.append(tuple(event.traxel_ids) + (event.energy,))
 
         # convert to ndarray for better indexing
         dis = np.asarray(dis)
@@ -184,6 +288,7 @@ def write_events(events, fn):
         div = np.asarray(div)
         mov = np.asarray(mov)
         mer = np.asarray(mer)
+        mul = np.asarray(mul)
 
         # write only if file exists
         with io.LineageH5(fn, 'r+') as f_curr:
@@ -230,6 +335,14 @@ def write_events(events, fn):
 		
                 ds = tg.create_dataset("Mergers-Energy", data=mer[:, -1], dtype=np.double)
                 ds.attrs["Format"] = "lower energy -> higher confidence"
+
+            if len(mul):
+                ds = tg.create_dataset("MultiFrameMoves", data=mul[:, :-1], dtype=np.int32)
+                ds.attrs["Format"] = "from (given by timestep), to (current file), timestep"
+
+                ds = tg.create_dataset("MultiFrameMoves-Energy", data=mul[:, -1], dtype=np.double)
+                ds.attrs["Format"] = "lower energy -> higher confidence"
+                
 
         print "-> results successfully written"
 
@@ -281,7 +394,7 @@ copied but linked to the original files to improve execution speed and storage r
     consopts = optparse.OptionGroup(parser, "conservation tracking")
     consopts.add_option('--max-number-objects', dest='mno', type='float', default=2, help='Give maximum number of objects one connected component may consist of [default: %default]')
     consopts.add_option('--max-neighbor-distance', dest='mnd', type='float', default=30, help='[default: %default]')
-    consopts.add_option('--division-threshold', dest='dt', type='float', default=0.5, help='[default: %default]')
+    consopts.add_option('--division-threshold', dest='dt', type='float', default=0.1, help='[default: %default]')
     # detection_rf_filename in general parser options
     consopts.add_option('--size-dependent-detection-prob', dest='sddp', action='store_true')
     # forbidden_cost in general parser options
@@ -289,11 +402,13 @@ copied but linked to the original files to improve execution speed and storage r
     consopts.add_option('--average-obj-size', dest='aos', type='float', default=0, help='[default: %default]')
     consopts.add_option('--without-tracklets', dest='wot', action='store_true')
     consopts.add_option('--div', dest='dw', type='float', default=10.0, help='division weight [default: %default]')
-    consopts.add_option('--dis', dest='dis', type='float', default=0.0, help='disappearance cost [default: %default]')
-    consopts.add_option('--app', dest='app', type='float', default=0.0, help='appearance cost [default: %default]')
+    consopts.add_option('--dis', dest='dis', type='float', default=500.0, help='disappearance cost [default: %default]')
+    consopts.add_option('--app', dest='app', type='float', default=500.0, help='appearance cost [default: %default]')
     consopts.add_option('--tr', dest='tw', type='float', default=10.0, help='transition weight [default: %default]')
     consopts.add_option('--without-divisions', dest='wod', action='store_true')
+    consopts.add_option('--means', dest='means', type='float', default=0.0, help='means for detection [default: %default]')
     consopts.add_option('--sigma', dest='sigma', type='float', default=0.0, help='sigma for detection [default: %default]')
+    consopts.add_option('--with-merger-resolution', dest='wmr', action='store_true', default=False)
 
     
 
@@ -358,11 +473,12 @@ copied but linked to the original files to improve execution speed and storage r
     ### Do the tracking
     start = time.time()
     
-    feature_path='ObjectExtractionMultiClass'
+    feature_path='ObjectExtraction/'
     with_div = True
+    with_merger_prior = True
     if options.method=='chaingraph':
         feature_path='ObjectExtraction'
-        with_div = False
+        with_merger_prior=False
     # read all traxels into TraxelStore
     print fns[0]
     time_range=[options.mints, options.maxts]
@@ -370,6 +486,9 @@ copied but linked to the original files to improve execution speed and storage r
         time_range = None
     obj_size = [0]
     with h5py.File(fns[0], 'r') as h5file:
+        ndim = 3
+        if h5file['ObjectExtraction/LabelImage/0/data'].shape[4] == 1:
+            ndim = 3
         ts = generate_traxelstore(h5file=h5file,
 				  feature_path=feature_path,
 				  time_range = time_range,
@@ -383,7 +502,8 @@ copied but linked to the original files to improve execution speed and storage r
 				  with_div=with_div,
 				  with_local_centers=False,
 				  median_object_size=obj_size,
-				  max_traxel_id_at=None)
+				  max_traxel_id_at=None,
+                                  with_merger_prior=with_merger_prior)
 	"""for i, fn in enumerate(working_fns):
         print "-- reading Traxels from " + fn
         f = io.LineageH5(fn, 'r', timestep=i)
@@ -409,7 +529,7 @@ copied but linked to the original files to improve execution speed and storage r
         rf_fn = 'none'
         if options.rf_fn:
             rf_fn = options.rf_fn
-        tracker = track.ConsTracking(int(options.mno), options.mnd, options.dt, rf_fn, bool(options.sddp), options.forb, options.ep_gap, obj_size[0], not bool(options.wot), options.dw, options.tw, not bool(options.wod), options.dis, options.app, options.sigma)
+        tracker = track.ConsTracking(int(options.mno), options.mnd, options.dt, rf_fn, bool(options.sddp), options.forb, options.ep_gap, obj_size[0], not bool(options.wot), options.dw, options.tw, not bool(options.wod), options.dis, options.app, options.wmr, ndim)
     elif(options.method == "chaingraph"):
         rf_fn = 'none'
         with_rf = False
@@ -436,7 +556,7 @@ copied but linked to the original files to improve execution speed and storage r
         # first timestep without tracking
         with io.LineageH5(working_fns[0], 'w') as dest_file:
             print "-- writing empty tracking to base file", working_fns[0]
-            label_img = np.array(src_file[feature_path]['LabelImage'][t0,...,0])
+            label_img = np.array(src_file[feature_path]['LabelImage']['0']['data'][t0,...,0])
             dg = dest_file.create_group('segmentation')
             ds = dg.create_dataset('labels', data=label_img, dtype=np.uint32)
 
@@ -456,7 +576,7 @@ copied but linked to the original files to improve execution speed and storage r
         for i, events_at in enumerate(events):
             with io.LineageH5(working_fns[i+1], 'w') as dest_file:
                 # [t0+1+i,...] or [t0+i,...]?
-                label_img = np.array(src_file[feature_path]['LabelImage'][t0+i+1,...,0])
+                label_img = np.array(src_file[feature_path]['LabelImage']['0']['data'][t0+i+1,...,0])
                 dg = dest_file.create_group('segmentation')
                 ds = dg.create_dataset("labels", data=label_img, dtype=np.uint32)
 
