@@ -409,6 +409,7 @@ copied but linked to the original files to improve execution speed and storage r
     consopts.add_option('--means', dest='means', type='float', default=0.0, help='means for detection [default: %default]')
     consopts.add_option('--sigma', dest='sigma', type='float', default=0.0, help='sigma for detection [default: %default]')
     consopts.add_option('--with-merger-resolution', dest='wmr', action='store_true', default=False)
+    consopts.add_option('--trans-par', dest='trans_par', type='float', default=5.0, help='alpha for the transition prior [default: %default]')
 
     
 
@@ -529,7 +530,7 @@ copied but linked to the original files to improve execution speed and storage r
         rf_fn = 'none'
         if options.rf_fn:
             rf_fn = options.rf_fn
-        tracker = track.ConsTracking(int(options.mno), options.mnd, options.dt, rf_fn, bool(options.sddp), options.forb, options.ep_gap, obj_size[0], not bool(options.wot), options.dw, options.tw, not bool(options.wod), options.dis, options.app, options.wmr, ndim)
+        tracker = track.ConsTracking(int(options.mno), options.mnd, options.dt, rf_fn, bool(options.sddp), options.forb, options.ep_gap, obj_size[0], not bool(options.wot), options.dw, options.tw, not bool(options.wod), options.dis, options.app, options.wmr, ndim, options.trans_par)
     elif(options.method == "chaingraph"):
         rf_fn = 'none'
         with_rf = False
