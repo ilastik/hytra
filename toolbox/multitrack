@@ -375,6 +375,8 @@ copied but linked to the original files to improve execution speed and storage r
     parser.add_option('--min-ts', type='int', dest='mints', default=0, help='[default: %default]')
     parser.add_option('--max-ts', type='int', dest='maxts', default=-1, help='[default: %default]')
     parser.add_option('--min-size', type='int', dest='minsize', default=0, help='minimal size of objects to be tracked [default: %default]')
+    parser.add_option('--dump-traxelstore', type='string', dest='dump_traxelstore', default=None, help='dump traxelstore to file [default: %default]')
+    parser.add_option('--load-traxelstore', type='string', dest='load_traxelstore', default=None, help='load traxelstore from file [default: %default]')
     
 
     chaingraphopts = optparse.OptionGroup(parser, "chaingraph method")
@@ -488,9 +490,16 @@ copied but linked to the original files to improve execution speed and storage r
     obj_size = [0]
     with h5py.File(fns[0], 'r') as h5file:
         ndim = 3
-        if h5file['ObjectExtraction/LabelImage/0/data'].shape[4] == 1:
-            ndim = 3
-        ts = generate_traxelstore(h5file=h5file,
+        if h5file['ObjectExtraction/LabelImage/0/data'].shape[3] == 1:
+            ndim = 2
+
+        if options.load_traxelstore:
+            print 'loading traxelstore from file'
+            import pickle
+            with open(options.load_traxelstore, 'rb') as ts_in:
+               ts = pickle.load(ts_in)
+        else:
+            ts = generate_traxelstore(h5file=h5file,
 				  feature_path=feature_path,
 				  time_range = time_range,
 				  x_range = None,
@@ -505,6 +514,17 @@ copied but linked to the original files to improve execution speed and storage r
 				  median_object_size=obj_size,
 				  max_traxel_id_at=None,
                                   with_merger_prior=with_merger_prior)
+
+        if options.dump_traxelstore:
+             print 'dumping traxelstore to file'
+             import pickle
+             with open(options.dump_traxelstore, 'wb') as ts_out:
+                pickle.dump(ts, ts_out)
+
+
+
+
+
 	"""for i, fn in enumerate(working_fns):
         print "-- reading Traxels from " + fn
         f = io.LineageH5(fn, 'r', timestep=i)
@@ -565,7 +585,7 @@ copied but linked to the original files to improve execution speed and storage r
             ids = np.unique(label_img)
             ids = ids[ids > 0]
             valid = np.ones(ids.shape)
-            meta.create_dataset("id", data=ids[::-1], dtype=np.uint32)
+            meta.create_dataset("id", data=ids, dtype=np.uint32)
             meta.create_dataset("valid", data=valid, dtype=np.uint32)
 
             # create empty tracking group
