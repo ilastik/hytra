@@ -76,12 +76,12 @@ Compare two tracking results, based only on the association information in the t
         base_fn = base_fns[t]
         cont_fn = cont_fns[t]
         with h5py.File(base_fn, 'r') as f:
-            base_ids = f['objects/meta/id'].value
+            base_ids = np.sort(f['objects/meta/id'].value)
             base_valid = f['objects/meta/valid'].value
             # base_detection = f['objects/meta/detection'].value
 
         with h5py.File(cont_fn, 'r') as f:
-            cont_ids = f['objects/meta/id'].value
+            cont_ids = np.sort(f['objects/meta/id'].value)
             cont_valid = f['objects/meta/valid'].value
             # cont_detection = f['objects/meta/detection'].value
 
