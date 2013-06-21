@@ -18,6 +18,7 @@ from empryonic import track
 from empryonic import io
 
 
+# with old ilp-format... in new format, specify the plugin_names
 selected_features_division_detection = sorted(['SquaredDistance01', # 'SquaredDistance02', \
                                          'SquaredDistance00', 'AngleDaughters', 'ChildrenSizeRatio', \
                                          'SquaredDistanceRatio', 'Count', \
@@ -28,7 +29,6 @@ selected_features_division_detection = sorted(['SquaredDistance01', # 'SquaredDi
                                          'SquaredDistanceRatio_corr', \
                                          'ParentChildrenSizeRatio_corr', 'ChildrenMeanRatio_corr', \
                                          'ParentChildrenMeanRatio_corr'])
-
 
 selected_features_cell_classification = sorted(['Count', 'Mean', 'Variance', \
                                                 'RegionRadii']) # , 'GMM_BIC'])
@@ -414,8 +414,7 @@ copied but linked to the original files to improve execution speed and storage r
     consopts.add_option('--sigma', dest='sigma', type='float', default=0.0, help='sigma for detection [default: %default]')
     consopts.add_option('--with-merger-resolution', dest='wmr', action='store_true', default=False)
     consopts.add_option('--trans-par', dest='trans_par', type='float', default=5.0, help='alpha for the transition prior [default: %default]')
-
-    
+    consopts.add_option('--border-width', dest='border_width', type='float', default=0.0, help='border margin in which the appearance/disappearance costs are linearly decreased [default: %default]')
 
     parser.add_option_group(chaingraphopts)
     parser.add_option_group(consopts)
@@ -554,7 +553,9 @@ copied but linked to the original files to improve execution speed and storage r
         rf_fn = 'none'
         if options.rf_fn:
             rf_fn = options.rf_fn
-        tracker = track.ConsTracking(int(options.mno), options.mnd, options.dt, rf_fn, bool(options.sddp), options.forb, options.ep_gap, obj_size[0], not bool(options.wot), options.dw, options.tw, not bool(options.wod), options.dis, options.app, options.wmr, ndim, options.trans_par)
+            [xshape, yshape, zshape] = h5file['ObjectExtraction/LabelImage/0/data'].shape[1:4]
+            fov = track.FieldOfView(t0, 0, 0, 0, t1, options.x_scale * (xshape-1) + 1, options.y_scale * (yshape-1) + 1, options.z_scale * (zshape-1) + 1)
+        tracker = track.ConsTracking(int(options.mno), options.mnd, options.dt, rf_fn, bool(options.sddp), options.forb, options.ep_gap, obj_size[0], not bool(options.wot), options.dw, options.tw, not bool(options.wod), options.dis, options.app, options.wmr, ndim, options.trans_par, options.border_width, fov)
     elif(options.method == "chaingraph"):
         rf_fn = 'none'
         with_rf = False
