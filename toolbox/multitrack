@@ -482,7 +482,7 @@ copied but linked to the original files to improve execution speed and storage r
     with_merger_prior = True
     if options.method=='chaingraph':
         feature_path='ObjectExtraction'
-        with_merger_prior=False
+        with_merger_prior=True # the chaingraph will use the same random forest for detection/misdetection
     # read all traxels into TraxelStore
     print fns[0]
     time_range=[options.mints, options.maxts]
@@ -583,8 +583,8 @@ copied but linked to the original files to improve execution speed and storage r
         with io.LineageH5(working_fns[0], 'w') as dest_file:
             print "-- writing empty tracking to base file", working_fns[0]
             label_img = np.array(src_file[feature_path]['LabelImage']['0']['data'][t0,...,0])
-            dg = dest_file.create_group('segmentation')
-            ds = dg.create_dataset('labels', data=label_img, dtype=np.uint32)
+            #dg = dest_file.create_group('segmentation')
+            #ds = dg.create_dataset('labels', data=label_img, dtype=np.uint32)
 
             meta = dest_file.create_group('objects/meta')
             ids = np.unique(label_img)
@@ -603,8 +603,8 @@ copied but linked to the original files to improve execution speed and storage r
             with io.LineageH5(working_fns[i+1], 'w') as dest_file:
                 # [t0+1+i,...] or [t0+i,...]?
                 label_img = np.array(src_file[feature_path]['LabelImage']['0']['data'][t0+i+1,...,0])
-                dg = dest_file.create_group('segmentation')
-                ds = dg.create_dataset("labels", data=label_img, dtype=np.uint32)
+                #dg = dest_file.create_group('segmentation')
+                #ds = dg.create_dataset("labels", data=label_img, dtype=np.uint32)
 
                 meta = dest_file.create_group('objects/meta')
                 ids = np.unique(label_img)
