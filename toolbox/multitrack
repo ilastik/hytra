@@ -189,7 +189,7 @@ def generate_traxelstore(h5file,
             
             if with_optical_correction:
                 tr.add_feature_array("com_corrected", len(rc_corr[idx]))
-                for i, v in enumerate(rc_corr[idx])
+                for i, v in enumerate(rc_corr[idx]):
                     tr.set_feature_value("com_corrected", i, float(v))
 
             if with_div:
