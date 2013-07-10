@@ -452,6 +452,7 @@ copied but linked to the original files to improve execution speed and storage r
     consopts.add_option('--means', dest='means', type='float', default=0.0, help='means for detection [default: %default]')
     consopts.add_option('--sigma', dest='sigma', type='float', default=0.0, help='sigma for detection [default: %default]')
     consopts.add_option('--with-merger-resolution', dest='wmr', action='store_true', default=False)
+    consopts.add_option('--without-constraints', dest='woconstr', action='store_true', default=False)
     consopts.add_option('--trans-par', dest='trans_par', type='float', default=5.0, help='alpha for the transition prior [default: %default]')
     consopts.add_option('--border-width', dest='border_width', type='float', default=0.0, help='border margin in which the appearance/disappearance costs are linearly decreased [default: %default]')
 
@@ -555,7 +556,7 @@ copied but linked to the original files to improve execution speed and storage r
 				  median_object_size=obj_size,
 				  max_traxel_id_at=max_traxel_id_at,
               with_merger_prior=with_merger_prior,
-              with_coordinates=(options.method=='conservation' and options.mno > 1),
+              with_coordinates=(options.method=='conservation' and options.mno > 1 and bool(options.wmr)),
               max_num_mergers = int(options.mno),
               with_optical_correction=bool(options.woptical)
               )
@@ -598,7 +599,7 @@ copied but linked to the original files to improve execution speed and storage r
         with h5py.File(fns[0], 'r') as h5file:
             [xshape, yshape, zshape] = h5file[trans_vector_path].shape[1:4]
         fov = track.FieldOfView(t0, 0, 0, 0, t1, options.x_scale * (xshape-1) + 1, options.y_scale * (yshape-1) + 1, options.z_scale * (zshape-1) + 1)
-        tracker = track.ConsTracking(int(options.mno), options.mnd, options.dt, rf_fn, bool(options.sddp), options.forb, options.ep_gap, obj_size[0], not bool(options.wot), options.dw, options.tw, not bool(options.wod), options.dis, options.app, options.wmr, ndim, options.trans_par, options.border_width, fov)
+        tracker = track.ConsTracking(int(options.mno), options.mnd, options.dt, rf_fn, bool(options.sddp), options.forb, options.ep_gap, obj_size[0], not bool(options.wot), options.dw, options.tw, not bool(options.wod), options.dis, options.app, options.wmr, ndim, options.trans_par, options.border_width, fov, not bool(options.woconstr))
     elif(options.method == "chaingraph"):
         rf_fn = 'none'
         with_rf = False
