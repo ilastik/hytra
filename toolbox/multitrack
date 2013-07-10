@@ -62,7 +62,8 @@ def generate_traxelstore(h5file,
 			 median_object_size=None,
 			 max_traxel_id_at=None,
           with_merger_prior=True,
-          with_coordinates=False):
+          with_coordinates=False,
+          with_optical_correction=False):
 
     
     print "generating traxels"
@@ -126,6 +127,14 @@ def generate_traxelstore(h5file,
         rc = np.array(feats[t]['0']['RegionCenter'])
         if rc.size:
            rc = rc[1:, ...]
+        
+        if with_optical_correction:
+           try:
+               rc_corr = np.array(feats[t]['0']['RegionCenter_corr'])
+           except:
+               raise Exception, 'cannot consider optical correction since it has not been computed'
+           if rc_corr.size:
+               rc_corr = rc_corr[1:,...]
 
         ct = np.array(feats[t]['0']['Count'])
         if ct.size:
@@ -178,6 +187,11 @@ def generate_traxelstore(h5file,
                    tr.set_feature_value("coordinates", 3*i+1, float(v[1]))
                    tr.set_feature_value("coordinates", 3*i+2, float(v[2]))
             
+            if with_optical_correction:
+                tr.add_feature_array("com_corrected", len(rc_corr[idx]))
+                for i, v in enumerate(rc_corr[idx]):
+                    tr.set_feature_value("com_corrected", i, float(v))
+
             if with_div:
                 tr.add_feature_array("divProb", 1)
                 prob = 0.0
@@ -405,6 +419,7 @@ copied but linked to the original files to improve execution speed and storage r
     # ep_gap in general parser options
     consopts.add_option('--average-obj-size', dest='aos', type='float', default=0, help='[default: %default]')
     consopts.add_option('--without-tracklets', dest='wot', action='store_true')
+    consopts.add_option('--with-opt-correct', dest='woptical', action='store_true')
     consopts.add_option('--div', dest='dw', type='float', default=10.0, help='division weight [default: %default]')
     consopts.add_option('--dis', dest='dis', type='float', default=500.0, help='disappearance cost [default: %default]')
     consopts.add_option('--app', dest='app', type='float', default=500.0, help='appearance cost [default: %default]')
@@ -515,7 +530,8 @@ copied but linked to the original files to improve execution speed and storage r
 				  median_object_size=obj_size,
 				  max_traxel_id_at=None,
               with_merger_prior=with_merger_prior,
-              with_coordinates=(options.method=='conservation' and options.mno > 1)
+              with_coordinates=(options.method=='conservation' and options.mno > 1),
+              with_optical_correction=bool(options.woptical)
               )
 
         if options.dump_traxelstore:
