@@ -14,7 +14,8 @@ import time
 import numpy as np
 import h5py
 import vigra
-from empryonic import track
+#from empryonic import track
+import pgmlink as track
 from empryonic import io
 
 
@@ -256,8 +257,8 @@ def generate_traxelstore(h5file,
                 detProbFeat = [detProbGroup['prediction_class0'].value[traxel_index],
                               detProbGroup['prediction_class1'].value[traxel_index]]
                 tr.add_feature_array("detProb", 2)
-                for idx in xrange(len(detProbFeat)):
-                   tr.set_feature_value("detProb", i, float(detProbFeat[idx]))
+                for i in xrange(len(detProbFeat)):
+                   tr.set_feature_value("detProb", i, float(detProbFeat[i]))
                 
                 #if merger_rf:
                 #    rf = merger_rf # vigra.learning.RandomForest(str(h5file.filename), rf_path)
