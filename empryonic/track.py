@@ -4,7 +4,7 @@ import sys
 VERBOSE = True
 
 # try to import python wrapper from project source
-module_path_in_source = 'tracking/python/'
+module_path_in_source = 'tracking/build/python/'
 if(os.path.exists(module_path_in_source) or os.path.exists('../' + module_path_in_source)):
    sys.path.append(module_path_in_source)
    sys.path.append('../' + module_path_in_source)
