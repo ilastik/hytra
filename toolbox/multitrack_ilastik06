@@ -558,6 +558,10 @@ copied but linked to the original files to improve execution speed and storage r
             with open(options.load_traxelstore, 'rb') as ts_in:
                ts = pickle.load(ts_in)
         else:
+            if options.method=='conservation':
+               max_num_mer = int(options.mno)
+            else:
+               max_num_mer = 1
             ts, max_traxel_id_at = generate_traxelstore(h5file=h5file,
 				  feature_path=feature_path,
 				  time_range = time_range,
@@ -574,7 +578,7 @@ copied but linked to the original files to improve execution speed and storage r
 				  max_traxel_id_at=max_traxel_id_at,
               with_merger_prior=with_merger_prior,
               with_coordinates=(options.method=='conservation' and options.mno > 1 and bool(options.wmr)),
-              max_num_mergers = int(options.mno),
+              max_num_mergers = max_num_mer,
               with_optical_correction=bool(options.woptical),
               ext_probs = options.ext_probs
               )

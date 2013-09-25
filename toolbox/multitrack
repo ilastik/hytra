@@ -572,7 +572,7 @@ copied but linked to the original files to improve execution speed and storage r
         with h5py.File(fns[0], 'r') as h5file:
             [xshape, yshape, zshape] = h5file['ObjectExtraction/LabelImage/0/data'].shape[1:4]
         fov = track.FieldOfView(t0, 0, 0, 0, t1, options.x_scale * (xshape-1) + 1, options.y_scale * (yshape-1) + 1, options.z_scale * (zshape-1) + 1)
-        tracker = track.ConsTracking(int(options.mno), options.mnd, options.dt, rf_fn, bool(options.sddp), options.forb, options.ep_gap, obj_size[0], not bool(options.wot), options.dw, options.tw, not bool(options.wod), options.dis, options.app, options.wmr, ndim, options.trans_par, options.border_width, fov)
+        tracker = track.ConsTracking(int(options.mno), options.mnd, options.dt, rf_fn, bool(options.sddp), options.forb, options.ep_gap, obj_size[0], not bool(options.wot), options.dw, options.tw, not bool(options.wod), options.dis, options.app, options.wmr, ndim, options.trans_par, options.border_width, fov, True)
     elif(options.method == "chaingraph"):
         rf_fn = 'none'
         with_rf = False
