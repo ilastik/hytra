@@ -549,9 +549,9 @@ copied but linked to the original files to improve execution speed and storage r
     max_traxel_id_at = []
     with h5py.File(fns[0], 'r') as h5file:
         ndim = 3
-        #if h5file['ObjectExtraction/LabelImage/0/data'].shape[3] == 1:
-        #    ndim = 2
-
+        if h5file['ObjectExtraction/LabelImage/0/'].values()[0].shape[3] == 1:
+            ndim = 2
+        print 'ndim=', ndim
         if options.load_traxelstore:
             print 'loading traxelstore from file'
             import pickle
