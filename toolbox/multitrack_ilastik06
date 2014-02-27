@@ -19,11 +19,6 @@ import pgmlink as track
 from empryonic import io
 
 
-cell_prob_path = '/CellClassification/Probabilities/0/'
-div_prob_path = '/DivisionDetection/Probabilities/0/'
-feats_path = '/ObjectExtraction/RegionFeatures/0/[[%d], [%d]]/Standard Object Features/%s'
-trans_vector_path = 'OpticalTranslation/TranslationVectors/0/data'
-label_im_path = '/ObjectExtraction/LabelImage/0/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]'
 
 
 def get_feature(h5file, feature_path, object_id):
@@ -34,6 +29,7 @@ def get_feature(h5file, feature_path, object_id):
 
 
 def generate_traxelstore(h5file,
+             options,
 			 feature_path,
 			 time_range,
 			 x_range,
@@ -51,7 +47,7 @@ def generate_traxelstore(h5file,
           with_coordinates=False,
           max_num_mergers=1,
           with_optical_correction=False,
-          ext_probs=None,
+          ext_probs=None,          
           ):
 
     
@@ -85,10 +81,10 @@ def generate_traxelstore(h5file,
     if with_div: # and 'ClassProbabilities' in h5file[feature_path].keys():
         #divProbs = None # self.ClassMapping(time_range).wait()
         #divProbs = h5file[feature_path]['ClassProbabilities']
-        divProbs = h5file[div_prob_path]
+        divProbs = h5file[options.div_prob_path]
 	
     if with_merger_prior:
-        detProbs = h5file[cell_prob_path]
+        detProbs = h5file[options.obj_count_path]
 
     if with_local_centers:
         localCenters = None # self.RegionLocalCenters(time_range).wait()
@@ -105,7 +101,7 @@ def generate_traxelstore(h5file,
     if z_range is None:
         z_range = [0, sys.maxint]
 
-    shape_t = h5file[trans_vector_path].shape[0]
+    shape_t = h5file[options.trans_vector_path].shape[0]
     keys_sorted = range(shape_t)
     #keys_sorted = sorted(feats.keys(), key=int)
     if time_range is not None:
@@ -119,28 +115,28 @@ def generate_traxelstore(h5file,
     empty_frame = False
 
     for t in keys_sorted:
-        feats_name = feats_path % (t, t+1, 'RegionCenter')
+        feats_name = options.feats_path % (t, t+1, 'RegionCenter')
         #rc = np.array(feats[t]['0']['RegionCenter'])
         rc = np.array(h5file[feats_name])
         if rc.size:
            rc = rc[1:, ...]
         if with_optical_correction:
            try:
-              feats_name = feats_path % (t, t+1, 'RegionCenter_corr')
+              feats_name = options.feats_path % (t, t+1, 'RegionCenter_corr')
               rc_corr = np.array(h5file[feats_name])
            except:
               raise Exception, 'cannot consider optical correction since it has not been computed'
            if rc_corr.size:
               rc_corr = rc_corr[1:,...]
 
-        feats_name = feats_path % (t, t+1, 'Count')
+        feats_name = options.feats_path % (t, t+1, 'Count')
         #ct = np.array(feats[t]['0']['Count'])
         ct = np.array(h5file[feats_name])
         if ct.size:
            ct = ct[1:, ...]
 
         if with_coordinates:
-           feats_name = feats_path % (t, t+1, 'Coord<ValueList>')
+           feats_name = options.feats_path % (t, t+1, 'Coord<ValueList>')
            #coordinates_dataset = feats[t]['0']['Coord<ValueList >']
            #stride = coordinates_dataset.attrs['stride']
            #n_obj = coordinates_dataset.attrs['n_objects']
@@ -473,6 +469,12 @@ copied but linked to the original files to improve execution speed and storage r
     consopts.add_option('--border-width', dest='border_width', type='float', default=0.0, help='absolute border margin in which the appearance/disappearance costs are linearly decreased [default: %default]')
     consopts.add_option('--ext-probs', dest='ext_probs', type='string', default=None, help='provide a path to hdf5 files containing detection probabilities [default:%default]')
 
+    consopts.add_option('--objCountPath', dest='obj_count_path', type='string', default='/CellClassification/Probabilities/0/', help='internal hdf5 path to object count probabilities [default=%default]')
+    consopts.add_option('--divPath', dest='div_prob_path', type='string', default='/DivisionDetection/Probabilities/0/', help='internal hdf5 path to division probabilities [default=%default]')
+    consopts.add_option('--featsPath', dest='feats_path', type='string', default='/ObjectExtraction/RegionFeatures/0/[[%d], [%d]]/Standard Object Features/%s', help='internal hdf5 path to object features [default=%default]')
+    consopts.add_option('--translationPath', dest='trans_vector_path', type='str', default='OpticalTranslation/TranslationVectors/0/data', help='internal hdf5 path to translation vectors [default=%default]')
+    #consopts.add_option('--labelImgPath', dest='label_im_path', type='str', default='/ObjectExtraction/LabelImage/0/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]', help='internal hdf5 path to label image [default=%default]')
+
     parser.add_option_group(chaingraphopts)
     parser.add_option_group(consopts)
     options, args = parser.parse_args()
@@ -563,6 +565,7 @@ copied but linked to the original files to improve execution speed and storage r
             else:
                max_num_mer = 1
             ts, max_traxel_id_at = generate_traxelstore(h5file=h5file,
+                  options=options,
 				  feature_path=feature_path,
 				  time_range = time_range,
 				  x_range = None,
@@ -619,7 +622,7 @@ copied but linked to the original files to improve execution speed and storage r
         if options.rf_fn:
             rf_fn = options.rf_fn
         with h5py.File(fns[0], 'r') as h5file:
-            [xshape, yshape, zshape] = h5file[trans_vector_path].shape[1:4]
+            [xshape, yshape, zshape] = h5file[options.trans_vector_path].shape[1:4]
         fov = track.FieldOfView(t0, 0, 0, 0, t1, options.x_scale * (xshape-1), options.y_scale * (yshape-1) , options.z_scale * (zshape-1))
         if ndim == 2:
             assert options.z_scale * (zshape-1) == 0, "fov of z must be (0,0) if ndim == 2"
