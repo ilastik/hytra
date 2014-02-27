@@ -101,7 +101,8 @@ def generate_traxelstore(h5file,
     if z_range is None:
         z_range = [0, sys.maxint]
 
-    shape_t = h5file[options.trans_vector_path].shape[0]
+    shape_t = len(h5file[options.obj_count_path].keys())
+    #shape_t = #h5file[options.trans_vector_path].shape[0]
     keys_sorted = range(shape_t)
     #keys_sorted = sorted(feats.keys(), key=int)
     if time_range is not None:
