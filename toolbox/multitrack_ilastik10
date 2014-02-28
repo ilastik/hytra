@@ -109,8 +109,10 @@ def generate_traxelstore(h5file,
     if time_range is not None:
         keys_sorted = [key for key in keys_sorted if int(key) >= time_range[0] and int(key) < time_range[1]]
     
-    if with_coordinates:
+    if coordinate_map != None:
         coordinate_map.initialize()
+
+    if with_coordinates:
         shape = h5file['/'.join(options.label_img_path.split('/')[:-1])].values()[0].shape[1:4]
     
     max_traxel_id_at = track.VectorOfInt()  
@@ -634,7 +636,8 @@ copied but linked to the original files to improve execution speed and storage r
         if options.rf_fn:
             rf_fn = options.rf_fn
         with h5py.File(fns[0], 'r') as h5file:
-            [xshape, yshape, zshape] = h5file['/'.join(options.label_img_path.split('/')[:-1])].values()[0].shape[1:4]
+            shape = h5file['/'.join(options.label_img_path.split('/')[:-1])].values()[0].shape[1:4]
+            [xshape, yshape, zshape] = shape
         fov = track.FieldOfView(t0, 0, 0, 0, t1, options.x_scale * (xshape-1), options.y_scale * (yshape-1) , options.z_scale * (zshape-1))
         if ndim == 2:
             assert options.z_scale * (zshape-1) == 0, "fov of z must be (0,0) if ndim == 2"
@@ -670,12 +673,14 @@ copied but linked to the original files to improve execution speed and storage r
         with io.LineageH5(working_fns[0], 'w') as dest_file:
             print "-- writing empty tracking to base file", working_fns[0]
             #shape = src_file[trans_vector_path].shape
-            #li_name = label_im_path % (t0, t0+1, shape[1], shape[2], shape[3])
-            #label_img = np.array(src_file[li_name][0,...,0])
+            li_name = options.label_img_path % (t0, t0+1, shape[0], shape[1], shape[2])
+            label_img = np.array(src_file[li_name][0,...,0]).squeeze()
+            seg = dest_file.create_group('segmentation')
+            seg.create_dataset("labels", data=label_img)
             meta = dest_file.create_group('objects/meta')
-            #ids = np.unique(label_img)
+            ids = np.unique(label_img)
             m = max_traxel_id_at[0]
-            ids = np.asarray(range(m+1))
+            assert np.all(ids == np.arange(m+1, dtype=ids.dtype))
             ids = ids[ids > 0]
             valid = np.ones(ids.shape)
             meta.create_dataset("id", data=ids, dtype=np.uint32)
@@ -691,13 +696,15 @@ copied but linked to the original files to improve execution speed and storage r
             with io.LineageH5(working_fns[i+1], 'w') as dest_file:
                 # [t0+1+i,...] or [t0+i,...]?
                 #shape = src_file[trans_vector_path].shape
-                #li_name = label_im_path % (t0+i+1, t0+i+2, shape[1], shape[2], shape[3])
-                #label_img = np.array(src_file[li_name][0,...,0])
+                li_name = options.label_img_path % (t0+i+1, t0+i+2, shape[0], shape[1], shape[2])
+                label_img = np.array(src_file[li_name][0,...,0]).squeeze()
+                seg = dest_file.create_group('segmentation')
+                seg.create_dataset("labels", data=label_img)
 
                 meta = dest_file.create_group('objects/meta')
+                ids = np.unique(label_img)
                 m = max_traxel_id_at[i+1]
-                ids = np.asarray(range(m+1))
-                #ids = np.unique(label_img)
+                assert np.all(ids == np.arange(m+1, dtype=ids.dtype))
                 ids = ids[ids > 0]
                 valid = np.ones(ids.shape)
                 meta.create_dataset("id", data=ids[::-1], dtype=np.uint32)
