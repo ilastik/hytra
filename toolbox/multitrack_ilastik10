@@ -92,6 +92,7 @@ def generate_traxelstore(h5file,
         
     print "filling traxelstore"
     ts = track.TraxelStore()
+    fs = track.FeatureStore()
 
     if x_range is None:
         x_range = [0, sys.maxint]
@@ -174,6 +175,7 @@ def generate_traxelstore(h5file,
             else:
                 count += 1
             tr = track.Traxel()
+            ts.set_feature_store(fs)
             tr.set_x_scale(x_scale)
             tr.set_y_scale(y_scale)
             tr.set_z_scale(z_scale)
@@ -268,7 +270,7 @@ def generate_traxelstore(h5file,
             tr.set_feature_value("count", 0, float(size))
             if median_object_size is not None:
                 obj_sizes.append(float(size))
-            ts.add(tr)   
+            ts.add(fs,tr)   
 
             # add coordinate lists with armadillo matrixes
             if with_coordinates:
@@ -295,7 +297,7 @@ def generate_traxelstore(h5file,
         median_object_size[0] = np.median(np.array(obj_sizes),overwrite_input=True)
         print 'median object size = ' + str(median_object_size[0])
     
-    return ts, max_traxel_id_at # , filtered_labels, empty_frame
+    return ts, fs, max_traxel_id_at # , filtered_labels, empty_frame
 
 
 def write_detections(detections, fn):
@@ -540,7 +542,6 @@ copied but linked to the original files to improve execution speed and storage r
         #store out-filename for later use
         working_fns.append(out_fn)
     working_fns.sort()"""
-    print
 
     ### Do the tracking
     start = time.time()
@@ -572,12 +573,14 @@ copied but linked to the original files to improve execution speed and storage r
             import pickle
             with open(options.load_traxelstore, 'rb') as ts_in:
                ts = pickle.load(ts_in)
+               fs = pickle.load(ts_in)
+            ts.set_feature_store(fs)
         else:
             if options.method=='conservation':
                max_num_mer = int(options.mno)
             else:
                max_num_mer = 1
-            ts, max_traxel_id_at = generate_traxelstore(h5file=h5file,
+            ts, fs, max_traxel_id_at = generate_traxelstore(h5file=h5file,
                   options=options,
 				  feature_path=feature_path,
 				  time_range = time_range,
@@ -605,6 +608,7 @@ copied but linked to the original files to improve execution speed and storage r
              import pickle
              with open(options.dump_traxelstore, 'wb') as ts_out:
                 pickle.dump(ts, ts_out)
+                pickle.dump(fs, ts_out)
 
 
 
@@ -642,7 +646,8 @@ copied but linked to the original files to improve execution speed and storage r
         if ndim == 2:
             assert options.z_scale * (zshape-1) == 0, "fov of z must be (0,0) if ndim == 2"
 
-        tracker = track.ConsTracking(int(options.mno), options.mnd, options.dt, rf_fn, bool(options.sddp), options.forb, options.ep_gap, obj_size[0], not bool(options.wot), options.dw, options.tw, not bool(options.wod), options.dis, options.app, options.wmr, ndim, options.trans_par, options.border_width, fov, not bool(options.woconstr))
+        #tracker = track.ConsTracking(int(options.mno), options.mnd, options.dt, rf_fn, bool(options.sddp), options.forb, options.ep_gap, obj_size[0], not bool(options.wot), options.dw, options.tw, not bool(options.wod), options.dis, options.app, options.wmr, ndim, options.trans_par, options.border_width, fov, not bool(options.woconstr))
+        tracker = track.ConsTracking(int(options.mno),bool(options.sddp),obj_size[0],options.mnd, not bool(options.wod), options.dt, rf_fn, fov,"none")
     elif(options.method == "chaingraph"):
         rf_fn = 'none'
         with_rf = False
@@ -654,16 +659,67 @@ copied but linked to the original files to improve execution speed and storage r
         raise Exception("unknown tracking method: " + options.method)
 
     if options.method=='conservation':
-        events = tracker(ts, coordinate_map.get())
+        #events = tracker(ts, coordinate_map.get())
+        """
+        C++ signature of operator():
+
+        ConsTracking& tr, 
+        TraxelStore& ts, 
+        TimestepIdCoordinateMapPtr& coordinates,
+        double forbidden_cost,
+        double ep_gap,
+        bool   with_tracklets,
+        double division_weight,
+        double transition_weight,
+        double disappearance_cost,
+        double appearance_cost,
+        bool   with_merger_resolution,
+        int    n_dim,
+        double transition_parameter,
+        double border_width,
+        UncertaintyParameter uncertaintyParam,
+        bool   with_constraints,
+        double cplex_timeout
+        """
+        uncertaintyParam = track.UncertaintyParameter()
+        all_events = tracker(ts,
+            coordinate_map.get(),
+            options.forb,
+            options.ep_gap,
+            not bool(options.wot),
+            options.dw, 
+            options.tw, 
+            options.dis, 
+            options.app,
+            options.wmr,
+            ndim,
+            options.trans_par,
+            options.border_width,
+            uncertaintyParam,
+            not bool(options.woconstr),
+            1e+75)
+        events = all_events[0]
+        first_events = events[0]
+        events = events[1:]
     else:
         events = tracker(ts)
 
-    """print "Saving detections..."
-    detections = tracker.detections()
-    assert(len(detections) == len(working_fns))
-    for i, detections_at in enumerate(detections):
-        write_detections(detections_at, working_fns[i])"""
+    # save solution labelings to file
+    tracker.save_ilp_solutions(options.out_dir.rstrip('/') + '/proposal_labelings.txt')
 
+    # extract higher order features
+    hypotheses_graph = tracker.get_hypotheses_graph()
+    feature_vector_filename = options.out_dir.rstrip('/') + '/feature_vectors.txt'
+    os.remove(feature_vector_filename)
+
+    for i in range(len(all_events)):
+        print("Extracting features of solution {}".format(i))
+        hypotheses_graph.set_solution(i)
+        feature_extractor = track.TrackingFeatureExtractor(hypotheses_graph, fov)
+        feature_extractor.compute_features()
+        feature_extractor.append_feature_vector_to_file(feature_vector_filename)
+
+    # save events
     print "Saving events..."
     print "Length of events " + str(len(events))
     working_fns = [options.out_dir.rstrip('/') + "/%04d.h5" % timestep for timestep in xrange(t0,t1+1)]
@@ -687,7 +743,8 @@ copied but linked to the original files to improve execution speed and storage r
             meta.create_dataset("valid", data=valid, dtype=np.uint32)
 
             # create empty tracking group
-            dest_file.create_group('tracking')
+            #dest_file.create_group('tracking')
+            write_events(first_events, working_fns[0])
             print "-> base file successfully written"
 
             
