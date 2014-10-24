@@ -451,6 +451,13 @@ copied but linked to the original files to improve execution speed and storage r
     consopts.add_option('--labelImgPath', dest='label_img_path', type='str',
                         default='/ObjectExtraction/LabelImage/0/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]',
                         help='internal hdf5 path to label image [default=%default]')
+    consopts.add_option('--num-iterations', dest='num_iterations', type='int', default=1,
+                        help='number of iterations to perform inference, >1 needed for uncertainty [default=%default]')
+    consopts.add_option('--perturb-distrib', dest='perturbation_distribution', type='str', default='DiverseMbest',
+                        help='distribution type for parameter perturbation, one of {GaussianPertubation, PerturbAndMAP, '
+                             'DiverseMbest, MbestCPLEX, ClassifierUncertainty} [default=%default]')
+    consopts.add_option('--perturb-sigmas', dest='perturb_sigmas', type=int, nargs='+', default=[.0, .0, 10., 10., 10.],
+                        help='Parameters for the perturbation distribution. [default=%default]')
 
     parser.add_option_group(chaingraphopts)
     parser.add_option_group(consopts)
@@ -611,7 +618,25 @@ copied but linked to the original files to improve execution speed and storage r
         bool   with_constraints,
         double cplex_timeout
         """
-        uncertaintyParam = track.UncertaintyParameter()
+        sigma_vec = track.VectorOfDouble()
+        for si in options.perturb_sigmas:
+            sigma_vec.append(si)
+
+        if options.perturbation_distribution == "DiverseMbest":
+            distrib_type = track.DistrId.DiverseMbest
+        elif options.perturbation_distribution == "MbestCPLEX":
+            distrib_type = track.DistrId.MbestCPLEX
+        elif options.perturbation_distribution == "ClassifierUncertainty":
+            distrib_type = track.DistrId.ClassifierUncertainty
+        elif options.perturbation_distribution == "GaussianPerturbation":
+            distrib_type = track.DistrId.GaussianPerturbation
+        elif options.perturbation_distribution == "PerturbAndMAP":
+            distrib_type = track.DistrId.PerturbAndMAP
+
+        uncertaintyParam = track.UncertaintyParameter(options.num_iterations,
+                                                      distrib_type,
+                                                      sigma_vec)
+
         all_events = tracker(ts,
                              coordinate_map.get(),
                              options.forbidden_cost,
