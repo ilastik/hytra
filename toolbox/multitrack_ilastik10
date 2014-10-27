@@ -419,6 +419,7 @@ copied but linked to the original files to improve execution speed and storage r
     consopts.add_option('--average-obj-size', dest='aos', type='float', default=0, help='[default: %default]')
     consopts.add_option('--without-tracklets', dest='without_tracklets', action='store_true')
     consopts.add_option('--with-opt-correct', dest='woptical', action='store_true')
+    consopts.add_option('--det', dest='detection_weight', type='float', default=10.0, help='detection weight [default: %default]')
     consopts.add_option('--div', dest='division_weight', type='float', default=10.0, help='division weight [default: %default]')
     consopts.add_option('--dis', dest='disappearance_cost', type='float', default=500.0, help='disappearance cost [default: %default]')
     consopts.add_option('--app', dest='appearance_cost', type='float', default=500.0, help='appearance cost [default: %default]')
@@ -453,7 +454,7 @@ copied but linked to the original files to improve execution speed and storage r
                         help='internal hdf5 path to label image [default=%default]')
     consopts.add_option('--num-iterations', dest='num_iterations', type='int', default=1,
                         help='number of iterations to perform inference, >1 needed for uncertainty [default=%default]')
-    consopts.add_option('--perturb-distrib', dest='perturbation_distribution', type='str', default='DiverseMbest',
+    consopts.add_option('--perturb-distrib', dest='perturbation_distribution', type='str', default='MbestCPLEX',
                         help='distribution type for parameter perturbation, one of {GaussianPertubation, PerturbAndMAP, '
                              'DiverseMbest, MbestCPLEX, ClassifierUncertainty} [default=%default]')
     consopts.add_option('--perturb-sigmas', dest='perturb_sigmas', type=int, nargs='+', default=[.0, .0, 10., 10., 10.],
@@ -637,35 +638,44 @@ copied but linked to the original files to improve execution speed and storage r
                                                       distrib_type,
                                                       sigma_vec)
 
-        all_events = tracker(ts,
-                             coordinate_map.get(),
-                             options.forbidden_cost,
-                             options.ep_gap,
-                             not bool(options.without_tracklets),
-                             options.division_weight,
-                             options.transition_weight,
-                             options.disappearance_cost,
-                             options.appearance_cost,
-                             options.with_merger_resolution,
-                             ndim,
-                             options.trans_par,
-                             options.border_width,
-                             uncertaintyParam,
-                             not bool(options.woconstr),
-                             1e+75)
+        hypotheses_graph = tracker.buildGraph(ts)
+
+        # save labels of proposals to file:
+        tracker.SetFunkeyOutputFiles('', '', options.out_dir.rstrip('/') + '/proposal_labeling', False)
+
+        all_events = tracker.track(
+            options.forbidden_cost,
+            options.ep_gap,
+            not bool(options.without_tracklets),
+            options.detection_weight,
+            options.division_weight,
+            options.transition_weight,
+            options.disappearance_cost,
+            options.appearance_cost,
+            options.with_merger_resolution,
+            ndim,
+            options.trans_par,
+            options.border_width,
+            not bool(options.woconstr),
+            uncertaintyParam,
+            1e+75)
+
+        #if options.with_merger_resolution:
+            # TODO call merger resolution
+
         events = all_events[0]
         first_events = events[0]
         events = events[1:]
     else:
         events = tracker(ts)
 
-    # save solution labelings to file
-    tracker.save_ilp_solutions(options.out_dir.rstrip('/') + '/proposal_labelings.txt')
-
     # extract higher order features
     hypotheses_graph = tracker.get_hypotheses_graph()
     feature_vector_filename = options.out_dir.rstrip('/') + '/feature_vectors.txt'
-    os.remove(feature_vector_filename)
+    try:
+        os.remove(feature_vector_filename)
+    except:
+        pass
 
     for i in range(len(all_events)):
         print("Extracting features of solution {}".format(i))
