@@ -340,6 +340,23 @@ def write_events(events, fn):
     print "-> results successfully written"
 
 
+def rank_solutions(ground_truth_filename, feature_vector_filename, proposal_basename, num_iterations):
+    import structsvm
+    proposal_filenames = [proposal_basename + '_' + str(i) + '.txt' for i in range(num_iterations)]
+
+    problem = structsvm.struct_svm_ranking_problem(feature_vector_filename,
+                                         ground_truth_filename,
+                                         proposal_filenames)
+                                         #,args.loss_weights)
+    solver = structsvm.struct_svm_solver_primal(problem)
+    weights = solver.solve()
+    weights = np.array(weights)
+    problem.print_scores(weights)
+
+    print("Found weights: {}".format(weights))
+    return weights
+
+
 if __name__ == "__main__":
     usage = """%prog [options] FILES
 Track cells.
@@ -452,6 +469,8 @@ copied but linked to the original files to improve execution speed and storage r
     consopts.add_option('--labelImgPath', dest='label_img_path', type='str',
                         default='/ObjectExtraction/LabelImage/0/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]',
                         help='internal hdf5 path to label image [default=%default]')
+
+    # options for perturbing and re-ranking
     consopts.add_option('--num-iterations', dest='num_iterations', type='int', default=1,
                         help='number of iterations to perform inference, >1 needed for uncertainty [default=%default]')
     consopts.add_option('--perturb-distrib', dest='perturbation_distribution', type='str', default='DiverseMbest',
@@ -461,6 +480,8 @@ copied but linked to the original files to improve execution speed and storage r
                         help='Parameters for the perturbation distribution. [default=%default]')
     consopts.add_option('--no-saving', dest='skip_saving', action='store_true',
                         help='Skip saving if you are just interested in the proposals and features')
+    consopts.add_option('--ground-truth-labeling', dest='ground_truth_labeling', type='str', default='',
+                        help='Ground Truth label filename which will be used for reranking the solutions')
 
     parser.add_option_group(chaingraphopts)
     parser.add_option_group(consopts)
@@ -737,6 +758,12 @@ copied but linked to the original files to improve execution speed and storage r
                     meta.create_dataset("valid", data=valid, dtype=np.uint32)
 
                 write_events(events_at, working_fns[i + 1])
+
+    if len(options.ground_truth_labeling) > 0:
+        rank_solutions(options.ground_truth_labeling,
+                       feature_vector_filename,
+                       options.out_dir.rstrip('/') + '/proposal_labeling',
+                       options.num_iterations)
 
     stop = time.time()
     since = stop - start
