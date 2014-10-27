@@ -454,10 +454,10 @@ copied but linked to the original files to improve execution speed and storage r
                         help='internal hdf5 path to label image [default=%default]')
     consopts.add_option('--num-iterations', dest='num_iterations', type='int', default=1,
                         help='number of iterations to perform inference, >1 needed for uncertainty [default=%default]')
-    consopts.add_option('--perturb-distrib', dest='perturbation_distribution', type='str', default='MbestCPLEX',
+    consopts.add_option('--perturb-distrib', dest='perturbation_distribution', type='str', default='DiverseMbest',
                         help='distribution type for parameter perturbation, one of {GaussianPertubation, PerturbAndMAP, '
                              'DiverseMbest, MbestCPLEX, ClassifierUncertainty} [default=%default]')
-    consopts.add_option('--perturb-sigmas', dest='perturb_sigmas', type=int, nargs='+', default=[.0, .0, 10., 10., 10.],
+    consopts.add_option('--perturb-sigmas', dest='perturb_sigmas', type=float, nargs='+', default=[.0, .0, 10., 10., 10.],
                         help='Parameters for the perturbation distribution. [default=%default]')
 
     parser.add_option_group(chaingraphopts)
