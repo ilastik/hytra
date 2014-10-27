@@ -509,6 +509,7 @@ copied but linked to the original files to improve execution speed and storage r
             with open(options.load_traxelstore, 'rb') as ts_in:
                 ts = pickle.load(ts_in)
                 fs = pickle.load(ts_in)
+                max_traxel_id_at = pickle.load(ts_in)
             ts.set_feature_store(fs)
         else:
             if options.method == 'conservation':
@@ -547,6 +548,7 @@ copied but linked to the original files to improve execution speed and storage r
             with open(options.dump_traxelstore, 'wb') as ts_out:
                 pickle.dump(ts, ts_out)
                 pickle.dump(fs, ts_out)
+                pickle.dump(max_traxel_id_at, ts_out)
 
         """for i, fn in enumerate(working_fns):
             print "-- reading Traxels from " + fn
