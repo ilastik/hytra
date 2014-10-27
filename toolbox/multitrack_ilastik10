@@ -459,6 +459,8 @@ copied but linked to the original files to improve execution speed and storage r
                              'DiverseMbest, MbestCPLEX, ClassifierUncertainty} [default=%default]')
     consopts.add_option('--perturb-sigmas', dest='perturb_sigmas', type=float, nargs='+', default=[.0, .0, 10., 10., 10.],
                         help='Parameters for the perturbation distribution. [default=%default]')
+    consopts.add_option('--no-saving', dest='skip_saving', action='store_true',
+                        help='Skip saving if you are just interested in the proposals and features')
 
     parser.add_option_group(chaingraphopts)
     parser.add_option_group(consopts)
@@ -686,54 +688,55 @@ copied but linked to the original files to improve execution speed and storage r
         feature_extractor.compute_features()
         feature_extractor.append_feature_vector_to_file(feature_vector_filename)
 
-    # save events
-    print "Saving events..."
-    print "Length of events " + str(len(events))
-    working_fns = [options.out_dir.rstrip('/') + "/%04d.h5" % timestep for timestep in xrange(t0, t1 + 1)]
-    assert (len(events) + 1 == len(working_fns))
-    with h5py.File(fns[0], 'r') as src_file:
-        # first timestep without tracking
-        with io.LineageH5(working_fns[0], 'w') as dest_file:
-            print "-- writing empty tracking to base file", working_fns[0]
-            #shape = src_file[trans_vector_path].shape
-            li_name = options.label_img_path % (t0, t0 + 1, shape[0], shape[1], shape[2])
-            label_img = np.array(src_file[li_name][0, ..., 0]).squeeze()
-            seg = dest_file.create_group('segmentation')
-            seg.create_dataset("labels", data=label_img)
-            meta = dest_file.create_group('objects/meta')
-            ids = np.unique(label_img)
-            m = max_traxel_id_at[0]
-            assert np.all(ids == np.arange(m + 1, dtype=ids.dtype))
-            ids = ids[ids > 0]
-            valid = np.ones(ids.shape)
-            meta.create_dataset("id", data=ids, dtype=np.uint32)
-            meta.create_dataset("valid", data=valid, dtype=np.uint32)
-
-            # create empty tracking group
-            #dest_file.create_group('tracking')
-            write_events(first_events, working_fns[0])
-            print "-> base file successfully written"
-
-        # tracked timesteps
-        for i, events_at in enumerate(events):
-            with io.LineageH5(working_fns[i + 1], 'w') as dest_file:
-                # [t0+1+i,...] or [t0+i,...]?
+    if not options.skip_saving:
+        # save events
+        print "Saving events..."
+        print "Length of events " + str(len(events))
+        working_fns = [options.out_dir.rstrip('/') + "/%04d.h5" % timestep for timestep in xrange(t0, t1 + 1)]
+        assert (len(events) + 1 == len(working_fns))
+        with h5py.File(fns[0], 'r') as src_file:
+            # first timestep without tracking
+            with io.LineageH5(working_fns[0], 'w') as dest_file:
+                print "-- writing empty tracking to base file", working_fns[0]
                 #shape = src_file[trans_vector_path].shape
-                li_name = options.label_img_path % (t0 + i + 1, t0 + i + 2, shape[0], shape[1], shape[2])
+                li_name = options.label_img_path % (t0, t0 + 1, shape[0], shape[1], shape[2])
                 label_img = np.array(src_file[li_name][0, ..., 0]).squeeze()
                 seg = dest_file.create_group('segmentation')
                 seg.create_dataset("labels", data=label_img)
-
                 meta = dest_file.create_group('objects/meta')
                 ids = np.unique(label_img)
-                m = max_traxel_id_at[i + 1]
+                m = max_traxel_id_at[0]
                 assert np.all(ids == np.arange(m + 1, dtype=ids.dtype))
                 ids = ids[ids > 0]
                 valid = np.ones(ids.shape)
-                meta.create_dataset("id", data=ids[::-1], dtype=np.uint32)
+                meta.create_dataset("id", data=ids, dtype=np.uint32)
                 meta.create_dataset("valid", data=valid, dtype=np.uint32)
 
-            write_events(events_at, working_fns[i + 1])
+                # create empty tracking group
+                #dest_file.create_group('tracking')
+                write_events(first_events, working_fns[0])
+                print "-> base file successfully written"
+
+            # tracked timesteps
+            for i, events_at in enumerate(events):
+                with io.LineageH5(working_fns[i + 1], 'w') as dest_file:
+                    # [t0+1+i,...] or [t0+i,...]?
+                    #shape = src_file[trans_vector_path].shape
+                    li_name = options.label_img_path % (t0 + i + 1, t0 + i + 2, shape[0], shape[1], shape[2])
+                    label_img = np.array(src_file[li_name][0, ..., 0]).squeeze()
+                    seg = dest_file.create_group('segmentation')
+                    seg.create_dataset("labels", data=label_img)
+
+                    meta = dest_file.create_group('objects/meta')
+                    ids = np.unique(label_img)
+                    m = max_traxel_id_at[i + 1]
+                    assert np.all(ids == np.arange(m + 1, dtype=ids.dtype))
+                    ids = ids[ids > 0]
+                    valid = np.ones(ids.shape)
+                    meta.create_dataset("id", data=ids[::-1], dtype=np.uint32)
+                    meta.create_dataset("valid", data=valid, dtype=np.uint32)
+
+                write_events(events_at, working_fns[i + 1])
 
     stop = time.time()
     since = stop - start
