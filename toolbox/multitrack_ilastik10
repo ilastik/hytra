@@ -736,8 +736,17 @@ copied but linked to the original files to improve execution speed and storage r
             uncertaintyParam,
             1e+75)
 
-        #if options.with_merger_resolution:
-            # TODO call merger resolution
+        if options.with_merger_resolution:
+            for event_vector in all_events:
+              resolved_events = tracker.resolve_mergers(
+                  event_vector,
+                  coordinate_map.get(),
+                  float(options.ep_gap),
+                  options.transition_weight,
+                  not bool(options.without_tracklets),
+                  ndim,
+                  options.trans_par,
+                  not bool(options.woconstr))
 
         events = all_events[0]
         first_events = events[0]
