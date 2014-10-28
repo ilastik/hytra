@@ -18,7 +18,7 @@ import vigra
 # from empryonic import track
 import pgmlink as track
 from empryonic import io
-
+from multiprocessing import Pool
 
 def get_feature(h5file, feature_path, object_id):
     if not feature_path in h5file:
@@ -340,8 +340,7 @@ def write_events(events, fn):
     print "-> results successfully written"
 
 
-def save_events(params):
-    out_dir, events, t0, t1, label_image_path, max_traxel_id_at, src_filename = params
+def save_events(out_dir, events, t0, t1, label_image_path, max_traxel_id_at, src_filename):
     # save events
     print "Saving events..."
     print "Length of events " + str(len(events))
@@ -754,6 +753,8 @@ copied but linked to the original files to improve execution speed and storage r
     except:
         pass
 
+    processing_pool = Pool()
+
     for i in range(len(all_events)):
         print("Extracting features of solution {}".format(i))
         hypotheses_graph.set_solution(i)
@@ -766,8 +767,11 @@ copied but linked to the original files to improve execution speed and storage r
             first_events = events[0]
             events = events[1:]
 
-            save_events((options.out_dir.rstrip('/') + '/iter_' + str(i), events, t0, t1,
+            processing_pool.apply_async(save_events, (options.out_dir.rstrip('/') + '/iter_' + str(i), events, t0, t1,
                         options.label_img_path, max_traxel_id_at, fns[0]))
+
+    processing_pool.close()
+    processing_pool.join()
 
     if len(options.ground_truth_labeling) > 0:
         rank_solutions(options.ground_truth_labeling,
