@@ -640,6 +640,8 @@ copied but linked to the original files to improve execution speed and storage r
         obj_size[0] = options.aos
 
     info = [int(x) for x in ts.bounding_box()]
+    if info[0] != options.mints or info[4] != options.maxts:
+        print("Warning: Traxelstore has different time range than requested. Using full traxelstore range.")
     t0, t1 = (info[0], info[4])
     print "-> Traxelstore bounding box: " + str(info)
 
