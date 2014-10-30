@@ -20,10 +20,40 @@ import pgmlink as track
 from empryonic import io
 from multiprocessing import Pool
 
+
 def get_feature(h5file, feature_path, object_id):
     if not feature_path in h5file:
         raise Exception("Feature %s not found in %s." % (feature_path, h5file.filename))
     return h5file[feature_path][object_id, ...]
+
+
+def get_feature_vector(traxel, feature_name, num_dimensions):
+    result = []
+    for i in range(num_dimensions):
+        result.append(traxel.get_feature_value(feature_name, i))
+    return result
+
+
+def extract_coordinates(coordinate_map, h5file, traxel, options):
+    # add coordinate lists with armadillo matrixes
+    shape = h5file['/'.join(options.label_img_path.split('/')[:-1])].values()[0].shape[1:4]
+    ndim = len(shape)
+
+
+    lower = get_feature_vector(traxel, "Coord< Minimum >", ndim)
+    upper = get_feature_vector(traxel, "Coord< Maximum >", ndim)
+
+    limg_path_at = options.label_img_path % tuple([traxel.Timestep, traxel.Timestep + 1, ] + list(shape))
+    roi = [0, ] * 3
+    roi[0] = slice(int(lower[0]), int(upper[0] + 1))
+    roi[1] = slice(int(lower[1]), int(upper[1] + 1))
+    if ndim == 3:
+        roi[2] = slice(int(lower[2]), int(upper[2] + 1))
+    else:
+        assert ndim == 2
+    image_excerpt = np.array(h5file[limg_path_at][tuple([0, ] + roi + [0, ])])
+    track.extract_coordinates(coordinate_map, image_excerpt.astype(np.uint32), np.array(lower).astype(np.int64),
+                              traxel)
 
 
 def generate_traxelstore(h5file,
@@ -42,11 +72,9 @@ def generate_traxelstore(h5file,
                          median_object_size=None,
                          max_traxel_id_at=None,
                          with_merger_prior=True,
-                         with_coordinates=False,
                          max_num_mergers=1,
                          with_optical_correction=False,
-                         ext_probs=None,
-                         coordinate_map=None
+                         ext_probs=None
 ):
     print "generating traxels"
     print "filling traxelstore"
@@ -80,12 +108,8 @@ def generate_traxelstore(h5file,
 
     if time_range is not None:
         keys_sorted = [key for key in keys_sorted if int(key) >= time_range[0] and int(key) < time_range[1]]
-
-    if coordinate_map != None:
-        coordinate_map.initialize()
-
-    if with_coordinates:
-        shape = h5file['/'.join(options.label_img_path.split('/')[:-1])].values()[0].shape[1:4]
+    else:
+        time_range = (0, shape_t)
 
     filtered_labels = {}
     obj_sizes = []
@@ -142,7 +166,7 @@ def generate_traxelstore(h5file,
             else:
                 count += 1
             traxel = track.Traxel()
-            ts.set_feature_store(fs) # features for this traxel should already be set from extract_region_features
+            traxel.set_feature_store(fs)
             traxel.set_x_scale(x_scale)
             traxel.set_y_scale(y_scale)
             traxel.set_z_scale(z_scale)
@@ -204,21 +228,6 @@ def generate_traxelstore(h5file,
                 obj_sizes.append(float(size))
             ts.add(fs, traxel)
 
-            # add coordinate lists with armadillo matrixes
-            if with_coordinates:
-                ndim = len(region_centers[0])
-                limg_path_at = options.label_img_path % tuple([t, t + 1, ] + list(shape))
-                roi = [0, ] * 3
-                roi[0] = slice(int(lower[idx][0]), int(upper[idx][0] + 1))
-                roi[1] = slice(int(lower[idx][1]), int(upper[idx][1] + 1))
-                if ndim == 3:
-                    roi[2] = slice(int(lower[idx][2]), int(upper[idx][2] + 1))
-                else:
-                    assert ndim == 2
-                image_excerpt = np.array(h5file[limg_path_at][tuple([0, ] + roi + [0, ])])
-                track.extract_coordinates(coordinate_map, image_excerpt.astype(np.uint32), lower[idx].astype(np.int64),
-                                          traxel)
-
         print "at timestep ", t, count, "traxels passed filter"
         max_traxel_id_at.append(int(region_centers.shape[0]))
         if count == 0:
@@ -226,7 +235,7 @@ def generate_traxelstore(h5file,
 
         total_count += count
 
-     # load features from raw data
+    # load features from raw data
     if len(options.raw_filename) > 0:
         print("Computing Features from Raw Data: {}".format(options.raw_filename))
         start_time = time.time()
@@ -249,7 +258,6 @@ def generate_traxelstore(h5file,
                 #max_traxel_id_at.append(max_traxel_id)
                 # for idx in xrange(1, max_traxel_id):
                 #     traxel = track.Traxel()
-                #     traxel.set_feature_store(fs) # features for this traxel should already be set from extract_region_features
                 #     traxel.set_x_scale(x_scale)
                 #     traxel.set_y_scale(y_scale)
                 #     traxel.set_z_scale(z_scale)
@@ -606,9 +614,6 @@ copied but linked to the original files to improve execution speed and storage r
         time_range = None
     obj_size = [0]
     max_traxel_id_at = []
-    coordinate_map = None
-    if options.method == 'conservation':
-        coordinate_map = track.TimestepIdCoordinateMap()
 
     with h5py.File(fns[0], 'r') as h5file:
         ndim = 3
@@ -623,7 +628,7 @@ copied but linked to the original files to improve execution speed and storage r
                 ts = pickle.load(ts_in)
                 fs = pickle.load(ts_in)
                 max_traxel_id_at = pickle.load(ts_in)
-            ts.set_feature_store(fs)
+                ts.set_feature_store(fs)
         else:
             if options.method == 'conservation':
                 max_num_mer = int(options.max_num_objects)
@@ -645,13 +650,9 @@ copied but linked to the original files to improve execution speed and storage r
                                                             median_object_size=obj_size,
                                                             max_traxel_id_at=max_traxel_id_at,
                                                             with_merger_prior=with_merger_prior,
-                                                            with_coordinates=(
-                                                            options.method == 'conservation' and options.max_num_objects > 1 and bool(
-                                                                options.with_merger_resolution)),
                                                             max_num_mergers=max_num_mer,
                                                             with_optical_correction=bool(options.woptical),
-                                                            ext_probs=options.ext_probs,
-                                                            coordinate_map=coordinate_map
+                                                            ext_probs=options.ext_probs
             )
 
         if options.dump_traxelstore:
@@ -679,7 +680,7 @@ copied but linked to the original files to improve execution speed and storage r
         obj_size[0] = options.aos
 
     info = [int(x) for x in ts.bounding_box()]
-    if info[0] != options.mints or info[4] != options.maxts:
+    if info[0] != options.mints or info[4] != options.maxts - 1:
         print("Warning: Traxelstore has different time range than requested. Using full traxelstore range.")
     t0, t1 = (info[0], info[4])
     print "-> Traxelstore bounding box: " + str(info)
@@ -714,7 +715,6 @@ copied but linked to the original files to improve execution speed and storage r
         raise Exception("unknown tracking method: " + options.method)
 
     if options.method == 'conservation':
-        #events = tracker(ts, coordinate_map.get())
         """
         C++ signature of operator():
 
@@ -777,8 +777,27 @@ copied but linked to the original files to improve execution speed and storage r
             uncertaintyParam,
             1e+75)
 
-        if options.with_merger_resolution:
-            for event_vector in all_events:
+        # run merger resolving
+        if options.with_merger_resolution and options.max_num_objects > 1:
+            # compute coordinates of all possible mergers
+            print("Computing coordinates of merger candidates")
+            coordinate_map = coordinate_map = track.TimestepIdCoordinateMap()
+            coordinate_map.initialize()
+
+            with h5py.File(fns[0], 'r') as h5file:  # open file to access label images
+                for event_vector in all_events:  # go through all solutions
+                    for timestep, timestep_events in enumerate(event_vector):
+                        for event in timestep_events:
+                            try:
+                                if event.type == track.EventType.Merger:
+                                    for traxel_id in event.traxel_ids:
+                                        traxel = ts.get_traxel(traxel_id, timestep)
+                                        extract_coordinates(coordinate_map, h5file, traxel, options)
+                            except:
+                                pass
+
+            for i, event_vector in enumerate(all_events):
+                hypotheses_graph.set_solution(i)
                 resolved_events = tracker.resolve_mergers(
                     event_vector,
                     coordinate_map.get(),
