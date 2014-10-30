@@ -56,6 +56,31 @@ def extract_coordinates(coordinate_map, h5file, traxel, options):
                               traxel)
 
 
+def update_coordinates(coordinate_map, h5file, merger_traxel, new_traxel_ids, options):
+    # add coordinate lists with armadillo matrixes
+    shape = h5file['/'.join(options.label_img_path.split('/')[:-1])].values()[0].shape[1:4]
+    ndim = len(shape)
+
+    lower = get_feature_vector(merger_traxel, "Coord< Minimum >", ndim)
+    upper = get_feature_vector(merger_traxel, "Coord< Maximum >", ndim)
+
+    limg_path_at = options.label_img_path % tuple([merger_traxel.Timestep, merger_traxel.Timestep + 1, ] + list(shape))
+    roi = [0, ] * 3
+    roi[0] = slice(int(lower[0]), int(upper[0] + 1))
+    roi[1] = slice(int(lower[1]), int(upper[1] + 1))
+    if ndim == 3:
+        roi[2] = slice(int(lower[2]), int(upper[2] + 1))
+    else:
+        assert ndim == 2
+    image_excerpt = np.array(h5file[limg_path_at][tuple([0, ] + roi + [0, ])])
+    for traxel_id in new_traxel_ids:
+        track.update_coordinates(coordinate_map,
+                                 image_excerpt.astype(np.uint32),
+                                 np.array(lower).astype(np.int64),
+                                 merger_traxel.Timestep,
+                                 traxel_id)
+
+
 def generate_traxelstore(h5file,
                          options,
                          feature_path,
@@ -796,17 +821,33 @@ copied but linked to the original files to improve execution speed and storage r
                             except:
                                 pass
 
-            for i, event_vector in enumerate(all_events):
-                hypotheses_graph.set_solution(i)
-                resolved_events = tracker.resolve_mergers(
-                    event_vector,
-                    coordinate_map.get(),
-                    float(options.ep_gap),
-                    options.transition_weight,
-                    not bool(options.without_tracklets),
-                    ndim,
-                    options.trans_par,
-                    not bool(options.woconstr))
+                for i, event_vector in enumerate(all_events):
+                    print("Call set_solution({})".format(i))
+                    hypotheses_graph.set_solution(i)
+                    print("Call tracker.resolve_mergers")
+                    resolved_events = tracker.resolve_mergers(
+                        event_vector,
+                        coordinate_map.get(),
+                        float(options.ep_gap),
+                        options.transition_weight,
+                        not bool(options.without_tracklets),
+                        ndim,
+                        options.trans_par,
+                        not bool(options.woconstr))
+                    print("Update labelimage for solution {}".format(i))
+                    for timestep, timestep_events in enumerate(resolved_events):
+                        for event in timestep_events:
+                            try:
+                                if event.type == track.EventType.ResolvedTo:
+                                    merger_traxel = ts.get_traxel(event.traxel_ids[0], timestep)
+                                    new_traxel_ids = event.traxel_ids[1:]
+                                    update_coordinates(coordinate_map,
+                                                       h5file,
+                                                       merger_traxel,
+                                                       new_traxel_ids,
+                                                       options)
+                            except:
+                                pass
 
         events = all_events[0]
         first_events = events[0]
