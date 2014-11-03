@@ -39,6 +39,7 @@ def extract_coordinates(coordinate_map, h5file, traxel, options):
     shape = h5file['/'.join(options.label_img_path.split('/')[:-1])].values()[0].shape[1:4]
     ndim = len(shape)
 
+    # print("Extracting coordinates of potential merger: timestep {} id {}".format(traxel.Timestep, traxel.Id))
 
     lower = get_feature_vector(traxel, "Coord< Minimum >", ndim)
     upper = get_feature_vector(traxel, "Coord< Maximum >", ndim)
@@ -56,10 +57,12 @@ def extract_coordinates(coordinate_map, h5file, traxel, options):
                               traxel)
 
 
-def update_coordinates(coordinate_map, h5file, merger_traxel, new_traxel_ids, options):
+def update_merger_features(coordinate_map, h5file, merger_traxel, new_traxel_ids, raw_h5, options, fs):
     # add coordinate lists with armadillo matrixes
     shape = h5file['/'.join(options.label_img_path.split('/')[:-1])].values()[0].shape[1:4]
     ndim = len(shape)
+
+    # print("Updating label image of merger traxel: timestep {} id {}".format(merger_traxel.Timestep, merger_traxel.Id))
 
     lower = get_feature_vector(merger_traxel, "Coord< Minimum >", ndim)
     upper = get_feature_vector(merger_traxel, "Coord< Maximum >", ndim)
@@ -72,13 +75,30 @@ def update_coordinates(coordinate_map, h5file, merger_traxel, new_traxel_ids, op
         roi[2] = slice(int(lower[2]), int(upper[2] + 1))
     else:
         assert ndim == 2
-    image_excerpt = np.array(h5file[limg_path_at][tuple([0, ] + roi + [0, ])])
+
+    label_image_excerpt = np.array(h5file[limg_path_at][tuple([0, ] + roi + [0, ])])
+    min_new_traxel_id = min(new_traxel_ids)
+    label_image_excerpt = np.zeros(label_image_excerpt.shape, dtype=label_image_excerpt.dtype) + (min_new_traxel_id - 1)
+
     for traxel_id in new_traxel_ids:
-        track.update_coordinates(coordinate_map,
-                                 image_excerpt.astype(np.uint32),
+        label_image_excerpt = track.update_labelimage(coordinate_map,
+                                 label_image_excerpt.astype(np.uint32),
                                  np.array(lower).astype(np.int64),
-                                 merger_traxel.Timestep,
-                                 traxel_id)
+                                 int(merger_traxel.Timestep),
+                                 int(traxel_id))
+    label_image_excerpt -= min_new_traxel_id - 1
+
+    # Todo: store updated image somewhere?
+
+    # compute features for new traxels, which are automatically stored in featurestore
+    raw_image_excerpt = np.array(raw_h5['/'.join(options.raw_path.split('/'))][tuple([timestep, ] + roi + [0, ])])
+    track.extract_region_features_roi(raw_image_excerpt.squeeze().astype(np.float32),
+                                      label_image_excerpt.astype(np.uint32),
+                                      np.array(range(len(new_traxel_ids) + 1)).astype(np.int64),
+                                      min_new_traxel_id - 1,
+                                      np.array(lower).astype(np.int64),
+                                      fs,
+                                      merger_traxel.Timestep)
 
 
 def generate_traxelstore(h5file,
@@ -273,6 +293,7 @@ def generate_traxelstore(h5file,
             # loop over all frames and compute features for all traxels per frame
             for timestep in xrange(max(0, time_range[0]), min(shape[0], time_range[1])):
                 print("\tFrame {}".format(timestep))
+                # TODO: handle smaller FOV instead of looking at full frame
                 label_image_path = options.label_img_path % (timestep, timestep+1, shape[1], shape[2], shape[3])
                 label_image = np.array(h5file[label_image_path][0, ..., 0]).squeeze().astype(np.uint32)
                 raw_image = np.array(raw_h5['/'.join(options.raw_path.split('/'))][timestep, ..., 0]).squeeze().astype(np.float32)
@@ -810,44 +831,51 @@ copied but linked to the original files to improve execution speed and storage r
             coordinate_map.initialize()
 
             with h5py.File(fns[0], 'r') as h5file:  # open file to access label images
-                for event_vector in all_events:  # go through all solutions
+                for i, event_vector in enumerate(all_events):  # go through all solutions
+                    num_mergers = 0
                     for timestep, timestep_events in enumerate(event_vector):
                         for event in timestep_events:
                             try:
                                 if event.type == track.EventType.Merger:
-                                    for traxel_id in event.traxel_ids:
-                                        traxel = ts.get_traxel(traxel_id, timestep)
-                                        extract_coordinates(coordinate_map, h5file, traxel, options)
+                                    traxel = ts.get_traxel(event.traxel_ids[0], timestep)
+                                    extract_coordinates(coordinate_map, h5file, traxel, options)
+                                    num_mergers += 1
                             except:
+                                print("Error when extracting coordinates for id={} in timestep={}".format(event.traxel_ids[0], timestep))
                                 pass
+                    print("Found {} merger events in proposal {}".format(num_mergers, i))
 
-                for i, event_vector in enumerate(all_events):
-                    print("Call set_solution({})".format(i))
-                    hypotheses_graph.set_solution(i)
-                    print("Call tracker.resolve_mergers")
-                    resolved_events = tracker.resolve_mergers(
-                        event_vector,
-                        coordinate_map.get(),
-                        float(options.ep_gap),
-                        options.transition_weight,
-                        not bool(options.without_tracklets),
-                        ndim,
-                        options.trans_par,
-                        not bool(options.woconstr))
-                    print("Update labelimage for solution {}".format(i))
-                    for timestep, timestep_events in enumerate(resolved_events):
-                        for event in timestep_events:
-                            try:
-                                if event.type == track.EventType.ResolvedTo:
-                                    merger_traxel = ts.get_traxel(event.traxel_ids[0], timestep)
-                                    new_traxel_ids = event.traxel_ids[1:]
-                                    update_coordinates(coordinate_map,
-                                                       h5file,
-                                                       merger_traxel,
-                                                       new_traxel_ids,
-                                                       options)
-                            except:
-                                pass
+                if len(options.raw_filename) > 0:
+                    print("Computing Features from Raw Data: {}".format(options.raw_filename))
+                    start_time = time.time()
+
+                    with h5py.File(options.raw_filename, 'r') as raw_h5:
+                        for i, event_vector in enumerate(all_events):
+                            hypotheses_graph.set_solution(i)
+                            resolved_events = tracker.resolve_mergers(
+                                event_vector,
+                                coordinate_map.get(),
+                                float(options.ep_gap),
+                                options.transition_weight,
+                                not bool(options.without_tracklets),
+                                ndim,
+                                options.trans_par,
+                                not bool(options.woconstr))
+
+                            print("Update labelimage and compute new features after merger resolving "
+                                  "for solution {}".format(i))
+                            for timestep, timestep_events in enumerate(resolved_events):
+                                for event in timestep_events:
+                                    if event.type == track.EventType.ResolvedTo:
+                                        merger_traxel = ts.get_traxel(event.traxel_ids[0], timestep)
+                                        new_traxel_ids = event.traxel_ids[1:]
+                                        update_merger_features(coordinate_map,
+                                                           h5file,
+                                                           merger_traxel,
+                                                           new_traxel_ids,
+                                                           raw_h5,
+                                                           options,
+                                                           fs)
 
         events = all_events[0]
         first_events = events[0]
