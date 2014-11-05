@@ -68,26 +68,18 @@ def convert_label_volume(options):
     # for each track, indexed by first label, store [parent, begin, end]
     tracks = {}
     old_mapping = {}
+    new_track_id = 1
 
-    # handle frame 0 -> each label is a track start
+    # handle frame 0 -> nothing to do yet
     label_image = get_frame_label_image(0, options)
     print("Processing frame 0 of shape {}".format(label_image.shape))
-    old_label_set = set(np.unique(label_image)) - set([0])
-    assert(len(old_label_set) == 0 or 1 in old_label_set)
-
-    for idx in old_label_set:
-        tracks[idx] = [0, 0]
-        old_mapping[idx] = idx
-
     save_frame_to_tif(0, label_image, options)
-    new_track_id = len(old_label_set) + 1
 
     # handle all further frames by remapping their indices
     for frame in range(1, num_frames):
         start_time = time.time()
         label_image = get_frame_label_image(frame, options)
         print("Processing frame {} of shape {}".format(frame, label_image.shape))
-        label_set = set(np.unique(label_image)) - set([0])
         mapping = {}
 
         # find the continued tracks
@@ -95,7 +87,13 @@ def convert_label_volume(options):
         for src, dest in moves:
             if src == 0 or dest == 0:
                 continue
-            mapping[dest] = old_mapping[src]
+            # see whether this was a track continuation or the first leg of a new track
+            if src in old_mapping.keys():
+                mapping[dest] = old_mapping[src]
+            else:
+                mapping[dest] = new_track_id
+                tracks[new_track_id] = [0, frame - 1]
+                new_track_id += 1
 
         # find all divisions
         splits = get_frame_dataset(frame, "Splits", options)
@@ -106,7 +104,14 @@ def convert_label_volume(options):
             # end parent track
             parent = splits[s, 0]
             parents.append(parent)
-            tracks[old_mapping[parent]].append(frame - 1)
+
+            if parent in old_mapping.keys():
+                tracks[old_mapping[parent]].append(frame - 1)
+            else:
+                # insert a track of length 1 as parent of the new track
+                mapping[parent] = new_track_id
+                tracks[new_track_id] = [0, frame - 1, frame - 1]
+                new_track_id += 1
 
             # create new tracks for all children
             for c in splits[s, 1:]:
@@ -116,18 +121,11 @@ def convert_label_volume(options):
                 children.append(c)
 
         # find all tracks that ended (so not in a move or split (-> is parent))
-        disappeared_indices = old_label_set - set(moves[:, 0]) - set(parents)
+        disappeared_indices = set(old_mapping.keys()) - set(mapping.keys())
         for idx in disappeared_indices:
             tracks[old_mapping[idx]].append(frame - 1)
 
-        # find appearing tracks in this frame (so not coming from a move or a split)
-        new_indices = label_set - set(mapping.keys()) - set(children)
-        for idx in new_indices:
-            mapping[idx] = new_track_id
-            tracks[new_track_id] = [0, frame]
-            new_track_id += 1
-
-        # create a new label image with remapped indices and save it
+        # create a new label image with remapped indices (only those of tracks) and save it
         remapped_label_image = np.zeros(label_image.shape, dtype=label_image.dtype)
         for dest, src in mapping.iteritems():
             remapped_label_image[label_image == dest] = src
@@ -135,7 +133,6 @@ def convert_label_volume(options):
 
         # save for next iteration
         old_mapping = mapping
-        old_label_set = label_set
         print("\tFrame done in {} secs".format(time.time() - start_time))
 
     print("Done processing frames, saving track info...")
