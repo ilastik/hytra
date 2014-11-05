@@ -32,7 +32,7 @@ def find_splits(filename):
 
 def create_label_volume(options):
     # read image
-    label_volume = vigra.impex.readVolume(options.input_dir + '/man_track00.tif')
+    label_volume = vigra.impex.readVolume(options.input_dir + '/man_track000.tif')
     print("Found dataset of size {}".format(label_volume.shape))
 
     if not options.output_file:
@@ -62,7 +62,7 @@ def create_label_volume(options):
             tracking_frame = tracking.create_group(format(frame, "04"))
 
             # intersect track id sets of both frames, and place moves in HDF5 file
-            tracks_in_both_frames = objects_per_frame[frame - 1] & objects_per_frame[frame]
+            tracks_in_both_frames = objects_per_frame[frame - 1] & objects_per_frame[frame] - set([0])
             moves = np.array([list(tracks_in_both_frames), list(tracks_in_both_frames)]).transpose()
             tracking_frame.create_dataset("Moves", data=moves, dtype='u2')
 
