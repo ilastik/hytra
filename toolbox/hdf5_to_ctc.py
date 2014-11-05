@@ -53,10 +53,18 @@ def save_tracks(tracks, num_frames, options):
     with open(filename, 'wt') as f:
         for key, value in tracks.iteritems():
             if len(value) == 2:
-                value.append(num_frames)
+                value.append(num_frames - 1)
             # our track value contains parent, begin, end
             # but here we need begin, end, parent. so swap
             f.write("{} {} {} {}\n".format(key, value[1], value[2], value[0]))
+
+
+def remap_label_image(label_image, mapping):
+    remapped_label_image = np.zeros(label_image.shape, dtype=label_image.dtype)
+    for dest, src in mapping.iteritems():
+        remapped_label_image[label_image == dest] = src
+
+    return remapped_label_image
 
 
 def convert_label_volume(options):
@@ -67,13 +75,23 @@ def convert_label_volume(options):
 
     # for each track, indexed by first label, store [parent, begin, end]
     tracks = {}
-    old_mapping = {}
+    old_mapping = {} # mapping from label_id to track_id
     new_track_id = 1
 
-    # handle frame 0 -> nothing to do yet
+    # handle frame 0 -> only add those nodes that are referenced from frame 1 events
     label_image = get_frame_label_image(0, options)
     print("Processing frame 0 of shape {}".format(label_image.shape))
-    save_frame_to_tif(0, label_image, options)
+
+    moves = get_frame_dataset(1, "Moves", options)
+    splits = get_frame_dataset(1, "Splits", options)
+    referenced_labels = set(moves[:, 0]) | set(splits[:, 0]) # set union
+    for l in referenced_labels:
+        old_mapping[l] = new_track_id
+        tracks[new_track_id] = [0, 0]
+        new_track_id += 1
+    remapped_label_image = remap_label_image(label_image, old_mapping)
+    save_frame_to_tif(0, remapped_label_image, options)
+    print("Tracks in first frame: {}".format(new_track_id))
 
     # handle all further frames by remapping their indices
     for frame in range(1, num_frames):
@@ -112,6 +130,7 @@ def convert_label_volume(options):
                 mapping[parent] = new_track_id
                 tracks[new_track_id] = [0, frame - 1, frame - 1]
                 new_track_id += 1
+                print("Adding single-node-track parent of division")
 
             # create new tracks for all children
             for c in splits[s, 1:]:
@@ -121,19 +140,18 @@ def convert_label_volume(options):
                 children.append(c)
 
         # find all tracks that ended (so not in a move or split (-> is parent))
-        disappeared_indices = set(old_mapping.keys()) - set(mapping.keys())
+        disappeared_indices = set(old_mapping.values()) - set(mapping.values())
         for idx in disappeared_indices:
-            tracks[old_mapping[idx]].append(frame - 1)
+            tracks[idx].append(frame - 1)
 
         # create a new label image with remapped indices (only those of tracks) and save it
-        remapped_label_image = np.zeros(label_image.shape, dtype=label_image.dtype)
-        for dest, src in mapping.iteritems():
-            remapped_label_image[label_image == dest] = src
+        remapped_label_image = remap_label_image(label_image, mapping)
         save_frame_to_tif(frame, remapped_label_image, options)
 
         # save for next iteration
         old_mapping = mapping
         print("\tFrame done in {} secs".format(time.time() - start_time))
+        print("Track count is now at {}".format(new_track_id))
 
     print("Done processing frames, saving track info...")
     # done, save tracks
