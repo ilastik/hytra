@@ -824,14 +824,12 @@ copied but linked to the original files to improve execution speed and storage r
             1e+75)
 
         # run merger resolving
-        if options.with_merger_resolution and options.max_num_objects > 1:
-            # compute coordinates of all possible mergers
-            print("Computing coordinates of merger candidates")
-            coordinate_map = coordinate_map = track.TimestepIdCoordinateMap()
-            coordinate_map.initialize()
-
+        if options.with_merger_resolution and options.max_num_objects > 1 and len(options.raw_filename) > 0:
             with h5py.File(fns[0], 'r') as h5file:  # open file to access label images
                 for i, event_vector in enumerate(all_events):  # go through all solutions
+                    print("Resolving mergers for solution {}".format(i))
+                    coordinate_map = coordinate_map = track.TimestepIdCoordinateMap()
+                    coordinate_map.initialize()
                     num_mergers = 0
                     for timestep, timestep_events in enumerate(event_vector):
                         for event in timestep_events:
@@ -843,39 +841,35 @@ copied but linked to the original files to improve execution speed and storage r
                             except:
                                 print("Error when extracting coordinates for id={} in timestep={}".format(event.traxel_ids[0], timestep))
                                 pass
-                    print("Found {} merger events in proposal {}".format(num_mergers, i))
 
-                if len(options.raw_filename) > 0:
-                    print("Computing Features from Raw Data: {}".format(options.raw_filename))
-                    start_time = time.time()
+                    print("Found {} merger events in proposal {}. Resolving them...".format(num_mergers, i))
+
+                    hypotheses_graph.set_solution(i)
+                    resolved_events = tracker.resolve_mergers(
+                        event_vector,
+                        coordinate_map.get(),
+                        float(options.ep_gap),
+                        options.transition_weight,
+                        not bool(options.without_tracklets),
+                        ndim,
+                        options.trans_par,
+                        not bool(options.woconstr))
 
                     with h5py.File(options.raw_filename, 'r') as raw_h5:
-                        for i, event_vector in enumerate(all_events):
-                            hypotheses_graph.set_solution(i)
-                            resolved_events = tracker.resolve_mergers(
-                                event_vector,
-                                coordinate_map.get(),
-                                float(options.ep_gap),
-                                options.transition_weight,
-                                not bool(options.without_tracklets),
-                                ndim,
-                                options.trans_par,
-                                not bool(options.woconstr))
-
-                            print("Update labelimage and compute new features after merger resolving "
-                                  "for solution {}".format(i))
-                            for timestep, timestep_events in enumerate(resolved_events):
-                                for event in timestep_events:
-                                    if event.type == track.EventType.ResolvedTo:
-                                        merger_traxel = ts.get_traxel(event.traxel_ids[0], timestep)
-                                        new_traxel_ids = event.traxel_ids[1:]
-                                        update_merger_features(coordinate_map,
-                                                           h5file,
-                                                           merger_traxel,
-                                                           new_traxel_ids,
-                                                           raw_h5,
-                                                           options,
-                                                           fs)
+                        print("Update labelimage and compute new features after merger resolving "
+                              "for solution {}".format(i))
+                        for timestep, timestep_events in enumerate(resolved_events):
+                            for event in timestep_events:
+                                if event.type == track.EventType.ResolvedTo:
+                                    merger_traxel = ts.get_traxel(event.traxel_ids[0], timestep)
+                                    new_traxel_ids = event.traxel_ids[1:]
+                                    update_merger_features(coordinate_map,
+                                                       h5file,
+                                                       merger_traxel,
+                                                       new_traxel_ids,
+                                                       raw_h5,
+                                                       options,
+                                                       fs)
 
         events = all_events[0]
         first_events = events[0]
