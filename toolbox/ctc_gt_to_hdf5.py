@@ -73,6 +73,15 @@ def create_label_volume(options):
                 if len(mitosis) > 0:
                     tracking_frame.create_dataset("Mitosis", data=np.array(mitosis), dtype='u2')
                 splits = [[key] + value for key, value in splits_in_frame.iteritems()]
+		# make sure all splits have the same dimension
+		max_split_length = max(map(len, splits))
+		min_split_length = min(map(len, splits))
+		if min_split_length != max_split_length:
+			print("In timestep {}: Found splits longer than minimum {}, cutting off children to make number equal!".format(frame, min_split_length))
+			for i, split in enumerate(splits):
+				splits[i] = split[0:min_split_length]
+
+
                 if len(splits) > 0:
                     tracking_frame.create_dataset("Splits", data=np.array(splits), dtype='u2')
 
