@@ -505,13 +505,13 @@ def rank_solutions(ground_truth_filename, feature_vector_filename, proposal_base
 def construct_feature_vector(feature_matrix_basename,
                              proposal_basename,
                              iteration,
-                             feature_vector_filename):
+                             feature_vector):
     feature_matrix = np.loadtxt(feature_matrix_basename + '_{}.txt'.format(iteration))
     proposal_label = np.loadtxt(proposal_basename + '_{}.txt'.format(iteration))
-    feature_vector = np.loadtxt(feature_vector_filename)
-    new_features = np.dot(feature_matrix, proposal_label)
+
+    new_features = np.dot(proposal_label, feature_matrix)
     feature_vector = list(feature_vector) + list(new_features)
-    np.savetxt(feature_vector_filename, feature_vector)
+    return feature_vector
 
 if __name__ == "__main__":
     usage = """%prog [options] FILES
@@ -916,7 +916,7 @@ copied but linked to the original files to improve execution speed and storage r
 
     # extract higher order features
     hypotheses_graph = tracker.get_hypotheses_graph()
-    feature_vector_filename = options.out_dir.rstrip('/') + '/feature_vectors.txt'
+    feature_vector_filename = options.out_dir.rstrip('/') + '/ho_feature_vectors.txt'
     try:
         os.remove(feature_vector_filename)
     except:
@@ -938,6 +938,17 @@ copied but linked to the original files to improve execution speed and storage r
 
             processing_pool.apply_async(save_events, (options.out_dir.rstrip('/') + '/iter_' + str(i), events, t0, t1,
                         options.label_img_path, max_traxel_id_at, fns[0]))
+
+    # add original model features to the feature vector
+    feature_vectors = np.loadtxt(feature_vector_filename)
+    full_feature_vectors = []
+    for i in range(len(all_events)):
+        full_feature_vectors.append(
+            construct_feature_vector(options.out_dir.rstrip('/') + '/feature_matrix',
+                                     options.out_dir.rstrip('/') + '/proposal_labeling',
+                                     i,
+                                     feature_vectors[:,i]))
+    np.savetxt(options.out_dir.rstrip('/') + '/feature_vectors.txt', np.array(full_feature_vectors).transpose())
 
     processing_pool.close()
     processing_pool.join()
