@@ -28,8 +28,9 @@ def get_feature(h5file, feature_path, object_id):
 
 
 def get_feature_vector(traxel, feature_name, num_dimensions):
+    #print traxel.print_available_features()
     result = []
-    for i in range(num_dimensions):
+    for i in range(num_dimensions):    
         result.append(traxel.get_feature_value(feature_name, i))
     return result
 
@@ -37,7 +38,7 @@ def get_feature_vector(traxel, feature_name, num_dimensions):
 def extract_coordinates(coordinate_map, h5file, traxel, options):
     # add coordinate lists with armadillo matrixes
     shape = h5file['/'.join(options.label_img_path.split('/')[:-1])].values()[0].shape[1:4]
-    ndim = len(shape)
+    ndim = 2 if shape[-1]==1 else 3
 
     # print("Extracting coordinates of potential merger: timestep {} id {}".format(traxel.Timestep, traxel.Id))
 
@@ -60,7 +61,7 @@ def extract_coordinates(coordinate_map, h5file, traxel, options):
 def update_merger_features(coordinate_map, h5file, merger_traxel, new_traxel_ids, raw_h5, options, fs):
     # add coordinate lists with armadillo matrixes
     shape = h5file['/'.join(options.label_img_path.split('/')[:-1])].values()[0].shape[1:4]
-    ndim = len(shape)
+    ndim = 2 if shape[-1]==1 else 3
 
     # print("Updating label image of merger traxel: timestep {} id {}".format(merger_traxel.Timestep, merger_traxel.Id))
 
@@ -75,7 +76,7 @@ def update_merger_features(coordinate_map, h5file, merger_traxel, new_traxel_ids
         roi[2] = slice(int(lower[2]), int(upper[2] + 1))
     else:
         assert ndim == 2
-
+    
     label_image_excerpt = np.array(h5file[limg_path_at][tuple([0, ] + roi + [0, ])])
     min_new_traxel_id = min(new_traxel_ids)
     label_image_excerpt = np.zeros(label_image_excerpt.shape, dtype=label_image_excerpt.dtype) + (min_new_traxel_id - 1)
@@ -91,7 +92,8 @@ def update_merger_features(coordinate_map, h5file, merger_traxel, new_traxel_ids
     # Todo: store updated image somewhere?
 
     # compute features for new traxels, which are automatically stored in featurestore
-    raw_image_excerpt = np.array(raw_h5['/'.join(options.raw_path.split('/'))][tuple([timestep, ] + roi + [0, ])])
+    # the 2d raw sequence is usually saved as a 2d+t+c dataset, the labelimage from ilastik as 3d+t+c 
+    raw_image_excerpt = np.array(raw_h5[options.raw_path][tuple([timestep, ] + roi[0:ndim] + [0, ])])
     track.extract_region_features_roi(raw_image_excerpt.squeeze().astype(np.float32),
                                       label_image_excerpt.astype(np.uint32),
                                       np.array(range(len(new_traxel_ids) + 1)).astype(np.int64),
@@ -612,7 +614,6 @@ copied but linked to the original files to improve execution speed and storage r
                         help='absolute border margin in which the appearance/disappearance costs are linearly decreased [default: %default]')
     consopts.add_option('--ext-probs', dest='ext_probs', type='string', default=None,
                         help='provide a path to hdf5 files containing detection probabilities [default:%default]')
-
     consopts.add_option('--objCountPath', dest='obj_count_path', type='string',
                         default='/CellClassification/Probabilities/0/',
                         help='internal hdf5 path to object count probabilities [default=%default]')
@@ -627,6 +628,7 @@ copied but linked to the original files to improve execution speed and storage r
     consopts.add_option('--labelImgPath', dest='label_img_path', type='str',
                         default='/ObjectExtraction/LabelImage/0/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]',
                         help='internal hdf5 path to label image [default=%default]')
+    consopts.add_option('--timeout', dest='timeout', type='float', default=1e+75, help='CPLEX timeout in sec. [default: %default]')
 
     # options for perturbing and re-ranking
     consopts.add_option('--num-iterations', dest='num_iterations', type='int', default=1,
@@ -634,12 +636,12 @@ copied but linked to the original files to improve execution speed and storage r
     consopts.add_option('--perturb-distrib', dest='perturbation_distribution', type='str', default='DiverseMbest',
                         help='distribution type for parameter perturbation, one of {GaussianPertubation, PerturbAndMAP, '
                              'DiverseMbest, MbestCPLEX, ClassifierUncertainty} [default=%default]')
-    consopts.add_option('--perturb-sigmas', dest='perturb_sigmas', type=float, nargs='+', default=[.0, .0, 10., 10., 10.],
+    consopts.add_option('--perturb-sigmas', dest='perturb_sigmas', type=float, nargs=5, default=[0., 0., 10., 10., 10.],
                         help='Parameters for the perturbation distribution. [default=%default]')
     consopts.add_option('--no-saving', dest='skip_saving', action='store_true',
                         help='Skip saving if you are just interested in the proposals and features')
     consopts.add_option('--ground-truth-labeling', dest='ground_truth_labeling', type='str', default='',
-                        help='Ground Truth label filename which will be used for reranking the solutions')
+                        help='Ground Truth label filename which will be used for reranking the solutions [default=%default]')
 
     parser.add_option_group(chaingraphopts)
     parser.add_option_group(consopts)
@@ -658,7 +660,7 @@ copied but linked to the original files to improve execution speed and storage r
     ### Do the tracking
     start = time.time()
 
-    feature_path = 'ObjectExtraction/'
+    feature_path = options.feats_path
     with_div = True
     with_merger_prior = True
     if options.method == 'chaingraph':
@@ -674,7 +676,8 @@ copied but linked to the original files to improve execution speed and storage r
 
     with h5py.File(fns[0], 'r') as h5file:
         ndim = 3
-        if h5file['ObjectExtraction/LabelImage/0/'].values()[0].shape[3] == 1:
+               
+        if h5file['/'.join(options.label_img_path.strip('/').split('/')[:-1])].values()[0].shape[3] == 1:
             ndim = 2
         print 'ndim=', ndim
         if options.load_traxelstore:
@@ -821,7 +824,6 @@ copied but linked to the original files to improve execution speed and storage r
                                      False,
                                      uncertaintyParam)
 
-
         # perform the real tracking
         all_events = tracker.track(
             options.forbidden_cost,
@@ -838,8 +840,9 @@ copied but linked to the original files to improve execution speed and storage r
             options.border_width,
             not bool(options.woconstr),
             uncertaintyParam,
-            1e+75,
-            None)
+            options.timeout,
+            None, # pointer to transition classifier
+            )
 
         # write out feature matrix for each proposal, but use original traxel store
         # will later be multiplied by label to get featurevector
@@ -862,19 +865,19 @@ copied but linked to the original files to improve execution speed and storage r
             with h5py.File(fns[0], 'r') as h5file:  # open file to access label images
                 for i, event_vector in enumerate(all_events):  # go through all solutions
                     print("Resolving mergers for solution {}".format(i))
-                    coordinate_map = coordinate_map = track.TimestepIdCoordinateMap()
+                    coordinate_map = track.TimestepIdCoordinateMap()
                     coordinate_map.initialize()
                     num_mergers = 0
                     for timestep, timestep_events in enumerate(event_vector):
                         for event in timestep_events:
-                            try:
-                                if event.type == track.EventType.Merger:
-                                    traxel = ts.get_traxel(event.traxel_ids[0], timestep)
+                            if event.type == track.EventType.Merger:
+                                traxel = ts.get_traxel(event.traxel_ids[0], timestep)
+                                try:
                                     extract_coordinates(coordinate_map, h5file, traxel, options)
-                                    num_mergers += 1
-                            except:
-                                print("Error when extracting coordinates for id={} in timestep={}".format(event.traxel_ids[0], timestep))
-                                pass
+                                except:
+                                    print("Error when extracting coordinates for id={} in timestep={}".format(event.traxel_ids[0], timestep))
+                                    raise Exception
+                                num_mergers += 1
 
                     print("Found {} merger events in proposal {}. Resolving them...".format(num_mergers, i))
 
