@@ -500,6 +500,17 @@ def rank_solutions(ground_truth_filename, feature_vector_filename, proposal_base
     return weights
 
 
+def construct_feature_vector(feature_matrix_basename,
+                             proposal_basename,
+                             iteration,
+                             feature_vector_filename):
+    feature_matrix = np.loadtxt(feature_matrix_basename + '_{}.txt'.format(iteration))
+    proposal_label = np.loadtxt(proposal_basename + '_{}.txt'.format(iteration))
+    feature_vector = np.loadtxt(feature_vector_filename)
+    new_features = np.dot(feature_matrix, proposal_label)
+    feature_vector = list(feature_vector) + list(new_features)
+    np.savetxt(feature_vector_filename, feature_vector)
+
 if __name__ == "__main__":
     usage = """%prog [options] FILES
 Track cells.
@@ -803,9 +814,15 @@ copied but linked to the original files to improve execution speed and storage r
 
         hypotheses_graph = tracker.buildGraph(ts)
 
-        # save labels of proposals to file:
-        tracker.SetFunkeyOutputFiles('', '', options.out_dir.rstrip('/') + '/proposal_labeling', False)
+        # save labels of proposals when doing inference
+        tracker.SetFunkeyOutputFiles('',
+                                     '',
+                                     options.out_dir.rstrip('/') + '/proposal_labeling',
+                                     False,
+                                     uncertaintyParam)
 
+
+        # perform the real tracking
         all_events = tracker.track(
             options.forbidden_cost,
             options.ep_gap,
@@ -821,7 +838,24 @@ copied but linked to the original files to improve execution speed and storage r
             options.border_width,
             not bool(options.woconstr),
             uncertaintyParam,
-            1e+75)
+            1e+75,
+            None)
+
+        # write out feature matrix for each proposal, but use original traxel store
+        # will later be multiplied by label to get featurevector
+        tracker.SetFunkeyOutputFiles(options.out_dir.rstrip('/') + '/feature_matrix',
+                                     '',
+                                     '',
+                                     False,
+                                     uncertaintyParam)
+        tracker.writeAllFunkeyFeatures(ts,
+                                       uncertaintyParam,
+                                       options.forbidden_cost,
+                                       ndim,
+                                       not bool(options.without_tracklets),
+                                       options.trans_par,
+                                       options.border_width
+                                       )
 
         # run merger resolving
         if options.with_merger_resolution and options.max_num_objects > 1 and len(options.raw_filename) > 0:
