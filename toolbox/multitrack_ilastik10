@@ -513,7 +513,8 @@ def construct_feature_vector(feature_matrix_basename,
     feature_vector = list(feature_vector) + list(new_features)
     return feature_vector
 
-if __name__ == "__main__":
+def getConfigAndCommandLineArguments():
+
     usage = """%prog [options] FILES
 Track cells.
 
@@ -522,6 +523,8 @@ copied but linked to the original files to improve execution speed and storage r
 """
 
     parser = optparse.OptionParser(usage=usage)
+    parser.add_option('--config-file', type='string', dest='config', default=None,
+                      help='path to config file')
     parser.add_option('--method', type='str', default='conservation',
                       help='chaingraph or conservation [default: %default]')
     parser.add_option('-o', '--output-dir', type='str', dest='out_dir', default='tracked', help='[default: %default]')
@@ -645,7 +648,32 @@ copied but linked to the original files to improve execution speed and storage r
 
     parser.add_option_group(chaingraphopts)
     parser.add_option_group(consopts)
-    options, args = parser.parse_args()
+
+    optcfg, args = parser.parse_args()
+
+    configfilecommands = []
+
+    if(optcfg.config != None):
+        with open(optcfg.config) as f:
+            configfilecommands = f.read().splitlines()
+
+    optcfg, args2 = parser.parse_args(configfilecommands)
+
+    print optcfg
+
+    numArgs = len(args)
+    if numArgs == 0:
+        parser.print_help()
+        sys.exit(1)
+
+    return optcfg, args
+
+
+
+
+if __name__ == "__main__":
+
+    options, args = getConfigAndCommandLineArguments()
 
     numArgs = len(args)
     if numArgs > 0:
@@ -653,9 +681,6 @@ copied but linked to the original files to improve execution speed and storage r
         for arg in args:
             fns.extend(glob.glob(arg))
         fns.sort()
-    else:
-        parser.print_help()
-        sys.exit(1)
 
     ### Do the tracking
     start = time.time()
