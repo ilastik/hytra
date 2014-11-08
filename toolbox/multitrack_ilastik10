@@ -1070,6 +1070,8 @@ if __name__ == "__main__":
                     distrib_type = track.DistrId.GaussianPerturbation
                 elif options.perturbation_distribution == "PerturbAndMAP":
                     distrib_type = track.DistrId.PerturbAndMAP
+                else:
+                    raise Exception, 'this perturbation distribution does not exist'
 
                 optimal_loss = 1e+75;
                 optimal_parameters = []
