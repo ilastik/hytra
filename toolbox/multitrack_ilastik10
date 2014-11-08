@@ -941,6 +941,8 @@ copied but linked to the original files to improve execution speed and storage r
 
     # add original model features to the feature vector
     feature_vectors = np.loadtxt(feature_vector_filename)
+    if len(feature_vectors.shape) == 1:
+        feature_vectors = feature_vectors.reshape((1,-1))
     full_feature_vectors = []
     for i in range(len(all_events)):
         full_feature_vectors.append(
