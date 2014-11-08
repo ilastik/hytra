@@ -517,6 +517,27 @@ def rank_solutions(ground_truth_filename, feature_vector_filename, proposal_base
     print("Found weights: {}".format(weights))
     return weights
 
+def loadGPClassifier(fn, h5_group='/TransitionGPClassifier/'):
+    try:
+        from lazyflow.classifiers.gaussianProcessClassifier import GaussianProcessClassifier
+    except:
+        raise Exception, "cannot import GP Classifier: lazyflow branch gaussianProcessClassifier must be in PYTHONPATH!"
+
+    with h5py.File(fn, 'r') as f:
+        try:
+            g = f[h5_group]
+        except:
+            raise Exception, h5_group + " does not exist in " + fn
+
+        gpc = GaussianProcessClassifier()
+        gpc.deserialize_hdf5(g)
+
+        features = []
+        for op in g['Features'].keys():
+            for feat in g['Features'][op]:
+                features.append('%s<%s>' % (op, feat))
+
+    return gpc, features
 
 def construct_feature_vector(feature_matrix_basename,
                              proposal_basename,
@@ -679,6 +700,10 @@ copied but linked to the original files to improve execution speed and storage r
     consopts.add_option('--divVarPath', dest='div_prob_var_path', type='string',
                         default='/DivisionDetection/Uncertainty/0/',
                         help='internal path to division detection variance [default=%default]')
+    consopts.add_option('--transitionClassifierFn', dest='trans_fn', type='string',
+                        default=None, help='filename of transition classifier, empty string for None [default=%default]')
+    consopts.add_option('--transitionClassifierPath', dest='trans_path', type='string',
+                        default='/TransitionClassifier', help='internal h5 path to transition classifier [default=%default]')
 
     # learning options
     consopts.add_option('--no-saving', dest='skip_saving', action='store_true',
@@ -698,7 +723,10 @@ copied but linked to the original files to improve execution speed and storage r
             configfilecommands = f.read().splitlines()
         optcfg, args2 = parser.parse_args(configfilecommands)
 
-    print optcfg
+    print('--------------')
+    for key, value in sorted(vars(optcfg).items()):
+        print('{} : {}'.format(key, value))
+    print('--------------')
 
     numArgs = len(args)
     if numArgs == 0:
@@ -706,8 +734,6 @@ copied but linked to the original files to improve execution speed and storage r
         sys.exit(1)
 
     return optcfg, args
-
-
 
 
 if __name__ == "__main__":
@@ -737,6 +763,18 @@ if __name__ == "__main__":
         time_range = None
     obj_size = [0]
     max_traxel_id_at = []
+
+    if options.trans_fn is None or len(options.trans_fn) == 0:
+        trans_classifier = None
+    else:
+        try:
+            from ilastik.applets.tracking.conservation.TransitionClassifier import TransitionClassifier
+        except:
+            raise Exception, "cannot import Transition Classifier: ilastik branch TransitionClassifier must be in PYTHONPATH!"
+
+        print 'load pre-trained transition classifier'
+        gpc, selected_features = loadGPClassifier(fn=options.trans_fn, h5_group=options.trans_path)
+        trans_classifier = TransitionClassifier(gpc, selected_features)
 
     with h5py.File(fns[0], 'r') as h5file:
         ndim = 3
@@ -992,8 +1030,9 @@ if __name__ == "__main__":
                     options.border_width,
                     not bool(options.woconstr),
                     track.UncertaintyParameter(),
-                    1e+75,
-                    None)
+                    options.timeout,
+                    trans_classifier
+                    )
 
 
                 events = events_all_perturbations[0][1:]
@@ -1118,7 +1157,7 @@ if __name__ == "__main__":
                         not bool(options.woconstr),
                         uncertaintyParam,
                         options.timeout,
-                        None, # pointer to transition classifier
+                        trans_classifier, # pointer to transition classifier
                         )
 
 
@@ -1201,7 +1240,7 @@ if __name__ == "__main__":
                 not bool(options.woconstr),
                 uncertaintyParam,
                 options.timeout,
-                None, # pointer to transition classifier
+                trans_classifier, # pointer to transition classifier
                 )
 
             # write out feature matrix for each proposal, but use original traxel store
