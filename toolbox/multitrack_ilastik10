@@ -141,6 +141,11 @@ def generate_traxelstore(h5file,
     if with_local_centers:
         localCenters = None  # self.RegionLocalCenters(time_range).wait()
 
+    if options.perturbation_distribution == "ClassifierUncertainty":
+        detProb_Vars = h5file[options.obj_count_var_path]
+        if with_div:
+            divProb_Vars = h5file[options.div_prob_var_path]
+
     if x_range is None:
         x_range = [0, sys.maxint]
 
@@ -257,6 +262,16 @@ def generate_traxelstore(h5file,
                 probs[max_num_mergers] = sum(probs[max_num_mergers:])
                 for i in range(max_num_mergers + 1):
                     traxel.set_feature_value("detProb", i, float(probs[i]))
+
+            if options.perturbation_distribution == "ClassifierUncertainty":
+                traxel.add_feature_array("detProb_Var", len(detProb_Vars[str(t)][idx+1]))
+                for i in range(len(detProb_Vars[str(t)][idx+1])):
+                    traxel.set_feature_value("detProb_Var", i, float(detProb_Vars[str(t)][idx+1][i]))
+
+                if with_div:
+                    traxel.add_feature_array("divProb_Var", len(divProb_Vars[str(t)][idx+1]))
+                    for i in range(len(divProb_Vars[str(t)][idx+1])):
+                        traxel.set_feature_value("divProb_Var", i, float(divProb_Vars[str(t)][idx+1][i]))
 
             elif with_merger_prior and ext_probs is not None:
                 assert max_num_mergers == 1, "not implemented for max_num_mergers > 1"
@@ -638,6 +653,14 @@ copied but linked to the original files to improve execution speed and storage r
                              'DiverseMbest, MbestCPLEX, ClassifierUncertainty} [default=%default]')
     consopts.add_option('--perturb-sigmas', dest='perturb_sigmas', type=float, nargs=5, default=[0., 0., 10., 10., 10.],
                         help='Parameters for the perturbation distribution. [default=%default]')
+    consopts.add_option('--objCountVarPath', dest='obj_count_var_path', type='string',
+                        default='/CountClassification/Uncertainty/0/',
+                        help='internal path to count classification variance [default=%default]')
+    consopts.add_option('--divVarPath', dest='div_prob_var_path', type='string',
+                        default='/DivisionDetection/Uncertainty/0/',
+                        help='internal path to division detection variance [default=%default]')
+
+    # learning options
     consopts.add_option('--no-saving', dest='skip_saving', action='store_true',
                         help='Skip saving if you are just interested in the proposals and features')
     consopts.add_option('--ground-truth-labeling', dest='ground_truth_labeling', type='str', default='',
