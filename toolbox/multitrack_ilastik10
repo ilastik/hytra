@@ -768,9 +768,9 @@ if __name__ == "__main__":
         trans_classifier = None
     else:
         try:
-            from ilastik.applets.tracking.conservation.TransitionClassifier import TransitionClassifier
+            from lazyflow.classifiers.TransitionClassifier import TransitionClassifier
         except:
-            raise Exception, "cannot import Transition Classifier: ilastik branch TransitionClassifier must be in PYTHONPATH!"
+            raise Exception, "cannot import Transition Classifier: lazyflow branch gaussianProcessClassifier must be in PYTHONPATH!"
 
         print 'load pre-trained transition classifier'
         gpc, selected_features = loadGPClassifier(fn=options.trans_fn, h5_group=options.trans_path)
