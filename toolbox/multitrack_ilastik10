@@ -15,6 +15,7 @@ import time
 import numpy as np
 import h5py
 import vigra
+import itertools
 # from empryonic import track
 import pgmlink as track
 from empryonic import io
@@ -532,7 +533,7 @@ copied but linked to the original files to improve execution speed and storage r
     parser.add_option('--y-scale', type='float', dest='y_scale', default=1., help='[default: %default]')
     parser.add_option('--z-scale', type='float', dest='z_scale', default=1., help='[default: %default]')
     parser.add_option('--with-visbricks', action='store_true', dest='with_visbricks',
-                      help='write out a "time dependent HDF5" file for visbricks')
+                      help='writze out a "time dependent HDF5" file for visbricks')
     parser.add_option('--with-rel-linking', action='store_true', dest='with_rel_linking',
                       help='link hdf5 files relative instead of absolute')
     parser.add_option('--full-copy', action='store_true', dest='full_copy',
@@ -563,6 +564,22 @@ copied but linked to the original files to improve execution speed and storage r
                       help='filename to the raw h5 file')
     parser.add_option('--raw-data-path', type='string', dest='raw_path', default='volume/data',
                       help='Path inside the raw h5 file to the data')
+
+    #funkey learning parameters
+    parser.add_option('--export-funkey-files', action='store_true', dest='eff', default=False,
+                    help='export labels features and constraints to learn with funkey')
+    parser.add_option('--learn-perturbation-weights', action='store_true', dest='learn_perturbation_weights', default=False,
+                    help='learn free parameters of perturbation models')
+    parser.add_option('--without-classifier', action='store_true', dest='woc', default=False,
+                    help='use classifier for labeling')
+    parser.add_option('--gt-path', type='string', dest='gt_pth', default=None, help='')
+    parser.add_option('--funkey-learn', action='store_true', dest='learn_funkey', default=False,
+                    help='export labels features and constraints to learn with funkey')
+    parser.add_option('--funkey-weights', type='string', dest='funkey_weights', default="",
+                    help='weights for weighted hamming loss')
+    parser.add_option('--funkey-regularizerWeight', type='float', dest='funkey_regularizerWeight', default=1,
+                    help='stop optimization as soon as a feasible integer solution is found proved to be within the given percent of the optimal solution')
+
 
     chaingraphopts = optparse.OptionGroup(parser, "chaingraph method")
     chaingraphopts.add_option('-p', '--opportunity_cost', type='float', dest='opp', default=0,
@@ -656,8 +673,7 @@ copied but linked to the original files to improve execution speed and storage r
     if(optcfg.config != None):
         with open(optcfg.config) as f:
             configfilecommands = f.read().splitlines()
-
-    optcfg, args2 = parser.parse_args(configfilecommands)
+        optcfg, args2 = parser.parse_args(configfilecommands)
 
     print optcfg
 
@@ -800,142 +816,436 @@ if __name__ == "__main__":
         raise Exception("unknown tracking method: " + options.method)
 
     if options.method == 'conservation':
-        """
-        C++ signature of operator():
+    
+        if(options.eff):
 
-        ConsTracking& tr, 
-        TraxelStore& ts, 
-        TimestepIdCoordinateMapPtr& coordinates,
-        double forbidden_cost,
-        double ep_gap,
-        bool   with_tracklets,
-        double division_weight,
-        double transition_weight,
-        double disappearance_cost,
-        double appearance_cost,
-        bool   with_merger_resolution,
-        int    n_dim,
-        double transition_parameter,
-        double border_width,
-        UncertaintyParameter uncertaintyParam,
-        bool   with_constraints,
-        double cplex_timeout
-        """
-        sigma_vec = track.VectorOfDouble()
-        for si in options.perturb_sigmas:
-            sigma_vec.append(si)
+            g = tracker.buildGraph(ts)
+            #label full graph
+            n_it = track.NodeIt(g)
+            a_it = track.ArcIt(g)
+            tmap = g.getNodeTraxelMap()
+                
+            nodeTimestepIdMap = {}
+            arcTimestepIdMap = {}
 
-        if options.perturbation_distribution == "DiverseMbest":
-            distrib_type = track.DistrId.DiverseMbest
-        elif options.perturbation_distribution == "MbestCPLEX":
-            distrib_type = track.DistrId.MbestCPLEX
-        elif options.perturbation_distribution == "ClassifierUncertainty":
-            distrib_type = track.DistrId.ClassifierUncertainty
-        elif options.perturbation_distribution == "GaussianPerturbation":
-            distrib_type = track.DistrId.GaussianPerturbation
-        elif options.perturbation_distribution == "PerturbAndMAP":
-            distrib_type = track.DistrId.PerturbAndMAP
+            for n in n_it:
+                #print tmap[n].Timestep,tmap[n].Id
+                nodeTimestepIdMap[tmap[n].Timestep,tmap[n].Id] =  n
+                g.addAppearanceLabel(n,0) 
+                g.addDisappearanceLabel(n,0) 
+                g.addDivisionLabel(n,0) 
 
-        uncertaintyParam = track.UncertaintyParameter(options.num_iterations,
-                                                      distrib_type,
-                                                      sigma_vec)
+            for a in a_it:
+                #print tmap[g.source(a)].Timestep,tmap[g.source(a)].Id,tmap[g.target(a)].Id
+                g.addArcLabel(a,0)
+                arcTimestepIdMap[tmap[g.source(a)].Timestep,tmap[g.source(a)].Id,tmap[g.target(a)].Id] = a
 
-        hypotheses_graph = tracker.buildGraph(ts)
 
-        # save labels of proposals when doing inference
-        tracker.SetFunkeyOutputFiles('',
-                                     '',
-                                     options.out_dir.rstrip('/') + '/proposal_labeling',
-                                     False,
-                                     uncertaintyParam)
+              #load ground truth from hd5 files and label graph accordingly
+            for i in range(g.earliest_timestep(), g.latest_timestep()+1):
+                print "open file:",options.gt_pth+'m'+str(int(options.max_num_objects))+'/'+"{0:04d}".format(i)+'.h5'
+                f = h5py.File(options.gt_pth+'m'+str(int(options.max_num_objects))+'/'+"{0:04d}".format(i)+'.h5','r')
+                print f
 
-        # perform the real tracking
-        all_events = tracker.track(
-            options.forbidden_cost,
-            options.ep_gap,
-            not bool(options.without_tracklets),
-            options.detection_weight,
-            options.division_weight,
-            options.transition_weight,
-            options.disappearance_cost,
-            options.appearance_cost,
-            options.with_merger_resolution,
-            ndim,
-            options.trans_par,
-            options.border_width,
-            not bool(options.woconstr),
-            uncertaintyParam,
-            options.timeout,
-            None, # pointer to transition classifier
-            )
+                try:
+                    applist = f["tracking"]["Appearances"]
+                except:
+                    applist = []
+                try:
+                    dislist = f["tracking"]["Disappearances"]
+                except:
+                    dislist = []
+                  
+                try:
+                    movlist = f["tracking"]["Moves"]
+                except:
+                    movlist = []
+                  
+                try:
+                    spllist = f["tracking"]["Splits"]
+                except:
+                    spllist = []
 
-        # write out feature matrix for each proposal, but use original traxel store
-        # will later be multiplied by label to get featurevector
-        tracker.SetFunkeyOutputFiles(options.out_dir.rstrip('/') + '/feature_matrix',
-                                     '',
-                                     '',
-                                     False,
-                                     uncertaintyParam)
-        tracker.writeAllFunkeyFeatures(ts,
-                                       uncertaintyParam,
-                                       options.forbidden_cost,
-                                       ndim,
-                                       not bool(options.without_tracklets),
-                                       options.trans_par,
-                                       options.border_width
-                                       )
+                try:
+                    merlist = f["tracking"]["Mergers"]
+                except:
+                    merlist = []
 
-        # run merger resolving
-        if options.with_merger_resolution and options.max_num_objects > 1 and len(options.raw_filename) > 0:
-            with h5py.File(fns[0], 'r') as h5file:  # open file to access label images
-                for i, event_vector in enumerate(all_events):  # go through all solutions
-                    print("Resolving mergers for solution {}".format(i))
-                    coordinate_map = track.TimestepIdCoordinateMap()
-                    coordinate_map.initialize()
-                    num_mergers = 0
-                    for timestep, timestep_events in enumerate(event_vector):
-                        for event in timestep_events:
-                            if event.type == track.EventType.Merger:
-                                traxel = ts.get_traxel(event.traxel_ids[0], timestep)
-                                try:
-                                    extract_coordinates(coordinate_map, h5file, traxel, options)
-                                except:
-                                    print("Error when extracting coordinates for id={} in timestep={}".format(event.traxel_ids[0], timestep))
-                                    raise Exception
-                                num_mergers += 1
+                mdic = {}
+                for m in merlist:
+                    mdic[m[0]] = np.asscalar(m[1])
+                  
+                for appset in applist:
+                    try:
+                        g.addAppearanceLabel(nodeTimestepIdMap[i,appset[0]],mdic.get(appset[0],1))
+                        g.addDisappearanceLabel(nodeTimestepIdMap[i,appset[0]],0)
+                    except:
+                        print "ERROR IN app",i,appset[0]
+                for disset in dislist:
+                    try:
+                        g.addAppearanceLabel(nodeTimestepIdMap[i-1,disset[0]],0)
+                        g.addDisappearanceLabel(nodeTimestepIdMap[i-1,disset[0]],mdic.get(disset[0],1))
+                    except:
+                        print "ERROR IN disapp",i-1,disset[0]
+                for movset in movlist:
+                    try:
+                        g.addAppearanceLabel(nodeTimestepIdMap[i-1,movset[0]],mdic.get(movset[0],1))
+                    except:
+                        print "ERROR1 IN move",i-1,movset[0]
+                    try:
+                        g.addDisappearanceLabel(nodeTimestepIdMap[i,movset[1]],mdic.get(movset[1],1))
+                    except:
+                        print "ERROR2 IN move",i,movset[0]
+                    try:
+                        g.addArcLabel(arcTimestepIdMap[i-1,movset[0],movset[1]],1)
+                    except:
+                        print "ERROR3 IN move",i-1,movset[0],movset[1]
+                for splset in spllist:
+                    try:
+                        g.addArcLabel(arcTimestepIdMap[i-1,splset[0],splset[1]],1)
+                        g.addArcLabel(arcTimestepIdMap[i-1,splset[0],splset[2]],1)
+                    except:
+                        print "ERROR IN SPLIT arc", i-1,splset[0],splset[2]
+                    try:  
+                        g.addDivisionLabel(nodeTimestepIdMap[i-1,splset[0]],1)
+                        g.addAppearanceLabel(nodeTimestepIdMap[i-1,splset[1]],mdic.get(splset[1],1))
+                        g.addAppearanceLabel(nodeTimestepIdMap[i-1,splset[2]],mdic.get(splset[2],1))
+                        g.addDisappearanceLabel(nodeTimestepIdMap[i,movset[1]],mdic.get(movset[1],1))
+                        g.addDisappearanceLabel(nodeTimestepIdMap[i,movset[1]],mdic.get(movset[1],1))
+                    except:
+                        print "ERROR IN SPLIT node",i-1,splset[0],splset[2]
 
-                    print("Found {} merger events in proposal {}. Resolving them...".format(num_mergers, i))
+                      
+            tracker.SetFunkeyExportLabeledGraph(True)
 
-                    hypotheses_graph.set_solution(i)
-                    resolved_events = tracker.resolve_mergers(
-                        event_vector,
-                        coordinate_map.get(),
-                        float(options.ep_gap),
-                        options.transition_weight,
+            weights = track.WeightVector()
+
+            outpath = options.out_dir.rstrip('/') +"/"+"m_"+str(int(options.max_num_objects))+"_start"+str(g.earliest_timestep())+"_end"+str(g.latest_timestep())+"_woc"+str(options.woc)+"lw"+options.funkey_weights.replace(" ", "_")+"reg"+str(options.funkey_regularizerWeight)
+            os.system("mkdir -p "+outpath)
+
+            tracker.writeFunkeyFiles(ts,outpath+"/features.txt",
+                                        outpath+"/constraints.txt",
+                                        outpath+"/labels.txt",
+                                        weights)
+
+            if(options.learn_funkey):
+
+                print "calling funkey"
+
+                learnedWeights = tracker.LearnWithFunkey(outpath+"/features.txt",
+                                outpath+"/constraints.txt",
+                                outpath+"/labels.txt",
+                                options.funkey_weights,
+                                "--regularizerWeight="+str(options.funkey_regularizerWeight))
+            
+                learnedWeightsName = ["  --det=","  --div=","  --tr=","  --dis=","  --app="]
+
+                f = open(outpath+'/weights.txt','w')
+                for i,w in enumerate(learnedWeights):
+                  f.write(learnedWeightsName[i] + str(w))
+                f.close()
+
+                detw = learnedWeights[0]
+                divw = learnedWeights[1]
+                traw = learnedWeights[2]
+                disw = learnedWeights[3]
+                appw = learnedWeights[4]
+
+                tracker.SetFunkeyExportLabeledGraph(False)
+                tracker.SetFunkeyOutputFiles("","",outpath+"/tracking_labels.txt",True)
+
+                events_all_perturbations = tracker.track(
+                    options.forbidden_cost,
+                    options.ep_gap,
+                    not bool(options.without_tracklets),
+                    detw,
+                    divw,
+                    traw,
+                    disw,
+                    appw,
+                    options.with_merger_resolution,
+                    ndim,
+                    options.trans_par,
+                    options.border_width,
+                    not bool(options.woconstr),
+                    track.UncertaintyParameter(),
+                    1e+75,
+                    None)
+
+
+                events = events_all_perturbations[0][1:]
+
+                print "Saving events..."
+                print "Length of events " + str(len(events))
+
+                working_fns = [outpath+ "/%04d.h5" % timestep for timestep in xrange(t0,t1+1)]
+                print "len(working_fns)=" + str(len(working_fns)) 
+                assert(len(events) + 1 == len(working_fns))
+                with h5py.File(fns[0], 'r') as src_file:
+                    # first timestep without tracking
+                    with io.LineageH5(working_fns[0], 'w') as dest_file:
+                        print "-- writing empty tracking to base file", working_fns[0]
+                        meta = dest_file.create_group('objects/meta')
+                        m = max_traxel_id_at[0]
+                        ids = np.asarray(range(m+1))
+                        ids = ids[ids > 0]
+                        valid = np.ones(ids.shape)
+                        meta.create_dataset("id", data=ids, dtype=np.uint32)
+                        meta.create_dataset("valid", data=valid, dtype=np.uint32)
+
+                        # create empty tracking group
+                        dest_file.create_group('tracking')
+                        print "-> base file successfully written"
+
+                        
+                    # tracked timesteps
+                    for i, events_at in enumerate(events):
+                        with io.LineageH5(working_fns[i+1], 'w') as dest_file:
+                            # [t0+1+i,...] or [t0+i,...]?
+                            #shape = src_file[trans_vector_path].shape
+                            #li_name = label_im_path % (t0+i+1, t0+i+2, shape[1], shape[2], shape[3])
+                            #label_img = np.array(src_file[li_name][0,...,0])
+
+                            meta = dest_file.create_group('objects/meta')
+                            m = max_traxel_id_at[i+1]
+                            ids = np.asarray(range(m+1))
+                            #ids = np.unique(label_img)
+                            ids = ids[ids > 0]
+                            valid = np.ones(ids.shape)
+                            meta.create_dataset("id", data=ids[::-1], dtype=np.uint32)
+                            meta.create_dataset("valid", data=valid, dtype=np.uint32)
+
+                        write_events(events_at, working_fns[i + 1])
+
+                #call compare script
+
+                #copy ground truth files
+                os.system("mkdir -p "+outpath+"/groundtruth")
+                for timestep in xrange(t0,t1+1):
+                  os.system("cp "+options.gt_pth+'m'+str(int(options.max_num_objects))+'/'  \
+                  +"{0:04d}".format(timestep)+'.h5'+" "+outpath+"/groundtruth/" \
+                  +"{0:04d}".format(timestep)+'.h5')
+
+                print "/storage/data/Machine_Learning/embryonic/toolbox/compare_tracking " \
+                +outpath+"/groundtruth/  "+ outpath +" > "+outpath+"/compare.txt"
+
+                os.system("/storage/data/Machine_Learning/embryonic/toolbox/compare_tracking " \
+                +outpath+"/groundtruth/  "+ outpath +" > "+outpath+"/compare.txt")
+
+            if(options.learn_perturbation_weights):
+
+                print "calling learn_perturbation_weights"
+                tracker.SetFunkeyExportLabeledGraph(False)
+
+                if options.perturbation_distribution == "DiverseMbest":
+                    distrib_type = track.DistrId.DiverseMbest
+                elif options.perturbation_distribution == "MbestCPLEX":
+                    distrib_type = track.DistrId.MbestCPLEX
+                elif options.perturbation_distribution == "ClassifierUncertainty":
+                    distrib_type = track.DistrId.ClassifierUncertainty
+                elif options.perturbation_distribution == "GaussianPerturbation":
+                    distrib_type = track.DistrId.GaussianPerturbation
+                elif options.perturbation_distribution == "PerturbAndMAP":
+                    distrib_type = track.DistrId.PerturbAndMAP
+
+                optimal_loss = 1e+75;
+                optimal_parameters = []
+    
+                os.system("mkdir -p "+outpath+"/pertubation_labels")
+                f = open(outpath+"/pertubation_labels/pertubation.log",'w')
+                
+
+                weights = track.VectorOfDouble()
+
+                for pertubation_parameter in itertools.product(np.arange(-1, 2, 1), repeat=3):
+                    
+                    parameter_name = ""
+
+                    sigma_vec = track.VectorOfDouble()
+
+                    sigma_vec.append(float(0)) # offset for appearance (not used)
+                    sigma_vec.append(float(0)) # offset for disappearance (not used)
+
+                    for si in pertubation_parameter:
+                        sigma_vec.append(float(10**si))
+                        parameter_name += "_"+ str(float(10**si))
+
+                    uncertaintyParam = track.UncertaintyParameter(options.num_iterations,
+                                                                  distrib_type,
+                                                                  sigma_vec)
+
+                    # save labels of proposals to file:
+                    tracker.SetFunkeyOutputFiles('', '', outpath + '/pertubation_labels/perturbed_labeling'+parameter_name+'.txt', False,uncertaintyParam)
+
+                    all_events = tracker.track(
+                        options.forbidden_cost,
+                        options.ep_gap,
                         not bool(options.without_tracklets),
+                        options.detection_weight,
+                        options.division_weight,
+                        options.transition_weight,
+                        options.disappearance_cost,
+                        options.appearance_cost,
+                        options.with_merger_resolution,
                         ndim,
                         options.trans_par,
-                        not bool(options.woconstr))
+                        options.border_width,
+                        not bool(options.woconstr),
+                        uncertaintyParam,
+                        options.timeout,
+                        None, # pointer to transition classifier
+                        )
 
-                    with h5py.File(options.raw_filename, 'r') as raw_h5:
-                        print("Update labelimage and compute new features after merger resolving "
-                              "for solution {}".format(i))
-                        for timestep, timestep_events in enumerate(resolved_events):
+
+                    loss = tracker.HamminglossOfFiles(outpath+"/labels.txt",outpath+'/pertubation_labels/perturbed_labeling'+parameter_name+'_'+str(options.num_iterations-1)+'.txt')
+
+                    f.write(str(loss) +"\t"+ str(pertubation_parameter)+ "\n") 
+
+                    if(loss < optimal_loss):
+                        optimal_loss = loss
+                        optimal_parameters = pertubation_parameter
+                        print "found better pertubation parameters:  loss:" ,optimal_loss,"  para: ",optimal_parameters
+                f.close()
+                print "result:   found solution with loss:", optimal_loss ," with parameters ", optimal_parameters
+
+
+        else:
+            """
+            C++ signature of operator():
+
+            ConsTracking& tr, 
+            TraxelStore& ts, 
+            TimestepIdCoordinateMapPtr& coordinates,
+            double forbidden_cost,
+            double ep_gap,
+            bool   with_tracklets,
+            double division_weight,
+            double transition_weight,
+            double disappearance_cost,
+            double appearance_cost,
+            bool   with_merger_resolution,
+            int    n_dim,
+            double transition_parameter,
+            double border_width,
+            UncertaintyParameter uncertaintyParam,
+            bool   with_constraints,
+            double cplex_timeout
+            """
+            sigma_vec = track.VectorOfDouble()
+            for si in options.perturb_sigmas:
+                sigma_vec.append(si)
+
+            if options.perturbation_distribution == "DiverseMbest":
+                distrib_type = track.DistrId.DiverseMbest
+            elif options.perturbation_distribution == "MbestCPLEX":
+                distrib_type = track.DistrId.MbestCPLEX
+            elif options.perturbation_distribution == "ClassifierUncertainty":
+                distrib_type = track.DistrId.ClassifierUncertainty
+            elif options.perturbation_distribution == "GaussianPerturbation":
+                distrib_type = track.DistrId.GaussianPerturbation
+            elif options.perturbation_distribution == "PerturbAndMAP":
+                distrib_type = track.DistrId.PerturbAndMAP
+
+            uncertaintyParam = track.UncertaintyParameter(options.num_iterations,
+                                                          distrib_type,
+                                                          sigma_vec)
+
+            hypotheses_graph = tracker.buildGraph(ts)
+
+            # save labels of proposals when doing inference
+            tracker.SetFunkeyOutputFiles('',
+                                         '',
+                                         options.out_dir.rstrip('/') + '/proposal_labeling',
+                                         False,
+                                         uncertaintyParam)
+
+            # perform the real tracking
+            all_events = tracker.track(
+                options.forbidden_cost,
+                options.ep_gap,
+                not bool(options.without_tracklets),
+                options.detection_weight,
+                options.division_weight,
+                options.transition_weight,
+                options.disappearance_cost,
+                options.appearance_cost,
+                options.with_merger_resolution,
+                ndim,
+                options.trans_par,
+                options.border_width,
+                not bool(options.woconstr),
+                uncertaintyParam,
+                options.timeout,
+                None, # pointer to transition classifier
+                )
+
+            # write out feature matrix for each proposal, but use original traxel store
+            # will later be multiplied by label to get featurevector
+            tracker.SetFunkeyOutputFiles(options.out_dir.rstrip('/') + '/feature_matrix',
+                                         '',
+                                         '',
+                                         False,
+                                         uncertaintyParam)
+            tracker.writeAllFunkeyFeatures(ts,
+                                           uncertaintyParam,
+                                           options.forbidden_cost,
+                                           ndim,
+                                           not bool(options.without_tracklets),
+                                           options.trans_par,
+                                           options.border_width
+                                           )
+
+            # run merger resolving
+            if options.with_merger_resolution and options.max_num_objects > 1 and len(options.raw_filename) > 0:
+                with h5py.File(fns[0], 'r') as h5file:  # open file to access label images
+                    for i, event_vector in enumerate(all_events):  # go through all solutions
+                        print("Resolving mergers for solution {}".format(i))
+                        coordinate_map = track.TimestepIdCoordinateMap()
+                        coordinate_map.initialize()
+                        num_mergers = 0
+                        for timestep, timestep_events in enumerate(event_vector):
                             for event in timestep_events:
-                                if event.type == track.EventType.ResolvedTo:
-                                    merger_traxel = ts.get_traxel(event.traxel_ids[0], timestep)
-                                    new_traxel_ids = event.traxel_ids[1:]
-                                    update_merger_features(coordinate_map,
-                                                       h5file,
-                                                       merger_traxel,
-                                                       new_traxel_ids,
-                                                       raw_h5,
-                                                       options,
-                                                       fs)
+                                if event.type == track.EventType.Merger:
+                                    traxel = ts.get_traxel(event.traxel_ids[0], timestep)
+                                    try:
+                                        extract_coordinates(coordinate_map, h5file, traxel, options)
+                                    except:
+                                        print("Error when extracting coordinates for id={} in timestep={}".format(event.traxel_ids[0], timestep))
+                                        raise Exception
+                                    num_mergers += 1
 
-        events = all_events[0]
-        first_events = events[0]
-        events = events[1:]
+                        print("Found {} merger events in proposal {}. Resolving them...".format(num_mergers, i))
+
+                        hypotheses_graph.set_solution(i)
+                        resolved_events = tracker.resolve_mergers(
+                            event_vector,
+                            coordinate_map.get(),
+                            float(options.ep_gap),
+                            options.transition_weight,
+                            not bool(options.without_tracklets),
+                            ndim,
+                            options.trans_par,
+                            not bool(options.woconstr))
+
+                        with h5py.File(options.raw_filename, 'r') as raw_h5:
+                            print("Update labelimage and compute new features after merger resolving "
+                                  "for solution {}".format(i))
+                            for timestep, timestep_events in enumerate(resolved_events):
+                                for event in timestep_events:
+                                    if event.type == track.EventType.ResolvedTo:
+                                        merger_traxel = ts.get_traxel(event.traxel_ids[0], timestep)
+                                        new_traxel_ids = event.traxel_ids[1:]
+                                        update_merger_features(coordinate_map,
+                                                           h5file,
+                                                           merger_traxel,
+                                                           new_traxel_ids,
+                                                           raw_h5,
+                                                           options,
+                                                           fs)
+
+            events = all_events[0]
+            first_events = events[0]
+            events = events[1:]
     else:
         events = tracker(ts)
 
