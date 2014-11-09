@@ -9,6 +9,7 @@ import h5py
 import numpy as np
 import time
 import pickle
+import logging
 
 def check_detections_frame(gt_labels, timestep, frame_labels, threshold):
     import numpy as np
@@ -17,13 +18,10 @@ def check_detections_frame(gt_labels, timestep, frame_labels, threshold):
     def compute_overlap_ratios(label_image_a, label_image_b, label_a):
         """
         Compute the ratio of overlapping pixels of label a in image a, and label b in image b,
-        for all b's that are present in the overlap.
+        for all b's that are present in the overlap. Ratio = intersection / size(image_b[label_b])
         Return a list of tuples (label, ratio)
         """
         assert(label_image_a.shape == label_image_b.shape)
-
-        # get number of pixels assigned label a in image a:
-        label_a_count = np.sum(label_image_a == label_a)
 
         # count how many pixels of label_image_b that were assigned to label_a in the other image,
         # are actually assigned to label_b
@@ -34,13 +32,14 @@ def check_detections_frame(gt_labels, timestep, frame_labels, threshold):
 
         for label_b in label_set:
             overlap_pixel_count = np.sum(tmp == label_b)
-            ratio = float(overlap_pixel_count) / float(label_a_count)
+            label_b_count = np.sum(label_image_b == label_b)
+            ratio = float(overlap_pixel_count) / float(label_b_count)
             overlap_ratios.append((label_b, ratio))
 
         # return ratio
         return overlap_ratios
 
-    print("Checking Timestep: " + str(timestep))
+    print("---------------------------------\nChecking Timestep: " + str(timestep) + '\n')
     start_time = time.time()
 
     # prepare outputs
@@ -52,34 +51,39 @@ def check_detections_frame(gt_labels, timestep, frame_labels, threshold):
     needed_splits = 0
 
     # compare
-    max_gt_label = int(np.max(gt_labels)) + 1
-    max_frame_label = int(np.max(frame_labels)) + 1
-    frame_labels_unmatched = np.ones(max_frame_label)
+    gt_labels_unmatched = {}
+    for gt_label in set(np.unique(gt_labels)) - set([0]):
+        gt_labels_unmatched[gt_label] = 1
 
     # find all overlap candidates and compute TRA measures from that
-    for gt_label in range(1, max_gt_label):
-        gt2frame_assignments[gt_label] = []
-        candidates = compute_overlap_ratios(gt_labels, frame_labels, gt_label)
+    for frame_label in set(np.unique(frame_labels)) - set([0]):
+        candidates = compute_overlap_ratios(frame_labels.squeeze(), gt_labels.squeeze(), frame_label)
+        # filter candidates by threshold:
+        candidates = [(l, r) for l, r in candidates if r > threshold]
+
+        frame2gt_assignments[frame_label] = []
         for l, r in candidates:
-            # print("{} and {} overlap by {}".format(gt_label, l, r))
-            if r > threshold:
-                gt2frame_assignments[gt_label].append(l)
-                frame2gt_assignments[l] = [gt_label]
-                frame_labels_unmatched[l] = 0
-
-        num_assignments_found = len(gt2frame_assignments[gt_label])
-        if num_assignments_found == 0:
-            false_negatives += 1
-        else:
+            gt2frame_assignments[l] = [frame_label]
+            frame2gt_assignments[frame_label].append(l)
+            gt_labels_unmatched[l] = 0
             true_positives += 1
-            if num_assignments_found > 1:
-                needed_splits += num_assignments_found - 1
 
-    false_positives = np.sum(frame_labels_unmatched)
+        if len(candidates) == 0:
+            print("False Positive label {} at timestep {}".format(frame_label, timestep))
+            false_positives += 1
+        elif len(candidates) > 1:
+            print("Split needed of label {} at timestep {}".format(frame_label, timestep))
+            needed_splits += len(candidates) - 1
+
+    false_negatives = sum(gt_labels_unmatched.values())
+    for i, val in gt_labels_unmatched.iteritems():
+        if val == 0:
+            continue
+        print("False Negative gt label {} at timestep {}".format(i, timestep))
 
     end_time = time.time()
     print("Checking overlaps for frame {} took {} secs".format(timestep, end_time - start_time))
-    return false_negatives, false_positives, true_positives, needed_splits, gt2frame_assignments, frame2gt_assignments
+    return (false_negatives, false_positives, true_positives, needed_splits, gt2frame_assignments, frame2gt_assignments, timestep)
 
 
 def check_detections(options):
@@ -93,15 +97,21 @@ def check_detections(options):
     start_time = time.time()
 
     with h5py.File(options.ground_truth_labeling, 'r') as ground_truth:
-        frame_filenames_ids = [(options.new_labeling_dir + "/%04d.h5" % t, t) for t in xrange(options.min_ts, options.max_ts)]
+        frame_filenames_ids = [(options.new_labeling_dir + "/%04d.h5" % t, t)
+                               for t in xrange(options.min_ts, options.max_ts + 1)]
         print("Checking detections from frame {} to {}".format(options.min_ts, options.max_ts))
 
         if options.use_compute_nodes:
             print("Setting up job cluster to dispatch work to nodes: {}".format(options.use_compute_nodes))
             import dispy
             cluster = dispy.JobCluster(check_detections_frame,
-                                       nodes=options.use_compute_nodes)
+                                       nodes=options.use_compute_nodes,
+                                       loglevel=logging.DEBUG)
             cluster.stats()
+            results = []
+        elif options.use_num_cores > 1:
+            from multiprocessing import Pool
+            processing_pool = Pool(processes=options.use_num_cores)
             results = []
 
         for filename, timestep in frame_filenames_ids:
@@ -116,11 +126,18 @@ def check_detections(options):
 
             if options.use_compute_nodes:
                 print("Submitting job for timestep {}".format(timestep))
+                print(type(gt_labels))
+                print(type(frame_labels))
                 job = cluster.submit(gt_labels, timestep, frame_labels, options.threshold)
                 job.id = timestep
                 results.append(job)
+                cluster.wait()
+                cluster.stats()
+            elif options.use_num_cores > 1:
+                async_result = processing_pool.apply_async(check_detections_frame, (gt_labels, timestep, frame_labels, options.threshold))
+                results.append(async_result)
             else:
-                fn, fp, tp, ns, g2f_ass, f2g_ass = check_detections_frame(gt_labels, timestep, frame_labels, options.threshold)
+                (fn, fp, tp, ns, g2f_ass, f2g_ass, _) = check_detections_frame(gt_labels, timestep, frame_labels, options.threshold)
                 false_negatives += fn
                 false_positives += fp
                 true_positives += tp
@@ -134,21 +151,32 @@ def check_detections(options):
             cluster.stats()
             for result in results:
                 try:
-                    fn, fp, tp, ns, g2f_ass, f2g_ass = result()
+                    (fn, fp, tp, ns, g2f_ass, f2g_ass, timestep) = result()
                     false_negatives += fn
                     false_positives += fp
                     true_positives += tp
                     needed_splits += ns
-                    gt2frame_assignments[result.id] = g2f_ass
-                    frame2gt_assignments[result.id] = f2g_ass
+                    gt2frame_assignments[timestep] = g2f_ass
+                    frame2gt_assignments[timestep] = f2g_ass
                     print(result.stdout)
                 except:
                     print(result.stdout)
                     print(result.stderr)
                     print(result.exception)
+        elif options.use_num_cores > 1:
+            processing_pool.close()
+            processing_pool.join()
+            for result in results:
+                (fn, fp, tp, ns, g2f_ass, f2g_ass, timestep) = result.get()
+                false_negatives += fn
+                false_positives += fp
+                true_positives += tp
+                needed_splits += ns
+                gt2frame_assignments[timestep] = g2f_ass
+                frame2gt_assignments[timestep] = f2g_ass
 
     end_time = time.time()
-    print("Checking detections took {} secs".format(end_time - start_time))
+    print("\n\n------------------------------\nChecking detections took {} secs".format(end_time - start_time))
 
     return false_negatives, false_positives, true_positives, needed_splits, gt2frame_assignments, frame2gt_assignments
 
@@ -163,12 +191,30 @@ def get_assignments(assignments, timestep, idx):
         raise ValueError()
 
 
+def is_in_moves(src_ids, dst_ids, moves):
+    if len(moves) == 0:
+        return False
+    for idx in src_ids:
+        src_id_mappings = moves[moves[:, 0] == idx, 1]
+        for mapping in src_id_mappings:
+            if mapping in dst_ids:
+                return True
+    return False
+
+def is_in_splits(src_ids, dst_ids, splits):
+    if len(splits) == 0:
+        return False
+    for idx in src_ids:
+        src_id_mappings = splits[splits[:, 0] == idx, 1:].squeeze()
+        for mapping in src_id_mappings:
+            if mapping in dst_ids:
+                return True
+    return False
+
+
 def check_edges_frame(ground_truth, timestep, filename, options, gt2frame_assignments, frame2gt_assignments):
+    print("---------------------------------\nChecking Timestep: " + str(timestep) + '\n')
     num_gt_edges = 0
-    edge_delete_1 = 0
-    edge_delete_2 = 0
-    edge_add = 0
-    edge_change = 0
 
     with h5py.File(filename, 'r') as frame:
         # for each ground truth move, look up whether there is the same edge in this frame's moves
@@ -186,6 +232,25 @@ def check_edges_frame(ground_truth, timestep, filename, options, gt2frame_assign
             print("Warning: Frame {} has no Moves".format(timestep))
             frame_moves = np.zeros(0)
 
+        try:
+            gt_splits = ground_truth["tracking"]["%04d" % timestep]["Splits"]
+            gt_splits = np.array(gt_splits)
+        except:
+            print("Warning: Ground Truth has no Splits at {}".format(timestep))
+            gt_splits = np.zeros(0)
+
+        try:
+            frame_splits = frame["tracking"]["Splits"]
+            frame_splits = np.array(frame_splits)
+        except:
+            print("Warning: Frame {} has no Splits".format(timestep))
+            frame_splits = np.zeros(0)
+
+        edges_to_add = set()
+        edges_to_change = set()
+        edges_to_delete_1 = set()
+        edges_to_delete_2 = set()
+
         # handle moves
         if gt_moves.shape[0] > 0:
             num_gt_edges += len(gt_moves)
@@ -201,53 +266,37 @@ def check_edges_frame(ground_truth, timestep, filename, options, gt2frame_assign
                         frame_dst_ids = get_assignments(gt2frame_assignments, timestep, gt_dst)
 
                         # if any of the [src] x [dst] combinations is in frame_moves, this is good (really?)
-                        found = False
-                        for idx in frame_src_ids:
-                            frame_src_id_mappings = frame_moves[frame_moves[:, 0] == idx, 1]
-                            for mapping in frame_src_id_mappings:
-                                if mapping in frame_dst_ids:
-                                    found = True
-
                         # no edge between these detections in current frame -> needs to be added
-                        if not found:
-                            edge_add += 1
+                        if not is_in_moves(frame_src_ids, frame_dst_ids, frame_moves):
+                            if is_in_splits(frame_src_ids, frame_dst_ids, frame_splits):
+                                edges_to_change.add((frame_src_ids[0], frame_dst_ids[0]))
+                            else:
+                                edges_to_add.add((gt_src, gt_dst))
                     except ValueError:
                         # we did not even find a mapping of nodes, so this edge needs to be added
-                        edge_add += 1
+                        edges_to_add.add((gt_src, gt_dst))
 
                 # see which of the frame edges that are not covered by gt are delete_1 or _2
                 for i in range(frame_moves.shape[0]):
                     frame_src, frame_dst = frame_moves[i]
 
-                    if frame_src not in frame2gt_assignments[timestep - 1] or frame_dst not in frame2gt_assignments[timestep]:
-                        edge_delete_1 += 1
-                        continue
+                    try:
+                        gt_src_ids = get_assignments(frame2gt_assignments, timestep - 1, frame_src)
+                        gt_dst_ids = get_assignments(frame2gt_assignments, timestep, frame_dst)
 
-                    gt_src = get_assignments(frame2gt_assignments, timestep - 1, frame_src)
-                    gt_dst = get_assignments(frame2gt_assignments, timestep, frame_dst)
-
-                    if gt_dst not in gt_moves[1, gt_moves[0] == gt_src]:
-                        # this edge connects two true positive detections,
-                        # but the edge is not present in ground truth
-                        edge_delete_2 += 1
+                        if not is_in_moves(gt_src_ids, gt_dst_ids, gt_moves):
+                            # this edge connects two true positive detections,
+                            # but the edge is not present in ground truth
+                            edges_to_delete_2.add((frame_src, frame_dst))
+                    except:
+                        # at least one of the nodes has no mapping
+                        edges_to_delete_1.add((frame_src, frame_dst))
             else:
                 # all edges need to be added if there were none in this frame's move events
-                edge_add += gt_moves.shape[0]
+                for i in range(gt_moves.shape[0]):
+                    edges_to_add.add((gt_moves[i, 0], gt_moves[i, 1]))
 
         # handle splits
-        try:
-            gt_splits = ground_truth["tracking"]["%04d" % timestep]["Splits"]
-            gt_splits = np.array(gt_splits)
-        except:
-            print("Warning: Ground Truth has no Splits at {}".format(timestep))
-            gt_splits = np.zeros(0)
-
-        try:
-            frame_splits = frame["tracking"]["Splits"]
-            frame_splits = np.array(frame_splits)
-        except:
-            print("Warning: Frame {} has no Splits".format(timestep))
-            frame_splits = np.zeros(0)
 
         # go through all ground truth splits
         for i in range(gt_splits.shape[0]):
@@ -255,11 +304,12 @@ def check_edges_frame(ground_truth, timestep, filename, options, gt2frame_assign
 
             gt_src = gt_splits[i][0]
 
-            # if parent node is not detected in frame, then we need to add as many edges as there are children
             try:
                 frame_src_ids = get_assignments(gt2frame_assignments, timestep - 1, gt_src)
             except ValueError:
-                edge_add += gt_splits.shape[1] - 1
+                # # if parent node is not detected in frame, then we need to add as many edges as there are children
+                # print("Missing GT Edge: {} -> {} in timestep {}".format(gt_src, gt_dst, timestep))
+                # edge_add += gt_splits.shape[1] - 1
                 continue
 
             # look at each child node
@@ -268,30 +318,16 @@ def check_edges_frame(ground_truth, timestep, filename, options, gt2frame_assign
                 try:
                     frame_dst_ids = get_assignments(gt2frame_assignments, timestep, gt_splits[i][x])
                 except ValueError:
-                    edge_add += 1
+                    edges_to_add.add((gt_src, gt_splits[i][x]))
                     continue
 
-                # todo: extend for 3-splits
-                found = False
-                for idx in frame_src_ids:
-                    frame_src_id_edges = frame_splits[frame_splits[:, 0] == idx, 1]
-                    for edge_target in frame_src_id_edges:
-                        if edge_target in frame_dst_ids:
-                            found = True
-
-                # if we did not find that edge, check whether it is a move in the frame
-                if not found:
-                    found_as_move = False
-                    for idx in frame_src_ids:
-                        frame_src_id_edges = frame_moves[frame_moves[:, 0] == idx, 1]
-                        for edge_target in frame_src_id_edges:
-                            if edge_target in frame_dst_ids:
-                                found_as_move = True
-
-                    if found_as_move:
-                        edge_change += 1
+                if not is_in_splits(frame_src_ids, frame_dst_ids, frame_splits):
+                    # if we did not find that edge, check whether it is a move in the frame
+                    if is_in_moves(frame_src_ids, frame_dst_ids, frame_moves):
+                        edges_to_change.add((frame_src_ids[0], frame_dst_ids[0]))
                     else:
-                        edge_add += 1
+                        edges_to_add.add((gt_src, gt_splits[i][x]))
+
 
         # go through all splits in this frame
         for i in range(frame_splits.shape[0]):
@@ -299,31 +335,45 @@ def check_edges_frame(ground_truth, timestep, filename, options, gt2frame_assign
 
             # if parent node is not detected in frame, then we need to add as many edges as there are children
             try:
-                gt_src = get_assignments(frame2gt_assignments, timestep - 1, frame_src)
+                gt_src_ids = get_assignments(frame2gt_assignments, timestep - 1, frame_src)
             except ValueError:
-                edge_add += frame_splits.shape[1] - 1
+                print("Something weird going on!")
+                # edge_add += frame_splits.shape[1] - 1
                 continue
 
             # look at each child node
             for x in range(1, frame_splits.shape[1]):
                 # check whether it was detected at all
                 try:
-                    gt_dst = get_assignments(frame2gt_assignments, timestep, frame_splits[i][x])
+                    gt_dst_ids = get_assignments(frame2gt_assignments, timestep, frame_splits[i][x])
                 except ValueError:
-                    edge_delete_1 += 1
+                    edges_to_delete_1.add((frame_src, frame_splits[i][x]))
                     continue
 
-                if gt_dst not in gt_splits[1:, gt_splits[0] == gt_src]:
-                    # if we did not find that edge, check whether it is a move in the frame
-                    if gt_dst in gt_moves[1, gt_moves[0] == gt_src]:
-                        edge_change += 1
+                if not is_in_splits(gt_src_ids, gt_dst_ids, gt_splits):
+                    if is_in_moves(gt_src_ids, gt_dst_ids, gt_moves):
+                        edges_to_change.add((frame_src, frame_splits[i][x]))
                     else:
-                        edge_delete_2 += 1
+                        edges_to_delete_2.add((frame_src, frame_splits[i][x]))
 
-    return num_gt_edges, edge_delete_1, edge_delete_2, edge_add, edge_change
+        for a, b in edges_to_add:
+            print("Missing GT Edge: {} -> {} in timestep {}".format(a, b, timestep))
+
+        for a, b in edges_to_change:
+            print("Wrong semantics of edge: {} -> {} in timestep {}".format(a, b, timestep))
+
+        for a, b in edges_to_delete_1:
+            print("Invalid Edge: {} -> {} in timestep {}".format(a, b, timestep))
+
+        for a, b in edges_to_delete_2:
+            print("Redundant Edge: {} -> {} in timestep {}".format(a, b, timestep))
+
+
+    return num_gt_edges, len(edges_to_delete_1), len(edges_to_delete_2), len(edges_to_add), len(edges_to_change)
 
 
 def check_edges(options, gt2frame_assignments, frame2gt_assignments):
+    print("\n===================================\nChecking edges:\n")
     num_gt_edges = 0
     edge_delete_1 = 0
     edge_delete_2 = 0
@@ -331,7 +381,7 @@ def check_edges(options, gt2frame_assignments, frame2gt_assignments):
     edge_change = 0
 
     with h5py.File(options.ground_truth_labeling, 'r') as ground_truth:
-        frame_filenames_ids = [(options.new_labeling_dir + "/%04d.h5" % t, t) for t in xrange(options.min_ts, options.max_ts)]
+        frame_filenames_ids = [(options.new_labeling_dir + "/%04d.h5" % t, t) for t in xrange(options.min_ts, options.max_ts + 1)]
         print("Checking edges from frame {} to {}".format(options.min_ts, options.max_ts))
 
         for filename, timestep in frame_filenames_ids:
@@ -390,11 +440,21 @@ def compute_tra_loss(options):
     num_gt_detections = true_positives + false_negatives
     tra_e = weight_vector[1] * num_gt_detections + weight_vector[5] * num_gt_edges
 
-    print("Extracted events: {}, giving tra_p={} and tra_e={}".format(feature_vector, tra_p, tra_e))
-    return min(tra_p, tra_e) / tra_e
+    print("\n===================================\nFinal Results:\n")
+    print("Needed Splits: {} (weight={})".format(needed_splits, weight_vector[0]))
+    print("False Negatives: {} (weight={})".format(false_negatives, weight_vector[1]))
+    print("False Positives: {} (weight={})".format(false_positives, weight_vector[2]))
+    print("Edge Delete 1: {} (weight={})".format(edge_delete_1, weight_vector[3]))
+    print("Edge Delete 2: {} (weight={})".format(edge_delete_2, weight_vector[4]))
+    print("Edge Add: {} (weight={})".format(edge_add, weight_vector[5]))
+    print("Edge Change: {} (weight={})".format(edge_change, weight_vector[6]))
+    print("Orignal model has {} nodes and {} edges".format(num_gt_detections, num_gt_edges))
+
+    print("Extracted events yield tra_p={} and tra_e={}".format(tra_p, tra_e))
+    return 1.0 - (min(tra_p, tra_e) / tra_e)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Compute TRA loss of a new labeling compared to ground truth')
+    parser = argparse.ArgumentParser(description='Compute TRA loss between 0 and 1 of a new labeling compared to ground truth')
 
     # file paths
     parser.add_argument('--ground-truth-labeling', required=True, type=str, dest='ground_truth_labeling',
@@ -402,9 +462,9 @@ if __name__ == "__main__":
     parser.add_argument('--gt-label-image-path', type=str, dest='gt_label_image_path', default='exported_data',
                         help='Path to the label image inside the ground truth HDF5 file')
     parser.add_argument('--new-labeling-dir', required=True, type=str, dest='new_labeling_dir',
-                        help='Folder containing the HDF5 frame by frame results of a new labeling [default=%default]')
+                        help='Folder containing the HDF5 frame by frame results of a new labeling')
     parser.add_argument('--new-label-image-path', type=str, dest='new_label_image_path', default='segmentation/labels',
-                        help='Path to the label image inside the new HDF5 files [default=%default]')
+                        help='Path to the label image inside the new HDF5 files')
     parser.add_argument('--dump-detections', type=str, dest='dump_detections', default=None,
                         help='File where to dump the results of checking the detections.')
     parser.add_argument('--load-detections', type=str, dest='load_detections', default=None,
@@ -412,9 +472,9 @@ if __name__ == "__main__":
 
     # time range
     parser.add_argument('--min-ts', type=int, dest='min_ts', default=0,
-                        help='First timestep to look at [default=%default]')
+                        help='First timestep to look at')
     parser.add_argument('--max-ts', type=int, dest='max_ts', default=-1,
-                        help='Last timestep to look at (not inclusive!) [default=%default]')
+                        help='Last timestep to look at (not inclusive!)')
 
     # detection acceptance threshold (Jaccard index)
     parser.add_argument('--threshold', type=float, dest='threshold', default=0.5,
@@ -423,6 +483,9 @@ if __name__ == "__main__":
     # parallelization
     parser.add_argument('--use-compute-nodes', type=str, nargs='+', dest='use_compute_nodes',
                         help='List of IP adresses where dispynode.py is running')
+    parser.add_argument('--use-num-cores', type=int, dest='use_num_cores', default=1,
+                        help='Use multiprocessing with the given num of cores (>1!). '
+                             'Can not be used simultaneously with compute-nodes!')
 
     # parse command line
     args = parser.parse_args()
