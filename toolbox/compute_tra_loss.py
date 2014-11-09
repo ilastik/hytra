@@ -381,7 +381,7 @@ def check_edges(options, gt2frame_assignments, frame2gt_assignments):
     edge_change = 0
 
     with h5py.File(options.ground_truth_labeling, 'r') as ground_truth:
-        frame_filenames_ids = [(options.new_labeling_dir + "/%04d.h5" % t, t) for t in xrange(options.min_ts, options.max_ts)]
+        frame_filenames_ids = [(options.new_labeling_dir + "/%04d.h5" % t, t) for t in xrange(options.min_ts, options.max_ts + 1)]
         print("Checking edges from frame {} to {}".format(options.min_ts, options.max_ts))
 
         for filename, timestep in frame_filenames_ids:
@@ -448,12 +448,13 @@ def compute_tra_loss(options):
     print("Edge Delete 2: {} (weight={})".format(edge_delete_2, weight_vector[4]))
     print("Edge Add: {} (weight={})".format(edge_add, weight_vector[5]))
     print("Edge Change: {} (weight={})".format(edge_change, weight_vector[6]))
+    print("Orignal model has {} nodes and {} edges".format(num_gt_detections, num_gt_edges))
 
-    print("Extracted events yield tra_p={} and tra_e={}".format(feature_vector, tra_p, tra_e))
-    return min(tra_p, tra_e) / tra_e
+    print("Extracted events yield tra_p={} and tra_e={}".format(tra_p, tra_e))
+    return 1.0 - (min(tra_p, tra_e) / tra_e)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Compute TRA loss of a new labeling compared to ground truth')
+    parser = argparse.ArgumentParser(description='Compute TRA loss between 0 and 1 of a new labeling compared to ground truth')
 
     # file paths
     parser.add_argument('--ground-truth-labeling', required=True, type=str, dest='ground_truth_labeling',
@@ -461,9 +462,9 @@ if __name__ == "__main__":
     parser.add_argument('--gt-label-image-path', type=str, dest='gt_label_image_path', default='exported_data',
                         help='Path to the label image inside the ground truth HDF5 file')
     parser.add_argument('--new-labeling-dir', required=True, type=str, dest='new_labeling_dir',
-                        help='Folder containing the HDF5 frame by frame results of a new labeling [default=%default]')
+                        help='Folder containing the HDF5 frame by frame results of a new labeling')
     parser.add_argument('--new-label-image-path', type=str, dest='new_label_image_path', default='segmentation/labels',
-                        help='Path to the label image inside the new HDF5 files [default=%default]')
+                        help='Path to the label image inside the new HDF5 files')
     parser.add_argument('--dump-detections', type=str, dest='dump_detections', default=None,
                         help='File where to dump the results of checking the detections.')
     parser.add_argument('--load-detections', type=str, dest='load_detections', default=None,
@@ -471,9 +472,9 @@ if __name__ == "__main__":
 
     # time range
     parser.add_argument('--min-ts', type=int, dest='min_ts', default=0,
-                        help='First timestep to look at [default=%default]')
+                        help='First timestep to look at')
     parser.add_argument('--max-ts', type=int, dest='max_ts', default=-1,
-                        help='Last timestep to look at (not inclusive!) [default=%default]')
+                        help='Last timestep to look at (not inclusive!)')
 
     # detection acceptance threshold (Jaccard index)
     parser.add_argument('--threshold', type=float, dest='threshold', default=0.5,

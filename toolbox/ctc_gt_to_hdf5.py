@@ -94,6 +94,12 @@ def create_label_volume(options):
             # make sure all splits have the same dimension
             splits = []
             for key, value in splits_in_frame.iteritems():
+                value = [v for v in value if v in objects_per_frame[frame]]
+
+                if key not in objects_per_frame[frame - 1]:
+                    print("Parent {} of split is not in previous frame {}. Ignored".format(key, frame - 1))
+                    continue
+
                 if len(value) > 1:
                     if len(value) > 2:
                         print("Cutting off children of {} in timestep {}".format(key, frame))
@@ -101,7 +107,7 @@ def create_label_volume(options):
                     splits.append([key] + value[0:2])
                 elif len(value) == 1:
                     # store as move
-                    print("Store move instead of split into one of {} in timestep {}".format(key, frame))
+                    print("Store move ({},{}) instead of split into one in timestep {}".format(key, value[0], frame))
                     moves.append((key, value[0]))
 
             if len(splits) > 0:
