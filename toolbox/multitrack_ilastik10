@@ -16,6 +16,7 @@ import numpy as np
 import h5py
 import vigra
 import itertools
+import copy
 # from empryonic import track
 import pgmlink as track
 from empryonic import io
@@ -1334,9 +1335,12 @@ if __name__ == "__main__":
             events = all_events[i]
             first_events = events[0]
             events = events[1:]
-
-            processing_pool.apply_async(save_events, (options.out_dir.rstrip('/') + '/iter_' + str(i), events, t0, t1,
+                
+            processing_pool.apply_async(save_events, (options.out_dir.rstrip('/') + '/iter_' + str(i), copy.copy(events), t0, t1,
                         options.label_img_path, max_traxel_id_at, fns[0]))
+
+    processing_pool.close()
+    processing_pool.join()
 
     # add original model features to the feature vector
     feature_vectors = np.loadtxt(feature_vector_filename)
@@ -1351,8 +1355,6 @@ if __name__ == "__main__":
                                      feature_vectors[:,i]))
     np.savetxt(options.out_dir.rstrip('/') + '/feature_vectors.txt', np.array(full_feature_vectors).transpose())
 
-    processing_pool.close()
-    processing_pool.join()
 
     if len(options.ground_truth_labeling) > 0:
         rank_solutions(options.ground_truth_labeling,

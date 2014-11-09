@@ -1,0 +1,761 @@
+#!/usr/bin/env python
+
+import pgmlink
+import vigra
+import h5py
+import numpy as np
+import glob
+from sklearn import metrics
+from collections import defaultdict
+
+class ComparisonOperator():
+    def __init__(self, feature_list = 'all', options=None):
+        self.feature_list = feature_list
+        
+    def __call__(self, ground_truth, result, features, ignore_label = 0):
+        pass
+        
+
+class OverlapComparison(ComparisonOperator):
+    def __init__(self, options, feature_list = ['Count', 'Coord<Maximum>', 'Coord<Minimum>'], threshold = 0.5):
+        ComparisonOperator.__init__(self, feature_list)
+        self.threshold = options.threshold
+
+    def __call__(self, ground_truth, result, features_gt, features_result, ignore_label = 0):
+        best_match_gt_to_result = {}
+        best_match_result_to_gt = {}
+        intersect_dict = pgmlink.getIntersectCount(ground_truth.astype(np.uint32), result.astype(np.uint32))
+        for id_gt, count_gt in enumerate(features_gt['Count']):
+            if id_gt == ignore_label or count_gt == 0:
+                continue
+            best = -1
+            best_ratio = 0
+            for id_result, count_result in enumerate(features_result['Count']):
+                if id_result == ignore_label:
+                    continue
+                counts = pgmlink.calculateIntersectUnion(intersect_dict, id_gt, id_result, int(count_gt), int(count_result))
+                if counts.first > 0:
+                    ratio = counts.first*1.0/counts.second
+                    if ratio > best_ratio:
+                        best = id_result
+                        best_ratio = ratio
+                else:
+                    continue
+            best_match_gt_to_result[id_gt] = best
+            if best > 0:
+                best_match_result_to_gt[best] = id_gt
+
+        for id_result, count_result in enumerate(features_result['Count']):
+            if id_result == ignore_label:
+                continue
+            if id_result not in best_match_result_to_gt.keys() and count_result > 0:
+                best_match_result_to_gt[id_result] = -1
+        return best_match_gt_to_result, best_match_result_to_gt
+        
+    def __call__deprecated(self, ground_truth, result, features_gt, features_result, label, ignore_label = 0):
+        # get initial bounding box based on ground truth object
+        # needs to be extended later to fit all matching candidates
+        # completely
+        coord_min = features_gt['Coord<Minimum>'][label]
+        coord_max = features_gt['Coord<Maximum>'][label]
+        bounding_box = []
+        for (lower, upper) in zip(coord_min, coord_max):
+            bounding_box.append(slice(lower, upper+1))
+        bounded_ground_truth = ground_truth[bounding_box]
+        bounded_result = result[bounding_box]
+        # print bounded_result.shape
+
+        # extend bounding box
+        # print bounding_box
+        feats = vigra.analysis.extractRegionFeatures(bounded_result.astype(np.float32),
+                                                     bounded_result,
+                                                     features = ['Count'],
+                                                     ignoreLabel = ignore_label)
+        for idx, (lower_arr, upper_arr) in enumerate(zip(features_result['Coord<Minimum>'], features_result['Coord<Maximum>'])):
+            if idx < feats['Count'].shape[0] and feats['Count'][idx] > 0:
+                # print features_result['Count'][idx], lower_arr, upper_arr
+                for coord_idx, (lower, upper) in enumerate(zip(lower_arr, upper_arr)):
+                    curr_slice = bounding_box[coord_idx]
+                    # print curr_slice.start, lower, curr_slice.stop, upper
+                    if lower < curr_slice.start:
+                        # print 'resizing', curr_slice.start, lower
+                        bounding_box[coord_idx] = slice(lower, curr_slice.stop)
+                        curr_slice = bounding_box[coord_idx]
+                        # print slice(lower, curr_slice.stop), bounding_box[coord_idx], "BLAAA"
+                    if upper + 1 > curr_slice.stop:
+                        # print 'resizing upper', curr_slice.stop, upper + 1
+                        bounding_box[coord_idx] = slice(curr_slice.start, upper + 1)
+                        curr_slice = bounding_box[coord_idx]
+                    #print idx, bounding_box
+
+        # print bounding_box, 'BBBBBBBBBB'
+        # for el in bounding_box:
+            # print el
+
+        # match ground truth to result
+        # result object with biggest intersect/union wins
+        # remove wining object afterwards to guarantee for unique assignments
+        extended_bounded_ground_truth = ground_truth[bounding_box]
+        ground_truth_indices = extended_bounded_ground_truth == label
+        extended_bounded_result = result[bounding_box]
+        # print extended_bounded_result.shape
+        max_intersect_coords = []
+        max_intersect_union_ratio = 0
+        argmax_result_label = -1
+        for l, feat in enumerate(feats['Count']):
+            if feat > 0:
+                result_indices = (extended_bounded_result == l)
+                intersect = np.sum(ground_truth_indices * result_indices)
+                union = np.sum(ground_truth_indices + result_indices)
+                ratio = 1.0*intersect/union
+                if ratio > self.threshold and ratio > max_intersect_union_ratio:
+                    # print label, l, ratio, np.sum(result_indices), features_result['Count'][l]
+                    assert np.sum(result_indices) == features_result['Count'][l]
+                    max_intersect_coords = result_indices
+                    max_intersect_union_ratio = ratio
+                    argmax_result_label = l
+
+        extended_bounded_result[max_intersect_coords] = 0
+        extended_bounded_ground_truth[ground_truth_indices] = 0
+        assert np.all(extended_bounded_result[max_intersect_coords] == 0)
+        return argmax_result_label
+
+
+def evaluate_detection_directory(ground_truth_dir, result_dir, comparison_operator, ignore_label = 0, stepsize=1):
+    ground_truth_fns = sorted(glob.glob(ground_truth_dir.rstrip('/') + '/*'))[::stepsize]
+    result_fns = sorted(glob.glob(result_dir.rstrip('/') + '/*'))[::stepsize]
+    comparison_dictionaries = []
+    for ground_truth_fn, result_fn in zip(ground_truth_fns, result_fns):
+        ground_truth = np.array(vigra.impex.readImage(ground_truth_fn))
+        result = np.array(vigra.impex.readImage(result_fn))
+        comparison_dictionaries.append(evaluate_detection_at(ground_truth.squeeze(),
+                                                             result.squeeze(),
+                                                             comparison_operator,
+                                                             ignore_label))
+    return comparison_dictionaries
+
+
+def evaluate_detection_hdf5(ground_truth_fn, ground_truth_path, result_fn, result_path, comparison_operator, iteration_axis = 0, ignore_label = 0, stepsize=1, space_range=None, verbose=True, time_range=None):
+    with h5py.File(ground_truth_fn, 'r') as ground_truth_file:
+        ground_truth = ground_truth_file[ground_truth_path]
+        with h5py.File(result_fn, 'r') as result_file:
+            result = result_file[result_path]
+            return evaluate_detection_numpy_like(ground_truth, result, comparison_operator, iteration_axis, ignore_label, stepsize=stepsize, space_range=space_range, verbose=verbose, time_range=time_range)
+
+        
+    
+
+def evaluate_detection_numpy_like(ground_truth, result, comparison_operator, iteration_axis = 0, ignore_label = 0, stepsize=1, space_range=None, verbose=True, time_range=None):
+    assert(ground_truth.shape[1:3] == result.shape[1:3]) # FIXME: hack
+    comparison_dictionaries = []
+    if space_range is None:
+        slicing = [slice(None)] * len(result.shape)
+    else:
+        #FIXME: assumes txy(z)c
+        slicing = [slice(None),] + space_range + [slice(None),]
+    if time_range is not None:
+        slicing[0] = time_range
+    for idx in xrange(0,result.shape[iteration_axis],stepsize):
+        if verbose:
+            print 't =', idx
+        slicing[iteration_axis] = idx
+        comparison_dictionaries.append(evaluate_detection_at(ground_truth[tuple(slicing)].squeeze(),
+                                                             result[tuple(slicing)].squeeze(),
+                                                             comparison_operator,
+                                                             ignore_label))
+       
+    return comparison_dictionaries
+
+
+def evaluate_detection_at(ground_truth_at, result_at, comparison_operator, ignore_label=0):
+    # ground_truth_at = np.require(ground_truth_at, dtype=np.uint32)
+    # result_at = np.require(result_at, dtype=np.uint32)
+    ground_truth_to_result = {}
+    result_to_ground_truth = {}
+    feature_list = comparison_operator.feature_list
+    #print ground_truth_at.shape
+    #print result_at.shape
+    #print np.max(ground_truth_at)
+    #print np.max(result_at)
+    #print np.min(ground_truth_at)
+    #print np.min(result_at)
+    feats_gt = vigra.analysis.extractRegionFeatures(ground_truth_at.astype(np.float32),
+                                                    ground_truth_at.astype(np.uint32),
+                                                    features = feature_list,
+                                                    ignoreLabel = int(ignore_label))
+    feats_result = vigra.analysis.extractRegionFeatures(ground_truth_at.astype(np.float32),
+                                                        result_at.astype(np.uint32),
+                                                        features = feature_list,
+                                                        ignoreLabel = int(ignore_label))
+    return comparison_operator(ground_truth_at, result_at, feats_gt, feats_result, ignore_label)
+    
+
+def evaluate_detection_at_deprecated(ground_truth_at, result_at, comparison_operator, ignore_label=0):
+    # ground_truth_at = np.require(ground_truth_at, dtype=np.uint32)
+    # result_at = np.require(result_at, dtype=np.uint32)
+
+    ground_truth_to_result = {}
+    result_to_ground_truth = {}
+    feature_list = comparison_operator.feature_list
+    feats_gt = vigra.analysis.extractRegionFeatures(ground_truth_at.astype(np.float32),
+                                                    ground_truth_at.astype(np.uint32),
+                                                    features = feature_list,
+                                                    ignoreLabel = int(ignore_label))
+    feats_result = vigra.analysis.extractRegionFeatures(ground_truth_at.astype(np.float32),
+                                                        result_at.astype(np.uint32),
+                                                        features = feature_list,
+                                                        ignoreLabel = int(ignore_label))
+    for l, feat in enumerate(feats_gt['Count']):
+        if feat > 0:
+            match = comparison_operator(ground_truth_at, result_at, feats_gt, feats_result, l, ignore_label)
+            ground_truth_to_result[l] = match
+            # print l, match
+            if match > -1:
+                result_to_ground_truth[match] = l
+    for unmatched_label in np.unique(ground_truth_at):
+        if unmatched_label != ignore_label:
+            ground_truth_to_result[unmatched_label] = -1
+    for unmatched_label in np.unique(result_at):
+        if unmatched_label != ignore_label:
+            result_to_ground_truth[unmatched_label] = -1
+    return ground_truth_to_result, result_to_ground_truth
+    
+
+def calculate_detection_measures(comparison_dictionaries):
+    true_value = []
+    predicted_value = []
+    for ground_truth_to_result, result_to_ground_truth in comparison_dictionaries:
+        for key, value in ground_truth_to_result.iteritems():
+            if value > -1:
+                true_value.append(1)
+                predicted_value.append(1)
+            else:
+                true_value.append(1)
+                predicted_value.append(0)
+
+        for key, value in result_to_ground_truth.iteritems():
+            if value > -1:
+                continue
+            else:
+                true_value.append(0)
+                predicted_value.append(1)
+    res = metrics.precision_recall_fscore_support(np.array(true_value), np.array(predicted_value), labels = [0, 1], pos_label=1)
+    result = []
+    for v in res:
+        result.append(v[1])
+    return tuple(result)
+
+    
+def calculate_tracking_measures(tracking_ground_truth, tracking_prediction, comparison_dictionaries, verbose = True, with_tolerant_splits=False):
+    measures = defaultdict(lambda : defaultdict(dict))
+    labels = extract_tracking_labels(tracking_ground_truth, tracking_prediction, comparison_dictionaries, verbose, with_tolerant_splits)
+    for condition_type, events in labels.iteritems():
+        for event, label_type in events.iteritems():
+            precision, recall, f_measure, support = metrics.precision_recall_fscore_support(label_type['ground_truth'],
+                                                                                            label_type['prediction'],
+                                                                                            labels = [0,1], pos_label=1)
+            event_statistics = measures[condition_type][event]
+            event_statistics['precision'] = precision
+            event_statistics['recall'] = recall
+            event_statistics['f-measure'] = f_measure
+            event_statistics['support'] = support
+            # print labels[condition_type][event]
+
+    return measures
+    
+
+
+def extract_tracking_labels(tracking_ground_truth, tracking_prediction, comparison_dictionaries, verbose=True, with_tolerant_splits=False):
+    labels = defaultdict(lambda : defaultdict(lambda : defaultdict(list)))
+    # assert(len(tracking_ground_truth.keys()) == len(tracking_prediction.keys()))
+    delete_false_positives = [0]
+    delete_false_negatives = [0]
+    for i, (ts_gt, ts_pred) in enumerate(zip(
+            sorted(tracking_ground_truth.keys(), key = lambda x : int(x)),
+            sorted(tracking_prediction.keys(), key = lambda x : int(x))
+    )):
+        if verbose: print 't =', i
+        tracking_ground_truth_at = tracking_ground_truth[ts_gt]
+        tracking_prediction_at = tracking_prediction[ts_pred]
+        
+        extract_move_labels(tracking_ground_truth_at, tracking_prediction_at, comparison_dictionaries[i-1], comparison_dictionaries[i], labels, verbose)
+
+        extract_division_labels(tracking_ground_truth_at, tracking_prediction_at, comparison_dictionaries[i-1], comparison_dictionaries[i], labels, verbose, 
+                    comparison_dictionaries[i-2], with_tolerant_splits, delete_false_positives, delete_false_negatives)
+
+    count = 0
+    max_count = delete_false_positives[0]
+    indices = []
+    for idx, el in enumerate(zip(labels['unconditioned']['TolerantDivisions']['ground_truth'], labels['unconditioned']['TolerantDivisions']['prediction'])):
+        if el[0] == 0 and el[1] == 1:
+            indices.append(idx)
+            count += 1
+        if count == max_count:
+            break
+    for ind in indices[::-1]:
+        del labels['unconditioned']['TolerantDivisions']['ground_truth'][ind]
+        del labels['unconditioned']['TolerantDivisions']['prediction'][ind]
+    count = 0
+    max_count = delete_false_negatives[0]
+    indices = []
+    for idx, el in enumerate(zip(labels['unconditioned']['TolerantDivisions']['ground_truth'], labels['unconditioned']['TolerantDivisions']['prediction'])):
+        if el[0] == 1 and el[1] == 0:
+            indices.append(idx)
+            count += 1
+        if count == max_count:
+            break
+    for ind in indices[::-1]:
+        del labels['unconditioned']['TolerantDivisions']['ground_truth'][ind]
+        del labels['unconditioned']['TolerantDivisions']['prediction'][ind]
+        
+    return labels
+
+
+def extract_move_labels(tracking_ground_truth,
+                        tracking_prediction,
+                        comparison_dictionaries_prev,
+                        comparison_dictionaries_curr,
+                        labels = defaultdict(lambda : defaultdict(lambda : defaultdict(list))),
+                        verbose = True):
+    # move in both ground truth and prediction:
+    # labels 1 1
+    # move only in ground truth:
+    # labels 1 0
+    # move only in prediction:
+    # 0 0
+
+    
+    if 'Moves' in tracking_ground_truth:
+        moves_ground_truth = tracking_ground_truth['Moves']
+    else:
+        moves_ground_truth = np.empty((0, 0))
+
+    if 'Moves' in tracking_prediction:
+        moves_prediction = tracking_prediction['Moves']
+    else:
+        moves_prediction = np.empty((0, 0))
+
+    # get true positives and false negatives
+    for m in moves_ground_truth:
+        try:
+            m_translated = comparison_dictionaries_prev[0][m[0]], comparison_dictionaries_curr[0][m[1]]
+        except:
+            if verbose:
+                print 'WARNING: move1'
+            index = np.array([])
+            m_translated = (0,0)
+        if len(moves_prediction) == 0:
+            index = np.array([])
+        else:
+            try:
+                index = np.where(moves_prediction[:,0] == m_translated[0])[0]
+            except:
+                if verbose:
+                    print 'WARNING: move2'
+                index = np.array([])
+        if index.shape[0] == 1 and m_translated[1] == moves_prediction[index[0], 1]:
+            # true positive
+            labels['unconditioned']['Moves']['ground_truth'].append(1)
+            labels['unconditioned']['Moves']['prediction'].append(1)
+            labels['conditioned']['Moves']['ground_truth'].append(1)
+            labels['conditioned']['Moves']['prediction'].append(1)
+        else:
+            # false negative
+            if m_translated[0] > -1 and m_translated[1] > -1:
+                labels['conditioned']['Moves']['ground_truth'].append(1)
+                labels['conditioned']['Moves']['prediction'].append(0)
+            labels['unconditioned']['Moves']['ground_truth'].append(1)
+            labels['unconditioned']['Moves']['prediction'].append(0)
+
+
+    # get false positives
+    for m in moves_prediction:
+        try:
+            m_translated = comparison_dictionaries_prev[1][m[0]], comparison_dictionaries_curr[1][m[1]]
+        except:
+            if verbose:
+                print 'WARNING: move3'
+            index = np.array([])
+            m_translated = (0,0)
+        if len(moves_ground_truth) == 0:
+            index = np.array([])
+        else:
+            try:
+                index = np.where(moves_ground_truth[:,0] == m_translated[0])[0]
+            except:
+                if verbose:
+                    print 'WARNING: move4'
+                index = np.array([])
+        if index.shape[0] == 1 and m_translated[1] == moves_ground_truth[index[0], 1]:
+            continue
+        else:
+            if m_translated[0] > -1 and m_translated[1] > -1:
+                labels['conditioned']['Moves']['ground_truth'].append(0)
+                labels['conditioned']['Moves']['prediction'].append(1)
+            labels['unconditioned']['Moves']['ground_truth'].append(0)
+            labels['unconditioned']['Moves']['prediction'].append(1)
+    
+
+def check_shifted_division(div, isGT, tracking_ground_truth_at, tracking_prediction_at, comparison_dictionaries_prev_prev, comparison_dictionaries_curr, verbose=True):
+    debug = False
+    # the following could be rewritten as only one function instead of two cases, however, we spell it out for clarity
+    if isGT: # check gt_left == res_right
+        if 'TolerantSplitsLeft' not in tracking_ground_truth_at.keys():
+            if debug: print 'TolerantSplitsLeft not in tracking_ground_truth_at.keys()'
+            return False
+        leftShifted_divisions_ground_truth = np.array(tracking_ground_truth_at['TolerantSplitsLeft'])
+        if 'TolerantSplitsRight' not in tracking_prediction_at.keys():
+            if debug: print 'TolerantSplitsRight not in tracking_prediction_at.keys()'
+            return False
+        rightShifted_divisions_prediction = np.array(tracking_prediction_at['TolerantSplitsRight'])
+
+        hits = np.where(leftShifted_divisions_ground_truth[:,1] == div[1])[0]
+        if len(hits) == 0:
+            hits = np.where(leftShifted_divisions_ground_truth[:,2] == div[1])[0]
+        gt_left = leftShifted_divisions_ground_truth[hits].flatten()
+        if debug: print 'gt_left=', gt_left
+        if gt_left.shape[0] == 0: 
+            # couldn't find
+            return False
+        assert len(gt_left.shape) == 1 and gt_left.shape[0] == 3
+
+        if not np.all(gt_left[1:] == np.array(div[1:])) and not np.all(gt_left[1:] == np.array([div[2], div[1]])):
+            # the second child does not match
+            if debug: print 'second child does not match', gt_left, div
+            return False
+
+        # translate:
+        try:
+            gt_left_translated = comparison_dictionaries_prev_prev[0][gt_left[0]], comparison_dictionaries_curr[0][gt_left[1]], comparison_dictionaries_curr[0][gt_left[2]]
+        except:
+            if verbose: print 'WARNING: tolerantDivisions2'
+            gt_left_translated = np.array([0,0,0])
+        if debug: print 'gt_left_translated', gt_left_translated
+        
+        index = np.where(rightShifted_divisions_prediction[:,0] == gt_left_translated[0])[0]
+        if index.shape[0] != 1:
+            if debug: print 'did not find in prediction'
+            return False
+        
+        div_candidate = rightShifted_divisions_prediction[index[0], 1:]
+        if np.all(div_candidate == gt_left_translated[1:]) or np.all(div_candidate == gt_left_translated[-1:0:-1]):
+            if debug: print 'matched'
+            return True
+
+    else: #is GT == false   # check res_left == gt_right
+        if 'TolerantSplitsRight' not in tracking_ground_truth_at.keys():
+            if debug: print 'TolerantSplitsRight not in tracking_grount_truth_at.keys()'
+            return False
+        rightShifted_divisions_ground_truth = np.array(tracking_ground_truth_at['TolerantSplitsRight'])
+        if 'TolerantSplitsLeft' not in tracking_prediction_at.keys():
+            if debug: print 'TolerantSplitsLeft not in tracking_prediction_at.keys()'
+            return False
+        leftShifted_divisions_prediction = np.array(tracking_prediction_at['TolerantSplitsLeft'])
+
+        hits = np.where(leftShifted_divisions_prediction[:,1] == div[1])[0]
+        if len(hits) == 0:
+            hits = np.where(leftShifted_divisions_prediction[:,2] == div[1])[0]
+        res_left = leftShifted_divisions_prediction[hits].flatten()
+        if debug: print 'res_left=', res_left
+        if res_left.shape[0] == 0:
+            # couldn't find
+            return False
+
+        assert len(res_left.shape) == 1 and res_left.shape[0] == 3
+
+        if not np.all(res_left[1:] == np.array(div[1:])) and not np.all(res_left[1:] == np.array([div[2], div[1]])):
+            # the second child does not match
+            if debug: print 'second child does not match', res_left, div
+            return False
+
+        # translate
+        try:
+            res_left_translated = comparison_dictionaries_prev_prev[1][res_left[0]], comparison_dictionaries_curr[1][res_left[1]], comparison_dictionaries_curr[1][res_left[2]]
+        except:
+            if verbose: print 'WARNING: tolerantDivisions1'
+            res_left_translated = np.array([0,0,0])
+        if debug: print 'res_left_translated', res_left_translated
+
+        index = np.where(rightShifted_divisions_ground_truth[:,0] == res_left_translated[0])[0]
+        if index.shape[0] != 1:
+            if debug: print 'did not find in ground truth'
+            return False
+
+        div_candidate = rightShifted_divisions_ground_truth[index[0], 1:]
+        if np.all(div_candidate == res_left_translated[1:]) or np.all(div_candidate == res_left_translated[-1:0:-1]):
+            if debug: print 'matched'
+            return True
+
+
+
+def extract_division_labels(tracking_ground_truth,
+                            tracking_prediction,
+                            comparison_dictionaries_prev,
+                            comparison_dictionaries_curr, 
+                            labels = defaultdict(lambda : defaultdict(lambda : defaultdict(list))),
+                            verbose = True, 
+                            comparison_dictionaries_prev_prev = None,
+                            with_tolerant_splits = False,
+                            delete_false_positives = [0],
+                            delete_false_negatives = [0]
+                           ):
+    # move in both ground truth and prediction:
+    # labels 1 1
+    # move only in ground truth:
+    # labels 1 0
+    # move only in prediction:
+    # 0 0
+    ground_truth = []
+    prediction = []
+    ground_truth_conditioned = []
+    prediction_conditioned = []
+
+    shifted_divisions = []
+    
+    if 'Splits' in tracking_ground_truth:
+        divisions_ground_truth = tracking_ground_truth['Splits']
+    else:
+        divisions_ground_truth = np.empty((0, 0))
+
+    if 'Splits' in tracking_prediction:
+        divisions_prediction = tracking_prediction['Splits']
+    else:
+        divisions_prediction = np.empty((0, 0))
+
+    # get true positives and false negatives
+    for d in divisions_ground_truth:
+        try:
+            d_translated = comparison_dictionaries_prev[0][d[0]], comparison_dictionaries_curr[0][d[1]], comparison_dictionaries_curr[0][d[2]]
+        except:
+            if verbose:
+                print 'WARNING: division1'
+            index = np.array([])
+            d_translated = (0,0,0)
+        if len(divisions_prediction) == 0:
+            index = np.array([])
+        else:
+            try:
+                index = np.where(divisions_prediction[:,0] == d_translated[0])[0]
+            except:
+                if verbose:
+                    print 'WARNING: division2'
+                index = np.array([])
+        is_true_positive_mitosis = False
+        is_true_positive_division = False
+        if index.shape[0] > 0:
+            # true positive
+            labels['unconditioned']['Mitosis']['ground_truth'].append(1)
+            labels['unconditioned']['Mitosis']['prediction'].append(1)
+            labels['conditioned']['Mitosis']['ground_truth'].append(1)
+            labels['conditioned']['Mitosis']['prediction'].append(1)
+            is_true_positive_mitosis = True
+
+            # order of children cell does not matter!
+            div_candidate = divisions_prediction[index[0], 1:]
+            if np.all(div_candidate == d_translated[1:]) or np.all(div_candidate == d_translated[-1:0:-1]):
+                labels['unconditioned']['Divisions']['ground_truth'].append(1)
+                labels['unconditioned']['Divisions']['prediction'].append(1)
+                labels['conditioned']['Divisions']['ground_truth'].append(1)
+                labels['conditioned']['Divisions']['prediction'].append(1)
+
+                if with_tolerant_splits:
+                    labels['unconditioned']['TolerantDivisions']['ground_truth'].append(1)
+                    labels['unconditioned']['TolerantDivisions']['prediction'].append(1)
+                    labels['conditioned']['TolerantDivisions']['ground_truth'].append(1)
+                    labels['conditioned']['TolerantDivisions']['prediction'].append(1)
+                is_true_positive_division = True
+
+        # false negative
+        if is_true_positive_mitosis == False:
+            if d_translated[0] > -1:
+                labels['conditioned']['Mitosis']['ground_truth'].append(1)
+                labels['conditioned']['Mitosis']['prediction'].append(0)
+            labels['unconditioned']['Mitosis']['ground_truth'].append(1)
+            labels['unconditioned']['Mitosis']['prediction'].append(0)
+            
+
+        if is_true_positive_division == False:
+            if with_tolerant_splits:
+                is_true_shifted_positive_division = check_shifted_division(d, True, tracking_ground_truth, tracking_prediction, comparison_dictionaries_prev_prev, comparison_dictionaries_curr, verbose)
+                if is_true_shifted_positive_division:
+                    labels['unconditioned']['TolerantDivisions']['ground_truth'].append(1)
+                    labels['unconditioned']['TolerantDivisions']['prediction'].append(1)
+                    labels['conditioned']['TolerantDivisions']['ground_truth'].append(1)
+                    labels['conditioned']['TolerantDivisions']['prediction'].append(1)
+                    delete_false_positives[0] += 1                    
+                    shifted_divisions.append(d_translated[0])
+                else:
+                    labels['unconditioned']['TolerantDivisions']['ground_truth'].append(1)
+                    labels['unconditioned']['TolerantDivisions']['prediction'].append(0)
+                    if d_translated[0] > -1 and d_translated[1] > -1 and d_translated[2] > -1:
+                        labels['conditioned']['TolerantDivisions']['ground_truth'].append(1)
+                        labels['conditioned']['TolerantDivisions']['prediction'].append(0)
+
+            if d_translated[0] > -1 and d_translated[1] > -1 and d_translated[2] > -1:
+                labels['conditioned']['Divisions']['ground_truth'].append(1)
+                labels['conditioned']['Divisions']['prediction'].append(0)
+            labels['unconditioned']['Divisions']['ground_truth'].append(1)
+            labels['unconditioned']['Divisions']['prediction'].append(0)
+
+
+    # get false positives
+    for d in divisions_prediction:
+        try:
+            d_translated = comparison_dictionaries_prev[1][d[0]], comparison_dictionaries_curr[1][d[1]], comparison_dictionaries_curr[1][d[2]]
+        except:
+            if verbose:
+                print 'WARNING: division3', d
+            d_translated = (0,0,0)
+            index = np.array([])
+        if len(divisions_ground_truth) == 0:
+            index = np.array([])
+        else:
+            try:
+                index = np.where(divisions_ground_truth[:,0] == d_translated[0])[0]
+            except:
+                if verbose:
+                    print 'WARNING: division4'
+                index = np.array([])
+        is_true_positive_mitosis = False
+        is_true_positive_division = False
+        is_true_shifted_positive_division = False
+        # true positive
+        if index.shape[0] > 0:
+            is_true_positive_mitosis = True
+            # order of children cell does not matter!
+            div_candidate = divisions_ground_truth[index[0], 1:]
+            if np.all(div_candidate == d_translated[1:]) or np.all(div_candidate == d_translated[-1:0:-1]):
+                is_true_positive_division = True
+                is_true_shifted_positive_division = True
+            elif d_translated[0] in shifted_divisions:
+                is_true_shifted_positive_division = True
+        if is_true_positive_mitosis == False:
+            if d_translated[0] > -1:
+                labels['conditioned']['Mitosis']['ground_truth'].append(0)
+                labels['conditioned']['Mitosis']['prediction'].append(1)
+            labels['unconditioned']['Mitosis']['ground_truth'].append(0)
+            labels['unconditioned']['Mitosis']['prediction'].append(1)
+
+        if is_true_positive_division == False:
+            if with_tolerant_splits and is_true_shifted_positive_division == False:
+                if check_shifted_division(d, False, tracking_ground_truth, tracking_prediction, comparison_dictionaries_prev_prev, comparison_dictionaries_curr, verbose):
+                    labels['unconditioned']['TolerantDivisions']['ground_truth'].append(1)
+                    labels['unconditioned']['TolerantDivisions']['prediction'].append(1)
+                    labels['conditioned']['TolerantDivisions']['ground_truth'].append(1)
+                    labels['conditioned']['TolerantDivisions']['prediction'].append(1)
+                    delete_false_negatives[0] += 1
+                    shifted_divisions.append(d_translated[0])
+                else:
+                    labels['unconditioned']['TolerantDivisions']['ground_truth'].append(0)
+                    labels['unconditioned']['TolerantDivisions']['prediction'].append(1)
+                    if d_translated[0] > -1 and d_translated[1] > -1 and d_translated[2] > -1:
+                        labels['conditioned']['TolerantDivisions']['ground_truth'].append(0)
+                        labels['conditioned']['TolerantDivisions']['prediction'].append(1)
+
+            if d_translated[0] > -1 and d_translated[1] > -1 and d_translated[2] > -1:
+                labels['conditioned']['Divisions']['ground_truth'].append(0)
+                labels['conditioned']['Divisions']['prediction'].append(1)
+            labels['unconditioned']['Divisions']['ground_truth'].append(0)
+            labels['unconditioned']['Divisions']['prediction'].append(1)
+
+    return ground_truth, prediction, ground_truth_conditioned, prediction_conditioned
+
+    
+def main():
+    import argparse
+    parser = argparse.ArgumentParser(description = 'Evaluate tracking results')
+    parser.add_argument('--use-hdf5', action='store_true', help='When active, the input paths will be interpreted as a path to a hdf5 file. By default the input paths point to a directories containing images of ground truth and tracking result respectively in terms of an event vector and nothing else.')
+    parser.add_argument('--ground-truth', '-g', required=True, help='Path to hdf5 file or directory (depending on --use-hdf5')
+    parser.add_argument('--tracking-result', '-r', required=True, help='Path to hdf5 file or directory (depending on --use-hdf5')
+    parser.add_argument('--threshold', '-t', default=0.5, type=float, help='Threshold above which a ratio of intersect and union is a valid match')
+    parser.add_argument('--iteration-axis', '-a', default=0, type=int, help='Axis along which to iterate. Only takes effect in conjunction with --use-hdf5')
+    parser.add_argument('--ignore-label', '-i', default=0, type=int, help='Label to be ignored in comparison (usually background label)')
+    parser.add_argument('--comparison-operator', '-c', default='overlap', help='Operator used for comparison. Currently only overlap available')
+    parser.add_argument('--ground-truth-internal-path', '-G', default='', help='Internal path to dataset in h5 file. Only takes effect in conjunction with --use-hdf5')
+    parser.add_argument('--tracking-result-internal-path', '-R', default='', help='Internal path to dataset in h5 file. Only takes effect in conjunction with --use-hdf5')
+    parser.add_argument('--stepsize', default=1, type=int, help='Perform the evaluation only every stepsize timesteps, 1 by default')
+    parser.add_argument('--tracking-ground-truth-group', '-p', default='tracking', help='Internal path to tracking group. Only takes effect in conjunction with --use-hdf5')
+    parser.add_argument('--tracking-result-group', '-P', default='tracking', help='Internal path to tracking group. Only takes effect in conjunction with --use-hdf5')
+    parser.add_argument('--xFrom', default=None, type=int, help='Evaluate detections only within this range')
+    parser.add_argument('--xTo', default=None, type=int, help='Evaluate detections only within this range')
+    parser.add_argument('--yFrom', default=None, type=int, help='Evaluate detections only within this range')
+    parser.add_argument('--yTo', default=None, type=int, help='Evaluate detections only within this range')
+    parser.add_argument('--zFrom', default=None, type=int, help='Evaluate detections only within this range')
+    parser.add_argument('--zTo', default=None, type=int, help='Evaluate detections only within this range')
+    parser.add_argument('--tFrom', default=None, type=int, help='Evaluate detections only within this range')
+    parser.add_argument('--tTo', default=None, type=int, help='Evaluate detections only within this range')
+    parser.add_argument('--quietly', action='store_true', default=False, help='Non-verbose output')
+    parser.add_argument('--with-tolerant-splits', action='store_true', default=False, help='With tolerant splits (= splits may be off by one in each direction)')
+    
+    class O(object):
+        pass
+
+    comparison_operators = {}
+    comparison_operators['overlap'] = OverlapComparison
+        
+    options = O()
+    parser.parse_args(namespace = options)
+    threshold = options.threshold
+    comparison_operator = comparison_operators[options.comparison_operator](options = options)
+    
+    if options.use_hdf5:
+        space_range = None
+        time_range = None
+        if options.xTo or options.xFrom or options.yTo or options.yFrom or options.zFrom or options.zTo:
+            space_range = [ slice(options.xFrom,options.xTo), slice(options.yFrom,options.yTo) ]
+            if options.zFrom or options.zTo:
+                space_range += [ slice(options.zFrom, options.zTo), ]
+        if options.tFrom and options.tTo:
+            time_range = slice(options.tFrom, options.tTo)
+        comparison_dictionaries = evaluate_detection_hdf5(options.ground_truth,
+                                                          options.ground_truth_internal_path,
+                                                          options.tracking_result,
+                                                          options.tracking_result_internal_path,
+                                                          comparison_operator,
+                                                          options.iteration_axis,
+                                                          options.ignore_label,
+                                                          stepsize=options.stepsize,
+                                                          space_range=space_range,
+                                                          time_range=time_range,
+                                                          verbose=not(options.quietly)
+							)
+    else:
+        comparison_dictionaries = evaluate_detection_directory(options.ground_truth,
+                                                               options.tracking_result,
+                                                               comparison_operator,
+                                                               options.ignore_label,
+                                                               stepsize=options.stepsize)
+
+
+    out = ''
+    if not(options.quietly):
+        print 'Detection Measures: precision = %.4f, recall = %.4f, f-measure = %.4f, support = %.4f' % calculate_detection_measures(comparison_dictionaries)
+    else:
+        out += '%.4f,%.4f,%.4f,%.4f,' % calculate_detection_measures(comparison_dictionaries)
+
+    if options.use_hdf5:
+        if not(options.quietly):
+            print options.ground_truth, options.tracking_result
+        with h5py.File(options.ground_truth, 'r') as ground_truth_file:
+            with h5py.File(options.tracking_result, 'r') as result_file:
+                tracking_ground_truth = ground_truth_file[options.tracking_ground_truth_group]
+                tracking_prediction = result_file[options.tracking_result_group]
+                measures = calculate_tracking_measures(tracking_ground_truth, tracking_prediction, comparison_dictionaries, verbose = not(options.quietly), with_tolerant_splits = options.with_tolerant_splits)
+        for key, value in measures.iteritems():
+            if not(options.quietly):
+                print key
+            for k, v in value.iteritems():
+                if not(options.quietly):
+                    print '  ', k
+                for g, w in v.iteritems():
+                    if not(options.quietly):
+                        print '     %-*s' % (20, g), w
+                    else:
+                        out += '%.4f,' % (w)
+
+    if options.quietly:
+        print out
+
+if __name__ == "__main__":
+    main()
+
