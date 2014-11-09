@@ -1,0 +1,67 @@
+#!/usr/bin/env python
+
+import h5py
+import numpy as np
+
+
+def getName(shape, t):
+    name = '[[%d, %d, %d, %d, %d], [%d, %d, %d, %d, %d]]'
+    shape = list(shape)
+    para = [t,] + [0,] * (len(shape)-1) + [t+1,] + shape[1:]
+    name = name % tuple(para)
+    return name
+
+def stackLabelImages(fn_ilp, fn_out, path_ilp='TrackingFeatureExtraction/LabelImage/0', path_out='/', ds_name_out='LabelImage', t_axis=0, num_ts=0):
+    with h5py.File(fn_ilp, 'r') as f_ilp:
+        with h5py.File(fn_out, 'a') as f_out:
+            ilp_group = f_ilp[path_ilp]
+            if ds_name_out in f_out[path_out].keys():
+                del f_out[path_out][ds_name_out]
+
+            shape_out = list(ilp_group.values()[0].shape)
+            shape_out[t_axis] = num_ts #len(ilp_group.values())
+            chunks = [ 64, ] * len(shape_out)
+            chunks[t_axis] = 1
+            for i in range(len(chunks)):
+                chunks[i] = min(chunks[i], shape_out[i])
+            ds_out = f_out[path_out].create_dataset(name=ds_name_out, shape=shape_out, chunks=tuple(chunks), compression=1, dtype=ilp_group.values()[0].dtype)
+    
+            slicing = [slice(None),] * len(shape_out)
+            for t in range(shape_out[t_axis]):
+                slicing[t_axis] = t
+                if t_axis != 0:
+                    raise NotImplementedError, "getName and ilastik expect t_axis == 0"
+                name = getName(shape_out, t)
+                print name
+                assert name in ilp_group.keys() 
+                ds_out[tuple(slicing)] = np.array(ilp_group[name].value)
+
+
+def eventVetorToHdf5(files_in, fn_out, name_out='eventVector', path_in='tracking', t_axis=0):
+    with h5py.File(fn_out, 'a') as f_out:
+        if name_out in f_out.keys():
+            del f_out[name_out]
+        g_out = f_out.create_group(name_out)
+
+        files_in = sorted(files_in)
+        for t, f_in in enumerate(files_in):
+            with h5py.File(f_in, 'r') as f_at:
+                g_out_at = g_out.create_group("%04d" % t)
+                for key in f_at[path_in].keys():
+                    g_out_at.create_dataset(name=key, data=f_at[path_in][key].value)
+
+
+if __name__ == "__main__":
+    usage = "file_out.h5 ilastik_project.ilp 00000.h5 ... 0000N.h5"
+    import sys
+    if len(sys.argv) < 3:
+        print "Usage: python", sys.argv[0], usage
+        sys.exit(1)
+
+    fn_out = sys.argv[1]
+    fn_ilp = sys.argv[2]
+    files_in = sys.argv[3:]
+
+    num_ts = len(files_in)
+    stackLabelImages(fn_ilp, fn_out, path_ilp='TrackingFeatureExtraction/LabelImage/0', path_out='/', ds_name_out='LabelImage', t_axis=0, num_ts=num_ts)
+    eventVetorToHdf5(files_in, fn_out, name_out='eventVector', path_in='tracking', t_axis=0)
