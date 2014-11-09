@@ -32,6 +32,7 @@ Compare two tracking results, based only on the association information in the t
 
     parser = optparse.OptionParser(usage=usage)
     parser.add_option('--quietly', action='store_true', dest='quiet', help='non-verbose')
+    parser.add_option('--max-ts', dest='max_ts', type=int, default=-1, help='max. timestep (exclusive) [default=%default]')
     #parser.add_option('--no-detailed-stats', action='store_true', dest='no_detailed_stats', help="don't write detailed statistics into an output file")
     #parser.add_option('-o', type='str', dest='output_fn', default='batch_performance.txt', help='output file for detailed stats; no effect if "--no-detailed-stats" is set [default: %default]')
     #parser.add_option('-t', '--threshold', type='float', dest='threshold', default=25, help='distance threshold for the matching (matching only below the threshold) [default: %default]')
@@ -55,6 +56,9 @@ Compare two tracking results, based only on the association information in the t
     else:
         parser.print_help()
         sys.exit(1)
+    
+    if options.max_ts != -1:
+        base_fns = base_fns[:options.max_ts]
 
     if len(base_fns) < 2:
         print "Abort: at least two base files needed."
