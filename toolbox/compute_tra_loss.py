@@ -469,6 +469,8 @@ if __name__ == "__main__":
                         help='File where to dump the results of checking the detections.')
     parser.add_argument('--load-detections', type=str, dest='load_detections', default=None,
                         help='File where to load dumped results of checking the detections.')
+    parser.add_argument('--out-file', type=str, dest='out_file', default='',
+                        help='File to which the resulting loss value is appended')
 
     # time range
     parser.add_argument('--min-ts', type=int, dest='min_ts', default=0,
@@ -502,3 +504,8 @@ if __name__ == "__main__":
 
     loss = compute_tra_loss(args)
     print("found loss value of: {}".format(loss))
+
+    if args.out_file != '':
+        print("Writing loss to: " + args.out_file)
+        with open(args.out_file, 'a') as out:
+            out.write(str(loss) + ' ')
