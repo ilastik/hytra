@@ -609,13 +609,14 @@ copied but linked to the original files to improve execution speed and storage r
                     help='learn free parameters of perturbation models')
     parser.add_option('--without-classifier', action='store_true', dest='woc', default=False,
                     help='use classifier for labeling')
-    parser.add_option('--gt-path', type='string', dest='gt_pth', default=None, help='')
+    parser.add_option('--gt-path', type='string', dest='gt_pth', default=".", help='')
     parser.add_option('--funkey-learn', action='store_true', dest='learn_funkey', default=False,
                     help='export labels features and constraints to learn with funkey')
     parser.add_option('--funkey-weights', type='string', dest='funkey_weights', default="",
                     help='weights for weighted hamming loss')
     parser.add_option('--funkey-regularizerWeight', type='float', dest='funkey_regularizerWeight', default=1,
                     help='stop optimization as soon as a feasible integer solution is found proved to be within the given percent of the optimal solution')
+    parser.add_option('--compare-script-path', type='string', dest='compare_path')
 
 
     chaingraphopts = optparse.OptionGroup(parser, "chaingraph method")
@@ -903,23 +904,26 @@ if __name__ == "__main__":
                 arcTimestepIdMap[tmap[g.source(a)].Timestep,tmap[g.source(a)].Id,tmap[g.target(a)].Id] = a
 
 
-              #load ground truth from hd5 files and label graph accordingly
+               #load ground truth from hd5 files and label graph accordingly
             for i in range(g.earliest_timestep(), g.latest_timestep()+1):
-                print "open file:",options.gt_pth+'m'+str(int(options.max_num_objects))+'/'+"{0:04d}".format(i)+'.h5'
-                f = h5py.File(options.gt_pth+'m'+str(int(options.max_num_objects))+'/'+"{0:04d}".format(i)+'.h5','r')
+                print "open file:",options.gt_pth.rstrip('/')+'/'+"{0:04d}".format(i)+'.h5'
+                f = h5py.File(options.gt_pth.rstrip('/')+'/'+"{0:04d}".format(i)+'.h5','r')
                 print f
+
 
                 try:
                     applist = f["tracking"]["Appearances"]
                 except:
                     applist = []
+
                 try:
                     dislist = f["tracking"]["Disappearances"]
                 except:
                     dislist = []
-                  
+                
                 try:
                     movlist = f["tracking"]["Moves"]
+                    print movlist
                 except:
                     movlist = []
                   
@@ -994,7 +998,7 @@ if __name__ == "__main__":
 
                 print "calling funkey"
 
-                learnedWeights = tracker.LearnWithFunkey(outpath+"/features.txt",
+                learnedWeights = tracker.LearnWithFunkey(outpath+"/features_0.txt",
                                 outpath+"/constraints.txt",
                                 outpath+"/labels.txt",
                                 options.funkey_weights,
@@ -1014,7 +1018,7 @@ if __name__ == "__main__":
                 appw = learnedWeights[4]
 
                 tracker.SetFunkeyExportLabeledGraph(False)
-                tracker.SetFunkeyOutputFiles("","",outpath+"/tracking_labels.txt",True)
+                tracker.SetFunkeyOutputFiles("","",outpath+"/tracking_labels.txt",True,track.UncertaintyParameter())
 
                 events_all_perturbations = tracker.track(
                     options.forbidden_cost,
@@ -1085,14 +1089,14 @@ if __name__ == "__main__":
                 #copy ground truth files
                 os.system("mkdir -p "+outpath+"/groundtruth")
                 for timestep in xrange(t0,t1+1):
-                  os.system("cp "+options.gt_pth+'m'+str(int(options.max_num_objects))+'/'  \
+                  os.system("cp "+options.gt_pth  \
                   +"{0:04d}".format(timestep)+'.h5'+" "+outpath+"/groundtruth/" \
                   +"{0:04d}".format(timestep)+'.h5')
 
-                print "/storage/data/Machine_Learning/embryonic/toolbox/compare_tracking " \
+                print options.compare_path +" " \
                 +outpath+"/groundtruth/  "+ outpath +" > "+outpath+"/compare.txt"
 
-                os.system("/storage/data/Machine_Learning/embryonic/toolbox/compare_tracking " \
+                os.system(options.compare_path +" "\
                 +outpath+"/groundtruth/  "+ outpath +" > "+outpath+"/compare.txt")
 
             if(options.learn_perturbation_weights):
@@ -1172,7 +1176,7 @@ if __name__ == "__main__":
                         print "found better pertubation parameters:  loss:" ,optimal_loss,"  para: ",optimal_parameters
                 f.close()
                 print "result:   found solution with loss:", optimal_loss ," with parameters ", optimal_parameters
-
+            exit()
 
         else:
             """
