@@ -136,9 +136,9 @@ def generate_groundtruth(options):
 
 
                         if(len(applist) > 0):
-                            trackingdata.create_dataset("Appearances", data=np.asarray(applist), dtype='u2')
+                            trackingdata.create_dataset("Appearances", data=np.reshape(np.asarray(applist),(-1,1)), dtype='u2')
                         if(len(disapplist) > 0):
-                            trackingdata.create_dataset("Disappearances", data=np.asarray(disapplist), dtype='u2') 
+                            trackingdata.create_dataset("Disappearances", data=np.reshape(np.asarray(disapplist),(-1,1)), dtype='u2') 
 
 
 
