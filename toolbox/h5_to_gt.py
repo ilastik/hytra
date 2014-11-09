@@ -2,6 +2,7 @@ import optparse
 import numpy as np
 import h5py
 import os
+import sys
 import scipy.misc
 
 def generate_groundtruth(options):
@@ -12,10 +13,10 @@ def generate_groundtruth(options):
 
         if(options.end == -1):
             options.end = int(inputfile["tracking"].keys()[-1])
-            print options.end
 
 
         inId_to_outId_dics = {}
+        outId_to_inId_dics = {}
         inId_to_outId_funct = {}
 
         splitdict = {}
@@ -24,6 +25,13 @@ def generate_groundtruth(options):
 
         for t in xrange(options.start,options.end+1,1):
 
+            #just for fun :)
+            sys.stdout.write('\r')
+            # the exact output you're looking for:
+            sys.stdout.write("[%-20s] %d%%" % ('='*(20*t/options.end), (100*t/options.end)))
+            sys.stdout.flush()
+
+            print options.end - t,
             outputFileName = options.output_dir.rstrip('/')+ "/%04d.h5" % t
             #create output file
             if os.path.exists(outputFileName):
@@ -52,6 +60,7 @@ def generate_groundtruth(options):
                     #create id translation dictionary 
 
                     inId_to_outId_dics[t] = {}
+                    outId_to_inId_dics[t] = {}
 
                     applist = []
                     dislist = []
@@ -59,23 +68,24 @@ def generate_groundtruth(options):
                     spllist = []
                     merlist = []
 
-                    # for outId in outputIds:
-                    #     if( outId > 0 ):
-                    #         outId_to_inId_dics[t][outId] = np.unique(inputLabelImage[outLabelImage==outId]).tolist()
-                    #         if(0 in outId_to_inId_dics[t][outId]):
-                    #             outId_to_inId_dics[t][outId].remove(0)
+                    for outId in outputIds:
+                        if( outId > 0 ):
+                            outId_to_inId_dics[t][outId] = np.unique(inputLabelImage[outLabelImage==outId]).tolist()
+                            if(0 in outId_to_inId_dics[t][outId]):
+                                outId_to_inId_dics[t][outId].remove(0)
 
-                    #         if(len(outId_to_inId_dics[t][outId]) == 0):
-                    #             del outId_to_inId_dics[t][outId]
-                    #         elif(len(outId_to_inId_dics[t][outId]) == 1):
-                    #             outId_to_inId_dics[t][outId] = outId_to_inId_dics[t][outId][0]
-                    #         else:
-                    #             merlist.append(outId_to_inId_dics[t][outId])
-                    #             del outId_to_inId_dics[t][outId]
+                            if(len(outId_to_inId_dics[t][outId]) == 0):
+                                del outId_to_inId_dics[t][outId]
+                            elif(len(outId_to_inId_dics[t][outId]) == 1):
+                                outId_to_inId_dics[t][outId] = outId_to_inId_dics[t][outId][0]
+                            else:
+                                merlist.append([outId,len(outId_to_inId_dics[t][outId])])
+                                outId_to_inId_dics[t][outId] = outId_to_inId_dics[t][outId][0]
 
                     for inId in inputIds:
                         if( inId > 0 ):
                             inId_to_outId_dics[t][inId] = np.unique(outLabelImage[inputLabelImage==inId]).tolist()
+                            
                             if(0 in inId_to_outId_dics[t][inId]):
                                 inId_to_outId_dics[t][inId].remove(0)
 
@@ -84,12 +94,9 @@ def generate_groundtruth(options):
                             elif(len(inId_to_outId_dics[t][inId]) == 1):
                                 inId_to_outId_dics[t][inId] = inId_to_outId_dics[t][inId][0]
                             else:
-                                merlist.append(inId_to_outId_dics[t][inId])
-                                inId_to_outId_dics[t][inId] = -2
+                                inId_to_outId_dics[t][inId] = inId_to_outId_dics[t][inId][0]#just use one of the ids
 
 
-                    print "merger", merlist
-                    print inId_to_outId_dics[t]
                     inId_to_outId_funct[t] = np.vectorize(inId_to_outId_dics[t].get)
 
                     if(len(merlist) > 0):
@@ -105,7 +112,6 @@ def generate_groundtruth(options):
                             trackingdata.create_dataset("Moves", data=moves, dtype='u2')
                             movedict[t] = moves
 
-
                         if("Splits" in inputfile["tracking"]["{0:04d}".format(t)].keys()):
                             splits = np.array(inputfile["tracking"]["{0:04d}".format(t)]["Splits"]).squeeze().astype(np.int)
                             splits = np.reshape(splits,(-1,3))
@@ -114,13 +120,20 @@ def generate_groundtruth(options):
                             trackingdata.create_dataset("Splits", data=splits, dtype='u2') 
                             splitdict[t] = splits
 
-                        #app = ids_t - move_{t-1}(0) - div_{t-1}(1) - div_{t-1}(2) 
-                        applist    = [inId_to_outId_dics[t][i] for i in inputIds
-                                        if ((t-1 in movedict and not i in movedict[t-1][:,1])
-                                            or (t-1 in splitdict and  i in splitdict[t-1][:,1:]))]
-                        disapplist = [inId_to_outId_dics[t][i] for i in inputIds
-                                        if ((t   in movedict and not i in movedict[t  ][:,0])
-                                            or (t   in splitdict and  i in splitdict[t  ][:,0 ]))]
+                        applist = []
+                        for i in inId_to_outId_dics[t]:
+                            outid = inId_to_outId_dics[t][i]
+                            if((t in movedict and not np.any(movedict[t][:,1]==outid)) and 
+                               (t in splitdict and not np.any(splitdict[t][:,1:]==outid))):
+                                applist.append(outid)
+
+                        disapplist = []
+                        for i in inId_to_outId_dics[t-1]:
+                            outid = inId_to_outId_dics[t-1][i]
+                            if((t in movedict and not np.any(movedict[t][:,0]==outid)) and 
+                               (t in splitdict and not np.any(splitdict[t][:,0]==outid))):
+                                disapplist.append(outid)
+
 
                         if(len(applist) > 0):
                             trackingdata.create_dataset("Appearances", data=np.asarray(applist), dtype='u2')
