@@ -551,6 +551,7 @@ def construct_feature_vector(feature_matrix_basename,
     feature_vector = list(feature_vector) + list(new_features)
     return feature_vector
 
+
 def getConfigAndCommandLineArguments():
 
     usage = """%prog [options] FILES
@@ -711,7 +712,14 @@ copied but linked to the original files to improve execution speed and storage r
     consopts.add_option('--no-saving', dest='skip_saving', action='store_true',
                         help='Skip saving if you are just interested in the proposals and features')
     consopts.add_option('--ground-truth-labeling', dest='ground_truth_labeling', type='str', default='',
-                        help='Ground Truth label filename which will be used for reranking the solutions [default=%default]')
+                        help='Ground Truth label filename which will be used for reranking the solutions')
+    consopts.add_option('--gt-label-image-path', dest='gt_label_image_path', type='str', default='',
+                        help='Internal path to the label image inside the ground truth HDF5')
+    consopts.add_option('--save-outlier-svm', dest='save_outlier_svm', type='str', default='',
+                        help='Filename to store the trained SVM for higher order features outlier detection. Requires gt-path to be set')
+    consopts.add_option('--load-outlier-svm', dest='load_outlier_svm', type='str', default='',
+                        help='Load a trained outlier svm from disk')
+
 
     parser.add_option_group(chaingraphopts)
     parser.add_option_group(consopts)
@@ -738,6 +746,121 @@ copied but linked to the original files to improve execution speed and storage r
     return optcfg, args
 
 
+def store_label_in_hypotheses_graph():
+    graph = tracker.buildGraph(ts)
+    # label full graph
+    n_it = track.NodeIt(graph)
+    a_it = track.ArcIt(graph)
+    tmap = graph.getNodeTraxelMap()
+    nodeTimestepIdMap = {}
+    arcTimestepIdMap = {}
+    for n in n_it:
+        #print tmap[n].Timestep,tmap[n].Id
+        nodeTimestepIdMap[tmap[n].Timestep, tmap[n].Id] = n
+        graph.addAppearanceLabel(n, 0)
+        graph.addDisappearanceLabel(n, 0)
+        graph.addDivisionLabel(n, 0)
+    for a in a_it:
+        #print tmap[g.source(a)].Timestep,tmap[g.source(a)].Id,tmap[g.target(a)].Id
+        graph.addArcLabel(a, 0)
+        arcTimestepIdMap[tmap[graph.source(a)].Timestep, tmap[graph.source(a)].Id, tmap[graph.target(a)].Id] = a
+
+
+        #load ground truth from hd5 files and label graph accordingly
+    for i in range(graph.earliest_timestep(), graph.latest_timestep() + 1):
+        print "open file:", options.gt_pth.rstrip('/') + '/' + "{0:04d}".format(i) + '.h5'
+        f = h5py.File(options.gt_pth.rstrip('/') + '/' + "{0:04d}".format(i) + '.h5', 'r')
+        print f
+
+        try:
+            applist = f["tracking"]["Appearances"]
+        except:
+            applist = []
+
+        try:
+            dislist = f["tracking"]["Disappearances"]
+        except:
+            dislist = []
+
+        try:
+            movlist = f["tracking"]["Moves"]
+            print movlist
+        except:
+            movlist = []
+
+        try:
+            spllist = f["tracking"]["Splits"]
+        except:
+            spllist = []
+
+        try:
+            merlist = f["tracking"]["Mergers"]
+        except:
+            merlist = []
+
+        mdic = {}
+        for m in merlist:
+            mdic[m[0]] = np.asscalar(m[1])
+
+        for appset in applist:
+            try:
+                graph.addAppearanceLabel(nodeTimestepIdMap[i, appset[0]], mdic.get(appset[0], 1))
+                graph.addDisappearanceLabel(nodeTimestepIdMap[i, appset[0]], 0)
+            except:
+                print "ERROR IN app", i, appset[0]
+        for disset in dislist:
+            try:
+                graph.addAppearanceLabel(nodeTimestepIdMap[i - 1, disset[0]], 0)
+                graph.addDisappearanceLabel(nodeTimestepIdMap[i - 1, disset[0]], mdic.get(disset[0], 1))
+            except:
+                print "ERROR IN disapp", i - 1, disset[0]
+        for movset in movlist:
+            try:
+                graph.addAppearanceLabel(nodeTimestepIdMap[i - 1, movset[0]], mdic.get(movset[0], 1))
+            except:
+                print "ERROR1 IN move", i - 1, movset[0]
+            try:
+                graph.addDisappearanceLabel(nodeTimestepIdMap[i, movset[1]], mdic.get(movset[1], 1))
+            except:
+                print "ERROR2 IN move", i, movset[0]
+            try:
+                graph.addArcLabel(arcTimestepIdMap[i - 1, movset[0], movset[1]], 1)
+            except:
+                print "ERROR3 IN move", i - 1, movset[0], movset[1]
+        for splset in spllist:
+            try:
+                graph.addArcLabel(arcTimestepIdMap[i - 1, splset[0], splset[1]], 1)
+                graph.addArcLabel(arcTimestepIdMap[i - 1, splset[0], splset[2]], 1)
+            except:
+                print "ERROR IN SPLIT arc", i - 1, splset[0], splset[2]
+            try:
+                graph.addDivisionLabel(nodeTimestepIdMap[i - 1, splset[0]], 1)
+                graph.addAppearanceLabel(nodeTimestepIdMap[i - 1, splset[1]], mdic.get(splset[1], 1))
+                graph.addAppearanceLabel(nodeTimestepIdMap[i - 1, splset[2]], mdic.get(splset[2], 1))
+                graph.addDisappearanceLabel(nodeTimestepIdMap[i, movset[1]], mdic.get(movset[1], 1))
+                graph.addDisappearanceLabel(nodeTimestepIdMap[i, movset[1]], mdic.get(movset[1], 1))
+            except:
+                print "ERROR IN SPLIT node", i - 1, splset[0], splset[2]
+    return graph
+
+
+def train_outlier_svm(options):
+    if len(options.save_outlier_svm) > 0 and len(options.gt_pth) > 0:
+        print("Storing ground truth labels in hypotheses graph and training an outlier detector SVM from that")
+        g = store_label_in_hypotheses_graph()
+        print("Setting injected solution as active")
+        g.set_injected_solution()
+        feature_extractor = track.TrackingFeatureExtractor(g, fov)
+        print("Train svm")
+        feature_extractor.train_track_svm()
+        print("Done training, saving...")
+        outlier_svm = feature_extractor.get_track_svm()
+        with open(options.save_outlier_svm, 'w') as svm_dump:
+            pickle.dump(outlier_svm, svm_dump)
+        print("SVM is trained and stored in " + options.save_outlier_svm)
+        options.load_outlier_svm = options.save_outlier_svm
+
+
 if __name__ == "__main__":
 
     options, args = getConfigAndCommandLineArguments()
@@ -746,8 +869,10 @@ if __name__ == "__main__":
     if numArgs > 0:
         fns = []
         for arg in args:
+            print arg
             fns.extend(glob.glob(arg))
         fns.sort()
+        print(fns)
 
     ### Do the tracking
     start = time.time()
@@ -772,6 +897,7 @@ if __name__ == "__main__":
         try:
             from lazyflow.classifiers.TransitionClassifier import TransitionClassifier
         except:
+            print("Pythonpath: {}".format(sys.path))
             raise Exception, "cannot import Transition Classifier: lazyflow branch gaussianProcessClassifier must be in PYTHONPATH!"
 
         print 'load pre-trained transition classifier'
@@ -880,108 +1006,10 @@ if __name__ == "__main__":
 
     if options.method == 'conservation':
     
-        if(options.eff):
+        if options.eff and len(options.gt_pth) > 0:
 
-            g = tracker.buildGraph(ts)
-            #label full graph
-            n_it = track.NodeIt(g)
-            a_it = track.ArcIt(g)
-            tmap = g.getNodeTraxelMap()
-                
-            nodeTimestepIdMap = {}
-            arcTimestepIdMap = {}
+            g = store_label_in_hypotheses_graph()
 
-            for n in n_it:
-                #print tmap[n].Timestep,tmap[n].Id
-                nodeTimestepIdMap[tmap[n].Timestep,tmap[n].Id] =  n
-                g.addAppearanceLabel(n,0) 
-                g.addDisappearanceLabel(n,0) 
-                g.addDivisionLabel(n,0) 
-
-            for a in a_it:
-                #print tmap[g.source(a)].Timestep,tmap[g.source(a)].Id,tmap[g.target(a)].Id
-                g.addArcLabel(a,0)
-                arcTimestepIdMap[tmap[g.source(a)].Timestep,tmap[g.source(a)].Id,tmap[g.target(a)].Id] = a
-
-
-               #load ground truth from hd5 files and label graph accordingly
-            for i in range(g.earliest_timestep(), g.latest_timestep()+1):
-                print "open file:",options.gt_pth.rstrip('/')+'/'+"{0:04d}".format(i)+'.h5'
-                f = h5py.File(options.gt_pth.rstrip('/')+'/'+"{0:04d}".format(i)+'.h5','r')
-                print f
-
-
-                try:
-                    applist = f["tracking"]["Appearances"]
-                except:
-                    applist = []
-
-                try:
-                    dislist = f["tracking"]["Disappearances"]
-                except:
-                    dislist = []
-                
-                try:
-                    movlist = f["tracking"]["Moves"]
-                    print movlist
-                except:
-                    movlist = []
-                  
-                try:
-                    spllist = f["tracking"]["Splits"]
-                except:
-                    spllist = []
-
-                try:
-                    merlist = f["tracking"]["Mergers"]
-                except:
-                    merlist = []
-
-                mdic = {}
-                for m in merlist:
-                    mdic[m[0]] = np.asscalar(m[1])
-                  
-                for appset in applist:
-                    try:
-                        g.addAppearanceLabel(nodeTimestepIdMap[i,appset[0]],mdic.get(appset[0],1))
-                        g.addDisappearanceLabel(nodeTimestepIdMap[i,appset[0]],0)
-                    except:
-                        print "ERROR IN app",i,appset[0]
-                for disset in dislist:
-                    try:
-                        g.addAppearanceLabel(nodeTimestepIdMap[i-1,disset[0]],0)
-                        g.addDisappearanceLabel(nodeTimestepIdMap[i-1,disset[0]],mdic.get(disset[0],1))
-                    except:
-                        print "ERROR IN disapp",i-1,disset[0]
-                for movset in movlist:
-                    try:
-                        g.addAppearanceLabel(nodeTimestepIdMap[i-1,movset[0]],mdic.get(movset[0],1))
-                    except:
-                        print "ERROR1 IN move",i-1,movset[0]
-                    try:
-                        g.addDisappearanceLabel(nodeTimestepIdMap[i,movset[1]],mdic.get(movset[1],1))
-                    except:
-                        print "ERROR2 IN move",i,movset[0]
-                    try:
-                        g.addArcLabel(arcTimestepIdMap[i-1,movset[0],movset[1]],1)
-                    except:
-                        print "ERROR3 IN move",i-1,movset[0],movset[1]
-                for splset in spllist:
-                    try:
-                        g.addArcLabel(arcTimestepIdMap[i-1,splset[0],splset[1]],1)
-                        g.addArcLabel(arcTimestepIdMap[i-1,splset[0],splset[2]],1)
-                    except:
-                        print "ERROR IN SPLIT arc", i-1,splset[0],splset[2]
-                    try:  
-                        g.addDivisionLabel(nodeTimestepIdMap[i-1,splset[0]],1)
-                        g.addAppearanceLabel(nodeTimestepIdMap[i-1,splset[1]],mdic.get(splset[1],1))
-                        g.addAppearanceLabel(nodeTimestepIdMap[i-1,splset[2]],mdic.get(splset[2],1))
-                        g.addDisappearanceLabel(nodeTimestepIdMap[i,movset[1]],mdic.get(movset[1],1))
-                        g.addDisappearanceLabel(nodeTimestepIdMap[i,movset[1]],mdic.get(movset[1],1))
-                    except:
-                        print "ERROR IN SPLIT node",i-1,splset[0],splset[2]
-
-                      
             tracker.SetFunkeyExportLabeledGraph(True)
 
             weights = track.WeightVector()
@@ -1179,6 +1207,8 @@ if __name__ == "__main__":
             exit()
 
         else:
+            train_outlier_svm(options)
+
             """
             C++ signature of operator():
 
@@ -1332,6 +1362,10 @@ if __name__ == "__main__":
         print("Extracting features of solution {}".format(i))
         hypotheses_graph.set_solution(i)
         feature_extractor = track.TrackingFeatureExtractor(hypotheses_graph, fov)
+        if len(options.load_outlier_svm) > 0: # when the svm was trained in this run, it automatically sets load_outlier_svm
+                with open(options.save_outlier_svm, 'r') as svm_dump:
+                    outlier_svm = pickle.load(svm_dump)
+                print("Trained outlier SVM loaded from " + options.load_outlier_svm)
         feature_extractor.compute_features()
         feature_extractor.append_feature_vector_to_file(feature_vector_filename)
 
