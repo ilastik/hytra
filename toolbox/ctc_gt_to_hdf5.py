@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import argparse
 import os
 
@@ -48,6 +49,8 @@ def create_label_volume(options):
         out_h5 = h5py.File(options.output_file, 'w')
         out_label_volume = np.transpose(label_volume, axes=[2, 1, 0, 3])
         out_h5.create_dataset("label_image", data=out_label_volume, dtype='u2', compression='gzip')
+        out_label_volume = (out_label_volume.swapaxes(1, 2))[..., np.newaxis]
+        out_h5.create_dataset("label_image_T", data=out_label_volume, dtype='u2', compression='gzip')
         ids = out_h5.create_group('ids')
         tracking = out_h5.create_group('tracking')
         # create empty tracking group for first frame
