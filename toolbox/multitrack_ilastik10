@@ -22,25 +22,7 @@ import pgmlink as track
 from empryonic import io
 from multiprocessing import Pool
 
-region_features = [
-    ("RegionCenter", 3),
-    ("Count", 1),
-    ("Variance", 1),
-    ("Sum", 1),
-    ("Mean", 1),
-    ("RegionRadii", 3),
-    ("Central< PowerSum<2> >", 1),
-    ("Central< PowerSum<3> >", 1),
-    ("Central< PowerSum<4> >", 1),
-    ("Kurtosis", 1),
-    ("Maximum", 1),
-    ("Minimum", 1),
-    ("RegionAxes", 9),
-    ("Skewness", 1),
-    ("Weighted<PowerSum<0> >", 1),
-    ("Coord< Minimum >", 3),
-    ("Coord< Maximum >", 3)
-]
+region_features = []
 
 def get_feature(h5file, feature_path, object_id):
     if not feature_path in h5file:
@@ -51,8 +33,15 @@ def get_feature(h5file, feature_path, object_id):
 def get_feature_vector(traxel, feature_name, num_dimensions):
     #print traxel.print_available_features()
     result = []
-    for i in range(num_dimensions):    
-        result.append(traxel.get_feature_value(feature_name, i))
+    for i in range(num_dimensions):
+        try:
+            result.append(traxel.get_feature_value(feature_name, i))
+        except:
+            print("Error when accessing feature {}[{}] for traxel (Id={},Timestep={})".format(feature_name,
+                                                                                              i,
+                                                                                              traxel.Id,
+                                                                                              traxel.Timestep))
+            raise Exception
     return result
 
 
@@ -104,28 +93,32 @@ def update_merger_features(coordinate_map, h5file, merger_traxel, new_traxel_ids
     
     label_image_excerpt = np.array(h5file[limg_path_at][tuple([0, ] + roi + [0, ])])
     min_new_traxel_id = min(new_traxel_ids)
-    label_image_excerpt = np.zeros(label_image_excerpt.shape, dtype=label_image_excerpt.dtype) + (min_new_traxel_id - 1)
+    label_image_excerpt = np.zeros(label_image_excerpt.shape, dtype=np.uint32) + (min_new_traxel_id - 1)
 
-    for traxel_id in new_traxel_ids:
-        label_image_excerpt = track.update_labelimage(coordinate_map,
-                                 label_image_excerpt.astype(np.uint32),
-                                 np.array(lower).astype(np.int64),
-                                 int(merger_traxel.Timestep),
-                                 int(traxel_id))
-    label_image_excerpt -= min_new_traxel_id - 1
+    try:
+        for traxel_id in new_traxel_ids:
+            track.update_labelimage(coordinate_map,
+                                     label_image_excerpt,
+                                     np.array(lower).astype(np.int64),
+                                     int(merger_traxel.Timestep),
+                                     int(traxel_id))
+        label_image_excerpt -= min_new_traxel_id - 1
 
-    # Todo: store updated image somewhere?
+        # Todo: store updated image somewhere?
 
-    # compute features for new traxels, which are automatically stored in featurestore
-    # the 2d raw sequence is usually saved as a 2d+t+c dataset, the labelimage from ilastik as 3d+t+c 
-    raw_image_excerpt = np.array(raw_h5[options.raw_path][tuple([timestep, ] + roi[0:ndim] + [0, ])])
-    track.extract_region_features_roi(raw_image_excerpt.squeeze().astype(np.float32),
-                                      label_image_excerpt.astype(np.uint32),
-                                      np.array(range(len(new_traxel_ids) + 1)).astype(np.int64),
-                                      min_new_traxel_id - 1,
-                                      np.array(lower).astype(np.int64),
-                                      fs,
-                                      merger_traxel.Timestep)
+        # compute features for new traxels, which are automatically stored in featurestore
+        # the 2d raw sequence is usually saved as a 2d+t+c dataset, the labelimage from ilastik as 3d+t+c
+        raw_image_excerpt = np.array(raw_h5[options.raw_path][tuple([timestep, ] + roi[0:ndim] + [0, ])])
+        track.extract_region_features_roi(raw_image_excerpt.squeeze().astype(np.float32),
+                                          label_image_excerpt.astype(np.uint32),
+                                          np.array(range(len(new_traxel_ids) + 1)).astype(np.int64),
+                                          min_new_traxel_id - 1,
+                                          np.array(lower).astype(np.int64),
+                                          fs,
+                                          merger_traxel.Timestep)
+    except MemoryError:
+        print("WARNING: Something went wrong when updating label image or extracting region features for traxel "
+              "(id={}, timestep={}). Features are left empty".format(merger_traxel.Id, merger_traxel.Timestep))
 
 
 def generate_traxelstore(h5file,
@@ -477,7 +470,10 @@ def save_events(out_dir, events, t0, t1, label_image_path, max_traxel_id_at, src
     print "Length of events " + str(len(events))
 
     if not path.exists(out_dir):
-        os.makedirs(out_dir)
+        try:
+            os.makedirs(out_dir)
+        except:
+            pass
 
     working_fns = [out_dir + "/%04d.h5" % timestep for timestep in xrange(t0, t1 + 1)]
     assert (len(events) + 1 == len(working_fns))
@@ -893,15 +889,18 @@ def get_track_feature_matrix(track_features_filename, normalize=False):
         for track_id in track_features['tracks'].keys():
             merged_features = np.zeros(num_features)
 
-            # get accumulated feature vector
-            traxels = np.array(track_features['tracks/' + track_id + '/traxels']).transpose()
-            for timestep, idx in traxels:
-                feats = []
-                traxel = ts.get_traxel(int(idx), int(timestep))
-                for feat_name, feat_dims in region_features:
-                    feats += get_feature_vector(traxel, feat_name, feat_dims)
+            try:
+                # get accumulated feature vector
+                traxels = np.array(track_features['tracks/' + track_id + '/traxels']).transpose()
+                for timestep, idx in traxels:
+                    feats = []
+                    traxel = ts.get_traxel(int(idx), int(timestep))
+                    for feat_name, feat_dims in region_features:
+                        feats += get_feature_vector(traxel, feat_name, feat_dims)
 
-                merged_features += np.array(feats)
+                    merged_features += np.array(feats)
+            except:
+                print("Warning: could not extract some feature of track {}, setting it's feature value to zero")
 
             # divide by num traxels to get average
             if normalize:
@@ -971,7 +970,7 @@ def extract_features_and_compute_score(options, i, hypotheses_graph, ts, fov, fe
                 score += get_feature_score(62, 'diff_outlier_Mean')
                 score += get_feature_score(66, 'diff_outlier_Variance')
 
-                track_scores.append([track_id, score])
+                track_scores.append([float(track_id), score])
 
             #Todo: analyze all divisions
 
@@ -980,6 +979,11 @@ def extract_features_and_compute_score(options, i, hypotheses_graph, ts, fov, fe
             track_scores = np.array(track_scores)
             print("Saving track scores for iteration " + str(i))
             np.savetxt(options.out_dir.rstrip('/') + '/iter_' + str(i) + '/track_scores.txt', track_scores)
+
+            import matplotlib.pyplot as plt
+            plt.figure()
+            plt.hist(track_scores[:,1], 100)
+            plt.savefig(options.out_dir.rstrip('/') + '/iter_' + str(i) + '/track_scores.pdf')
 
         print("Overall score of tracking is: {}".format(score))
 
@@ -1034,6 +1038,27 @@ if __name__ == "__main__":
         if h5file['/'.join(options.label_img_path.strip('/').split('/')[:-1])].values()[0].shape[3] == 1:
             ndim = 2
         print 'ndim=', ndim
+
+        region_features = [
+            ("RegionCenter", ndim),
+            ("Count", 1),
+            ("Variance", 1),
+            ("Sum", 1),
+            ("Mean", 1),
+            ("RegionRadii", ndim),
+            ("Central< PowerSum<2> >", 1),
+            ("Central< PowerSum<3> >", 1),
+            ("Central< PowerSum<4> >", 1),
+            ("Kurtosis", 1),
+            ("Maximum", 1),
+            ("Minimum", 1),
+            ("RegionAxes", ndim**2),
+            ("Skewness", 1),
+            ("Weighted<PowerSum<0> >", 1),
+            ("Coord< Minimum >", ndim),
+            ("Coord< Maximum >", ndim)
+        ]
+
         if options.load_traxelstore:
             print 'loading traxelstore from file'
             import pickle
@@ -1429,6 +1454,11 @@ if __name__ == "__main__":
                 with h5py.File(fns[0], 'r') as h5file:  # open file to access label images
                     feature_vectors = []
                     for i, event_vector in enumerate(all_events):  # go through all solutions
+                        try:
+                            os.makedirs(options.out_dir.rstrip('/') + '/iter_' + str(i))
+                        except:
+                            pass
+
                         print("Resolving mergers for solution {}".format(i))
                         coordinate_map = track.TimestepIdCoordinateMap()
                         coordinate_map.initialize()
