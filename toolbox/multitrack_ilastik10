@@ -1249,6 +1249,12 @@ if __name__ == "__main__":
                                                           distrib_type,
                                                           sigma_vec)
 
+            feature_vector_filename = options.out_dir.rstrip('/') + '/ho_feature_vectors.txt'
+            try:
+                os.remove(feature_vector_filename)
+            except:
+                pass
+
             hypotheses_graph = tracker.buildGraph(ts)
 
             # save labels of proposals when doing inference
@@ -1335,12 +1341,15 @@ if __name__ == "__main__":
                                         merger_traxel = ts.get_traxel(event.traxel_ids[0], timestep)
                                         new_traxel_ids = event.traxel_ids[1:]
                                         update_merger_features(coordinate_map,
-                                                           h5file,
-                                                           merger_traxel,
-                                                           new_traxel_ids,
-                                                           raw_h5,
-                                                           options,
-                                                           fs)
+                                                               h5file,
+                                                               merger_traxel,
+                                                               new_traxel_ids,
+                                                               raw_h5,
+                                                               options,
+                                                               fs)
+                        resolved_graph = tracker.get_resolved_hypotheses_graph()
+                        # extract features of this solution
+                        extract_features_and_compute_score(options, i, resolved_graph, ts, fov, feature_vector_filename)
 
             events = all_events[0]
             first_events = events[0]
@@ -1348,34 +1357,16 @@ if __name__ == "__main__":
     else:
         events = tracker(ts)
 
-    # extract higher order features
-    hypotheses_graph = tracker.get_hypotheses_graph()
-    feature_vector_filename = options.out_dir.rstrip('/') + '/ho_feature_vectors.txt'
-    try:
-        os.remove(feature_vector_filename)
-    except:
-        pass
-
     processing_pool = Pool()
 
-    for i in range(len(all_events)):
-        print("Extracting features of solution {}".format(i))
-        hypotheses_graph.set_solution(i)
-        feature_extractor = track.TrackingFeatureExtractor(hypotheses_graph, fov)
-        if len(options.load_outlier_svm) > 0: # when the svm was trained in this run, it automatically sets load_outlier_svm
-                with open(options.save_outlier_svm, 'r') as svm_dump:
-                    outlier_svm = pickle.load(svm_dump)
-                print("Trained outlier SVM loaded from " + options.load_outlier_svm)
-        feature_extractor.compute_features()
-        feature_extractor.append_feature_vector_to_file(feature_vector_filename)
-
-        if not options.skip_saving:
+    if not options.skip_saving:
+        for i in range(len(all_events)):
             events = all_events[i]
             first_events = events[0]
             events = events[1:]
-                
+
             processing_pool.apply_async(save_events, (options.out_dir.rstrip('/') + '/iter_' + str(i), copy.copy(events), t0, t1,
-                        options.label_img_path, max_traxel_id_at, fns[0]))
+                                                      options.label_img_path, max_traxel_id_at, fns[0]))
 
     processing_pool.close()
     processing_pool.join()
