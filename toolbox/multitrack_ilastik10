@@ -22,6 +22,25 @@ import pgmlink as track
 from empryonic import io
 from multiprocessing import Pool
 
+region_features = [
+    ("RegionCenter", 3),
+    ("Count", 1),
+    ("Variance", 1),
+    ("Sum", 1),
+    ("Mean", 1),
+    ("RegionRadii", 3),
+    ("Central< PowerSum<2> >", 1),
+    ("Central< PowerSum<3> >", 1),
+    ("Central< PowerSum<4> >", 1),
+    ("Kurtosis", 1),
+    ("Maximum", 1),
+    ("Minimum", 1),
+    ("RegionAxes", 9),
+    ("Skewness", 1),
+    ("Weighted<PowerSum<0> >", 1),
+    ("Coord< Minimum >", 3),
+    ("Coord< Maximum >", 3)
+]
 
 def get_feature(h5file, feature_path, object_id):
     if not feature_path in h5file:
@@ -56,8 +75,12 @@ def extract_coordinates(coordinate_map, h5file, traxel, options):
     else:
         assert ndim == 2
     image_excerpt = np.array(h5file[limg_path_at][tuple([0, ] + roi + [0, ])])
-    track.extract_coordinates(coordinate_map, image_excerpt.astype(np.uint32), np.array(lower).astype(np.int64),
-                              traxel)
+    try:
+        track.extract_coordinates(coordinate_map, image_excerpt.astype(np.uint32), np.array(lower).astype(np.int64),
+                                traxel)
+    except:
+        print("Could not run extract_coordinates for traxel: Id={} Timestep={}".format(traxel.Id, traxel.Timestep))
+        raise Exception
 
 
 def update_merger_features(coordinate_map, h5file, merger_traxel, new_traxel_ids, raw_h5, options, fs):
@@ -719,7 +742,8 @@ copied but linked to the original files to improve execution speed and storage r
                         help='Filename to store the trained SVM for higher order features outlier detection. Requires gt-path to be set')
     consopts.add_option('--load-outlier-svm', dest='load_outlier_svm', type='str', default='',
                         help='Load a trained outlier svm from disk')
-
+    consopts.add_option('--reranker-weight-file', dest='reranker_weight_file', type='str', default='',
+                        help='File in which the reranker stored the weights after learning')
 
     parser.add_option_group(chaingraphopts)
     parser.add_option_group(consopts)
@@ -861,6 +885,106 @@ def train_outlier_svm(options):
         options.load_outlier_svm = options.save_outlier_svm
 
 
+def get_track_feature_matrix(track_features_filename, normalize=False):
+    num_features = sum([i for n,i in region_features])
+    track_feature_matrix = np.array([]).reshape(0, num_features)
+    with h5py.File(track_features_filename, 'r') as track_features:
+        # examine all tracks
+        for track_id in track_features['tracks'].keys():
+            merged_features = np.zeros(num_features)
+
+            # get accumulated feature vector
+            traxels = np.array(track_features['tracks/' + track_id + '/traxels']).transpose()
+            for timestep, idx in traxels:
+                feats = []
+                traxel = ts.get_traxel(int(idx), int(timestep))
+                for feat_name, feat_dims in region_features:
+                    feats += get_feature_vector(traxel, feat_name, feat_dims)
+
+                merged_features += np.array(feats)
+
+            # divide by num traxels to get average
+            if normalize:
+                merged_features = [f / len(traxels) for f in merged_features]
+
+            track_feature_matrix = np.vstack([track_feature_matrix, merged_features])
+    return track_feature_matrix
+
+def extract_features_and_compute_score(options, i, hypotheses_graph, ts, fov, feature_vector_filename):
+    # extract higher order features and per-track features
+    print("Extracting features of solution {}".format(i))
+    track_features_filename = options.out_dir.rstrip('/') + '/iter_' + str(i) + '/track_features.h5'
+    feature_extractor = track.TrackingFeatureExtractor(hypotheses_graph, fov)
+    if len(options.load_outlier_svm) > 0:  # when the svm was trained in this run, it automatically sets load_outlier_svm
+        with open(options.save_outlier_svm, 'r') as svm_dump:
+            outlier_svm = pickle.load(svm_dump)
+            feature_extractor.set_track_svm(outlier_svm)
+            print("Trained outlier SVM loaded from " + options.load_outlier_svm)
+    feature_extractor.set_track_feature_output_file(track_features_filename)
+    feature_extractor.compute_features()
+    feature_vector = [f for f in feature_extractor.get_feature_vector()]
+
+    track_feature_matrix = get_track_feature_matrix(track_features_filename, False)
+    sum_of_track_features = np.sum(track_feature_matrix, axis=0)
+
+    feature_vector += list(sum_of_track_features)
+    overall_score = 0
+
+    # if reranker weights are already given, compute overall, and track scores
+    if options.reranker_weight_file and len(options.reranker_weight_file) > 0:
+        reranker_weights = np.loadtxt(options.reranker_weight_file)
+        overall_score = np.dot(reranker_weights, np.array(feature_vector))
+
+        # track scores
+        track_feature_matrix = get_track_feature_matrix(track_features_filename, True)
+        with h5py.File(track_features_filename, 'r') as track_features:
+            track_scores = []
+            # examine all tracks, extract HO features for quality measures
+            for track_id in track_features['tracks'].keys():
+
+                # ugly way of using the learned weights to compute track quality measurements
+                score = 0
+
+                def get_feature_score(mean_weight_idx, name):
+                    try:
+                        value = np.array(track_features['tracks/' + track_id + '/' + name])
+                        return reranker_weights[mean_weight_idx] * np.mean(value) \
+                               + reranker_weights[mean_weight_idx + 1] * np.var(value)
+                    except:
+                        return 0
+
+                score += get_feature_score(0, 'sq_diff_RegionCenter')
+                score += get_feature_score(4, 'sq_diff_Count')
+                score += get_feature_score(8, 'sq_diff_Mean')
+                score += get_feature_score(12, 'sq_diff_Variance')
+                score += get_feature_score(16, 'sq_accel_RegionCenter')
+                score += get_feature_score(20, 'sq_accel_Count')
+                score += get_feature_score(24, 'sq_accel_Mean')
+                score += get_feature_score(28, 'sq_accel_Variance')
+                score += get_feature_score(32, 'angles_RegionCenter')
+                score += get_feature_score(38, 'outlier_id_RegionCenter')
+                score += get_feature_score(42, 'outlier_id_Count')
+                score += get_feature_score(46, 'outlier_id_Mean')
+                score += get_feature_score(50, 'outlier_id_Variance')
+                score += get_feature_score(54, 'diff_outlier_RegionCenter')
+                score += get_feature_score(58, 'diff_outlier_Count')
+                score += get_feature_score(62, 'diff_outlier_Mean')
+                score += get_feature_score(66, 'diff_outlier_Variance')
+
+                track_scores.append([track_id, score])
+
+            #Todo: analyze all divisions
+
+            #Todo: stitch tracks (match last track traxel id to first division traxel id and vice versa)
+            #       and then compute quality measures
+            track_scores = np.array(track_scores)
+            print("Saving track scores for iteration " + str(i))
+            np.savetxt(options.out_dir.rstrip('/') + '/iter_' + str(i) + '/track_scores.txt', track_scores)
+
+        print("Overall score of tracking is: {}".format(score))
+
+    return feature_vector, overall_score
+
 if __name__ == "__main__":
 
     options, args = getConfigAndCommandLineArguments()
@@ -906,7 +1030,7 @@ if __name__ == "__main__":
 
     with h5py.File(fns[0], 'r') as h5file:
         ndim = 3
-               
+
         if h5file['/'.join(options.label_img_path.strip('/').split('/')[:-1])].values()[0].shape[3] == 1:
             ndim = 2
         print 'ndim=', ndim
@@ -1005,7 +1129,7 @@ if __name__ == "__main__":
         raise Exception("unknown tracking method: " + options.method)
 
     if options.method == 'conservation':
-    
+
         if options.eff and len(options.gt_pth) > 0:
 
             g = store_label_in_hypotheses_graph()
@@ -1018,25 +1142,25 @@ if __name__ == "__main__":
             os.system("mkdir -p "+outpath)
 
             tracker.writeFunkeyFiles(ts,outpath+"/features.txt",
-                                        outpath+"/constraints.txt",
-                                        outpath+"/labels.txt",
-                                        weights)
+                                     outpath+"/constraints.txt",
+                                     outpath+"/labels.txt",
+                                     weights)
 
             if(options.learn_funkey):
 
                 print "calling funkey"
 
                 learnedWeights = tracker.LearnWithFunkey(outpath+"/features_0.txt",
-                                outpath+"/constraints.txt",
-                                outpath+"/labels.txt",
-                                options.funkey_weights,
-                                "--regularizerWeight="+str(options.funkey_regularizerWeight))
-            
+                                                         outpath+"/constraints.txt",
+                                                         outpath+"/labels.txt",
+                                                         options.funkey_weights,
+                                                         "--regularizerWeight="+str(options.funkey_regularizerWeight))
+
                 learnedWeightsName = ["  --det=","  --div=","  --tr=","  --dis=","  --app="]
 
                 f = open(outpath+'/weights.txt','w')
                 for i,w in enumerate(learnedWeights):
-                  f.write(learnedWeightsName[i] + str(w))
+                    f.write(learnedWeightsName[i] + str(w))
                 f.close()
 
                 detw = learnedWeights[0]
@@ -1065,7 +1189,7 @@ if __name__ == "__main__":
                     track.UncertaintyParameter(),
                     options.timeout,
                     trans_classifier
-                    )
+                )
 
 
                 events = events_all_perturbations[0][1:]
@@ -1074,7 +1198,7 @@ if __name__ == "__main__":
                 print "Length of events " + str(len(events))
 
                 working_fns = [outpath+ "/%04d.h5" % timestep for timestep in xrange(t0,t1+1)]
-                print "len(working_fns)=" + str(len(working_fns)) 
+                print "len(working_fns)=" + str(len(working_fns))
                 assert(len(events) + 1 == len(working_fns))
                 with h5py.File(fns[0], 'r') as src_file:
                     # first timestep without tracking
@@ -1092,7 +1216,7 @@ if __name__ == "__main__":
                         dest_file.create_group('tracking')
                         print "-> base file successfully written"
 
-                        
+
                     # tracked timesteps
                     for i, events_at in enumerate(events):
                         with io.LineageH5(working_fns[i+1], 'w') as dest_file:
@@ -1117,15 +1241,15 @@ if __name__ == "__main__":
                 #copy ground truth files
                 os.system("mkdir -p "+outpath+"/groundtruth")
                 for timestep in xrange(t0,t1+1):
-                  os.system("cp "+options.gt_pth  \
-                  +"{0:04d}".format(timestep)+'.h5'+" "+outpath+"/groundtruth/" \
-                  +"{0:04d}".format(timestep)+'.h5')
+                    os.system("cp "+options.gt_pth \
+                              +"{0:04d}".format(timestep)+'.h5'+" "+outpath+"/groundtruth/" \
+                              +"{0:04d}".format(timestep)+'.h5')
 
                 print options.compare_path +" " \
-                +outpath+"/groundtruth/  "+ outpath +" > "+outpath+"/compare.txt"
+                      +outpath+"/groundtruth/  "+ outpath +" > "+outpath+"/compare.txt"
 
-                os.system(options.compare_path +" "\
-                +outpath+"/groundtruth/  "+ outpath +" > "+outpath+"/compare.txt")
+                os.system(options.compare_path +" " \
+                          +outpath+"/groundtruth/  "+ outpath +" > "+outpath+"/compare.txt")
 
             if(options.learn_perturbation_weights):
 
@@ -1147,15 +1271,15 @@ if __name__ == "__main__":
 
                 optimal_loss = 1e+75;
                 optimal_parameters = []
-    
+
                 os.system("mkdir -p "+outpath+"/pertubation_labels")
                 f = open(outpath+"/pertubation_labels/pertubation.log",'w')
-                
+
 
                 weights = track.VectorOfDouble()
 
                 for pertubation_parameter in itertools.product(np.arange(-1, 2, 1), repeat=3):
-                    
+
                     parameter_name = ""
 
                     sigma_vec = track.VectorOfDouble()
@@ -1191,12 +1315,12 @@ if __name__ == "__main__":
                         uncertaintyParam,
                         options.timeout,
                         trans_classifier, # pointer to transition classifier
-                        )
+                    )
 
 
                     loss = tracker.HamminglossOfFiles(outpath+"/labels.txt",outpath+'/pertubation_labels/perturbed_labeling'+parameter_name+'_'+str(options.num_iterations-1)+'.txt')
 
-                    f.write(str(loss) +"\t"+ str(pertubation_parameter)+ "\n") 
+                    f.write(str(loss) +"\t"+ str(pertubation_parameter)+ "\n")
 
                     if(loss < optimal_loss):
                         optimal_loss = loss
@@ -1282,27 +1406,28 @@ if __name__ == "__main__":
                 uncertaintyParam,
                 options.timeout,
                 trans_classifier, # pointer to transition classifier
-                )
+            )
 
-            # write out feature matrix for each proposal, but use original traxel store
-            # will later be multiplied by label to get featurevector
-            tracker.SetFunkeyOutputFiles(options.out_dir.rstrip('/') + '/feature_matrix',
-                                         '',
-                                         '',
-                                         False,
-                                         uncertaintyParam)
-            tracker.writeAllFunkeyFeatures(ts,
-                                           uncertaintyParam,
-                                           options.forbidden_cost,
-                                           ndim,
-                                           not bool(options.without_tracklets),
-                                           options.trans_par,
-                                           options.border_width
-                                           )
+            # # write out feature matrix for each proposal, but use original traxel store
+            # # will later be multiplied by label to get featurevector
+            # tracker.SetFunkeyOutputFiles(options.out_dir.rstrip('/') + '/feature_matrix',
+            #                              '',
+            #                              '',
+            #                              False,
+            #                              uncertaintyParam)
+            # tracker.writeAllFunkeyFeatures(ts,
+            #                                uncertaintyParam,
+            #                                options.forbidden_cost,
+            #                                ndim,
+            #                                not bool(options.without_tracklets),
+            #                                options.trans_par,
+            #                                options.border_width
+            # )
 
             # run merger resolving
             if options.with_merger_resolution and options.max_num_objects > 1 and len(options.raw_filename) > 0:
                 with h5py.File(fns[0], 'r') as h5file:  # open file to access label images
+                    feature_vectors = []
                     for i, event_vector in enumerate(all_events):  # go through all solutions
                         print("Resolving mergers for solution {}".format(i))
                         coordinate_map = track.TimestepIdCoordinateMap()
@@ -1314,8 +1439,10 @@ if __name__ == "__main__":
                                     traxel = ts.get_traxel(event.traxel_ids[0], timestep)
                                     try:
                                         extract_coordinates(coordinate_map, h5file, traxel, options)
-                                    except:
+                                    except Exception as e:
                                         print("Error when extracting coordinates for id={} in timestep={}".format(event.traxel_ids[0], timestep))
+                                        print(type(e))
+                                        print(e)
                                         raise Exception
                                     num_mergers += 1
 
@@ -1349,8 +1476,11 @@ if __name__ == "__main__":
                                                                fs)
                         resolved_graph = tracker.get_resolved_hypotheses_graph()
                         # extract features of this solution
-                        extract_features_and_compute_score(options, i, resolved_graph, ts, fov, feature_vector_filename)
+                        feature_vector, score = extract_features_and_compute_score(options, i, resolved_graph, ts, fov, feature_vector_filename)
+                        feature_vectors.append(feature_vector)
 
+                    print("Storing feature vectors of all solutions")
+                    np.savetxt(options.out_dir.rstrip('/') + '/feature_vectors.txt', np.array(feature_vectors).transpose())
             events = all_events[0]
             first_events = events[0]
             events = events[1:]
@@ -1370,26 +1500,6 @@ if __name__ == "__main__":
 
     processing_pool.close()
     processing_pool.join()
-
-    # add original model features to the feature vector
-    feature_vectors = np.loadtxt(feature_vector_filename)
-    if len(feature_vectors.shape) == 1:
-        feature_vectors = feature_vectors.reshape((1,-1))
-    full_feature_vectors = []
-    for i in range(len(all_events)):
-        full_feature_vectors.append(
-            construct_feature_vector(options.out_dir.rstrip('/') + '/feature_matrix',
-                                     options.out_dir.rstrip('/') + '/proposal_labeling',
-                                     i,
-                                     feature_vectors[:,i]))
-    np.savetxt(options.out_dir.rstrip('/') + '/feature_vectors.txt', np.array(full_feature_vectors).transpose())
-
-
-    if len(options.ground_truth_labeling) > 0:
-        rank_solutions(options.ground_truth_labeling,
-                       feature_vector_filename,
-                       options.out_dir.rstrip('/') + '/proposal_labeling',
-                       options.num_iterations)
 
     stop = time.time()
     since = stop - start
