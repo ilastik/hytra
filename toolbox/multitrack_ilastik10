@@ -841,9 +841,11 @@ def store_label_in_hypotheses_graph():
                 if((i-1,movset[0],movset[1]) in arcTimestepIdMap):
                     graph.addArcLabel(arcTimestepIdMap[i-1,movset[0],movset[1]],1)
                 else:
-                    print "ERROR3 IN move",i-1,movset[0],movset[1],"  adding new arc"
+                    print "Warning IN move",i-1,movset[0],movset[1],"  no matching arc found"
                     # newarc = graph.addArc(nodeTimestepIdMap[i-1,movset[0]],nodeTimestepIdMap[i,movset[0]])
-                    graph.addArcLabel(newarc,1)
+                    # graph.addArcLabel(newarc,1)
+            else:
+                print "ERROR in move " ,  (i-1,movset[0]) , " or " , (i,movset[1]) not found
 
         for splset in spllist:
             if((i-1,splset[0],splset[1]) in arcTimestepIdMap and (i-1,splset[0],splset[2]) in arcTimestepIdMap):
@@ -853,9 +855,9 @@ def store_label_in_hypotheses_graph():
                 print "ERROR IN SPLIT arc", i-1,splset[0],splset[2]
             if((i-1,splset[0]) in nodeTimestepIdMap and (i,splset[1]) in nodeTimestepIdMap and (i,splset[2]) in nodeTimestepIdMap ):
                 graph.addDivisionLabel(nodeTimestepIdMap[i-1,splset[0]],1)
-                graph.addAppearanceLabel(nodeTimestepIdMap[i,splset[1]],mdic.get(splset[1],1))
-                graph.addAppearanceLabel(nodeTimestepIdMap[i,splset[2]],mdic.get(splset[2],1))
-                graph.addDisappearanceLabel(nodeTimestepIdMap[i-1,splset[0]],1)
+                graph.addDisappearanceLabel(nodeTimestepIdMap[i,splset[1]],1)
+                graph.addDisappearanceLabel(nodeTimestepIdMap[i,splset[2]],1)
+                graph.addAppearanceLabel(nodeTimestepIdMap[i-1,splset[0]],1)
             else:
                 print "ERROR IN SPLIT node",i-1,splset[0],splset[2]
 
