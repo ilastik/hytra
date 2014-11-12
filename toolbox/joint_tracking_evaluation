@@ -63,10 +63,10 @@ class OverlapComparison(ComparisonOperator):
             bounding_box.append(slice(lower, upper+1))
         bounded_ground_truth = ground_truth[bounding_box]
         bounded_result = result[bounding_box]
-        # print bounded_result.shape
+        print bounded_result.shape
 
         # extend bounding box
-        # print bounding_box
+        print bounding_box
         feats = vigra.analysis.extractRegionFeatures(bounded_result.astype(np.float32),
                                                      bounded_result,
                                                      features = ['Count'],
@@ -88,7 +88,7 @@ class OverlapComparison(ComparisonOperator):
                         curr_slice = bounding_box[coord_idx]
                     #print idx, bounding_box
 
-        # print bounding_box, 'BBBBBBBBBB'
+        print bounding_box, 'BBBBBBBBBB'
         # for el in bounding_box:
             # print el
 
@@ -98,7 +98,7 @@ class OverlapComparison(ComparisonOperator):
         extended_bounded_ground_truth = ground_truth[bounding_box]
         ground_truth_indices = extended_bounded_ground_truth == label
         extended_bounded_result = result[bounding_box]
-        # print extended_bounded_result.shape
+        print extended_bounded_result.shape
         max_intersect_coords = []
         max_intersect_union_ratio = 0
         argmax_result_label = -1
