@@ -1201,7 +1201,7 @@ def learn_perturbation_weights(options, tracker, trans_classifier):
 
     os.system("mkdir -p "+outpath+"/pertubation_labels")
     with open(outpath+"/pertubation_labels/pertubation.log",'w') as f:
-        for pertubation_parameter in itertools.product(np.arange(-1, 2, 1), repeat=3):
+        for pertubation_parameter in itertools.product(np.arange(-2, 2, 1), repeat=3):
             parameter_name = ""
 
             tracker.buildGraph(ts)
