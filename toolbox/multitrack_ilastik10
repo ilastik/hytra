@@ -1188,7 +1188,9 @@ def learn_perturbation_weights(options, tracker, trans_classifier):
         for pertubation_parameter in itertools.product(np.arange(-1, 2, 1), repeat=3):
             parameter_name = ""
 
-            sigmas = []
+            tracker.buildGraph(ts)
+
+            sigmas = [0.,0.]
             for si in pertubation_parameter:
                 sigmas.append(float(10**si))
                 parameter_name += "_" + str(float(10**si))
@@ -1379,6 +1381,8 @@ if __name__ == "__main__":
     tracker, fov = initializeConservationTracking(options, shape)
 
     hypotheses_graph = tracker.buildGraph(ts)
+
+    print "tracking with weights ",w_det,w_div,w_trans,w_dis,w_app
 
     all_events = tracker.track(
         options.forbidden_cost,
