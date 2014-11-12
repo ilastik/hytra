@@ -15,6 +15,7 @@ import numpy as np
 import h5py
 import itertools
 import copy
+import vigra
 import pgmlink as track
 from empryonic import io
 from multiprocessing import Pool
@@ -264,7 +265,7 @@ def update_merger_features(coordinate_map, h5file, merger_traxel, new_traxel_ids
 
     try:
         for traxel_id in new_traxel_ids:
-            track.update_labelimage(coordinate_map,
+            label_image_excerpt = track.update_labelimage(coordinate_map,
                                      label_image_excerpt,
                                      np.array(lower).astype(np.int64),
                                      int(merger_traxel.Timestep),
@@ -853,10 +854,15 @@ def train_outlier_svm(options, tracker, ts, fov):
     feature_extractor = track.TrackingFeatureExtractor(g, fov)
     print("Train svm")
     feature_extractor.train_track_svm()
+    feature_extractor.train_division_svm()
     print("Done training, saving...")
-    outlier_svm = feature_extractor.get_track_svm()
+    outlier_track_svm = feature_extractor.get_track_svm()
+    outlier_division_svm = feature_extractor.get_division_svm()
+
     with open(options.save_outlier_svm, 'w') as svm_dump:
-        pickle.dump(outlier_svm, svm_dump)
+        pickle.dump(outlier_track_svm, svm_dump)
+        pickle.dump(outlier_division_svm, svm_dump)
+
     print("SVM is trained and stored in " + options.save_outlier_svm)
     options.load_outlier_svm = options.save_outlier_svm
 
@@ -904,8 +910,11 @@ def extract_features_and_compute_score(options, i, hypotheses_graph, ts, fov, fe
     feature_extractor = track.TrackingFeatureExtractor(hypotheses_graph, fov)
     if len(options.load_outlier_svm) > 0:  # when the svm was trained in this run, it automatically sets load_outlier_svm
         with open(options.save_outlier_svm, 'r') as svm_dump:
-            outlier_svm = pickle.load(svm_dump)
-            feature_extractor.set_track_svm(outlier_svm)
+            outlier_track_svm = pickle.load(svm_dump)
+            outlier_division_svm = pickle.load(svm_dump)
+
+            feature_extractor.set_track_svm(outlier_track_svm)
+            feature_extractor.set_division_svm(outlier_division_svm)
             print("Trained outlier SVM loaded from " + options.load_outlier_svm)
     feature_extractor.set_track_feature_output_file(track_features_filename)
     feature_extractor.compute_features()
@@ -940,6 +949,7 @@ def extract_features_and_compute_score(options, i, hypotheses_graph, ts, fov, fe
                         return reranker_weights[mean_weight_idx] * np.mean(value) \
                                + reranker_weights[mean_weight_idx + 1] * np.var(value)
                     except:
+                        print("Track {} has no feature: {}".format(track_id, name))
                         return 0
 
                 score += get_feature_score(0, 'sq_diff_RegionCenter')
@@ -959,6 +969,12 @@ def extract_features_and_compute_score(options, i, hypotheses_graph, ts, fov, fe
                 score += get_feature_score(58, 'diff_outlier_Count')
                 score += get_feature_score(62, 'diff_outlier_Mean')
                 score += get_feature_score(66, 'diff_outlier_Variance')
+
+                if len(options.load_outlier_svm) > 0:
+                    outlier_svm_score = track_features['track_outliers_svm'][int(track_id)]
+                    score += outlier_svm_score * reranker_weights[70]
+                    # outlier_svm_score = track_features['track_outliers_svm'][int(track_id)]
+                    # score += outlier_svm_score * reranker_weights[114]
 
                 track_scores.append([float(track_id), score])
 
@@ -1368,9 +1384,6 @@ if __name__ == "__main__":
             learn_perturbation_weights(options, tracker, trans_classifier)
             exit()
 
-    if len(options.save_outlier_svm) > 0 and len(options.gt_pth) > 0:
-        train_outlier_svm(options, tracker, ts, fov)
-
     feature_vector_filename = options.out_dir.rstrip('/') + '/ho_feature_vectors.txt'
     try:
         os.remove(feature_vector_filename)
@@ -1379,6 +1392,9 @@ if __name__ == "__main__":
 
     # perform the real tracking
     tracker, fov = initializeConservationTracking(options, shape)
+
+    if len(options.save_outlier_svm) > 0 and len(options.gt_pth) > 0:
+        train_outlier_svm(options, tracker, ts, fov)
 
     hypotheses_graph = tracker.buildGraph(ts)
 
