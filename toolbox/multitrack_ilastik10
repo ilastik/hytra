@@ -842,7 +842,7 @@ def store_label_in_hypotheses_graph():
                     graph.addArcLabel(arcTimestepIdMap[i-1,movset[0],movset[1]],1)
                 else:
                     print "ERROR3 IN move",i-1,movset[0],movset[1],"  adding new arc"
-                    newarc = graph.addArc(nodeTimestepIdMap[i-1,movset[0]],nodeTimestepIdMap[i,movset[0]])
+                    # newarc = graph.addArc(nodeTimestepIdMap[i-1,movset[0]],nodeTimestepIdMap[i,movset[0]])
                     graph.addArcLabel(newarc,1)
 
         for splset in spllist:
