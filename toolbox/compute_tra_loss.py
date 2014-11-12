@@ -451,7 +451,7 @@ def compute_tra_loss(options):
     print("Orignal model has {} nodes and {} edges".format(num_gt_detections, num_gt_edges))
 
     print("Extracted events yield tra_p={} and tra_e={}".format(tra_p, tra_e))
-    return 1.0 - (min(tra_p, tra_e) / tra_e)
+    return min(tra_p, tra_e) / tra_e
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Compute TRA loss between 0 and 1 of a new labeling compared to ground truth')

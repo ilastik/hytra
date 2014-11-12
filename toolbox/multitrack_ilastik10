@@ -905,7 +905,13 @@ def get_track_feature_matrix(track_features_filename, normalize=False):
                 merged_features = [f / len(traxels) for f in merged_features]
 
             track_feature_matrix = np.vstack([track_feature_matrix, merged_features])
-    return track_feature_matrix
+
+    # create list of names of the features, to ease later analysis and plotting
+    track_feature_names = []
+    for f, dim in region_features:
+        track_feature_names += [f + '[' + str(i) + ']' for i in range(dim)]
+
+    return track_feature_matrix, track_feature_names
 
 def extract_features_and_compute_score(options, i, hypotheses_graph, ts, fov, feature_vector_filename):
     # extract higher order features and per-track features
@@ -920,11 +926,13 @@ def extract_features_and_compute_score(options, i, hypotheses_graph, ts, fov, fe
     feature_extractor.set_track_feature_output_file(track_features_filename)
     feature_extractor.compute_features()
     feature_vector = [f for f in feature_extractor.get_feature_vector()]
+    feature_names = [feature_extractor.get_feature_description(f) for f in range(len(feature_vector))]
 
-    track_feature_matrix = get_track_feature_matrix(track_features_filename, False)
+    track_feature_matrix, track_feature_names = get_track_feature_matrix(track_features_filename, False)
     sum_of_track_features = np.sum(track_feature_matrix, axis=0)
 
     feature_vector += list(sum_of_track_features)
+    feature_names += track_feature_names
     overall_score = 0
 
     # if reranker weights are already given, compute overall, and track scores
@@ -985,7 +993,7 @@ def extract_features_and_compute_score(options, i, hypotheses_graph, ts, fov, fe
 
         print("Overall score of tracking is: {}".format(score))
 
-    return feature_vector, overall_score
+    return feature_vector, overall_score, feature_names
 
 if __name__ == "__main__":
 
@@ -1687,11 +1695,16 @@ if __name__ == "__main__":
                                                                fs)
                         resolved_graph = tracker.get_resolved_hypotheses_graph()
                         # extract features of this solution
-                        feature_vector, score = extract_features_and_compute_score(options, i, resolved_graph, ts, fov, feature_vector_filename)
+                        feature_vector, score, feature_names = extract_features_and_compute_score(options, i, resolved_graph, ts, fov, feature_vector_filename)
                         feature_vectors.append(feature_vector)
 
                     print("Storing feature vectors of all solutions")
                     np.savetxt(options.out_dir.rstrip('/') + '/feature_vectors.txt', np.array(feature_vectors).transpose())
+                    print("Storing feature names")
+                    with open(options.out_dir.rstrip('/') + '/feature_names.txt', 'w') as feature_names_file:
+                        for f in feature_names:
+                            feature_names_file.write(f + '\n')
+
             events = all_events[0]
             first_events = events[0]
             events = events[1:]
