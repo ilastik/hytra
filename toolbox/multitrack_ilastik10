@@ -758,7 +758,7 @@ def construct_feature_vector(feature_matrix_basename,
 
 def getH5Dataset(h5group, ds_name):
     if ds_name in h5group.keys():
-        return h5group[ds_name]
+        return np.array(h5group[ds_name])
 
     return np.array([])
 
