@@ -5,6 +5,12 @@ import os
 import sys
 import scipy.misc
 
+def getoutLabelImage(labelfile,t):
+    try:
+        return np.array(labelfile["exported_data_T"][t,...]).squeeze().astype(np.int)        
+    except:
+        return np.transpose(np.array(labelfile["exported_data"][t,...]).squeeze().astype(np.int))
+
 def generate_groundtruth(options):
     # read image
 
@@ -31,7 +37,7 @@ def generate_groundtruth(options):
             sys.stdout.write("[%-20s] %d%%" % ('='*(20*t/options.end), (100*t/options.end)))
             sys.stdout.flush()
 
-            outputFileName = options.output_dir.rstrip('/')+ "/%03d.h5" % t
+            outputFileName = options.output_dir.rstrip('/')+ "/%04d.h5" % t
             #create output file
             if os.path.exists(outputFileName):
                 os.remove(outputFileName)
@@ -43,8 +49,8 @@ def generate_groundtruth(options):
 
                 with h5py.File(options.label_image, 'r') as labelfile:
 
-                    outLabelImage = np.array(labelfile["exported_data_T"][t]).squeeze().astype(np.int)
-                    inputLabelImage   = np.array(inputfile["label_image"][t]).squeeze().astype(np.int)
+                    outLabelImage = getoutLabelImage(labelfile,t)
+                    inputLabelImage   = np.array(inputfile["label_image"][t,...]).squeeze().astype(np.int)
 
                     inputIds  =  np.unique(inputLabelImage).flatten()
                     outputIds =  np.unique(outLabelImage).flatten()
@@ -107,14 +113,45 @@ def generate_groundtruth(options):
                         trackingdata.create_dataset("Mergers", data=np.asarray(merlist), dtype='u2') 
 
                     if(len(inId_to_outId_funct) > 1):
-                        if("Moves" in inputfile["tracking"]["{0:03d}".format(t)].keys()):
-                            moves = np.array(inputfile["tracking"]["{0:03d}".format(t)]["Moves"]).squeeze().astype(np.int)
+                        if("Moves" in inputfile["tracking"][options.format.format(t)].keys()):
+                            moves = np.array(inputfile["tracking"][options.format.format(t)]["Moves"]).squeeze().astype(np.int)
                             moves = np.reshape(moves, (-1,2))
-                            print inId_to_outId_dics , moves[:,0],inId_to_outId_funct[t-1](moves[:,0])
+                            remlist = []
+
+                            if(np.any(moves == 0)):
+                                print "ERROR ::: 0 in moves found"
+                                exit()
+
+                            # for i,mov_row in  enumerate(moves):
+                            #     # print i,mov_row
+                            #     if mov_row[0] == 0 or mov_row[1] == 0:
+                            #         remlist.append(i)
+
+                            # moves = np.delete(moves,remlist,axis=0)
+                            # print inId_to_outId_dics
+                            # print "moves",moves[:,0]
+
+                            # print "inputIds",inputIds
+                            # for m in moves[:,0]:
+                            #     print m
+                            #     if(not m in inId_to_outId_dics[t-1]):
+                            #         print m, " not in inId_to_outId_dics","at t=",t-1
+                            #         try:
+                            #             print inId_to_outId_dics[t][m]," at t=",t
+                            #             inId_to_outId_dics[t-1][m] = inId_to_outId_dics[t][m]
+                            #             inId_to_outId_funct[t] = np.vectorize(inId_to_outId_dics[t].get)
+                            #             print "but found in next label image"
+                            #         except:
+                            #             print "and not even found in the next label image"
+
+                            # print inId_to_outId_funct[t-1](moves[:,0])
+                            # print inId_to_outId_funct[t](moves[:,1])
                             moves[:,0] = inId_to_outId_funct[t-1](moves[:,0])
                             moves[:,1] = inId_to_outId_funct[t](moves[:,1])
 
-                            #make moves without match to disapp and app
+
+                            #make moves without match
+                            # print moves to disapp and app
                             movelist = moves.tolist()
                             for mov in movelist:
                                 if (-1 in mov):
@@ -122,26 +159,25 @@ def generate_groundtruth(options):
                                     if(mov[0] == -1 and mov[1] > 0):#appearance
                                         applist.append(mov[1])
                                     if(mov[1] == -1 and mov[0] > 0):#disappearance
-                                        print mov[0]
+                                        # print mov[0]
                                         disapplist.append(mov[0])
 
-                                    movelist = [mov for mov in movelist if (not -1 in mov)]
+                            movelist = [mov for mov in movelist if (not -1 in mov)]
 
-                                    moves = np.array(movelist)
+                            moves = np.array(movelist)
 
                             if(np.any(moves == -1)):
                                 print "-1 in moves !!! at timestep",t
-                                print moves
                                 print "#####################################"
-                                print np.array(inputfile["tracking"]["{0:03d}".format(t)]["Moves"]).squeeze().astype(np.int)
+                                print np.array(inputfile["tracking"][options.format.format(t)]["Moves"]).squeeze().astype(np.int)
                                 exit()
 
 
                             trackingdata.create_dataset("Moves", data=moves, dtype='u2')
                             movedict[t] = moves
 
-                        if("Splits" in inputfile["tracking"]["{0:03d}".format(t)].keys()):
-                            splits = np.array(inputfile["tracking"]["{0:03d}".format(t)]["Splits"]).squeeze().astype(np.int)
+                        if("Splits" in inputfile["tracking"][options.format.format(t)].keys()):
+                            splits = np.array(inputfile["tracking"][options.format.format(t)]["Splits"]).squeeze().astype(np.int)
                             splits = np.reshape(splits,(-1,3))
                             splits[:,0] = inId_to_outId_funct[t-1](splits[:,0])
                             splits[:,1:] = inId_to_outId_funct[t](splits[:,1:])
@@ -203,6 +239,9 @@ if __name__ == "__main__":
                         help='Folder where the groundTruthfiles are created')
     parser.add_option('--input-file', type=str, dest='input_file',
                         help='Filename for the resulting HDF5 file.')
+
+    parser.add_option('--input_format', type=str, dest='format',
+                        help='added 0 to number string, default="{0:03d}", produces 004 from 4',default="{0:03d}")
 
     parser.add_option('--start', type=int, dest='start',
                         help='first timestep',default=0)
