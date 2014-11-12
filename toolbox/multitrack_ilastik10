@@ -1136,7 +1136,7 @@ def prepareFunkeyFiles(options, graph):
 
     return outpath
 
-def exportFunkeyFiles(options, ts, tracker):
+def exportFunkeyFiles(options, ts, tracker, trans_classifier):
     g = store_label_in_hypotheses_graph(ts, tracker)
 
     tracker.SetFunkeyExportLabeledGraph(True)
@@ -1227,7 +1227,7 @@ def learn_perturbation_weights(options, tracker, trans_classifier):
 
     print "result:   found solution with loss:", optimal_loss ," with parameters ", optimal_parameters
 
-def runMergerResolving(tracker, ts, hypotheses_graph, ilp_fn, all_events, fov, region_features):
+def runMergerResolving(tracker, ts, hypotheses_graph, ilp_fn, all_events, fov, region_features, trans_classifier):
     with h5py.File(ilp_fn, 'r') as h5file:  # open file to access label images
         feature_vectors = []
         for i, event_vector in enumerate(all_events):  # go through all solutions
@@ -1353,7 +1353,7 @@ if __name__ == "__main__":
     all_events = []
     if options.export_funkey and len(options.gt_pth) > 0: # generate structured learning files
         tracker, fov = initializeConservationTracking(options, shape)
-        outpath = exportFunkeyFiles(options, ts, tracker)
+        outpath = exportFunkeyFiles(options, ts, tracker, trans_classifier)
 
         if options.learn_funkey:
             learned_weights = learnFunkey(options, tracker, outpath)
@@ -1399,7 +1399,7 @@ if __name__ == "__main__":
 
     # run merger resolving
     if options.with_merger_resolution and options.max_num_objects > 1 and len(options.raw_filename) > 0:
-        runMergerResolving(tracker, ts, hypotheses_graph, ilp_fn, all_events, fov, region_features)
+        runMergerResolving(tracker, ts, hypotheses_graph, ilp_fn, all_events, fov, region_features, trans_classifier)
 
     stop = time.time()
     since = stop - start
