@@ -1355,7 +1355,7 @@ if __name__ == "__main__":
         obj_size[0] = options.avg_obj_size
 
     info = [int(x) for x in ts.bounding_box()]
-    if info[0] != options.mints or info[4] != options.maxts - 1:
+    if info[0] > options.mints or info[4] < options.maxts - 1:
         print("Warning: Traxelstore has different time range than requested. Using full traxelstore range.")
     t0, t1 = (info[0], info[4])
     print "-> Traxelstore bounding box: " + str(info)
