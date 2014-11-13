@@ -181,7 +181,7 @@ def generate_groundtruth(options):
                             #         exit()
 
                             splitlist = splits.tolist()
-                            for mov in splitlist:
+                            for spl in splitlist:
                                 if (-1 in spl):
                                     print "\nresolving ", spl, "at ",
                                     if(spl[0] == -1):
@@ -190,23 +190,14 @@ def generate_groundtruth(options):
                                         if spl[2] > 0:
                                             applist.append(spl[2])
                                     else:
-                                        disapplist.append(spl[0]):
+                                        disapplist.append(spl[0])
                                         if spl[1] > 0:
                                             movelist.append([spl[0],spl[1]])
                                         if spl[2] > 0:
                                             movelist.append([spl[0],spl[2]])
 
-                            splitlist = [spl for spl in splitlist if (not -1 in mov)]
+                            splitlist = [spl for spl in splitlist if (not -1 in spl)]
 
-                            if(np.any(splits == 0)):
-                                print "0 in splits !!! at timestep",t
-                                print splits
-                                exit()
-
-                            if(np.any(splits == -1)):
-                                print "-1 in splits !!! at timestep",t
-                                print splits
-                                exit()
 
                         for i in inId_to_outId_dics[t]:
                             outid = inId_to_outId_dics[t][i]
@@ -234,10 +225,20 @@ def generate_groundtruth(options):
                                 print moves
                                 exit()
 
+
+
+
                         if(len(splitlist) > 0):
                             splits = np.array(splitlist)
                             trackingdata.create_dataset("Splits", data=splits, dtype='u2') 
                             splitdict[t] = splits
+
+                            if(np.any(splits == -1)):
+                                print "-1 in splits !!! at timestep",t
+                                print "#####################################"
+                                print splits
+                                exit()
+
 
                         if(len(applist) > 0):
                             trackingdata.create_dataset("Appearances", data=np.reshape(np.asarray(applist),(-1,1)), dtype='u2')
