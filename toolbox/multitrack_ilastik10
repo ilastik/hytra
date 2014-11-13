@@ -344,6 +344,9 @@ def generate_traxelstore(h5file,
     shape_t = len(h5file[options.obj_count_path].keys())
     keys_sorted = range(shape_t)
 
+    if time_range[1] == -1:
+        time_range[1] = shape_t
+
     if time_range is not None:
         keys_sorted = [key for key in keys_sorted if int(key) >= time_range[0] and int(key) < time_range[1]]
     else:
@@ -1034,7 +1037,7 @@ def getRegionFeatures(ndim):
         ]
     return region_features
 
-def getTraxelStore(options, ilp_fn):
+def getTraxelStore(options, ilp_fn,time_range):
     max_traxel_id_at = []
     with h5py.File(ilp_fn, 'r') as h5file:
         ndim = 3
@@ -1043,6 +1046,7 @@ def getTraxelStore(options, ilp_fn):
             ndim = 2
         print 'ndim=', ndim
 
+        print time_range
         if options.load_traxelstore:
             print 'loading traxelstore from file'
             import pickle
@@ -1192,7 +1196,7 @@ def learnFunkey(options, tracker, outpath):
 
     return learnedWeights
 
-def learn_perturbation_weights(options, tracker, trans_classifier):
+def learn_perturbation_weights(ts, options, shape, trans_classifier):
     print "calling learn_perturbation_weights"
     tracker.SetFunkeyExportLabeledGraph(False)
 
@@ -1204,7 +1208,9 @@ def learn_perturbation_weights(options, tracker, trans_classifier):
         for pertubation_parameter in itertools.product(np.arange(-2, 2, 1), repeat=3):
             parameter_name = ""
 
-            tracker.buildGraph(ts)
+            pert_tracker, fov = initializeConservationTracking(options, shape)
+
+            pert_tracker.buildGraph(ts)
 
             sigmas = [0.,0.]
             for si in pertubation_parameter:
@@ -1214,36 +1220,38 @@ def learn_perturbation_weights(options, tracker, trans_classifier):
             uncertaintyParam = getUncertaintyParameter(options, sigmas=sigmas)
 
             # save labels of proposals to file:
-            tracker.SetFunkeyOutputFiles('', '', outpath + '/pertubation_labels/perturbed_labeling'+parameter_name+'.txt', False,uncertaintyParam)
+            pert_tracker.SetFunkeyOutputFiles('', '', outpath + '/pertubation_labels/perturbed_labeling'+parameter_name+'.txt', False,uncertaintyParam)
+            try:
+                pert_tracker.track(
+                    options.forbidden_cost,
+                    options.ep_gap,
+                    not bool(options.without_tracklets),
+                    options.detection_weight,
+                    options.division_weight,
+                    options.transition_weight,
+                    options.disappearance_cost,
+                    options.appearance_cost,
+                    options.with_merger_resolution,
+                    ndim,
+                    options.trans_par,
+                    options.border_width,
+                    not bool(options.woconstr),
+                    uncertaintyParam,
+                    options.timeout,
+                    trans_classifier, # pointer to transition classifier
+                )
+            except:
+                print "ERROR tracker failed to track"
 
-            tracker.track(
-                options.forbidden_cost,
-                options.ep_gap,
-                not bool(options.without_tracklets),
-                options.detection_weight,
-                options.division_weight,
-                options.transition_weight,
-                options.disappearance_cost,
-                options.appearance_cost,
-                options.with_merger_resolution,
-                ndim,
-                options.trans_par,
-                options.border_width,
-                not bool(options.woconstr),
-                uncertaintyParam,
-                options.timeout,
-                trans_classifier, # pointer to transition classifier
-            )
-
-
-            loss = tracker.HamminglossOfFiles(outpath+"/labels.txt",outpath+'/pertubation_labels/perturbed_labeling'+parameter_name+'_'+str(options.num_iterations-1)+'.txt')
-
+            loss = pert_tracker.HamminglossOfFiles(outpath+"/labels.txt",outpath+'/pertubation_labels/perturbed_labeling'+parameter_name+'_'+str(options.num_iterations-1)+'.txt')
+            print "pertubation learning result ",str(loss) +"\t"+ str(pertubation_parameter)
             f.write(str(loss) +"\t"+ str(pertubation_parameter)+ "\n")
 
             if(loss < optimal_loss):
                 optimal_loss = loss
                 optimal_parameters = pertubation_parameter
                 print "found better pertubation parameters:  loss:" ,optimal_loss,"  para: ",optimal_parameters
+            del pert_tracker
 
     print "result:   found solution with loss:", optimal_loss ," with parameters ", optimal_parameters
 
@@ -1342,13 +1350,13 @@ if __name__ == "__main__":
 
     # read all traxels into TraxelStore
     time_range = [options.mints, options.maxts]
-    if options.maxts == -1:
+    if options.maxts == -1 and options.mints == 0:
         time_range = None
     obj_size = [0]
 
     trans_classifier = loadTransClassifier(options)
 
-    ts, fs, max_traxel_id_at, ndim = getTraxelStore(options, ilp_fn)
+    ts, fs, max_traxel_id_at, ndim = getTraxelStore(options, ilp_fn,time_range)
     region_features = getRegionFeatures(ndim)
 
     if options.avg_obj_size != 0:
@@ -1381,7 +1389,7 @@ if __name__ == "__main__":
 
 
         if options.learn_perturbation_weights:
-            learn_perturbation_weights(options, tracker, trans_classifier)
+            learn_perturbation_weights(ts, options, shape, trans_classifier)
             exit()
 
     feature_vector_filename = options.out_dir.rstrip('/') + '/ho_feature_vectors.txt'
