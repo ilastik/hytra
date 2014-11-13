@@ -761,7 +761,7 @@ def construct_feature_vector(feature_matrix_basename,
 
 def getH5Dataset(h5group, ds_name):
     if ds_name in h5group.keys():
-        return h5group[ds_name]
+        return np.array(h5group[ds_name])
 
     return np.array([])
 
@@ -912,7 +912,7 @@ def extract_features_and_compute_score(options, i, hypotheses_graph, ts, fov, fe
     track_features_filename = options.out_dir.rstrip('/') + '/iter_' + str(i) + '/track_features.h5'
     feature_extractor = track.TrackingFeatureExtractor(hypotheses_graph, fov)
     if len(options.load_outlier_svm) > 0:  # when the svm was trained in this run, it automatically sets load_outlier_svm
-        with open(options.save_outlier_svm, 'r') as svm_dump:
+        with open(options.load_outlier_svm, 'r') as svm_dump:
             outlier_track_svm = pickle.load(svm_dump)
             outlier_division_svm = pickle.load(svm_dump)
 
@@ -1404,9 +1404,10 @@ if __name__ == "__main__":
     if len(options.save_outlier_svm) > 0 and len(options.gt_pth) > 0:
         train_outlier_svm(options, tracker, ts, fov)
 
+    print "tracking with weights ", w_det, w_div, w_trans, w_dis, w_app
     hypotheses_graph = tracker.buildGraph(ts)
-
-    print "tracking with weights ",w_det,w_div,w_trans,w_dis,w_app
+    uncertaintyParam = getUncertaintyParameter(options)
+    tracker.SetFunkeyOutputFiles('', '', options.out_dir.rstrip('/') + '/proposal_labeling', False, uncertaintyParam)
 
     all_events = tracker.track(
         options.forbidden_cost,
@@ -1422,7 +1423,7 @@ if __name__ == "__main__":
         options.trans_par,
         options.border_width,
         not bool(options.woconstr),
-        getUncertaintyParameter(options),
+        uncertaintyParam,
         options.timeout,
         trans_classifier, # pointer to transition classifier
     )
