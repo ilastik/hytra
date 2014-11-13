@@ -909,7 +909,7 @@ def extract_features_and_compute_score(options, i, hypotheses_graph, ts, fov, fe
     track_features_filename = options.out_dir.rstrip('/') + '/iter_' + str(i) + '/track_features.h5'
     feature_extractor = track.TrackingFeatureExtractor(hypotheses_graph, fov)
     if len(options.load_outlier_svm) > 0:  # when the svm was trained in this run, it automatically sets load_outlier_svm
-        with open(options.save_outlier_svm, 'r') as svm_dump:
+        with open(options.load_outlier_svm, 'r') as svm_dump:
             outlier_track_svm = pickle.load(svm_dump)
             outlier_division_svm = pickle.load(svm_dump)
 
