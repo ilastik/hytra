@@ -106,8 +106,8 @@ def generate_groundtruth(options):
 
                     applist = []
                     disapplist = []
-                    movelist[]
-                    splitlist[]
+                    movelist = []
+                    splitlist= []
 
                     if(len(merlist) > 0):
                         #TODO: THIS IS WRONG NEED TO ADD NUMBER OF MERGERS AND OUT ID
