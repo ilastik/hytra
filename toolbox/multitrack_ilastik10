@@ -344,10 +344,8 @@ def generate_traxelstore(h5file,
     shape_t = len(h5file[options.obj_count_path].keys())
     keys_sorted = range(shape_t)
 
-    if time_range[1] == -1:
-        time_range[1] = shape_t
-
     if time_range is not None:
+        time_range[1] = shape_t
         keys_sorted = [key for key in keys_sorted if int(key) >= time_range[0] and int(key) < time_range[1]]
     else:
         time_range = (0, shape_t)
