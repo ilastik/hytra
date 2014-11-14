@@ -106,7 +106,8 @@ def generate_groundtruth(options):
 
                     applist = []
                     disapplist = []
-
+                    movelist = []
+                    splitlist= []
 
                     if(len(merlist) > 0):
                         #TODO: THIS IS WRONG NEED TO ADD NUMBER OF MERGERS AND OUT ID
@@ -164,15 +165,6 @@ def generate_groundtruth(options):
 
                             movelist = [mov for mov in movelist if (not -1 in mov)]
 
-                            moves = np.array(movelist)
-
-                            if(np.any(moves == -1)):
-                                print "-1 in moves !!! at timestep",t
-                                print "#####################################"
-                                print np.array(inputfile["tracking"][options.format.format(t)]["Moves"]).squeeze().astype(np.int)
-                                exit()
-
-
                             trackingdata.create_dataset("Moves", data=moves, dtype='u2')
                             movedict[t] = moves
 
@@ -188,20 +180,24 @@ def generate_groundtruth(options):
                             #         print "error can not resolve split"
                             #         exit()
 
+                            splitlist = splits.tolist()
+                            for spl in splitlist:
+                                if (-1 in spl):
+                                    print "\nresolving ", spl, "at ",
+                                    if(spl[0] == -1):
+                                        if spl[1] > 0:
+                                            applist.append(spl[1])
+                                        if spl[2] > 0:
+                                            applist.append(spl[2])
+                                    else:
+                                        disapplist.append(spl[0])
+                                        if spl[1] > 0:
+                                            movelist.append([spl[0],spl[1]])
+                                        if spl[2] > 0:
+                                            movelist.append([spl[0],spl[2]])
 
-                            if(np.any(splits == 0)):
-                                print "0 in moves !!! at timestep",t
-                                print splits
-                                exit()
+                            splitlist = [spl for spl in splitlist if (not -1 in spl)]
 
-                            if(np.any(splits == -1)):
-                                print "-1 in moves !!! at timestep",t
-                                print splits
-                                exit()
-
-
-                            trackingdata.create_dataset("Splits", data=splits, dtype='u2') 
-                            splitdict[t] = splits
 
                         for i in inId_to_outId_dics[t]:
                             outid = inId_to_outId_dics[t][i]
@@ -217,6 +213,31 @@ def generate_groundtruth(options):
                                 if((t in movedict and not np.any(movedict[t][:,0]==outid)) and 
                                    (t in splitdict and not np.any(splitdict[t][:,0]==outid))):
                                     disapplist.append(outid)
+
+                        if(len(movelist) > 0):
+                            moves = np.array(movelist)
+
+                            if(np.any(moves == -1)):
+                                print "-1 in moves !!! at timestep",t
+                                print "#####################################"
+                                print np.array(inputfile["tracking"][options.format.format(t)]["Moves"]).squeeze().astype(np.int)
+                                print movelist
+                                print moves
+                                exit()
+
+
+
+
+                        if(len(splitlist) > 0):
+                            splits = np.array(splitlist)
+                            trackingdata.create_dataset("Splits", data=splits, dtype='u2') 
+                            splitdict[t] = splits
+
+                            if(np.any(splits == -1)):
+                                print "-1 in splits !!! at timestep",t
+                                print "#####################################"
+                                print splits
+                                exit()
 
 
                         if(len(applist) > 0):

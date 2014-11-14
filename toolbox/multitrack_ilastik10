@@ -88,6 +88,7 @@ copied but linked to the original files to improve execution speed and storage r
                     help='stop optimization as soon as a feasible integer solution is found \
                      proved to be within the given percent of the optimal solution [default=%default]')
     parser.add_option('--compare-script-path', type='string', dest='compare_path')
+    parser.add_option('--only-labels', action='store_true', dest='only_labels', help='skip exporting feature and constraint files')
 
     consopts = optparse.OptionGroup(parser, "conservation tracking")
     consopts.add_option('--max-number-objects', dest='max_num_objects', type='float', default=2,
@@ -134,6 +135,9 @@ copied but linked to the original files to improve execution speed and storage r
                         default='/ObjectExtraction/LabelImage/0/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]',
                         help='internal hdf5 path to label image [default=%default]')
     consopts.add_option('--timeout', dest='timeout', type='float', default=1e+75, help='CPLEX timeout in sec. [default: %default]')
+    consopts.add_option('--with-graph-labeling', dest='w_labeling', action='store_true', default=False, 
+                        help='load ground truth labeling into hypotheses graph for further evaluation on C++ side,\
+                        requires gt-path to point to the groundtruth files')
 
     # options for perturbing and re-ranking
     consopts.add_option('--num-iterations', dest='num_iterations', type='int', default=1,
@@ -345,6 +349,8 @@ def generate_traxelstore(h5file,
     keys_sorted = range(shape_t)
 
     if time_range is not None:
+        if time_range[1] == -1:
+            time_range[1] = shape_t
         keys_sorted = [key for key in keys_sorted if int(key) >= time_range[0] and int(key) < time_range[1]]
     else:
         time_range = (0, shape_t)
@@ -763,8 +769,7 @@ def getH5Dataset(h5group, ds_name):
     return np.array([])
 
 
-def store_label_in_hypotheses_graph(ts, tracker):
-    graph = tracker.buildGraph(ts)
+def store_label_in_hypotheses_graph(options, graph, tracker):
     # label full graph
     n_it = track.NodeIt(graph)
     a_it = track.ArcIt(graph)
@@ -772,15 +777,13 @@ def store_label_in_hypotheses_graph(ts, tracker):
     nodeTimestepIdMap = {}
     arcTimestepIdMap = {}
 
+    graph.initLabelingMaps()
+
     for n in n_it:
         #print tmap[n].Timestep,tmap[n].Id
         nodeTimestepIdMap[tmap[n].Timestep, tmap[n].Id] = n
-        graph.addAppearanceLabel(n, 0)
-        graph.addDisappearanceLabel(n, 0)
-        graph.addDivisionLabel(n, 0)
     for a in a_it:
         #print tmap[g.source(a)].Timestep,tmap[g.source(a)].Id,tmap[g.target(a)].Id
-        graph.addArcLabel(a, 0)
         arcTimestepIdMap[tmap[graph.source(a)].Timestep, tmap[graph.source(a)].Id, tmap[graph.target(a)].Id] = a
 
     #load ground truth from hd5 files and label graph accordingly
@@ -827,10 +830,14 @@ def store_label_in_hypotheses_graph(ts, tracker):
                         # graph.addArcLabel(newarc,1)
                 else:
                     print "ERROR in move " ,  (i-1,movset[0]) , " or " , (i,movset[1]), "not found"
+                    print ((i-1,movset[0]) in nodeTimestepIdMap) , ((i,movset[1])in nodeTimestepIdMap)
 
             for splset in spllist:
-                if((i-1,splset[0],splset[1]) in arcTimestepIdMap and (i-1,splset[0],splset[2]) in arcTimestepIdMap):
+                if((i-1,splset[0],splset[1]) in arcTimestepIdMap):
                     graph.addArcLabel(arcTimestepIdMap[i-1,splset[0],splset[1]],1)
+                else:
+                    print "ERROR IN SPLIT arc", i-1,splset[0],splset[1]
+                if((i-1,splset[0],splset[2]) in arcTimestepIdMap):
                     graph.addArcLabel(arcTimestepIdMap[i-1,splset[0],splset[2]],1)
                 else:
                     print "ERROR IN SPLIT arc", i-1,splset[0],splset[2]
@@ -840,7 +847,7 @@ def store_label_in_hypotheses_graph(ts, tracker):
                     graph.addDisappearanceLabel(nodeTimestepIdMap[i,splset[2]],1)
                     graph.addAppearanceLabel(nodeTimestepIdMap[i-1,splset[0]],1)
                 else:
-                    print "ERROR IN SPLIT node",i-1,splset[0],splset[2]
+                    print "ERROR IN SPLIT node",i-1,splset[0],splset[1],splset[2]
 
     return graph
 
@@ -848,7 +855,8 @@ def store_label_in_hypotheses_graph(ts, tracker):
 def train_outlier_svm(options, tracker, ts, fov):
     import pickle
     print("Storing ground truth labels in hypotheses graph and training an outlier detector SVM from that")
-    g = store_label_in_hypotheses_graph(ts, tracker)
+    g = tracker.buildGraph(ts)
+    store_label_in_hypotheses_graph(options, g, tracker)
     print("Setting injected solution as active")
     g.set_injected_solution()
     feature_extractor = track.TrackingFeatureExtractor(g, fov)
@@ -1034,7 +1042,7 @@ def getRegionFeatures(ndim):
         ]
     return region_features
 
-def getTraxelStore(options, ilp_fn):
+def getTraxelStore(options, ilp_fn,time_range):
     max_traxel_id_at = []
     with h5py.File(ilp_fn, 'r') as h5file:
         ndim = 3
@@ -1043,6 +1051,7 @@ def getTraxelStore(options, ilp_fn):
             ndim = 2
         print 'ndim=', ndim
 
+        print time_range
         if options.load_traxelstore:
             print 'loading traxelstore from file'
             import pickle
@@ -1154,12 +1163,22 @@ def prepareFunkeyFiles(options, graph):
 
     return outpath
 
-def exportFunkeyFiles(options, ts, tracker, trans_classifier):
-    g = store_label_in_hypotheses_graph(ts, tracker)
+def exportFunkeyFiles(options, g, tracker, trans_classifier):
+    store_label_in_hypotheses_graph(options, g, tracker)
 
     tracker.SetFunkeyExportLabeledGraph(True)
 
     outpath = prepareFunkeyFiles(options, g)
+
+    features_filename = outpath+"/features.txt"
+    constraints_filename = outpath+"/constraints.txt"
+    labels_filename = outpath+"/labels.txt"
+
+
+    if options.only_labels:
+        features_filename = ""
+        constraints_filename = ""
+
 
     tracker.writeFunkeyFiles(ts,outpath+"/features.txt",
                                 outpath+"/constraints.txt",
@@ -1192,7 +1211,7 @@ def learnFunkey(options, tracker, outpath):
 
     return learnedWeights
 
-def learn_perturbation_weights(options, tracker, trans_classifier):
+def learn_perturbation_weights(ts, options, shape, trans_classifier):
     print "calling learn_perturbation_weights"
     tracker.SetFunkeyExportLabeledGraph(False)
 
@@ -1204,7 +1223,9 @@ def learn_perturbation_weights(options, tracker, trans_classifier):
         for pertubation_parameter in itertools.product(np.arange(-2, 2, 1), repeat=3):
             parameter_name = ""
 
-            tracker.buildGraph(ts)
+            pert_tracker, fov = initializeConservationTracking(options, shape)
+
+            pert_tracker.buildGraph(ts)
 
             sigmas = [0.,0.]
             for si in pertubation_parameter:
@@ -1214,36 +1235,38 @@ def learn_perturbation_weights(options, tracker, trans_classifier):
             uncertaintyParam = getUncertaintyParameter(options, sigmas=sigmas)
 
             # save labels of proposals to file:
-            tracker.SetFunkeyOutputFiles('', '', outpath + '/pertubation_labels/perturbed_labeling'+parameter_name+'.txt', False,uncertaintyParam)
+            pert_tracker.SetFunkeyOutputFiles('', '', outpath + '/pertubation_labels/perturbed_labeling'+parameter_name+'.txt', False,uncertaintyParam)
+            try:
+                pert_tracker.track(
+                    options.forbidden_cost,
+                    options.ep_gap,
+                    not bool(options.without_tracklets),
+                    options.detection_weight,
+                    options.division_weight,
+                    options.transition_weight,
+                    options.disappearance_cost,
+                    options.appearance_cost,
+                    options.with_merger_resolution,
+                    ndim,
+                    options.trans_par,
+                    options.border_width,
+                    not bool(options.woconstr),
+                    uncertaintyParam,
+                    options.timeout,
+                    trans_classifier, # pointer to transition classifier
+                )
+            except:
+                print "ERROR tracker failed to track"
 
-            tracker.track(
-                options.forbidden_cost,
-                options.ep_gap,
-                not bool(options.without_tracklets),
-                options.detection_weight,
-                options.division_weight,
-                options.transition_weight,
-                options.disappearance_cost,
-                options.appearance_cost,
-                options.with_merger_resolution,
-                ndim,
-                options.trans_par,
-                options.border_width,
-                not bool(options.woconstr),
-                uncertaintyParam,
-                options.timeout,
-                trans_classifier, # pointer to transition classifier
-            )
-
-
-            loss = tracker.HamminglossOfFiles(outpath+"/labels.txt",outpath+'/pertubation_labels/perturbed_labeling'+parameter_name+'_'+str(options.num_iterations-1)+'.txt')
-
+            loss = pert_tracker.HamminglossOfFiles(outpath+"/labels.txt",outpath+'/pertubation_labels/perturbed_labeling'+parameter_name+'_'+str(options.num_iterations-1)+'.txt')
+            print "pertubation learning result ",str(loss) +"\t"+ str(pertubation_parameter)
             f.write(str(loss) +"\t"+ str(pertubation_parameter)+ "\n")
 
             if(loss < optimal_loss):
                 optimal_loss = loss
                 optimal_parameters = pertubation_parameter
                 print "found better pertubation parameters:  loss:" ,optimal_loss,"  para: ",optimal_parameters
+            del pert_tracker
 
     print "result:   found solution with loss:", optimal_loss ," with parameters ", optimal_parameters
 
@@ -1323,14 +1346,15 @@ if __name__ == "__main__":
     options, args = getConfigAndCommandLineArguments()
 
     numArgs = len(args)
+    fns = []
     if numArgs > 0:
-        fns = []
         for arg in args:
             print arg
             fns.extend(glob.glob(arg))
         fns.sort()
         print(fns)
 
+    print fns
     ilp_fn = fns[0]
 
     ### Do the tracking
@@ -1342,14 +1366,13 @@ if __name__ == "__main__":
 
     # read all traxels into TraxelStore
     time_range = [options.mints, options.maxts]
-    if options.maxts == -1:
+    if options.maxts == -1 and options.mints == 0:
         time_range = None
     obj_size = [0]
 
     trans_classifier = loadTransClassifier(options)
 
-    ts, fs, max_traxel_id_at, ndim = getTraxelStore(options, ilp_fn)
-    region_features = getRegionFeatures(ndim)
+    ts, fs, max_traxel_id_at, ndim = getTraxelStore(options, ilp_fn,time_range)
 
     if options.avg_obj_size != 0:
         obj_size[0] = options.avg_obj_size
@@ -1379,9 +1402,8 @@ if __name__ == "__main__":
             learned_weights = learnFunkey(options, tracker, outpath)
             w_det, w_div, w_trans, w_dis, w_app, = learned_weights
 
-
         if options.learn_perturbation_weights:
-            learn_perturbation_weights(options, tracker, trans_classifier)
+            learn_perturbation_weights(ts, options, shape, trans_classifier)
             exit()
 
     feature_vector_filename = options.out_dir.rstrip('/') + '/ho_feature_vectors.txt'
@@ -1398,8 +1420,19 @@ if __name__ == "__main__":
 
     print "tracking with weights ", w_det, w_div, w_trans, w_dis, w_app
     hypotheses_graph = tracker.buildGraph(ts)
+
+    if options.w_labeling:
+        assert len(options.gt_pth) > 0, 'if labeling should be loaded, please provide a path to the ground truth in --gt-pth'
+        store_label_in_hypotheses_graph(options, hypotheses_graph, tracker)
+
     uncertaintyParam = getUncertaintyParameter(options)
-    tracker.SetFunkeyOutputFiles('', '', options.out_dir.rstrip('/') + '/proposal_labeling', False, uncertaintyParam)
+
+    if options.num_iterations == 0 or options.num_iterations == 1:
+        proposal_out = ''
+    else:
+        proposal_out = options.out_dir.rstrip('/') + '/proposal_labeling'
+        
+    tracker.SetFunkeyOutputFiles('', '', proposal_out, False, uncertaintyParam)
 
     all_events = tracker.track(
         options.forbidden_cost,
@@ -1422,6 +1455,7 @@ if __name__ == "__main__":
 
     # run merger resolving
     if options.with_merger_resolution and options.max_num_objects > 1 and len(options.raw_filename) > 0:
+        region_features = getRegionFeatures(ndim)
         runMergerResolving(tracker, ts, hypotheses_graph, ilp_fn, all_events, fov, region_features, trans_classifier)
 
     stop = time.time()
