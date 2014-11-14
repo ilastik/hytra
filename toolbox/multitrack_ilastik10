@@ -345,7 +345,8 @@ def generate_traxelstore(h5file,
     keys_sorted = range(shape_t)
 
     if time_range is not None:
-        time_range[1] = shape_t
+        if time_range[1] == -1:
+            time_range[1] = shape_t
         keys_sorted = [key for key in keys_sorted if int(key) >= time_range[0] and int(key) < time_range[1]]
     else:
         time_range = (0, shape_t)
@@ -773,15 +774,13 @@ def store_label_in_hypotheses_graph(ts, tracker):
     nodeTimestepIdMap = {}
     arcTimestepIdMap = {}
 
+    graph.initLabelingMaps()
+
     for n in n_it:
         #print tmap[n].Timestep,tmap[n].Id
         nodeTimestepIdMap[tmap[n].Timestep, tmap[n].Id] = n
-        graph.addAppearanceLabel(n, 0)
-        graph.addDisappearanceLabel(n, 0)
-        graph.addDivisionLabel(n, 0)
     for a in a_it:
         #print tmap[g.source(a)].Timestep,tmap[g.source(a)].Id,tmap[g.target(a)].Id
-        graph.addArcLabel(a, 0)
         arcTimestepIdMap[tmap[graph.source(a)].Timestep, tmap[graph.source(a)].Id, tmap[graph.target(a)].Id] = a
 
     #load ground truth from hd5 files and label graph accordingly
@@ -828,10 +827,14 @@ def store_label_in_hypotheses_graph(ts, tracker):
                         # graph.addArcLabel(newarc,1)
                 else:
                     print "ERROR in move " ,  (i-1,movset[0]) , " or " , (i,movset[1]), "not found"
+                    print ((i-1,movset[0]) in nodeTimestepIdMap) , ((i,movset[1])in nodeTimestepIdMap)
 
             for splset in spllist:
-                if((i-1,splset[0],splset[1]) in arcTimestepIdMap and (i-1,splset[0],splset[2]) in arcTimestepIdMap):
+                if((i-1,splset[0],splset[1]) in arcTimestepIdMap):
                     graph.addArcLabel(arcTimestepIdMap[i-1,splset[0],splset[1]],1)
+                else:
+                    print "ERROR IN SPLIT arc", i-1,splset[0],splset[1]
+                if((i-1,splset[0],splset[2]) in arcTimestepIdMap):
                     graph.addArcLabel(arcTimestepIdMap[i-1,splset[0],splset[2]],1)
                 else:
                     print "ERROR IN SPLIT arc", i-1,splset[0],splset[2]
@@ -841,7 +844,7 @@ def store_label_in_hypotheses_graph(ts, tracker):
                     graph.addDisappearanceLabel(nodeTimestepIdMap[i,splset[2]],1)
                     graph.addAppearanceLabel(nodeTimestepIdMap[i-1,splset[0]],1)
                 else:
-                    print "ERROR IN SPLIT node",i-1,splset[0],splset[2]
+                    print "ERROR IN SPLIT node",i-1,splset[0],splset[1],splset[2]
 
     return graph
 
@@ -1329,14 +1332,15 @@ if __name__ == "__main__":
     options, args = getConfigAndCommandLineArguments()
 
     numArgs = len(args)
+    fns = []
     if numArgs > 0:
-        fns = []
         for arg in args:
             print arg
             fns.extend(glob.glob(arg))
         fns.sort()
         print(fns)
 
+    print fns
     ilp_fn = fns[0]
 
     ### Do the tracking
@@ -1380,6 +1384,10 @@ if __name__ == "__main__":
     if options.export_funkey and len(options.gt_pth) > 0: # generate structured learning files
         tracker, fov = initializeConservationTracking(options, shape)
         outpath = exportFunkeyFiles(options, ts, tracker, trans_classifier)
+
+        #############
+        sys.exit(0)
+        #############
 
         if options.learn_funkey:
             learned_weights = learnFunkey(options, tracker, outpath)
