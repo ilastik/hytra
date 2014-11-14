@@ -88,6 +88,7 @@ copied but linked to the original files to improve execution speed and storage r
                     help='stop optimization as soon as a feasible integer solution is found \
                      proved to be within the given percent of the optimal solution [default=%default]')
     parser.add_option('--compare-script-path', type='string', dest='compare_path')
+    parser.add_option('--only-labels', action='store_true', dest='only_labels', help='skip exporting feature and constraint files')
 
     consopts = optparse.OptionGroup(parser, "conservation tracking")
     consopts.add_option('--max-number-objects', dest='max_num_objects', type='float', default=2,
@@ -765,7 +766,7 @@ def getH5Dataset(h5group, ds_name):
     return np.array([])
 
 
-def store_label_in_hypotheses_graph(ts, tracker):
+def store_label_in_hypotheses_graph(options,ts, tracker):
     graph = tracker.buildGraph(ts)
     # label full graph
     n_it = track.NodeIt(graph)
@@ -852,7 +853,7 @@ def store_label_in_hypotheses_graph(ts, tracker):
 def train_outlier_svm(options, tracker, ts, fov):
     import pickle
     print("Storing ground truth labels in hypotheses graph and training an outlier detector SVM from that")
-    g = store_label_in_hypotheses_graph(ts, tracker)
+    g = store_label_in_hypotheses_graph(options, ts, tracker)
     print("Setting injected solution as active")
     g.set_injected_solution()
     feature_extractor = track.TrackingFeatureExtractor(g, fov)
@@ -1160,11 +1161,21 @@ def prepareFunkeyFiles(options, graph):
     return outpath
 
 def exportFunkeyFiles(options, ts, tracker, trans_classifier):
-    g = store_label_in_hypotheses_graph(ts, tracker)
+    g = store_label_in_hypotheses_graph(options, ts, tracker)
 
     tracker.SetFunkeyExportLabeledGraph(True)
 
     outpath = prepareFunkeyFiles(options, g)
+
+    features_filename = outpath+"/features.txt"
+    constraints_filename = outpath+"/constraints.txt"
+    labels_filename = outpath+"/labels.txt"
+
+
+    if options.only_labels:
+        features_filename = ""
+        constraints_filename = ""
+
 
     tracker.writeFunkeyFiles(ts,outpath+"/features.txt",
                                 outpath+"/constraints.txt",
