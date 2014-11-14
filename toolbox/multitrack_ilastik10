@@ -161,6 +161,8 @@ copied but linked to the original files to improve execution speed and storage r
     # learning options
     consopts.add_option('--no-saving', dest='skip_saving', action='store_true',
                         help='Skip saving if you are just interested in the proposals and features')
+    consopts.add_option('--only-save-first', dest='save_first', action='store_true',
+                        help='Skip saving of all perturbations, except the unperturbed result')
     consopts.add_option('--ground-truth-labeling', dest='ground_truth_labeling', type='str', default='',
                         help='Ground Truth label filename which will be used for reranking the solutions')
     consopts.add_option('--gt-label-image-path', dest='gt_label_image_path', type='str', default='',
@@ -1270,14 +1272,15 @@ def learn_perturbation_weights(ts, options, shape, trans_classifier):
 
     print "result:   found solution with loss:", optimal_loss ," with parameters ", optimal_parameters
 
-def runMergerResolving(tracker, ts, hypotheses_graph, ilp_fn, all_events, fov, region_features, trans_classifier):
+def runMergerResolving(options, tracker, ts, hypotheses_graph, ilp_fn, all_events, fov, region_features, trans_classifier, with_feature_computation=False):
     with h5py.File(ilp_fn, 'r') as h5file:  # open file to access label images
         feature_vectors = []
         for i, event_vector in enumerate(all_events):  # go through all solutions
-            try:
-                os.makedirs(options.out_dir.rstrip('/') + '/iter_' + str(i))
-            except:
-                pass
+            if not (options.save_first and i > 0):
+                try:
+                    os.makedirs(options.out_dir.rstrip('/') + '/iter_' + str(i))
+                except:
+                    pass
 
             print("Resolving mergers for solution {}".format(i))
             coordinate_map = track.TimestepIdCoordinateMap()
@@ -1329,17 +1332,20 @@ def runMergerResolving(tracker, ts, hypotheses_graph, ilp_fn, all_events, fov, r
                                                    timestep)
             resolved_graph = tracker.get_resolved_hypotheses_graph()
             # extract features of this solution
-            feature_vector, score, feature_names = extract_features_and_compute_score(options, i, resolved_graph,
+
+            if with_feature_computation:
+                feature_vector, score, feature_names = extract_features_and_compute_score(options, i, resolved_graph,
                                                                                       ts, fov, feature_vector_filename,
                                                                                       region_features)
-            feature_vectors.append(feature_vector)
+                feature_vectors.append(feature_vector)
 
-        print("Storing feature vectors of all solutions")
-        np.savetxt(options.out_dir.rstrip('/') + '/feature_vectors.txt', np.array(feature_vectors).transpose())
-        print("Storing feature names")
-        with open(options.out_dir.rstrip('/') + '/feature_names.txt', 'w') as feature_names_file:
-            for f in feature_names:
-                feature_names_file.write(f + '\n')
+        if with_feature_computation:
+            print("Storing feature vectors of all solutions")
+            np.savetxt(options.out_dir.rstrip('/') + '/feature_vectors.txt', np.array(feature_vectors).transpose())
+            print("Storing feature names")
+            with open(options.out_dir.rstrip('/') + '/feature_names.txt', 'w') as feature_names_file:
+                for f in feature_names:
+                    feature_names_file.write(f + '\n')
 
 
 if __name__ == "__main__":
@@ -1427,7 +1433,7 @@ if __name__ == "__main__":
 
     uncertaintyParam = getUncertaintyParameter(options)
 
-    if options.num_iterations == 0 or options.num_iterations == 1:
+    if options.num_iterations == 0 or options.num_iterations == 1 or options.save_first:
         proposal_out = ''
     else:
         proposal_out = options.out_dir.rstrip('/') + '/proposal_labeling'
@@ -1456,13 +1462,15 @@ if __name__ == "__main__":
     # run merger resolving
     if options.with_merger_resolution and options.max_num_objects > 1 and len(options.raw_filename) > 0:
         region_features = getRegionFeatures(ndim)
-        runMergerResolving(tracker, ts, hypotheses_graph, ilp_fn, all_events, fov, region_features, trans_classifier)
+        runMergerResolving(options, tracker, ts, hypotheses_graph, ilp_fn, all_events, fov, region_features, trans_classifier)
 
     stop = time.time()
     since = stop - start
 
-    if not options.skip_saving:
+    if not options.skip_saving or not options.save_first:
         save_events_parallel(options, all_events, max_traxel_id_at, ilp_fn, t0, t1)
+    elif options.save_first:
+        save_events_parallel(options, [all_events[0]], max_traxel_id_at, ilp_fn, t0, t1)
 
     print "Elapsed time [s]: " + str(int(since))
     print "Elapsed time [min]: " + str(int(since) / 60)
