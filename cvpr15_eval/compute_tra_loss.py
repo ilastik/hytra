@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 import sys
 
-sys.path.append('../.')
-sys.path.append('.')
-
 import argparse
 import h5py
 import numpy as np

@@ -998,7 +998,7 @@ def extract_features_and_compute_score(options, i, hypotheses_graph, ts, fov, fe
 
             import matplotlib.pyplot as plt
             plt.figure()
-            plt.hist(track_scores[:,1], 100)
+            plt.hist(track_scores[:, 1], 100)
             plt.savefig(options.out_dir.rstrip('/') + '/iter_' + str(i) + '/track_scores.pdf')
 
         print("Overall score of tracking is: {}".format(score))
