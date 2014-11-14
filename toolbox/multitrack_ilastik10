@@ -135,6 +135,9 @@ copied but linked to the original files to improve execution speed and storage r
                         default='/ObjectExtraction/LabelImage/0/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]',
                         help='internal hdf5 path to label image [default=%default]')
     consopts.add_option('--timeout', dest='timeout', type='float', default=1e+75, help='CPLEX timeout in sec. [default: %default]')
+    consopts.add_option('--with-graph-labeling', dest='w_labeling', action='store_true', default=False, 
+                        help='load ground truth labeling into hypotheses graph for further evaluation on C++ side,\
+                        requires gt-path to point to the groundtruth files')
 
     # options for perturbing and re-ranking
     consopts.add_option('--num-iterations', dest='num_iterations', type='int', default=1,
@@ -766,8 +769,7 @@ def getH5Dataset(h5group, ds_name):
     return np.array([])
 
 
-def store_label_in_hypotheses_graph(options,ts, tracker):
-    graph = tracker.buildGraph(ts)
+def store_label_in_hypotheses_graph(options, graph, tracker):
     # label full graph
     n_it = track.NodeIt(graph)
     a_it = track.ArcIt(graph)
@@ -853,7 +855,8 @@ def store_label_in_hypotheses_graph(options,ts, tracker):
 def train_outlier_svm(options, tracker, ts, fov):
     import pickle
     print("Storing ground truth labels in hypotheses graph and training an outlier detector SVM from that")
-    g = store_label_in_hypotheses_graph(options, ts, tracker)
+    g = tracker.buildGraph(ts)
+    store_label_in_hypotheses_graph(options, g, tracker)
     print("Setting injected solution as active")
     g.set_injected_solution()
     feature_extractor = track.TrackingFeatureExtractor(g, fov)
@@ -1160,8 +1163,8 @@ def prepareFunkeyFiles(options, graph):
 
     return outpath
 
-def exportFunkeyFiles(options, ts, tracker, trans_classifier):
-    g = store_label_in_hypotheses_graph(options, ts, tracker)
+def exportFunkeyFiles(options, g, tracker, trans_classifier):
+    store_label_in_hypotheses_graph(options, g, tracker)
 
     tracker.SetFunkeyExportLabeledGraph(True)
 
@@ -1370,7 +1373,6 @@ if __name__ == "__main__":
     trans_classifier = loadTransClassifier(options)
 
     ts, fs, max_traxel_id_at, ndim = getTraxelStore(options, ilp_fn,time_range)
-    region_features = getRegionFeatures(ndim)
 
     if options.avg_obj_size != 0:
         obj_size[0] = options.avg_obj_size
@@ -1396,14 +1398,9 @@ if __name__ == "__main__":
         tracker, fov = initializeConservationTracking(options, shape)
         outpath = exportFunkeyFiles(options, ts, tracker, trans_classifier)
 
-        #############
-        sys.exit(0)
-        #############
-
         if options.learn_funkey:
             learned_weights = learnFunkey(options, tracker, outpath)
             w_det, w_div, w_trans, w_dis, w_app, = learned_weights
-
 
         if options.learn_perturbation_weights:
             learn_perturbation_weights(ts, options, shape, trans_classifier)
@@ -1423,8 +1420,19 @@ if __name__ == "__main__":
 
     print "tracking with weights ", w_det, w_div, w_trans, w_dis, w_app
     hypotheses_graph = tracker.buildGraph(ts)
+
+    if options.w_labeling:
+        assert len(options.gt_pth) > 0, 'if labeling should be loaded, please provide a path to the ground truth in --gt-pth'
+        store_label_in_hypotheses_graph(options, hypotheses_graph, tracker)
+
     uncertaintyParam = getUncertaintyParameter(options)
-    tracker.SetFunkeyOutputFiles('', '', options.out_dir.rstrip('/') + '/proposal_labeling', False, uncertaintyParam)
+
+    if options.num_iterations == 0 or options.num_iterations == 1:
+        proposal_out = ''
+    else:
+        proposal_out = options.out_dir.rstrip('/') + '/proposal_labeling'
+        
+    tracker.SetFunkeyOutputFiles('', '', proposal_out, False, uncertaintyParam)
 
     all_events = tracker.track(
         options.forbidden_cost,
@@ -1447,6 +1455,7 @@ if __name__ == "__main__":
 
     # run merger resolving
     if options.with_merger_resolution and options.max_num_objects > 1 and len(options.raw_filename) > 0:
+        region_features = getRegionFeatures(ndim)
         runMergerResolving(tracker, ts, hypotheses_graph, ilp_fn, all_events, fov, region_features, trans_classifier)
 
     stop = time.time()
