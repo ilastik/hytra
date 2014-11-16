@@ -640,7 +640,7 @@ def write_events(events, fn):
     print "-> results successfully written"
 
 
-def save_events_parallel(options, all_events, max_traxel_id_at, ilp_file, t0, t1, out_dir=None):
+def save_events_parallel(options, all_events, max_traxel_id_at, ilp_file, t0, t1, out_dir=None):    
     processing_pool = Pool()
 
     for i in range(len(all_events)):
@@ -1272,7 +1272,7 @@ def learn_perturbation_weights(ts, options, shape, trans_classifier):
 
     print "result:   found solution with loss:", optimal_loss ," with parameters ", optimal_parameters
 
-def runMergerResolving(options, tracker, ts, hypotheses_graph, ilp_fn, all_events, fov, region_features, trans_classifier, with_feature_computation=False):
+def runMergerResolving(options, tracker, ts, hypotheses_graph, ilp_fn, all_events, fov, region_features, trans_classifier, t0, with_feature_computation=False):
     with h5py.File(ilp_fn, 'r') as h5file:  # open file to access label images
         feature_vectors = []
         for i, event_vector in enumerate(all_events):  # go through all solutions
@@ -1287,6 +1287,7 @@ def runMergerResolving(options, tracker, ts, hypotheses_graph, ilp_fn, all_event
             coordinate_map.initialize()
             num_mergers = 0
             for timestep, timestep_events in enumerate(event_vector):
+                timestep += t0
                 for event in timestep_events:
                     if event.type == track.EventType.Merger:
                         traxel = ts.get_traxel(event.traxel_ids[0], timestep)
@@ -1318,6 +1319,7 @@ def runMergerResolving(options, tracker, ts, hypotheses_graph, ilp_fn, all_event
                 print("Update labelimage and compute new features after merger resolving "
                       "for solution {}".format(i))
                 for timestep, timestep_events in enumerate(resolved_events):
+                    timestep += t0
                     for event in timestep_events:
                         if event.type == track.EventType.ResolvedTo:
                             merger_traxel = ts.get_traxel(event.traxel_ids[0], timestep)
@@ -1462,7 +1464,7 @@ if __name__ == "__main__":
     # run merger resolving
     if options.with_merger_resolution and options.max_num_objects > 1 and len(options.raw_filename) > 0:
         region_features = getRegionFeatures(ndim)
-        runMergerResolving(options, tracker, ts, hypotheses_graph, ilp_fn, all_events, fov, region_features, trans_classifier)
+        runMergerResolving(options, tracker, ts, hypotheses_graph, ilp_fn, all_events, fov, region_features, trans_classifier, t0)
 
     stop = time.time()
     since = stop - start
@@ -1470,7 +1472,13 @@ if __name__ == "__main__":
     if not options.skip_saving or not options.save_first:
         save_events_parallel(options, all_events, max_traxel_id_at, ilp_fn, t0, t1)
     elif options.save_first:
-        save_events_parallel(options, [all_events[0]], max_traxel_id_at, ilp_fn, t0, t1)
+        events = all_events[0]
+        first_events = events[0]
+        events = events[1:]
+        if out_dir is None:
+            out_dir = options.out_dir.rstrip('/') + '/iter_0'
+        save_events(out_dir, events, t0, t1,
+                      options.label_img_path, max_traxel_id_at, ilp_fn, first_events)
 
     print "Elapsed time [s]: " + str(int(since))
     print "Elapsed time [min]: " + str(int(since) / 60)
