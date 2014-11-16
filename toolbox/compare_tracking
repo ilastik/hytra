@@ -3,7 +3,6 @@ import sys
 sys.path.append('../.')
 sys.path.append('.')
 
-import vigra
 import numpy as np
 import cPickle
 import collections
