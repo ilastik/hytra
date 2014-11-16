@@ -1469,16 +1469,15 @@ if __name__ == "__main__":
     stop = time.time()
     since = stop - start
 
-    if not options.skip_saving or not options.save_first:
-        save_events_parallel(options, all_events, max_traxel_id_at, ilp_fn, t0, t1)
-    elif options.save_first:
+    if options.save_first:
         events = all_events[0]
         first_events = events[0]
         events = events[1:]
-        if out_dir is None:
-            out_dir = options.out_dir.rstrip('/') + '/iter_0'
+        out_dir = options.out_dir.rstrip('/') + '/iter_0'
         save_events(out_dir, events, t0, t1,
                       options.label_img_path, max_traxel_id_at, ilp_fn, first_events)
+    elif not options.skip_saving:
+        save_events_parallel(options, all_events, max_traxel_id_at, ilp_fn, t0, t1)
 
     print "Elapsed time [s]: " + str(int(since))
     print "Elapsed time [min]: " + str(int(since) / 60)
