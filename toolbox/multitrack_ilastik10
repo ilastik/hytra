@@ -1168,7 +1168,9 @@ def prepareFunkeyFiles(options, graph):
 
     return outpath
 
-def exportFunkeyFiles(options, g, tracker, trans_classifier):
+def exportFunkeyFiles(options, ts, tracker, trans_classifier):
+    exit(0)
+    g = tracker.buildGraph(ts)
     store_label_in_hypotheses_graph(options, g, tracker)
 
     tracker.SetFunkeyExportLabeledGraph(True)
@@ -1179,15 +1181,14 @@ def exportFunkeyFiles(options, g, tracker, trans_classifier):
     constraints_filename = outpath+"/constraints.txt"
     labels_filename = outpath+"/labels.txt"
 
-
     if options.only_labels:
         features_filename = ""
         constraints_filename = ""
 
 
-    tracker.writeFunkeyFiles(ts,outpath+"/features.txt",
-                                outpath+"/constraints.txt",
-                                outpath+"/labels.txt",
+    tracker.writeFunkeyFiles(ts,features_filename,
+                                constraints_filename,
+                                labels_filename,
                                 track.WeightVector(),
                                 getUncertaintyParameter(options, n_iterations=1),
                                 options.forbidden_cost,
@@ -1409,13 +1410,17 @@ if __name__ == "__main__":
         tracker, fov = initializeConservationTracking(options, shape)
         outpath = exportFunkeyFiles(options, ts, tracker, trans_classifier)
 
+        if options.only_labels:
+            print "finished writing labels to "+outpath
+            exit(0)
+
         if options.learn_funkey:
             learned_weights = learnFunkey(options, tracker, outpath)
             w_det, w_div, w_trans, w_dis, w_app, = learned_weights
 
         if options.learn_perturbation_weights:
             learn_perturbation_weights(ts, options, shape, trans_classifier)
-            exit()
+            exit(0)
 
     feature_vector_filename = options.out_dir.rstrip('/') + '/ho_feature_vectors.txt'
     try:
