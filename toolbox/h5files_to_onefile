@@ -37,6 +37,43 @@ def stackLabelImages(fn_ilp, fn_out, path_ilp='TrackingFeatureExtraction/LabelIm
                 ds_out[tuple(slicing)] = np.array(ilp_group[name].value)
 
 
+def stackLabelImagesIndividual(fn_out, files_in, path_li='TrackingFeatureExtraction/LabelImage/0', path_out='/', ds_name_out='LabelImage', t_axis=0, num_ts=0):
+    with h5py.File(fn_out, 'a') as f_out:
+        if ds_name_out in f_out[path_out].keys():
+            del f_out[path_out][ds_name_out]
+
+        with h5py.File(files_in[0], 'r') as f:
+            shape = list(f[path_li].shape)
+            
+        shape_out = [num_ts,] + shape
+        if len(shape_out) == 4:
+            shape_out += [1,]
+        chunks = [ 64, ] * len(shape_out)
+        chunks[t_axis] = 1
+        # assumes channel is last
+        chunks[-1] = 1
+        for i in range(len(chunks)):
+            chunks[i] = min(chunks[i], shape_out[i])
+
+        print 'shape_out', shape_out
+        ds_out = f_out[path_out].create_dataset(name=ds_name_out, shape=shape_out, chunks=tuple(chunks), compression=1, dtype=np.uint32)
+
+        t = 0
+        for fn_in in sorted(files_in):
+            print fn_in
+            with h5py.File(fn_in, 'r') as f_in:
+                ds_in = f_in[path_li]
+                slicing = [slice(None),] * len(shape_out)
+                slicing[t_axis] = t               
+                # assumes channel axis is last
+                slicing[-1] = 0
+                if t_axis != 0:
+                    raise NotImplementedError, "getName and ilastik expect t_axis == 0"
+                name = getName(shape_out, t)
+                print slicing, name
+                ds_out[tuple(slicing)] = np.array(ds_in.value)
+                t += 1
+
 def eventVetorToHdf5(files_in, fn_out, name_out='eventVector', path_in='tracking', t_axis=0):
     with h5py.File(fn_out, 'a') as f_out:
         if name_out in f_out.keys():
@@ -52,16 +89,26 @@ def eventVetorToHdf5(files_in, fn_out, name_out='eventVector', path_in='tracking
 
 
 if __name__ == "__main__":
-    usage = "file_out.h5 ilastik_project.ilp 00000.h5 ... 0000N.h5"
+    usage = "file_out.h5 [ilastik_project.ilp] 00000.h5 ... 0000N.h5"
     import sys
     if len(sys.argv) < 3:
         print "Usage: python", sys.argv[0], usage
         sys.exit(1)
 
     fn_out = sys.argv[1]
-    fn_ilp = sys.argv[2]
-    files_in = sys.argv[3:]
+    if sys.argv[2].strip().split('.')[-1] == 'ilp':    
+        print 'label image comes from ilp'
+        fn_ilp = sys.argv[2]
+        files_in = sys.argv[3:]
+        li_from_ilp = True
+    else:
+        print 'label image comes from individual h5s'
+        files_in = sys.argv[2:]
+        li_from_ilp = False
 
     num_ts = len(files_in)
-    stackLabelImages(fn_ilp, fn_out, path_ilp='TrackingFeatureExtraction/LabelImage/0', path_out='/', ds_name_out='LabelImage', t_axis=0, num_ts=num_ts)
+    if li_from_ilp:
+        stackLabelImages(fn_ilp, fn_out, path_ilp='TrackingFeatureExtraction/LabelImage/0', path_out='/', ds_name_out='LabelImage', t_axis=0, num_ts=num_ts)
+    else:
+        stackLabelImagesIndividual(fn_out, files_in, path_li='segmentation/labels', path_out='/', ds_name_out='LabelImage', t_axis=0, num_ts=num_ts)
     eventVetorToHdf5(files_in, fn_out, name_out='eventVector', path_in='tracking', t_axis=0)
