@@ -1478,7 +1478,7 @@ if __name__ == "__main__":
     since = stop - start
 
     if options.w_labeling:
-        hypotheses_graph.write_hypotheses_graph_state('results_all.txt')
+        hypotheses_graph.write_hypotheses_graph_state(options.out_dir.rstrip('/') + '/results_all.txt')
     
     if options.save_first:
         events = all_events[0]
