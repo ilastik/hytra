@@ -793,7 +793,7 @@ def store_label_in_hypotheses_graph(options, graph, tracker):
 
     #load ground truth from hd5 files and label graph accordingly
     for i in range(graph.earliest_timestep(), graph.latest_timestep() + 1):
-        fn = options.gt_pth.rstrip('/') + '/' + "{0:05d}".format(i) + '.h5'
+        fn = options.gt_pth.rstrip('/') + '/' + "{0:04d}".format(i) + '.h5'
         print "open file:", fn
         with h5py.File(fn, 'r') as f:
             print f
