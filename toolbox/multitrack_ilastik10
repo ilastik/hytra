@@ -642,7 +642,29 @@ copied but linked to the original files to improve execution speed and storage r
         if ndim == 2:
             assert options.z_scale * (zshape-1) == 0, "fov of z must be (0,0) if ndim == 2"
 
-        tracker = track.ConsTracking(int(options.mno), options.mnd, options.dt, rf_fn, bool(options.sddp), options.forb, options.ep_gap, obj_size[0], not bool(options.wot), options.dw, options.tw, not bool(options.wod), options.dis, options.app, options.wmr, ndim, options.trans_par, options.border_width, fov, not bool(options.woconstr))
+        tracker = track.ConsTracking(
+            int(options.mno), 
+            options.mnd, 
+            options.dt, 
+            rf_fn, 
+            bool(options.sddp), 
+            float(options.forb), 
+            float(options.ep_gap), 
+            obj_size[0], 
+            not bool(options.wot), 
+            options.dw, 
+            options.tw, 
+            not bool(options.wod), 
+            options.dis, 
+            options.app, 
+            options.wmr, 
+            ndim, 
+            options.trans_par, 
+            options.border_width, 
+            fov, 
+            not bool(options.woconstr),
+            1e+75,
+            'none')
     elif(options.method == "chaingraph"):
         rf_fn = 'none'
         with_rf = False
