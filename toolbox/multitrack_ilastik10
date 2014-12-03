@@ -67,7 +67,7 @@ copied but linked to the original files to improve execution speed and storage r
                       help='dump traxelstore to file [default: %default]')
     parser.add_option('--load-traxelstore', type='string', dest='load_traxelstore', default=None,
                       help='load traxelstore from file [default: %default]')
-    parser.add_option('--raw-data-file', type='string', dest='raw_filename', default=None,
+    parser.add_option('--raw-data-file', type='string', dest='raw_filename', default='',
                       help='filename to the raw h5 file')
     parser.add_option('--raw-data-path', type='string', dest='raw_path', default='volume/data',
                       help='Path inside the raw h5 file to the data')
