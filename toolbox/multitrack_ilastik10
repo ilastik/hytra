@@ -1354,6 +1354,81 @@ def runMergerResolving(options, tracker, ts, hypotheses_graph, ilp_fn, all_event
                     feature_names_file.write(f + '\n')
 
 
+def track_subgraphs(graph,
+                    time_range,
+                    timesteps_per_segment,
+                    segment_overlap_timesteps,
+                    conservation_tracking_parameter):
+    """
+    Experiment: track only subgraphs of the full hypotheses graph with some overlap,
+    and then stitch the results together using fusion moves.
+    """
+    # define which segments we have
+    num_segments = int(np.ceil(float((time_range[1] - time_range[0])) / (timesteps_per_segment - segment_overlap_timesteps)))
+    segments = [(time_range[0] + i * (timesteps_per_segment - segment_overlap_timesteps),
+                 (time_range[0] + (i + 1) * timesteps_per_segment - i * segment_overlap_timesteps))
+                for i in xrange(num_segments)]
+
+    tmap = graph.getNodeTraxelMap()
+    subgraphs = []
+    solutions = {}
+
+    # track all segments individually
+    for segment in segments:
+        print("Creating subgraph for timesteps in {}".format(segment))
+
+        # create subgraph for this segment
+        node_mask = track.NodeMask(graph)
+        n_it = track.NodeIt(graph)
+        for n in n_it:
+            node_mask[n] = segment[0] <= tmap[n].Timestep < segment[1]
+
+        arc_mask = track.ArcMask(graph)
+        a_it = track.ArcIt(graph)
+        for a in a_it:
+            arc_mask[a] = tmap[graph.source(a)].Timestep >= segment[0] and tmap[graph.target(a)].Timestep < segment[1]
+        subgraph = track.HypothesesGraph()
+        track.copy_hypotheses_subgraph(graph, subgraph, node_mask, arc_mask)
+
+        print("Subgraph has {} nodes and {} arcs".format(track.countNodes(subgraph), track.countArcs(subgraph)))
+
+        # create subgraph tracker
+        subgraph_tracker = track.ConservationTracking(conservation_tracking_parameter)
+        subgraph_tracker.perturbedInference(subgraph, True)
+        subgraph.set_solution(0)
+        subgraphs.append(subgraph)
+        print("Done tracking subgraph")
+
+        # collect solutions?
+        subgraph_node_origin_map = subgraph.getNodeOriginReferenceMap()
+        subgraph_node_active_map = subgraph.getNodeActiveMap()
+
+        n_it = track.NodeIt(subgraph)
+        for n in n_it:
+            origin_node = subgraph_node_origin_map[n]
+            origin_node_id = graph.id(origin_node)
+            #value = subgraph_node_active_map[n]
+            value = subgraph.num_active_incoming_arcs(n)
+            # accumulate somehow
+            if not origin_node_id in solutions:
+                solutions[origin_node_id] = [value]
+            else:
+                solutions[origin_node_id].append(value)
+        print("Done storing solutions")
+
+    # find overlapping variables
+    print("Computing overlap statistics...")
+    num_overlap_vars = sum([1 for values in solutions.values() if len(values) > 1])
+    num_disagreeing_overlap_vars = sum([1 for values in solutions.values() if len(values) > 1 and values[0] != values[1]])
+
+    for key, values in solutions.iteritems():
+        if len(values) > 1 and values[0] != values[1]:
+            print("\tFound disagreement at {}: {} != {}".format(key, values[0], values[1]))
+
+    print("Found {} variables in overlaps, of which {} did disagree ({}%)".format(num_overlap_vars,
+                                                                                  num_disagreeing_overlap_vars,
+                                                                                  100.0 * float(num_disagreeing_overlap_vars) / num_overlap_vars))
+    # helpful in next steps: graph.nodeFromId(id)
 if __name__ == "__main__":
     options, args = getConfigAndCommandLineArguments()
 
@@ -1384,7 +1459,7 @@ if __name__ == "__main__":
 
     trans_classifier = loadTransClassifier(options)
 
-    ts, fs, max_traxel_id_at, ndim = getTraxelStore(options, ilp_fn,time_range)
+    ts, fs, max_traxel_id_at, ndim = getTraxelStore(options, ilp_fn, time_range)
 
     if options.avg_obj_size != 0:
         obj_size[0] = options.avg_obj_size
@@ -1406,12 +1481,12 @@ if __name__ == "__main__":
         options.disappearance_cost, options.appearance_cost,)
 
     all_events = []
-    if options.export_funkey and len(options.gt_pth) > 0: # generate structured learning files
+    if options.export_funkey and len(options.gt_pth) > 0:  # generate structured learning files
         tracker, fov = initializeConservationTracking(options, shape)
         outpath = exportFunkeyFiles(options, ts, tracker, trans_classifier)
 
         if options.only_labels:
-            print "finished writing labels to "+outpath
+            print "finished writing labels to " + outpath
             exit(0)
 
         if options.learn_funkey:
@@ -1443,6 +1518,39 @@ if __name__ == "__main__":
 
     uncertaintyParam = getUncertaintyParameter(options)
 
+    # ---------------------------------------------------
+    # track with subgraphs
+    conservation_tracking_parameter = tracker.get_conservation_tracking_parameters(
+        options.forbidden_cost,
+        options.ep_gap,
+        not bool(options.without_tracklets),
+        w_det,
+        w_div,
+        w_trans,
+        w_dis,
+        w_app,
+        options.with_merger_resolution,
+        ndim,
+        options.trans_par,
+        options.border_width,
+        not bool(options.woconstr),
+        uncertaintyParam,
+        options.timeout,
+        trans_classifier
+    )
+
+    track_subgraphs(hypotheses_graph, (t0, t1), 10, 3, conservation_tracking_parameter)
+
+    stop = time.time()
+    since = stop - start
+
+    print "Elapsed time [s]: " + str(int(since))
+    print "Elapsed time [min]: " + str(int(since) / 60)
+    print "Elapsed time [h]: " + str(int(since) / 3600)
+    exit(0)
+
+    # ---------------------------------------------------
+    # full tracking
     if options.num_iterations == 0 or options.num_iterations == 1 or options.save_first:
         proposal_out = ''
     else:
