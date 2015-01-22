@@ -1114,7 +1114,7 @@ def initializeConservationTracking(options, shape):
     if ndim == 2:
         assert options.z_scale * (zshape - 1) == 0, "fov of z must be (0,0) if ndim == 2"
 
-    tracker = track.ConsTracking(int(options.max_num_objects), bool(options.size_dependent_detection_prob), obj_size[0], options.mnd,
+    tracker = track.ConsTrackingDynProg(int(options.max_num_objects), bool(options.size_dependent_detection_prob), obj_size[0], options.mnd,
                                  not bool(options.without_divisions), options.division_threshold, rf_fn, fov, "none")
     return tracker, fov
 
@@ -1453,7 +1453,7 @@ if __name__ == "__main__":
     all_events = tracker.track(
         options.forbidden_cost,
         options.ep_gap,
-        not bool(options.without_tracklets),
+        False, # not bool(options.without_tracklets),
         w_det,
         w_div,
         w_trans,
