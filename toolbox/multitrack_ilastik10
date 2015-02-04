@@ -1456,14 +1456,10 @@ if __name__ == "__main__":
         
     tracker.SetFunkeyOutputFiles('', '', proposal_out, False, uncertaintyParam)
 
-    with_tracklets = not bool(options.without_tracklets)
-    if options.method == 'conservation-dynprog':
-        with_tracklets = False
-
     all_events = tracker.track(
         options.forbidden_cost,
         options.ep_gap,
-        with_tracklets,
+        not bool(options.without_tracklets),
         w_det,
         w_div,
         w_trans,
