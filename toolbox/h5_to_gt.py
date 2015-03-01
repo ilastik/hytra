@@ -164,8 +164,6 @@ def generate_groundtruth(options):
                                         disapplist.append(mov[0])
 
                             movelist = [mov for mov in movelist if (not -1 in mov)]
-
-                            trackingdata.create_dataset("Moves", data=moves, dtype='u2')
                             movedict[t] = moves
 
                         if("Splits" in inputfile["tracking"][options.format.format(t)].keys()):
@@ -216,7 +214,7 @@ def generate_groundtruth(options):
 
                         if(len(movelist) > 0):
                             moves = np.array(movelist)
-
+                            trackingdata.create_dataset("Moves", data=moves, dtype='u2')
                             if(np.any(moves == -1)):
                                 print "-1 in moves !!! at timestep",t
                                 print "#####################################"

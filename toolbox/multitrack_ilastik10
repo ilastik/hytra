@@ -328,6 +328,7 @@ def generate_traxelstore(h5file,
     print h5file.filename, feature_path
 
     if with_div:
+        print options.div_prob_path
         divProbs = h5file[options.div_prob_path]
 
     if with_merger_prior:
@@ -1051,6 +1052,8 @@ def getTraxelStore(options, ilp_fn,time_range):
     max_traxel_id_at = []
     with h5py.File(ilp_fn, 'r') as h5file:
         ndim = 3
+
+        print '/'.join(options.label_img_path.strip('/').split('/')[:-1])
 
         if h5file['/'.join(options.label_img_path.strip('/').split('/')[:-1])].values()[0].shape[3] == 1:
             ndim = 2
