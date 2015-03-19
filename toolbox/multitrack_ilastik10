@@ -644,7 +644,7 @@ def write_events(events, fn):
     print "-> results successfully written"
 
 
-def save_events_parallel(options, all_events, max_traxel_id_at, ilp_file, t0, t1, out_dir=None):    
+def save_events_parallel(options, all_events, max_traxel_id_at, ilp_file, t0, t1):    
     processing_pool = Pool()
 
     for i in range(len(all_events)):
@@ -652,9 +652,7 @@ def save_events_parallel(options, all_events, max_traxel_id_at, ilp_file, t0, t1
         first_events = events[0]
         events = events[1:]
 
-        if out_dir is None:
-            out_dir = options.out_dir.rstrip('/') + '/iter_' + str(i)
-
+        out_dir = options.out_dir.rstrip('/') + '/iter_' + str(i)
         processing_pool.apply_async(save_events, (out_dir, copy.copy(events), t0, t1,
                                                   options.label_img_path, max_traxel_id_at, ilp_file, first_events))
 
