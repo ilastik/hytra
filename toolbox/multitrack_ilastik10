@@ -567,7 +567,7 @@ def write_events(events, fn):
     mov = []
     mer = []
     mul = []
-    print "-- Writing results to " + path.basename(fn)
+    print "-- Writing results to " + fn
     for event in events:
         if event.type == track.EventType.Appearance:
             app.append((event.traxel_ids[0], event.energy))
@@ -1048,7 +1048,7 @@ def getRegionFeatures(ndim):
         ]
     return region_features
 
-def getTraxelStore(options, ilp_fn,time_range):
+def getTraxelStore(options, ilp_fn,time_range, shape):
     max_traxel_id_at = []
     with h5py.File(ilp_fn, 'r') as h5file:
         ndim = 3
@@ -1069,6 +1069,16 @@ def getTraxelStore(options, ilp_fn,time_range):
                 fs = pickle.load(ts_in)
                 max_traxel_id_at = pickle.load(ts_in)
                 ts.set_feature_store(fs)
+
+            info = [int(x) for x in ts.bounding_box()]
+            t0, t1 = (info[0], info[4])
+            if info[0] != options.mints or (options.maxts != -1 and info[4] != options.maxts - 1):
+                print("Warning: Traxelstore has different time range than requested FOV. Trimming traxels...")
+                fov = getFovFromOptions(options, shape, t0, t1)
+                fov.set_time_bounds(options.mints, options.maxts)
+                new_ts = track.TraxelStore()
+                ts.filter_by_fov(new_ts, fov)
+                ts = new_ts
         else:
             max_num_mer = int(options.max_num_objects)
 
@@ -1093,6 +1103,10 @@ def getTraxelStore(options, ilp_fn,time_range):
                                                             ext_probs=options.ext_probs
             )
 
+        info = [int(x) for x in ts.bounding_box()]
+        t0, t1 = (info[0], info[4])
+        print "-> Traxelstore bounding box: " + str(info)
+
         if options.dump_traxelstore:
             print 'dumping traxelstore to file'
             import pickle
@@ -1102,18 +1116,22 @@ def getTraxelStore(options, ilp_fn,time_range):
                 pickle.dump(fs, ts_out)
                 pickle.dump(max_traxel_id_at, ts_out)
 
-    return ts, fs, max_traxel_id_at, ndim
+    return ts, fs, max_traxel_id_at, ndim, t0, t1
 
+
+def getFovFromOptions(options, shape, t0, t1):
+    [xshape, yshape, zshape] = shape
+
+    fov = track.FieldOfView(t0, 0, 0, 0, t1, options.x_scale * (xshape - 1), options.y_scale * (yshape - 1),
+                            options.z_scale * (zshape - 1))
+    return fov
 
 def initializeConservationTracking(options, shape):
     rf_fn = 'none'
     if options.rf_fn:
         rf_fn = options.rf_fn
 
-    [xshape, yshape, zshape] = shape
-
-    fov = track.FieldOfView(t0, 0, 0, 0, t1, options.x_scale * (xshape - 1), options.y_scale * (yshape - 1),
-                            options.z_scale * (zshape - 1))
+    fov = getFovFromOptions(options, shape, t0, t1)
     if ndim == 2:
         assert options.z_scale * (zshape - 1) == 0, "fov of z must be (0,0) if ndim == 2"
 
@@ -1387,19 +1405,14 @@ if __name__ == "__main__":
 
     trans_classifier = loadTransClassifier(options)
 
-    ts, fs, max_traxel_id_at, ndim = getTraxelStore(options, ilp_fn,time_range)
 
     if options.avg_obj_size != 0:
         obj_size[0] = options.avg_obj_size
 
-    info = [int(x) for x in ts.bounding_box()]
-    if info[0] > options.mints or info[4] < options.maxts - 1:
-        print("Warning: Traxelstore has different time range than requested. Using full traxelstore range.")
-    t0, t1 = (info[0], info[4])
-    print "-> Traxelstore bounding box: " + str(info)
-
     with h5py.File(ilp_fn, 'r') as h5file:
         shape = h5file['/'.join(options.label_img_path.split('/')[:-1])].values()[0].shape[1:4]
+
+    ts, fs, max_traxel_id_at, ndim, t0, t1 = getTraxelStore(options, ilp_fn, time_range, shape)
 
     print "Start tracking..."
     if options.method != "conservation":
