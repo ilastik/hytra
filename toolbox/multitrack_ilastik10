@@ -1388,6 +1388,12 @@ if __name__ == "__main__":
     print fns
     ilp_fn = fns[0]
 
+    if not path.exists(options.out_dir):
+        try:
+            os.makedirs(options.out_dir)
+        except:
+            pass
+
     ### Do the tracking
     start = time.time()
 
