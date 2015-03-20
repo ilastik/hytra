@@ -163,10 +163,6 @@ copied but linked to the original files to improve execution speed and storage r
                         help='Skip saving if you are just interested in the proposals and features')
     consopts.add_option('--only-save-first', dest='save_first', action='store_true',
                         help='Skip saving of all perturbations, except the unperturbed result')
-    consopts.add_option('--ground-truth-labeling', dest='ground_truth_labeling', type='str', default='',
-                        help='Ground Truth label filename which will be used for reranking the solutions')
-    consopts.add_option('--gt-label-image-path', dest='gt_label_image_path', type='str', default='',
-                        help='Internal path to the label image inside the ground truth HDF5')
     consopts.add_option('--save-outlier-svm', dest='save_outlier_svm', type='str', default='',
                         help='Filename to store the trained SVM for higher order features outlier detection. Requires gt-path to be set')
     consopts.add_option('--load-outlier-svm', dest='load_outlier_svm', type='str', default='',
@@ -215,6 +211,8 @@ def get_feature_vector(traxel, feature_name, num_dimensions):
                                                                                               i,
                                                                                               traxel.Id,
                                                                                               traxel.Timestep))
+            print "Available features are: "
+            print traxel.print_available_features()
             raise Exception
     return result
 
