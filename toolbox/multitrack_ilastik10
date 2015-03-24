@@ -80,6 +80,8 @@ copied but linked to the original files to improve execution speed and storage r
     parser.add_option('--without-classifier', action='store_true', dest='woc', default=False,
                     help='use classifier for labeling [default=%default]')
     parser.add_option('--gt-path', type='string', dest='gt_pth', default="", help='path to ground truth files [default=%default]')
+    parser.add_option('--gt-path-format', type='string', dest='gt_path_format_string', default="{0:04d}", 
+        help='groundtruth file format string, should be {0:05d} or {0:04d} [default=%default]')
     parser.add_option('--funkey-learn', action='store_true', dest='learn_funkey', default=False,
                     help='export labels features and constraints to learn with funkey [default=%default]')
     parser.add_option('--funkey-weights', type='string', dest='funkey_weights', default="",
@@ -790,7 +792,7 @@ def store_label_in_hypotheses_graph(options, graph, tracker):
 
     #load ground truth from hd5 files and label graph accordingly
     for i in range(graph.earliest_timestep(), graph.latest_timestep() + 1):
-        fn = options.gt_pth.rstrip('/') + '/' + "{0:04d}".format(i) + '.h5'
+        fn = options.gt_pth.rstrip('/') + '/' + options.gt_path_format_string.format(i) + '.h5'
         print "open file:", fn
         with h5py.File(fn, 'r') as f:
             print f
@@ -1001,7 +1003,7 @@ def extract_features_and_compute_score(options, i, hypotheses_graph, ts, fov, fe
             plt.hist(track_scores[:, 1], 100)
             plt.savefig(options.out_dir.rstrip('/') + '/iter_' + str(i) + '/track_scores.pdf')
 
-        print("Overall score of tracking is: {}".format(score))
+        print("Overall score of tracking is: {}".format(score)) # bullshit, is set to zero for each track!
 
     return feature_vector, overall_score, feature_names
 
@@ -1487,10 +1489,12 @@ if __name__ == "__main__":
         trans_classifier, # pointer to transition classifier
     )
 
+    tracker.SetFunkeyOutputFiles('', '', '', True, uncertaintyParam)
+
     # run merger resolving
     if options.with_merger_resolution and options.max_num_objects > 1 and len(options.raw_filename) > 0:
         region_features = getRegionFeatures(ndim)
-        runMergerResolving(options, tracker, ts, hypotheses_graph, ilp_fn, all_events, fov, region_features, trans_classifier, t0)
+        runMergerResolving(options, tracker, ts, hypotheses_graph, ilp_fn, all_events, fov, region_features, trans_classifier, t0, True)
 
     stop = time.time()
     since = stop - start
