@@ -393,7 +393,7 @@ def extract_features_and_compute_score(reranker_weight_filename,
         overall_score = np.dot(reranker_weights, feature_vector)
 
         track_scores = [t.compute_score(reranker_weights) for t in tracks.values()]
-        division_scores = [d.compute_score(reranker_weights) for t in divisions.values()]
+        division_scores = [d.compute_score(reranker_weights) for d in divisions.values()]
         lineage_scores = [l.compute_score(reranker_weights) for l in lineage_trees]
 
         for s_name, scores in [("track_scores", track_scores), 
@@ -404,7 +404,7 @@ def extract_features_and_compute_score(reranker_weight_filename,
 
             import matplotlib.pyplot as plt
             plt.figure()
-            plt.hist(scores[:, 1], 100)
+            plt.hist(scores, 100)
             plt.savefig(out_dir.rstrip('/') + '/iter_' + str(iteration) + '/' + s_name + '.pdf')
 
 
