@@ -17,7 +17,7 @@ import itertools
 import vigra
 import copy
 import pgmlink as track
-from trackingfeatures import *
+from trackingfeatures import extract_features_and_compute_score, get_feature_vector
 from empryonic import io
 from multiprocessing import Pool
 
@@ -1201,6 +1201,7 @@ def runMergerResolving(options, tracker, ts, hypotheses_graph, ilp_fn, all_event
 if __name__ == "__main__":
     options, args = getConfigAndCommandLineArguments()
 
+    # get filenames
     numArgs = len(args)
     fns = []
     if numArgs > 0:
@@ -1213,6 +1214,7 @@ if __name__ == "__main__":
     print fns
     ilp_fn = fns[0]
 
+    # create output path
     if not path.exists(options.out_dir):
         try:
             os.makedirs(options.out_dir)
@@ -1226,21 +1228,23 @@ if __name__ == "__main__":
     with_div = True
     with_merger_prior = True
 
-    # read all traxels into TraxelStore
+    # get selected time range
     time_range = [options.mints, options.maxts]
     if options.maxts == -1 and options.mints == 0:
         time_range = None
-    obj_size = [0]
 
     trans_classifier = loadTransClassifier(options)
 
-
+    # set average object size if chosen
+    obj_size = [0]
     if options.avg_obj_size != 0:
         obj_size[0] = options.avg_obj_size
 
+    # find shape of dataset
     with h5py.File(ilp_fn, 'r') as h5file:
         shape = h5file['/'.join(options.label_img_path.split('/')[:-1])].values()[0].shape[1:4]
 
+    # read all traxels into TraxelStore
     ts, fs, max_traxel_id_at, ndim, t0, t1 = getTraxelStore(options, ilp_fn, time_range, shape)
 
     print "Start tracking..."
@@ -1250,8 +1254,8 @@ if __name__ == "__main__":
     w_det, w_div, w_trans, w_dis, w_app, = (options.detection_weight, options.division_weight, options.transition_weight,
         options.disappearance_cost, options.appearance_cost,)
 
-    all_events = []
-    if options.export_funkey and len(options.gt_pth) > 0: # generate structured learning files
+    # generate structured learning files
+    if options.export_funkey and len(options.gt_pth) > 0:
         tracker, fov = initializeConservationTracking(options, shape)
         outpath = exportFunkeyFiles(options, ts, tracker, trans_classifier)
 
@@ -1267,18 +1271,22 @@ if __name__ == "__main__":
             learn_perturbation_weights(ts, options, shape, trans_classifier)
             exit(0)
 
+    # higher order feature file preparation
     feature_vector_filename = options.out_dir.rstrip('/') + '/ho_feature_vectors.txt'
     try:
         os.remove(feature_vector_filename)
     except:
         pass
 
+    # -------------------------------------------------------
     # perform the real tracking
     tracker, fov = initializeConservationTracking(options, shape)
 
+    # train outlier svm if needed
     if len(options.save_outlier_svm) > 0 and len(options.gt_pth) > 0:
         train_outlier_svm(options, tracker, ts, fov)
 
+    # build hypotheses graph
     print "tracking with weights ", w_det, w_div, w_trans, w_dis, w_app
     hypotheses_graph = tracker.buildGraph(ts)
 
@@ -1286,8 +1294,8 @@ if __name__ == "__main__":
         assert len(options.gt_pth) > 0, 'if labeling should be loaded, please provide a path to the ground truth in --gt-pth'
         store_label_in_hypotheses_graph(options, hypotheses_graph, tracker)
 
+    # perturbation settings
     uncertaintyParam = getUncertaintyParameter(options)
-
     if options.num_iterations == 0 or options.num_iterations == 1 or options.save_first:
         proposal_out = ''
     else:
@@ -1295,6 +1303,7 @@ if __name__ == "__main__":
         
     tracker.SetFunkeyOutputFiles('', '', proposal_out, False, uncertaintyParam)
 
+    # track!
     all_events = tracker.track(
         options.forbidden_cost,
         options.ep_gap,
@@ -1327,6 +1336,7 @@ if __name__ == "__main__":
     if options.w_labeling:
         hypotheses_graph.write_hypotheses_graph_state(options.out_dir.rstrip('/') + '/results_all.txt')
     
+    # save
     if options.save_first:
         events = all_events[0]
         first_events = events[0]
