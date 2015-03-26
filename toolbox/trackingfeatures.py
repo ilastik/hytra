@@ -202,11 +202,17 @@ class Track(LineagePart):
         return result
 
     def get_expanded_feature_vector(self, series_expansion_range):
-        fv = self.get_feature_vector()
-        # TODO: build properly sized numpy array!
-        resultFV = []
-        for i in range(series_expansion_range[0], series_expansion_range[1]):
-            resultFV += fv * math.pow(self.length, i)
+        num_expansions = series_expansion_range[1] - series_expansion_range[0]
+        len_feat = 2 * len(self.weight_to_track_feature_map)
+
+        # get only the track features part
+        fv = self.get_feature_vector()[0:len_feat]
+
+        # concatenate the scaled track features as often as needed
+        resultFV = np.zeros(num_expansions * len_feat 
+                        + 2 * len(self.weight_to_division_feature_map))
+        for c,i in enumerate(range(series_expansion_range[0], series_expansion_range[1])):
+            resultFV[c*len_feat:(c+1)*len_feat] = fv * math.pow(self.length, i)
         return resultFV
 
 
@@ -260,6 +266,22 @@ class Division(LineagePart):
 
         return result
 
+    def get_expanded_feature_vector(self, series_expansion_range):
+        num_expansions = series_expansion_range[1] - series_expansion_range[0]
+        len_feat = 2 * len(self.weight_to_track_feature_map)
+
+        offset = num_expansions + len_feat
+        result = np.zeros(num_expansions * len_feat + 2 * len(self.weight_to_division_feature_map))
+
+        for k, v in LineagePart.weight_to_division_feature_map.iteritems():
+            try:
+                result[offset + 2 * k] = self.features['mean_' + v]
+                result[offset + 2 * k + 1] = self.features['var_' + v]
+            except:
+                pass
+
+        return result
+
 
 class LineageTree(LineagePart):
     def __init__(self, lineage_tree_id, track, tracks, divisions):
@@ -286,12 +308,15 @@ class LineageTree(LineagePart):
         return result
 
     def get_expanded_feature_vector(self, series_expansion_range):
-        result = []
+        num_expansions = series_expansion_range[1] - series_expansion_range[0]
+        result = np.zeros(2 * num_expansions * len(self.weight_to_track_feature_map)
+                        + 2 * len(self.weight_to_division_feature_map))
+
         for t in self.tracks:
             result += t.get_expanded_feature_vector(series_expansion_range)
 
         for d in self.divisions:
-            result += d.get_feature_vector()
+            result += d.get_expanded_feature_vector(series_expansion_range)
 
         return result
 
@@ -354,7 +379,8 @@ def extract_features_and_compute_score(reranker_weight_filename,
                                         ts, 
                                         fov, 
                                         feature_vector_filename, 
-                                        region_features):
+                                        region_features,
+                                        series_expansion_range=[-1,2]):
     
     # extract higher order features and per-track features
     print("Extracting features of solution {}".format(iteration))
@@ -383,9 +409,9 @@ def extract_features_and_compute_score(reranker_weight_filename,
         lineage_trees = build_lineage_trees(tracks, divisions)
 
     # accumulate feature vectors
-    feature_vector = lineage_trees[0].get_feature_vector()
+    feature_vector = lineage_trees[0].get_expanded_feature_vector(series_expansion_range)
     for lt in lineage_trees[1:]:
-        feature_vector += lt.get_feature_vector()
+        feature_vector += lt.get_expanded_feature_vector(series_expansion_range)
 
     # if reranker weights are already given, compute overall, and track scores and plot a histogram
     if reranker_weight_filename and len(reranker_weight_filename) > 0:
