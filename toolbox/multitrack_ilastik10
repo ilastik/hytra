@@ -35,7 +35,7 @@ copied but linked to the original files to improve execution speed and storage r
     parser.add_option('--config-file', type='string', dest='config', default=None,
                       help='path to config file')
     parser.add_option('--method', type='str', default='conservation',
-                      help='conservation [default: %default]')
+                      help='conservation or conservation-dynprog [default: %default]')
     parser.add_option('-o', '--output-dir', type='str', dest='out_dir', default='tracked', help='[default: %default]')
     parser.add_option('--x-scale', type='float', dest='x_scale', default=1., help='[default: %default]')
     parser.add_option('--y-scale', type='float', dest='y_scale', default=1., help='[default: %default]')
@@ -955,8 +955,14 @@ def initializeConservationTracking(options, shape):
     if ndim == 2:
         assert options.z_scale * (zshape - 1) == 0, "fov of z must be (0,0) if ndim == 2"
 
-    tracker = track.ConsTracking(int(options.max_num_objects), bool(options.size_dependent_detection_prob), obj_size[0], options.mnd,
-                                 not bool(options.without_divisions), options.division_threshold, rf_fn, fov, "none")
+    if options.method == 'conservation':
+        tracker = track.ConsTracking(int(options.max_num_objects), bool(options.size_dependent_detection_prob), obj_size[0], options.mnd,
+                                     not bool(options.without_divisions), options.division_threshold, rf_fn, fov, "none")
+    elif options.method == 'conservation-dynprog':
+        tracker = track.ConsTrackingDynProg(int(options.max_num_objects), bool(options.size_dependent_detection_prob), obj_size[0], options.mnd,
+                                     not bool(options.without_divisions), options.division_threshold, rf_fn, fov, "none")
+    else:
+        raise InvalidArgumentException("Must be conservation or conservation-dynprog")
     return tracker, fov
 
 
@@ -1248,7 +1254,7 @@ if __name__ == "__main__":
     ts, fs, max_traxel_id_at, ndim, t0, t1 = getTraxelStore(options, ilp_fn, time_range, shape)
 
     print "Start tracking..."
-    if options.method != "conservation":
+    if options.method != "conservation" and options.method != 'conservation-dynprog':
         raise Exception("unknown tracking method: " + options.method)
 
     w_det, w_div, w_trans, w_dis, w_app, = (options.detection_weight, options.division_weight, options.transition_weight,
