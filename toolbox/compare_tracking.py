@@ -22,7 +22,7 @@ def match(fn_pair):
     return assoc
 
 
-def construct_associations(base_fns, cont_fns, timesteps):
+def construct_associations(base_fns, cont_fns, timesteps, verbose=False):
     assocs = []
     for t in range(timesteps):
         base_fn = base_fns[t]
@@ -100,7 +100,7 @@ Compare two tracking results, based only on the association information in the t
     ## construct id assocs; assumed to be identically mapped in this script 
     ## (i.e. the ids don't differ for the same object in base and contestant) 
     ##
-    assocs = construct_associations(base_fns, cont_fns, timesteps)
+    assocs = construct_associations(base_fns, cont_fns, timesteps, verbose)
 
     ## 
     ## generate taxonomy
