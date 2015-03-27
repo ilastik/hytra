@@ -1,7 +1,36 @@
+import sys
+sys.path.append('../.')
+sys.path.append('.')
 import h5py
 import pgmlink as track
 import numpy as np
 import math
+import os
+import os.path as path
+import argparse
+
+class ProgressBar:
+    def __init__(self, start=0, stop=100):
+        self._state = 0
+        self._start = start
+        self._stop = stop
+
+    def reset(self, val=0):
+        self._state = 0
+
+    def show(self, increase=1):
+        self._state += increase
+        if self._state > self._stop:
+            self._state = self._stop
+
+        # show
+        pos = float(self._state - self._start)/(self._stop - self._start)
+        sys.stdout.write("\r[%-20s] %d%%" % ('='*int(20*pos), (100*pos)))
+
+        if self._state == self._stop:
+            sys.stdout.write('\n')
+        sys.stdout.flush()
+
 
 def get_feature(h5file, feature_path, object_id):
     if not feature_path in h5file:
@@ -41,6 +70,7 @@ def rank_solutions(ground_truth_filename, feature_vector_filename, proposal_base
 
     print("Found weights: {}".format(weights))
     return weights
+
 
 class LineagePart:
     """
@@ -118,6 +148,10 @@ class LineagePart:
 
 
 class Track(LineagePart):
+    """
+    A track is a part of a lineage tree between two division/appearance/disappearance events
+    """
+
     def __init__(self, track_id):
         self.track_id = track_id
         # number of traxels in track
@@ -296,7 +330,7 @@ class LineageTree(LineagePart):
             self.tracks.append(tracks[self.divisions[-1].children_track_ids[0]])
 
     def get_feature_vector(self):
-        # TODO: weight according to num tracks and divisions
+        # TODO: weight according to num tracks and divisions?!
         result = np.zeros(self.get_feature_vector_size())
         
         for t in self.tracks:
@@ -310,7 +344,7 @@ class LineageTree(LineagePart):
     def get_expanded_feature_vector(self, series_expansion_range):
         num_expansions = series_expansion_range[1] - series_expansion_range[0]
         result = np.zeros(2 * num_expansions * len(self.weight_to_track_feature_map)
-                        + 2 * len(self.weight_to_division_feature_map))
+                          + 2 * len(self.weight_to_division_feature_map))
 
         for t in self.tracks:
             result += t.get_expanded_feature_vector(series_expansion_range)
@@ -319,6 +353,18 @@ class LineageTree(LineagePart):
             result += d.get_expanded_feature_vector(series_expansion_range)
 
         return result
+
+    def get_all_traxels(self):
+        """
+        Assuming that no divisions start with an appearance, or end at disappearances,
+        all participating traxels are stored inside the tracks.
+        The traxels are returned as list tuples of (timestep, ID).
+        """
+        traxels = []
+        for t in self.tracks:
+            for i in xrange(t.traxels.shape[1]):
+                traxels.append(tuple(t.traxels[0:2, i]))
+        return traxels
 
 
 def create_and_link_tracks_and_divisions(track_features_h5, ts, region_features):
@@ -330,7 +376,11 @@ def create_and_link_tracks_and_divisions(track_features_h5, ts, region_features)
     track_starts_with_traxel_id = {}
     track_ends_with_traxel_id = {}
 
+    pb = ProgressBar(0, len(track_features_h5['tracks'].keys()) + len(track_features_h5['divisions'].keys()))
+    print("Extracting Tracks and Divisions")
+
     for track_id in track_features_h5['tracks'].keys():
+        pb.show()
         track_id_int = int(track_id)
         t = Track(track_id_int)
         t.extract(track_features_h5)
@@ -344,6 +394,7 @@ def create_and_link_tracks_and_divisions(track_features_h5, ts, region_features)
         track_ends_with_traxel_id[t.end_traxel_id] = track_id_int
 
     for division_id in track_features_h5['divisions'].keys():
+        pb.show()
         division_id_int = int(division_id)
         d = Division(division_id_int)
         d.extract(track_features_h5)
@@ -362,6 +413,7 @@ def create_and_link_tracks_and_divisions(track_features_h5, ts, region_features)
         divisions[division_id_int] = d
     return tracks, divisions
 
+
 def build_lineage_trees(tracks, divisions):
     # select all tracks that have no parent division (appearances)
     appearances = [t for t in tracks.values() if t.start_division_id == -1]
@@ -371,22 +423,82 @@ def build_lineage_trees(tracks, divisions):
 
     return lineageTrees
 
-def extract_features_and_compute_score(reranker_weight_filename, 
-                                        outlier_svm_filename, 
-                                        out_dir, 
-                                        iteration, 
-                                        hypotheses_graph, 
-                                        ts, 
-                                        fov, 
-                                        feature_vector_filename, 
-                                        region_features,
-                                        series_expansion_range=[-1,2]):
+
+def score_solutions(tracks, divisions, lineage_trees, out_dir, reranker_weight_filename):
+    # if reranker weights are already given, compute overall, and track scores and plot a histogram
+    if reranker_weight_filename and len(reranker_weight_filename) > 0:
+        reranker_weights = np.loadtxt(reranker_weight_filename)
+
+        track_scores = [t.compute_score(reranker_weights) for t in tracks.values()]
+        division_scores = [d.compute_score(reranker_weights) for d in divisions.values()]
+        lineage_scores = [l.compute_score(reranker_weights) for l in lineage_trees]
+        overall_score = sum(lineage_scores)
+
+        for s_name, scores in [("track_scores", track_scores), 
+                               ("division_scores", division_scores), 
+                               ("lineage_scores", lineage_scores)]:
+            fn = out_dir.rstrip('/') + '/' + s_name + '.txt'
+            print("Saving {} to:".format(s_name, fn))
+            np.savetxt(fn, scores)
+
+            import matplotlib.pyplot as plt
+            plt.figure()
+            plt.hist(scores, 100)
+            plt.savefig(out_dir.rstrip('/') + '/' + s_name + '.pdf')
+
+            # todo: compute loss and/or precision of each track / division / lineage and plot the correspondance!
+
+        print("Overall score of tracking is: {}".format(overall_score))
+        return overall_score
+    else:
+        return -1
+
+
+def compare_lineage_trees_to_gt(gt_filenames, proposal_filenames, lineage_trees):
+    import compare_tracking
+    from empryonic.learning import quantification as quant
+
+    timesteps = min(len(gt_filenames), len(proposal_filenames))
+    associations = compare_tracking.construct_associations(gt_filenames, proposal_filenames, timesteps)
+
+    filename_pairs = zip(gt_filenames[0:timesteps], proposal_filenames[0:timesteps])
+
+    pb = ProgressBar(0, len(lineage_trees))
+    lineage_tree_measures = []
+    for lt in lineage_trees:
+        pb.show()
+        taxonomies = []
+        lineage_traxels = lt.get_all_traxels()
+
+        for i, v in enumerate(filename_pairs[1:]):
+            t = quant.compute_filtered_taxonomy(associations[i], 
+                                                associations[i + 1],
+                                                v[0], 
+                                                v[1], 
+                                                lineage_traxels, 
+                                                i + 1)
+            taxonomies.append(t)
+            sys.stdout.flush()
+        overall = reduce(quant.Taxonomy.union, taxonomies)
+        lineage_tree_measures.append(overall)
+    return lineage_tree_measures
+
+
+def extract_features_and_compute_score(reranker_weight_filename,
+                                       outlier_svm_filename,
+                                       out_dir,
+                                       iteration,
+                                       hypotheses_graph,
+                                       ts,
+                                       fov,
+                                       feature_vector_filename,
+                                       region_features,
+                                       series_expansion_range=[-1,2]):
     
     # extract higher order features and per-track features
-    print("Extracting features of solution {}".format(iteration))
+    print("Extracting features of solution {}\n\tCreating Feature extractor...".format(iteration))
     track_features_filename = out_dir.rstrip('/') + '/iter_' + str(iteration) + '/track_features.h5'
     feature_extractor = track.TrackingFeatureExtractor(hypotheses_graph, fov)
-    overall_score = 0
     
     # load outlier SVMs if available
     if len(outlier_svm_filename) > 0:  # when the svm was trained in this run, it automatically sets load_outlier_svm
@@ -401,6 +513,7 @@ def extract_features_and_compute_score(reranker_weight_filename,
 
     # extract all the features and save them to disk
     feature_extractor.set_track_feature_output_file(track_features_filename)
+    print("\tComputing features...")
     feature_extractor.compute_features()
 
     # create complete lineage trees with extracted features:
@@ -408,38 +521,98 @@ def extract_features_and_compute_score(reranker_weight_filename,
         tracks, divisions = create_and_link_tracks_and_divisions(track_features_h5, ts, region_features)
         lineage_trees = build_lineage_trees(tracks, divisions)
 
+    # save lineage trees
+    lineage_tree_dump_filename = out_dir.rstrip('/') + '/iter_' + str(iteration) + '/lineage_trees.dump'
+    with open(lineage_tree_dump_filename, 'w') as lineage_dump:
+        import pickle
+        pickle.dump(tracks, lineage_dump)
+        pickle.dump(divisions, lineage_dump)
+        pickle.dump(lineage_trees, lineage_dump)
+
     # accumulate feature vectors
     feature_vector = lineage_trees[0].get_expanded_feature_vector(series_expansion_range)
     for lt in lineage_trees[1:]:
         feature_vector += lt.get_expanded_feature_vector(series_expansion_range)
 
-    # if reranker weights are already given, compute overall, and track scores and plot a histogram
-    if reranker_weight_filename and len(reranker_weight_filename) > 0:
-        reranker_weights = np.loadtxt(reranker_weight_filename)
-        overall_score = np.dot(reranker_weights, feature_vector)
-
-        track_scores = [t.compute_score(reranker_weights) for t in tracks.values()]
-        division_scores = [d.compute_score(reranker_weights) for d in divisions.values()]
-        lineage_scores = [l.compute_score(reranker_weights) for l in lineage_trees]
-
-        for s_name, scores in [("track_scores", track_scores), 
-                               ("division_scores", division_scores), 
-                               ("lineage_scores", lineage_scores)]:
-            print("Saving {} for iteration {}".format(s_name, iteration))
-            np.savetxt(out_dir.rstrip('/') + '/iter_' + str(iteration) + '/' + s_name + '.txt', scores)
-
-            import matplotlib.pyplot as plt
-            plt.figure()
-            plt.hist(scores, 100)
-            plt.savefig(out_dir.rstrip('/') + '/iter_' + str(iteration) + '/' + s_name + '.pdf')
-
-
-        print("Overall score of tracking is: {}".format(overall_score))
+    # compute score if weight file is given
+    overall_score = score_solutions(tracks, divisions, lineage_trees,
+                                    out_dir.rstrip('/') + '/iter_' + str(iteration), reranker_weight_filename)
 
     return feature_vector, overall_score, ["feature_names"]
 
+
+
+if __name__ == "__main__":
+    """
+    Executing this script will take a lineage tree dump together with ground truth
+    and proposal solution h5 files (containing the events). It then evaluates the
+    quality of each lineage independently.
+    """
+
+    parser = argparse.ArgumentParser(description='Evaluate precision/recall/f-measure'
+                                                 'for each lineage independently')
+    parser.add_argument('--lineage-dump', required=True, type=str, dest='lineage_dump_file',
+                        help='Filename of the lineage dump created by a multitrack run')
+    parser.add_argument('--gt-path', required=True, type=str, dest='gt_path',
+                        help='Path to folder containing the ground truth .h5 files')
+    parser.add_argument('--proposal-path', required=True, type=str, dest='proposal_path',
+                        help='Path to folder containing the proposal .h5 files')
+    parser.add_argument('--out', type=str, dest='out_dir', default='.', help='Output directory')
+
+    args = parser.parse_args()
+
+    # load lineages
+    with open(args.lineage_dump_file, 'r') as lineage_dump:
+        import pickle
+        tracks = pickle.load(lineage_dump)
+        divisions = pickle.load(lineage_dump)
+        lineage_trees = pickle.load(lineage_dump)
+
+    # find gt an proposal files that start with a number and end with h5
+    gt_filenames = [path.abspath(path.join(args.gt_path, fn))
+                    for fn in os.listdir(args.gt_path) if fn.endswith('.h5') and fn[0].isdigit()]
+    gt_filenames.sort()
+    proposal_filenames = [path.abspath(path.join(args.proposal_path, fn))
+                          for fn in os.listdir(args.proposal_path) if fn.endswith('.h5') and fn[0].isdigit()]
+    proposal_filenames.sort()
+
+    # evaluate
+    print("Analyzing {} lineage trees".format(len(lineage_trees)))
+    taxonomies = compare_lineage_trees_to_gt(gt_filenames, proposal_filenames, lineage_trees)
+
+    precisions = [t.precision() for t in taxonomies]
+    recalls = [t.recall() for t in taxonomies]
+    fmeasures = [t.f_measure() for t in taxonomies]
+
+    def replaceNan(a):
+        if np.isnan(a):
+            return 0.0
+        else:
+            return a
+
+    precisions = map(replaceNan, precisions)
+    recalls = map(replaceNan, recalls)
+    fmeasures = map(replaceNan, fmeasures)
+
+    np.savetxt(args.out_dir.rstrip('/') + '/precisions.txt', np.array(precisions))
+    np.savetxt(args.out_dir.rstrip('/') + '/recalls.txt', np.array(recalls))
+    np.savetxt(args.out_dir.rstrip('/') + '/fmeasures.txt', np.array(fmeasures))
+
+    import matplotlib.pyplot as plt
+    plt.figure()
+    plt.hist(precisions, 100)
+    plt.savefig(args.out_dir.rstrip('/') + '/precisions.pdf')
+
+    plt.figure()
+    plt.hist(recalls, 100)
+    plt.savefig(args.out_dir.rstrip('/') + '/recalls.pdf')
+
+    plt.figure()
+    plt.hist(fmeasures, 100)
+    plt.savefig(args.out_dir.rstrip('/') + '/fmeasures.pdf')
+
 ## -----------------------------
-## how to test:
+## how to test lineage tree construction:
 ## -----------------------------
 # import trackingfeatures
 # import pickle

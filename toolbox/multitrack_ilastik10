@@ -17,7 +17,7 @@ import itertools
 import vigra
 import copy
 import pgmlink as track
-from trackingfeatures import extract_features_and_compute_score, get_feature_vector
+from trackingfeatures import extract_features_and_compute_score, get_feature_vector, ProgressBar
 from empryonic import io
 from multiprocessing import Pool
 
@@ -256,8 +256,6 @@ def update_merger_features(coordinate_map, h5file, merger_traxel, new_traxel_ids
                                      int(merger_traxel.Timestep),
                                      int(traxel_id))
         label_image_excerpt -= min_new_traxel_id - 1
-
-        # Todo: store updated image somewhere?
 
         # compute features for new traxels, which are automatically stored in featurestore
         # the 2d raw sequence is usually saved as a 2d+t+c dataset, the labelimage from ilastik as 3d+t+c
@@ -1169,7 +1167,9 @@ def runMergerResolving(options, tracker, ts, hypotheses_graph, ilp_fn, all_event
             with h5py.File(options.raw_filename, 'r') as raw_h5:
                 print("Update labelimage and compute new features after merger resolving "
                       "for solution {}".format(i))
+                pb = ProgressBar(0, len(resolved_events))
                 for timestep, timestep_events in enumerate(resolved_events):
+                    pb.show()
                     timestep += t0
                     for event in timestep_events:
                         if event.type == track.EventType.ResolvedTo:
