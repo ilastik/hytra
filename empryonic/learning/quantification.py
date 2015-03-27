@@ -729,10 +729,10 @@ def compute_filtered_taxonomy(prev_assoc, curr_assoc, base_fn, cont_fn, cont_tra
     del f
 
     # event filtering
-    filtered_events = []
+    filtered_events = set()
     for e in cont_events:
         if e.traxels_contained_in(cont_traxels):
-            filtered_events.append(e)
+            filtered_events.add(e)
 
     # check, if events and assocs fit together
     for e in base_events:
