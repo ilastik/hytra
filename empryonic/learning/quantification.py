@@ -59,6 +59,19 @@ class Event( object ):
         '''
         raise NotImplementedError
 
+    def traxels_contained_in(self, traxel_list):
+        '''
+        Check if all traxels that are used in this event are present in the traxel_list.
+        traxel_list - list of (timestep, traxelID) tuples
+
+        Overwrite this method if not all traxels of an Event are in the same timestep!
+        (Move, disappearance and Division reference previous timesteps!)
+        '''
+        for i in self._ids:
+            if not (self.timestep, i) in traxel_list:
+                return False
+        return True
+
     ### debugging
     def is_matched(self, origin_match, to_match):
         raise NotImplementedError
@@ -67,22 +80,30 @@ class Move( Event ):
     def translate( self, origin_match, to_match, setid ):
         origin_translated = origin_match[self.ids[0]]
         to_translated = to_match[self.ids[1]]
-        return Move( (origin_translated, to_translated), self.timestep, setid )
+        return Move( (origin_translated, to_translated), self.timestep, setid)
         
     def equivalent_to( self, origin_match, to_match, other):
         origin_translated = origin_match[self.ids[0]]
         to_translated = to_match[self.ids[1]]
-        translated_move = Move( (origin_translated, to_translated), self.timestep, other.setid )
-        return (translated_move == other)
+        translated_move = Move((origin_translated, to_translated), self.timestep, other.setid)
+        return translated_move == other
 
     def visible_in_other( self, origin_match, to_match):
         return origin_match[self.ids[0]] and to_match[self.ids[1]]
 
-    def is_matched(self,origin_match, to_match):
+    def is_matched(self, origin_match, to_match):
         if origin_match.has_key(self.ids[0]) and to_match.has_key(self.ids[1]):
             return True
         else:
             return False
+
+    def traxels_contained_in(self, traxel_list):
+        if not (self.timestep - 1, self._ids[0]) in traxel_list:
+            return False
+        elif not (self.timestep, self._ids[1]) in traxel_list:
+            return False
+        else:
+            return True
 
     def __repr__( self ):
         return "Move((" + str(self.ids[0]) + ", "+ str(self.ids[1])+ "))"
@@ -167,6 +188,14 @@ class Division( Event ):
         else:
             return False
 
+    def traxels_contained_in(self, traxel_list):
+        if not (self.timestep - 1, self._ids[0]) in traxel_list:
+            return False
+        elif not (self.timestep, self._ids[1]) in traxel_list or not (self.timestep, self._ids[2]) in traxel_list:
+            return False
+        else:
+            return True
+
     def __repr__( self ):
         return "Division((" + str(self.ids[0]) + ", "+ str(self.ids[1])+", "+ str(self.ids[2])+ "))"
 
@@ -213,6 +242,12 @@ class Disappearance( Event ):
             return True
         else:
             return False
+
+    def traxels_contained_in(self, traxel_list):
+        if not (self.timestep - 1, self._ids[0]) in traxel_list:
+            return False
+        else:
+            return True
 
     def __repr__( self ):
         return "Disappearance((" + str(self.ids[0]) + ",))"
@@ -678,7 +713,36 @@ def compute_taxonomy(prev_assoc, curr_assoc, base_fn, cont_fn, timestep=0):
 
     return classify_event_sets(base_events, cont_events, prev_assoc, curr_assoc)
 
+def compute_filtered_taxonomy(prev_assoc, curr_assoc, base_fn, cont_fn, cont_traxels, timestep=0):
+    ''' Convenience function around 'classify_event_sets'.
 
+    *_fn - LineageH5 filename
+
+    cont_traxels: is a list of traxels to which the evaluation is restricted. 
+                    The events of the contestant will be filtered to contain only those traxels.
+    '''
+    with _io.LineageH5(base_fn, 'r', timestep=timestep) as f:
+        base_events = event_set_from( f, 'base' )
+    del f
+    with _io.LineageH5(cont_fn, 'r', timestep=timestep) as f:
+        cont_events = event_set_from( f, 'cont' )
+    del f
+
+    # event filtering
+    filtered_events = []
+    for e in cont_events:
+        if e.traxels_contained_in(cont_traxels):
+            filtered_events.append(e)
+
+    # check, if events and assocs fit together
+    for e in base_events:
+        if not e.is_matched(prev_assoc['lhs'], curr_assoc['lhs']):
+            raise Exception("Base Event %s: id(s) not present in assocs" % str(e))
+    for e in filtered_events:
+        if not e.is_matched(prev_assoc['rhs'], curr_assoc['rhs']):
+            raise Exception("Contestant Event %s: id(s) not present in assocs" % str(e))
+
+    return classify_event_sets(base_events, filtered_events, prev_assoc, curr_assoc)
 
 ###
 ### Tests
@@ -693,6 +757,72 @@ class TestDivision( _ut.TestCase ):
         self.assertTrue(d1 == d2)
         self.assertFalse(d1 == d3)
         self.assertFalse(d1 == d4)
+
+
+class TestTraxelContainedInMethod(_ut.TestCase):
+    def testMove(self):
+        m = Move((1, 1), 1)
+
+        # no traxel in, should return false
+        traxels = []
+        self.assertFalse(m.traxels_contained_in(traxels))
+        traxels = [(123, 312)]
+        self.assertFalse(m.traxels_contained_in(traxels))
+
+        # only one traxel in, should return false
+        traxels = [(1, 1)]
+        self.assertFalse(m.traxels_contained_in(traxels))
+        traxels = [(0, 1)]
+        self.assertFalse(m.traxels_contained_in(traxels))
+
+        # both traxels in
+        traxels = [(0, 1), (1, 1)]
+        self.assertTrue(m.traxels_contained_in(traxels))
+
+    def testDivision(self):
+        d = Division((1, 1, 2), 1)
+
+        # no traxel in, should return false
+        traxels = []
+        self.assertFalse(d.traxels_contained_in(traxels))
+        traxels = [(123, 312)]
+        self.assertFalse(d.traxels_contained_in(traxels))
+
+        # only one traxel in, should return false
+        traxels = [(1, 1)]
+        self.assertFalse(d.traxels_contained_in(traxels))
+        traxels = [(0, 1)]
+        self.assertFalse(d.traxels_contained_in(traxels))
+
+        # all traxels in
+        traxels = [(0, 1), (1, 1), (1, 2)]
+        self.assertTrue(d.traxels_contained_in(traxels))
+
+    def testAppearance(self):
+        a = Appearance((3,), 1)
+
+        # no traxel in, should return false
+        traxels = []
+        self.assertFalse(a.traxels_contained_in(traxels))
+        traxels = [(123, 312)]
+        self.assertFalse(a.traxels_contained_in(traxels))
+
+        # all traxels in
+        traxels = [(1, 3), (1, 1), (1, 2)]
+        self.assertTrue(a.traxels_contained_in(traxels))
+
+    def testDisappearance(self):
+        a = Disappearance((3,), 1)
+
+        # no traxel in, should return false
+        traxels = []
+        self.assertFalse(a.traxels_contained_in(traxels))
+        traxels = [(123, 312)]
+        self.assertFalse(a.traxels_contained_in(traxels))
+
+        # all traxels in
+        traxels = [(0, 3)]
+        self.assertTrue(a.traxels_contained_in(traxels))
 
 class TestTaxonomy( _ut.TestCase ):
     def setUp( self ):
