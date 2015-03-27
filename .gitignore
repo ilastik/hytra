@@ -13,6 +13,7 @@ CMakeFiles
 doxygenconfig*
 randomforest_test.cpp
 tracking/
+.idea
 
 
 # Compiled source #
