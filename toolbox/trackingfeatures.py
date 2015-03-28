@@ -16,7 +16,7 @@ class ProgressBar:
         self._stop = stop
 
     def reset(self, val=0):
-        self._state = 0
+        self._state = val
 
     def show(self, increase=1):
         self._state += increase
@@ -76,6 +76,9 @@ class LineagePart:
     """
     Parent class for all parts of a lineage, e.g. track, division, lineage
     """
+
+    def __init__(self):
+        pass
 
     weight_to_track_feature_map = {
          0: 'sq_diff_RegionCenter',
@@ -170,7 +173,7 @@ class Track(LineagePart):
         # set of features of this track
         self.features = {}
 
-    def extract_region_features(self, track_features_h5, ts, region_features):
+    def extract_region_features(self, ts, region_features):
         """
         Extract the region features of this track's traxels from the traxelstore,
         and compute mean an variance.
@@ -384,7 +387,7 @@ def create_and_link_tracks_and_divisions(track_features_h5, ts, region_features)
         track_id_int = int(track_id)
         t = Track(track_id_int)
         t.extract(track_features_h5)
-        t.extract_region_features(track_features_h5, ts, region_features)
+        t.extract_region_features(ts, region_features)
 
         # store in container
         tracks[track_id_int] = t
@@ -558,6 +561,8 @@ if __name__ == "__main__":
     parser.add_argument('--proposal-path', required=True, type=str, dest='proposal_path',
                         help='Path to folder containing the proposal .h5 files')
     parser.add_argument('--out', type=str, dest='out_dir', default='.', help='Output directory')
+    parser.add_argument('--weights', type=str, dest='weight_filename', default='',
+                        help='If a filename for the weights is specified, this tool also plots scores vs precision etc')
 
     args = parser.parse_args()
 
@@ -610,6 +615,21 @@ if __name__ == "__main__":
     plt.figure()
     plt.hist(fmeasures, 100)
     plt.savefig(args.out_dir.rstrip('/') + '/fmeasures.pdf')
+
+    if len(args.weight_filename) > 0 and os.path.isfile(args.weight_filename):
+        # load weights and compute all scores
+        weights = np.loadtxt(args.weight_filename)
+        assert len(weights) == lineage_trees[0].get_feature_vector()
+        scores = [np.dot(weights, lt.get_feature_vector()) for lt in lineage_trees]
+
+        plt.figure()
+        plt.scatter(scores, precisions)
+        plt.savefig(args.out_dir.rstrip('/') + '/score_vs_precision.pdf')
+
+        plt.figure()
+        plt.scatter(scores, fmeasures)
+        plt.savefig(args.out_dir.rstrip('/') + '/score_vs_fmeasure.pdf')
+
 
 ## -----------------------------
 ## how to test lineage tree construction:
