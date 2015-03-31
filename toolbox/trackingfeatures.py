@@ -444,6 +444,8 @@ def score_solutions(tracks, divisions, lineage_trees, out_dir, reranker_weight_f
             print("Saving {} to:".format(s_name, fn))
             np.savetxt(fn, scores)
 
+            import matplotlib
+            matplotlib.use('Agg')
             import matplotlib.pyplot as plt
             plt.figure()
             plt.hist(scores, 100)
@@ -617,6 +619,8 @@ if __name__ == "__main__":
     np.savetxt(args.out_dir.rstrip('/') + '/recalls.txt', np.array(recalls))
     np.savetxt(args.out_dir.rstrip('/') + '/fmeasures.txt', np.array(fmeasures))
 
+    import matplotlib
+    matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     plt.figure()
     plt.hist(precisions, 100)
