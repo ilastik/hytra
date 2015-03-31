@@ -477,9 +477,12 @@ def compute_lineage_tree_measures(args):
 
 def compare_lineage_trees_to_gt(gt_filenames, proposal_filenames, lineage_trees):
     import compare_tracking
-    from multiprocessing import Pool
+    from multiprocessing import Pool, cpu_count
     import itertools
-    processing_pool = Pool()
+
+    print("Parallelizing over {} cores".format(cpu_count()))
+    processing_pool = Pool(cpu_count())
+
 
     timesteps = min(len(gt_filenames), len(proposal_filenames))
     associations = compare_tracking.construct_associations(gt_filenames, proposal_filenames, timesteps)
