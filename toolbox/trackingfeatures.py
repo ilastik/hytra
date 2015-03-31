@@ -457,9 +457,29 @@ def score_solutions(tracks, divisions, lineage_trees, out_dir, reranker_weight_f
         return -1
 
 
+def compute_lineage_tree_measures(args):
+    (lineage_tree, associations, filename_pairs) = args
+    from empryonic.learning import quantification as quant
+    taxonomies = []
+    lineage_traxels = lineage_tree.get_all_traxels()
+
+    for i, v in enumerate(filename_pairs[1:]):
+        t = quant.compute_filtered_taxonomy(associations[i],
+                                            associations[i + 1],
+                                            v[0],
+                                            v[1],
+                                            lineage_traxels,
+                                            i + 1)
+        taxonomies.append(t)
+    overall = reduce(quant.Taxonomy.union, taxonomies)
+    return overall
+
+
 def compare_lineage_trees_to_gt(gt_filenames, proposal_filenames, lineage_trees):
     import compare_tracking
-    from empryonic.learning import quantification as quant
+    from multiprocessing import Pool
+    import itertools
+    processing_pool = Pool()
 
     timesteps = min(len(gt_filenames), len(proposal_filenames))
     associations = compare_tracking.construct_associations(gt_filenames, proposal_filenames, timesteps)
@@ -468,22 +488,13 @@ def compare_lineage_trees_to_gt(gt_filenames, proposal_filenames, lineage_trees)
 
     pb = ProgressBar(0, len(lineage_trees))
     lineage_tree_measures = []
-    for lt in lineage_trees:
+    for measure in processing_pool.imap(compute_lineage_tree_measures,
+                                        itertools.izip(lineage_trees,
+                                                       itertools.repeat(associations),
+                                                       itertools.repeat(filename_pairs))):
+        lineage_tree_measures.append(measure)
         pb.show()
-        taxonomies = []
-        lineage_traxels = lt.get_all_traxels()
 
-        for i, v in enumerate(filename_pairs[1:]):
-            t = quant.compute_filtered_taxonomy(associations[i], 
-                                                associations[i + 1],
-                                                v[0], 
-                                                v[1], 
-                                                lineage_traxels, 
-                                                i + 1)
-            taxonomies.append(t)
-            sys.stdout.flush()
-        overall = reduce(quant.Taxonomy.union, taxonomies)
-        lineage_tree_measures.append(overall)
     return lineage_tree_measures
 
 
