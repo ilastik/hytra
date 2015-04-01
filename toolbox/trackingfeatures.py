@@ -532,8 +532,9 @@ def extract_features_and_compute_score(reranker_weight_filename,
 
     # extract all the features and save them to disk
     feature_extractor.set_track_feature_output_file(track_features_filename)
-    print("\tComputing features...")
+    sys.stdout.write("\tComputing features...")
     feature_extractor.compute_features()
+    print("...Done")
 
     # create complete lineage trees with extracted features:
     with h5py.File(track_features_filename, 'r') as track_features_h5:
@@ -637,7 +638,7 @@ if __name__ == "__main__":
     if len(args.weight_filename) > 0 and os.path.isfile(args.weight_filename):
         # load weights and compute all scores
         weights = np.loadtxt(args.weight_filename)
-        assert len(weights) == lineage_trees[0].get_feature_vector()
+        assert len(weights) == len(lineage_trees[0].get_feature_vector())
         scores = [np.dot(weights, lt.get_feature_vector()) for lt in lineage_trees]
 
         plt.figure()
