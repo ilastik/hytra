@@ -156,6 +156,7 @@ class Track(LineagePart):
     """
 
     def __init__(self, track_id):
+        LineagePart.__init__(self)
         self.track_id = track_id
         # number of traxels in track
         self.length = 0
@@ -255,6 +256,7 @@ class Track(LineagePart):
 
 class Division(LineagePart):
     def __init__(self, division_id):
+        LineagePart.__init__(self)
         self.division_id = division_id
 
         # track ids
@@ -322,18 +324,27 @@ class Division(LineagePart):
 
 class LineageTree(LineagePart):
     def __init__(self, lineage_tree_id, track, tracks, divisions):
+        LineagePart.__init__(self)
         self.lineage_tree_id = lineage_tree_id
         self.tracks = [track]
         self.divisions = []
         self.length = 0
 
         # follow the supplied track along divisions
-        while self.tracks[-1].end_division_id != -1:
-            self.divisions.append(divisions[self.tracks[-1].end_division_id])
-            self.tracks.append(tracks[self.divisions[-1].children_track_ids[0]])
+        from collections import deque
+        queue = deque([track])
+
+        while len(queue) > 0:
+            t = queue.popleft()
+            if t.end_division_id != -1:
+                self.divisions.append(divisions[t.end_division_id])
+                for i in [0, 1]:
+                    next_track_id = self.divisions[-1].children_track_ids[i]
+                    self.tracks.append(tracks[next_track_id])
+                    queue.append(tracks[next_track_id])
 
     def get_feature_vector(self):
-        # TODO: weight according to num tracks and divisions?!
+        # TODO: weight according to num tracks and divisions!
         result = np.zeros(self.get_feature_vector_size())
         
         for t in self.tracks:
@@ -403,14 +414,19 @@ def create_and_link_tracks_and_divisions(track_features_h5, ts, region_features)
         d.extract(track_features_h5)
 
         # find the tracks that are connected by this division
-        d.parent_track_id = track_ends_with_traxel_id[d.parent_traxel_id]
-        d.children_track_ids[0] = track_starts_with_traxel_id[d.children_traxel_ids[0]]
-        d.children_track_ids[1] = track_starts_with_traxel_id[d.children_traxel_ids[1]]
+        # and update information in the tracks
+        try:
+            d.parent_track_id = track_ends_with_traxel_id[d.parent_traxel_id]
+            tracks[d.parent_track_id].end_division_id = division_id_int
+        except KeyError as e:
+            print("Could not find parent track of division {}: ".format(division_id), e.message)
 
-        # update information in the tracks
-        tracks[d.parent_track_id].end_division_id = division_id_int
-        tracks[d.children_track_ids[0]].start_division_id = division_id_int
-        tracks[d.children_track_ids[1]].start_division_id = division_id_int
+        for i in [0, 1]:
+            try:
+                d.children_track_ids[i] = track_starts_with_traxel_id[d.children_traxel_ids[i]]
+                tracks[d.children_track_ids[i]].start_division_id = division_id_int
+            except KeyError as e:
+                print("Could not find child track of division {}: ".format(division_id), e.message)
 
         # store in container
         divisions[division_id_int] = d
