@@ -256,7 +256,11 @@ def update_merger_features(coordinate_map, h5file, merger_traxel, new_traxel_ids
                                      int(merger_traxel.Timestep),
                                      int(traxel_id))
         label_image_excerpt -= min_new_traxel_id - 1
+    except MemoryError:
+        print("WARNING: Something went wrong when updating label image around traxel "
+              "(id={}, timestep={}).".format(merger_traxel.Id, merger_traxel.Timestep))
 
+    try:
         # compute features for new traxels, which are automatically stored in featurestore
         # the 2d raw sequence is usually saved as a 2d+t+c dataset, the labelimage from ilastik as 3d+t+c
         raw_image_excerpt = np.array(raw_h5[options.raw_path][tuple([timestep, ] + roi[0:ndim] + [0, ])])
@@ -271,8 +275,9 @@ def update_merger_features(coordinate_map, h5file, merger_traxel, new_traxel_ids
                                           fs,
                                           merger_traxel.Timestep)
     except MemoryError:
-        print("WARNING: Something went wrong when updating label image or extracting region features for traxel "
-              "(id={}, timestep={}). Features are left empty".format(merger_traxel.Id, merger_traxel.Timestep))
+        print("WARNING: Something went wrong when extracting region features for traxel "
+              "(id={}, timestep={}) in region {} of image size {}. Features are left empty".format(
+            merger_traxel.Id, merger_traxel.Timestep, roi, ri_ex.shape))
 
 
 def generate_traxelstore(h5file,
@@ -621,7 +626,7 @@ def write_events(events, fn):
     print "-> results successfully written"
 
 
-def save_events_parallel(options, all_events, max_traxel_id_at, ilp_file, t0, t1):    
+def save_events_parallel(options, all_events, max_traxel_id_at, ilp_file, t0, t1, async=True):
     processing_pool = Pool()
 
     for i in range(len(all_events)):
@@ -633,8 +638,10 @@ def save_events_parallel(options, all_events, max_traxel_id_at, ilp_file, t0, t1
         processing_pool.apply_async(save_events, (out_dir, copy.copy(events), t0, t1,
                                                   options.label_img_path, max_traxel_id_at, ilp_file, first_events))
 
-    processing_pool.close()
-    processing_pool.join()
+    if async:
+        processing_pool.close()
+        processing_pool.join()
+    return processing_pool
 
 
 def save_events(out_dir, events, t0, t1, label_image_path, max_traxel_id_at, src_filename, first_events):
@@ -828,6 +835,7 @@ def store_label_in_hypotheses_graph(options, graph, tracker):
 
     return graph
 
+
 def loadTransClassifier(options):
     if options.trans_fn is None or len(options.trans_fn) == 0:
         trans_classifier = None
@@ -843,6 +851,7 @@ def loadTransClassifier(options):
         trans_classifier = TransitionClassifier(gpc, selected_features)
 
     return trans_classifier
+
 
 def getRegionFeatures(ndim):
     region_features = [
@@ -863,8 +872,9 @@ def getRegionFeatures(ndim):
             ("Weighted<PowerSum<0> >", 1),
             ("Coord< Minimum >", ndim),
             ("Coord< Maximum >", ndim)
-        ]
+    ]
     return region_features
+
 
 def getTraxelStore(options, ilp_fn,time_range, shape):
     max_traxel_id_at = []
@@ -1331,10 +1341,17 @@ if __name__ == "__main__":
 
     tracker.SetFunkeyOutputFiles('', '', '', True, uncertaintyParam)
 
+    # dispatch saving events already while merger resolving runs
+    if not options.skip_saving and not options.save_first:
+        parallel_save_process_pool = save_events_parallel(options, all_events, max_traxel_id_at, ilp_fn, t0, t1, False)
+
     # run merger resolving
     if options.with_merger_resolution and options.max_num_objects > 1 and len(options.raw_filename) > 0:
         region_features = getRegionFeatures(ndim)
-        runMergerResolving(options, tracker, ts, hypotheses_graph, ilp_fn, all_events, fov, region_features, trans_classifier, t0, True)
+        try:
+            runMergerResolving(options, tracker, ts, hypotheses_graph, ilp_fn, all_events, fov, region_features, trans_classifier, t0, True)
+        except BaseException as e:
+            print("WARNING: Merger Resolving crashed...: {}".format(e))
 
     stop = time.time()
     since = stop - start
@@ -1351,7 +1368,8 @@ if __name__ == "__main__":
         save_events(out_dir, events, t0, t1,
                       options.label_img_path, max_traxel_id_at, ilp_fn, first_events)
     elif not options.skip_saving:
-        save_events_parallel(options, all_events, max_traxel_id_at, ilp_fn, t0, t1)
+        parallel_save_process_pool.close()
+        parallel_save_process_pool.join()
 
     print "Elapsed time [s]: " + str(int(since))
     print "Elapsed time [min]: " + str(int(since) / 60)
