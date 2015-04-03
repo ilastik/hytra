@@ -614,7 +614,7 @@ def extract_features_and_compute_score(reranker_weight_filename,
     overall_score = score_solutions(tracks, divisions, lineage_trees,
                                     out_dir.rstrip('/') + '/iter_' + str(iteration), reranker_weight_filename)
 
-    return feature_vector, overall_score, ["feature_names"]
+    return feature_vector, overall_score, LineagePart.all_feature_names
 
 
 def load_lineage_dump(filename):
