@@ -964,11 +964,27 @@ def initializeConservationTracking(options, shape):
         assert options.z_scale * (zshape - 1) == 0, "fov of z must be (0,0) if ndim == 2"
 
     if options.method == 'conservation':
-        tracker = track.ConsTracking(int(options.max_num_objects), bool(options.size_dependent_detection_prob), obj_size[0], options.mnd,
-                                     not bool(options.without_divisions), options.division_threshold, rf_fn, fov, "none")
+        tracker = track.ConsTracking(int(options.max_num_objects),
+                                     bool(options.size_dependent_detection_prob),
+                                     obj_size[0],
+                                     options.mnd,
+                                     not bool(options.without_divisions),
+                                     options.division_threshold,
+                                     rf_fn,
+                                     fov,
+                                     "none",
+                                     track.ConsTrackingSolverType.CplexSolver)
     elif options.method == 'conservation-dynprog':
-        tracker = track.ConsTrackingDynProg(int(options.max_num_objects), bool(options.size_dependent_detection_prob), obj_size[0], options.mnd,
-                                     not bool(options.without_divisions), options.division_threshold, rf_fn, fov, "none")
+        tracker = track.ConsTracking(int(options.max_num_objects),
+                                     bool(options.size_dependent_detection_prob),
+                                     obj_size[0],
+                                     options.mnd,
+                                     not bool(options.without_divisions),
+                                     options.division_threshold,
+                                     rf_fn,
+                                     fov,
+                                     "none",
+                                     track.ConsTrackingSolverType.DynProgSolver)
     else:
         raise InvalidArgumentException("Must be conservation or conservation-dynprog")
     return tracker, fov
