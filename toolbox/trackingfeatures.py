@@ -387,6 +387,10 @@ class LineageTree(LineagePart):
                 self.divisions.append(divisions[t.end_division_id])
                 for i in [0, 1]:
                     next_track_id = self.divisions[-1].children_track_ids[i]
+                    if next_track_id == -1:
+                        print("Warning: lineage tree could not find child {} of division {}, "
+                              "discarding branch.".format(i, self.divisions[-1].division_id))
+                        continue
                     self.tracks.append(tracks[next_track_id])
                     queue.append(tracks[next_track_id])
 
