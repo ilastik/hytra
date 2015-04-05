@@ -1046,7 +1046,7 @@ def exportFunkeyFiles(options, ts, tracker, trans_classifier):
     g = tracker.buildGraph(ts)
     store_label_in_hypotheses_graph(options, g, tracker)
 
-    tracker.SetFunkeyExportLabeledGraph(True)
+    # tracker.SetFunkeyExportLabeledGraph(True)
 
     outpath = prepareFunkeyFiles(options, g)
 
@@ -1058,18 +1058,30 @@ def exportFunkeyFiles(options, ts, tracker, trans_classifier):
         features_filename = ""
         constraints_filename = ""
 
+    tracking_param = tracker.get_conservation_tracking_parameters(
+        options.forbidden_cost,
+        options.ep_gap,
+        not bool(options.without_tracklets),
+        options.detection_weight,
+        options.division_weight,
+        options.transition_weight,
+        options.disappearance_cost,
+        options.appearance_cost,
+        options.with_merger_resolution,
+        ndim,
+        options.trans_par,
+        options.border_width,
+        True, # with_constraints,
+        getUncertaintyParameter(options, n_iterations=1),
+        options.timeout,
+        trans_classifier,
+        track.ConsTrackingSolverType.CplexSolver
+    )
 
-    tracker.writeFunkeyFiles(ts,features_filename,
-                                constraints_filename,
-                                labels_filename,
-                                track.WeightVector(),
-                                getUncertaintyParameter(options, n_iterations=1),
-                                options.forbidden_cost,
-                                ndim,
-                                not bool(options.without_tracklets),
-                                options.trans_par,
-                                options.border_width,
-                                trans_classifier)
+    tracker.writeStructuredLearningFiles(features_filename,
+                                         constraints_filename,
+                                         labels_filename,
+                                         tracking_param)
 
     return outpath
 
@@ -1082,9 +1094,9 @@ def learnFunkey(options, tracker, outpath):
                                              options.funkey_weights,
                                              "--regularizerWeight="+str(options.funkey_regularizerWeight))
 
-    learnedWeightsName = ["  --det=","  --div=","  --tr=","  --dis=","  --app="]
+    learnedWeightsName = ["  --det=", "  --div=", "  --tr=", "  --dis=", "  --app="]
 
-    with open(outpath+'/weights.txt','w') as f:
+    with open(outpath+'/weights.txt', 'w') as f:
         for i, w in enumerate(learnedWeights):
             f.write(learnedWeightsName[i] + str(w))
 
@@ -1097,8 +1109,8 @@ def learn_perturbation_weights(ts, options, shape, trans_classifier):
     optimal_loss = 1e+75
     optimal_parameters = []
 
-    os.system("mkdir -p "+outpath+"/pertubation_labels")
-    with open(outpath+"/pertubation_labels/pertubation.log",'w') as f:
+    os.system("mkdir -p " + outpath + "/pertubation_labels")
+    with open(outpath+"/pertubation_labels/pertubation.log", 'w') as f:
         for pertubation_parameter in itertools.product(np.arange(-2, 2, 1), repeat=3):
             parameter_name = ""
 
@@ -1106,7 +1118,7 @@ def learn_perturbation_weights(ts, options, shape, trans_classifier):
 
             pert_tracker.buildGraph(ts)
 
-            sigmas = [0.,0.]
+            sigmas = [0., 0.]
             for si in pertubation_parameter:
                 sigmas.append(float(10**si))
                 parameter_name += "_" + str(float(10**si))
@@ -1137,19 +1149,31 @@ def learn_perturbation_weights(ts, options, shape, trans_classifier):
             except:
                 print "ERROR tracker failed to track"
 
-            loss = pert_tracker.HamminglossOfFiles(outpath+"/labels.txt",outpath+'/pertubation_labels/perturbed_labeling'+parameter_name+'_'+str(options.num_iterations-1)+'.txt')
-            print "pertubation learning result ",str(loss) +"\t"+ str(pertubation_parameter)
-            f.write(str(loss) +"\t"+ str(pertubation_parameter)+ "\n")
+            loss = pert_tracker.HamminglossOfFiles(outpath + "/labels.txt",
+                                                   outpath + '/pertubation_labels/perturbed_labeling' + parameter_name
+                                                           + '_' + str(options.num_iterations - 1) + '.txt')
+            print "pertubation learning result ",str(loss) + "\t" + str(pertubation_parameter)
+            f.write(str(loss) + "\t" + str(pertubation_parameter) + "\n")
 
-            if(loss < optimal_loss):
+            if loss < optimal_loss:
                 optimal_loss = loss
                 optimal_parameters = pertubation_parameter
-                print "found better pertubation parameters:  loss:" ,optimal_loss,"  para: ",optimal_parameters
+                print "found better pertubation parameters:  loss:", optimal_loss, "  para: ", optimal_parameters
             del pert_tracker
 
-    print "result:   found solution with loss:", optimal_loss ," with parameters ", optimal_parameters
+    print "result:   found solution with loss:", optimal_loss, " with parameters ", optimal_parameters
 
-def runMergerResolving(options, tracker, ts, hypotheses_graph, ilp_fn, all_events, fov, region_features, trans_classifier, t0, with_feature_computation=False):
+def runMergerResolving(options,
+                       tracker,
+                       ts,
+                       hypotheses_graph,
+                       ilp_fn,
+                       all_events,
+                       fov,
+                       region_features,
+                       trans_classifier,
+                       t0,
+                       with_feature_computation=False):
     with h5py.File(ilp_fn, 'r') as h5file:  # open file to access label images
         feature_vectors = []
         for i, event_vector in enumerate(all_events):  # go through all solutions
@@ -1335,7 +1359,7 @@ if __name__ == "__main__":
     else:
         proposal_out = options.out_dir.rstrip('/') + '/proposal_labeling'
         
-    tracker.SetFunkeyOutputFiles('', '', proposal_out, False, uncertaintyParam)
+    # tracker.createStructuredLearningFiles('', '', proposal_out)
 
     # track!
     all_events = tracker.track(
@@ -1357,7 +1381,7 @@ if __name__ == "__main__":
         trans_classifier, # pointer to transition classifier
     )
 
-    tracker.SetFunkeyOutputFiles('', '', '', True, uncertaintyParam)
+    # tracker.SetFunkeyOutputFiles('', '', '', True, uncertaintyParam)
 
     # dispatch saving events already while merger resolving runs
     if not options.skip_saving and not options.save_first:
