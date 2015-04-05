@@ -1050,9 +1050,9 @@ def exportFunkeyFiles(options, ts, tracker, trans_classifier):
 
     outpath = prepareFunkeyFiles(options, g)
 
-    features_filename = outpath+"/features.txt"
-    constraints_filename = outpath+"/constraints.txt"
-    labels_filename = outpath+"/labels.txt"
+    features_filename = outpath + "/features.txt"
+    constraints_filename = outpath + "/constraints.txt"
+    labels_filename = outpath + "/labels.txt"
 
     if options.only_labels:
         features_filename = ""
