@@ -1359,7 +1359,7 @@ if __name__ == "__main__":
     else:
         proposal_out = options.out_dir.rstrip('/') + '/proposal_labeling'
         
-    # tracker.createStructuredLearningFiles('', '', proposal_out)
+    tracker.setTrackLabelingExportFile(proposal_out)
 
     # track!
     all_events = tracker.track(
@@ -1381,7 +1381,7 @@ if __name__ == "__main__":
         trans_classifier, # pointer to transition classifier
     )
 
-    # tracker.SetFunkeyOutputFiles('', '', '', True, uncertaintyParam)
+    tracker.setTrackLabelingExportFile('')
 
     # dispatch saving events already while merger resolving runs
     if not options.skip_saving and not options.save_first:
