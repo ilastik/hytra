@@ -255,6 +255,8 @@ def update_merger_features(coordinate_map, h5file, merger_traxel, new_traxel_ids
                                      np.array(lower).astype(np.int64),
                                      int(merger_traxel.Timestep),
                                      int(traxel_id))
+            if traxel_id not in label_image_excerpt:
+                print("ERROR: could not find requested traxel_id {} in relabeled image {}".format(traxel_id, label_image_excerpt))
         label_image_excerpt -= min_new_traxel_id - 1
     except MemoryError:
         print("WARNING: Something went wrong when updating label image around traxel "
