@@ -1358,8 +1358,13 @@ if __name__ == "__main__":
         proposal_out = ''
     else:
         proposal_out = options.out_dir.rstrip('/') + '/proposal_labeling'
+<<<<<<< Updated upstream
         
     # tracker.createStructuredLearningFiles('', '', proposal_out)
+=======
+    
+    tracker.setTrackLabelingExportFile(proposal_out)
+>>>>>>> Stashed changes
 
     # track!
     all_events = tracker.track(
