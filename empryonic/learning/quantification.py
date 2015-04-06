@@ -729,20 +729,29 @@ def compute_filtered_taxonomy(prev_assoc, curr_assoc, base_fn, cont_fn, cont_tra
     del f
 
     # event filtering
-    filtered_events = set()
+    base_traxels = [(t_time, curr_assoc['rhs'][t_id]) for t_time, t_id in cont_traxels
+                    if t_time == timestep and t_id in curr_assoc['rhs']]
+    base_traxels += [(t_time, prev_assoc['rhs'][t_id]) for t_time, t_id in cont_traxels
+                     if t_time == timestep - 1 and t_id in prev_assoc['rhs']]
+    filtered_base_events = set()
+    for e in base_events:
+        if e.traxels_contained_in(base_traxels):
+            filtered_base_events.add(e)
+
+    filtered_cont_events = set()
     for e in cont_events:
         if e.traxels_contained_in(cont_traxels):
-            filtered_events.add(e)
+            filtered_cont_events.add(e)
 
     # check, if events and assocs fit together
-    for e in base_events:
+    for e in filtered_base_events:
         if not e.is_matched(prev_assoc['lhs'], curr_assoc['lhs']):
             raise Exception("Base Event %s: id(s) not present in assocs" % str(e))
-    for e in filtered_events:
+    for e in filtered_cont_events:
         if not e.is_matched(prev_assoc['rhs'], curr_assoc['rhs']):
             raise Exception("Contestant Event %s: id(s) not present in assocs" % str(e))
 
-    return classify_event_sets(base_events, filtered_events, prev_assoc, curr_assoc)
+    return classify_event_sets(filtered_base_events, filtered_cont_events, prev_assoc, curr_assoc)
 
 ###
 ### Tests
