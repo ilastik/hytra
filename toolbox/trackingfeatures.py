@@ -179,6 +179,8 @@ class LineagePart:
             if k in self.features:
                 result[i] = self.features[k]
 
+        return result
+
     def get_expanded_feature_vector(self, series_expansion_range):
         """
         To allow for using length scaled versions of the track features,

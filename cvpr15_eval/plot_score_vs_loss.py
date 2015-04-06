@@ -1,12 +1,17 @@
 #!/usr/bin/env python
+
+import os.path
+import sys
+sys.path.append('.')
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../toolbox/.')
+
 import numpy as np
 import matplotlib.pyplot as plt
 import argparse
-
-import sys
-sys.path.append('../toolbox/.')
 # need this for weighted loss loading!
+
 import structsvm
+
 
 def load_proposals(input_filenames):
     if input_filenames:
@@ -49,6 +54,9 @@ if __name__ == "__main__":
     # compute scores
     feature_vectors = np.loadtxt(options.features)
     weights = np.loadtxt(options.reranker_weights)
+    means = np.loadtxt(os.path.splitext(options.reranker_weights)[0] + '_means.txt')
+    variances = np.loadtxt(os.path.splitext(options.reranker_weights)[0] + '_variances.txt')
+    structsvm.utils.apply_feature_normalization(feature_vectors, means, variances)
     scores = np.dot(weights, feature_vectors)
 
     # print scores

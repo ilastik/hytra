@@ -1227,6 +1227,19 @@ def runMergerResolving(options,
                         if event.type == track.EventType.ResolvedTo:
                             merger_traxel = ts.get_traxel(event.traxel_ids[0], timestep)
                             new_traxel_ids = event.traxel_ids[1:]
+                            # for new_id in new_traxel_ids:
+                            #     try:
+                            #         ts.get_traxel(new_id, timestep)
+                            #     except:
+                            #         # print("Could not find traxel {} at timestep {} in traxelstore, adding it now.".format(new_id, timestep))
+                            #         traxel = track.Traxel()
+                            #         traxel.set_feature_store(fs)
+                            #         # traxel.set_x_scale(x_scale)
+                            #         # traxel.set_y_scale(y_scale)
+                            #         # traxel.set_z_scale(z_scale)
+                            #         traxel.Id = int(new_id)
+                            #         traxel.Timestep = int(timestep)
+                            #         ts.add(fs, traxel)
                             update_merger_features(coordinate_map,
                                                    h5file,
                                                    merger_traxel,
@@ -1384,9 +1397,9 @@ if __name__ == "__main__":
 
     tracker.setTrackLabelingExportFile('')
 
-    # dispatch saving events already while merger resolving runs
-    if not options.skip_saving and not options.save_first:
-        parallel_save_process_pool = save_events_parallel(options, all_events, max_traxel_id_at, ilp_fn, t0, t1, False)
+    # # dispatch saving events already while merger resolving runs
+    # if not options.skip_saving and not options.save_first:
+    #     parallel_save_process_pool = save_events_parallel(options, all_events, max_traxel_id_at, ilp_fn, t0, t1, False)
 
     # run merger resolving
     if options.with_merger_resolution and options.max_num_objects > 1 and len(options.raw_filename) > 0:
@@ -1411,8 +1424,9 @@ if __name__ == "__main__":
         save_events(out_dir, events, t0, t1,
                       options.label_img_path, max_traxel_id_at, ilp_fn, first_events)
     elif not options.skip_saving:
-        parallel_save_process_pool.close()
-        parallel_save_process_pool.join()
+        # parallel_save_process_pool.close()
+        # parallel_save_process_pool.join()
+        save_events_parallel(options, all_events, max_traxel_id_at, ilp_fn, t0, t1, True)
 
     print "Elapsed time [s]: " + str(int(since))
     print "Elapsed time [min]: " + str(int(since) / 60)
