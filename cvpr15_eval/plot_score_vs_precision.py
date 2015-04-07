@@ -53,6 +53,8 @@ if __name__ == "__main__":
         num_tracks.append(len(lt.tracks))
         lengths.append(sum([t.length for t in lt.tracks]))
 
+    filename, extension = os.path.splitext(options.out_file)
+
     # scatter plot
     plt.figure()
     plt.hold(True)
@@ -60,6 +62,13 @@ if __name__ == "__main__":
     plt.xlabel("Precision")
     plt.ylabel("Score")
     plt.savefig(options.out_file)
+
+    # length histogram
+    plt.figure()
+    plt.hist(lengths, 100)
+    plt.xlabel("Length")
+    plt.ylabel("Frequency")
+    plt.savefig(filename + "_length_histo" + extension)
 
     # sort according to precision and plot again
     log_scores = map(math.log, scores)
@@ -71,7 +80,7 @@ if __name__ == "__main__":
     plt.plot(zip(*prec_score_pairs)[1], zip(*prec_score_pairs)[0])
     plt.ylabel("Precision")
     plt.xlabel("Score")
-    filename, extension = os.path.splitext(options.out_file)
+
     plt.savefig(filename + "_sorted" + extension)
 
     plt.figure()
@@ -82,7 +91,6 @@ if __name__ == "__main__":
     plt.xlabel("Length")
     plt.ylabel("Score")
     plt.legend()
-    filename, extension = os.path.splitext(options.out_file)
     plt.savefig(filename + "_length_score" + extension)
 
     plt.figure()
@@ -93,6 +101,19 @@ if __name__ == "__main__":
     plt.xlabel("Length")
     plt.ylabel("Precision")
     plt.legend()
-    filename, extension = os.path.splitext(options.out_file)
     plt.savefig(filename + "_length_precision" + extension)
-    
+
+    # plot only outlier svm score (averaged over lineage) vs precision
+    outlier_svm_scores = []
+    track_outlier_feature_idx = trackingfeatures.LineagePart.feature_to_weight_idx('track_outlier_svm_score')
+    div_outlier_feature_idx = trackingfeatures.LineagePart.feature_to_weight_idx('div_outlier_svm_score')
+    for lt in lineage_trees:
+        fv = lt.get_feature_vector()
+        outlier_svm_scores.append(fv[track_outlier_feature_idx] + fv[div_outlier_feature_idx])
+
+    plt.figure()
+    plt.hold(True)
+    plt.scatter(precisions, outlier_svm_scores)
+    plt.xlabel("Precision")
+    plt.ylabel("Outlier SVM Score")
+    plt.savefig(filename + "_outlier_score" + extension)
