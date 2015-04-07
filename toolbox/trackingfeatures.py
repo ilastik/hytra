@@ -83,7 +83,7 @@ class LineagePart:
 
     track_feature_map = {
         'single': [
-            'track_outlier_svm_score',
+            'track_outlier_svm_score', # TODO: add length?
         ],
         'mean_var': [
             'sq_diff_RegionCenter',
@@ -166,6 +166,18 @@ class LineagePart:
     @staticmethod
     def feature_to_weight_idx(feature_name):
         return LineagePart.all_feature_names.index(feature_name)
+
+    @staticmethod
+    def get_expanded_feature_names(series_expansion_range):
+        len_track_feat = LineagePart.get_num_track_features()
+
+        expanded_feature_names = []
+        for i in range(series_expansion_range[0], series_expansion_range[1]):
+            exponent = str(i) + " - "
+            expanded_feature_names += [exponent + f for f in LineagePart.all_feature_names[:len_track_feat]]
+
+        expanded_feature_names += LineagePart.all_feature_names[len_track_feat:]
+        return expanded_feature_names
 
     def get_feature_vector(self):
         """
@@ -377,7 +389,7 @@ class LineageTree(LineagePart):
         self.lineage_tree_id = lineage_tree_id
         self.tracks = [track]
         self.divisions = []
-        self.length = 0
+        self.length = 0 # todo remove this, just left in to allow for unpickling
 
         # follow the supplied track along divisions
         from collections import deque
