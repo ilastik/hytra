@@ -331,7 +331,10 @@ class Track(LineagePart):
             except:
                 # print("Could not find feature {} for track {}".format(v, self.track_id))
                 pass
-        self.features['track_outlier_svm_score'] = track_features_h5['track_outliers_svm'].value.flatten()[self.track_id]
+        try:
+            self.features['track_outlier_svm_score'] = track_features_h5['track_outliers_svm'].value.flatten()[self.track_id]
+        except:
+            self.features['track_outlier_svm_score'] = -1
 
     def expansion_factor(self, expansion):
         """
@@ -375,7 +378,10 @@ class Division(LineagePart):
                 # print("Could not find feature {} for division {}".format(v, self.division_id))
                 pass
 
-        self.features['div_outlier_svm_score'] = track_features_h5['division_outliers_svm'].value.flatten()[self.division_id]
+        try:
+            self.features['div_outlier_svm_score'] = track_features_h5['division_outliers_svm'].value.flatten()[self.division_id]
+        except:
+            self.features['div_outlier_svm_score'] = -1
 
 
 class LineageTree(LineagePart):
