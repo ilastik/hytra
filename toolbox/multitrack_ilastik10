@@ -341,7 +341,7 @@ def generate_traxelstore(h5file,
     if time_range is not None:
         if time_range[1] == -1:
             time_range[1] = shape_t
-        keys_sorted = [key for key in keys_sorted if int(key) >= time_range[0] and int(key) < time_range[1]]
+        keys_sorted = [key for key in keys_sorted if time_range[0] <= int(key) < time_range[1]]
     else:
         time_range = (0, shape_t)
 
@@ -1227,19 +1227,20 @@ def runMergerResolving(options,
                         if event.type == track.EventType.ResolvedTo:
                             merger_traxel = ts.get_traxel(event.traxel_ids[0], timestep)
                             new_traxel_ids = event.traxel_ids[1:]
-                            # for new_id in new_traxel_ids:
-                            #     try:
-                            #         ts.get_traxel(new_id, timestep)
-                            #     except:
-                            #         # print("Could not find traxel {} at timestep {} in traxelstore, adding it now.".format(new_id, timestep))
-                            #         traxel = track.Traxel()
-                            #         traxel.set_feature_store(fs)
-                            #         # traxel.set_x_scale(x_scale)
-                            #         # traxel.set_y_scale(y_scale)
-                            #         # traxel.set_z_scale(z_scale)
-                            #         traxel.Id = int(new_id)
-                            #         traxel.Timestep = int(timestep)
-                            #         ts.add(fs, traxel)
+                            for new_id in new_traxel_ids:
+                                try:
+                                    ts.get_traxel(new_id, timestep)
+                                    # print("MR: Found traxel {} at timestep {} in traxelstore.".format(new_id, timestep))
+                                except:
+                                    # print("MR: Could not find traxel {} at timestep {} in traxelstore, adding it now.".format(new_id, timestep))
+                                    traxel = track.Traxel()
+                                    traxel.set_feature_store(fs)
+                                    # traxel.set_x_scale(x_scale)
+                                    # traxel.set_y_scale(y_scale)
+                                    # traxel.set_z_scale(z_scale)
+                                    traxel.Id = int(new_id)
+                                    traxel.Timestep = int(timestep)
+                                    ts.add(fs, traxel)
                             update_merger_features(coordinate_map,
                                                    h5file,
                                                    merger_traxel,
