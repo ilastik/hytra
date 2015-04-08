@@ -73,14 +73,19 @@ if __name__ == "__main__":
     # sort according to precision and plot again
     log_scores = map(math.log, scores)
     prec_score_pairs = zip(list(precisions), scores, num_divs, num_tracks, lengths)
-    prec_score_pairs.sort(key=lambda x: x[1])
+    prec_score_pairs.sort(key=lambda x: x[1]) # sort by score
+
+    plt.figure()
+    plt.plot(range(len(prec_score_pairs)), zip(*prec_score_pairs)[0])
+    plt.ylabel("Precision")
+    plt.xlabel("Num Tracks, sorted by score")
+    plt.savefig(filename + "_sorted_num_tracks" + extension)
 
     plt.figure()
     plt.hold(True)
     plt.plot(zip(*prec_score_pairs)[1], zip(*prec_score_pairs)[0])
     plt.ylabel("Precision")
     plt.xlabel("Score")
-
     plt.savefig(filename + "_sorted" + extension)
 
     plt.figure()
