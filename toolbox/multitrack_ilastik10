@@ -734,6 +734,8 @@ def getH5Dataset(h5group, ds_name):
 
 def train_outlier_svm(options, tracker, ts, fov):
     import pickle
+    import trackingfeatures
+
     print("Storing ground truth labels in hypotheses graph and training an outlier detector SVM from that")
     g = tracker.buildGraph(ts)
     store_label_in_hypotheses_graph(options, g, tracker)
@@ -753,6 +755,21 @@ def train_outlier_svm(options, tracker, ts, fov):
 
     print("SVM is trained and stored in " + options.save_outlier_svm)
     options.load_outlier_svm = options.save_outlier_svm
+
+    gt_features_file = options.out_dir.rstrip('/') + "/gt_features.h5"
+    feature_extractor.set_track_feature_output_file(gt_features_file)
+    feature_extractor.compute_features()
+
+    # create complete lineage trees with extracted features:
+    with h5py.File(gt_features_file, 'r') as track_features_h5:
+        tracks, divisions = trackingfeatures.create_and_link_tracks_and_divisions(track_features_h5,
+                                                                                  ts,
+                                                                                  getRegionFeatures(ndim))
+        lineage_trees = trackingfeatures.build_lineage_trees(tracks, divisions)
+
+    # save lineage trees
+    lineage_tree_dump_filename = options.out_dir.rstrip('/') + '/gt_lineage_trees.dump'
+    trackingfeatures.save_lineage_dump(lineage_tree_dump_filename, tracks, divisions, lineage_trees)
 
 
 def store_label_in_hypotheses_graph(options, graph, tracker):
