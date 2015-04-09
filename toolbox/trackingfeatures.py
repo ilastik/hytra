@@ -172,9 +172,10 @@ class LineagePart:
         len_track_feat = LineagePart.get_num_track_features()
 
         expanded_feature_names = []
-        for i in range(series_expansion_range[0], series_expansion_range[1]):
-            exponent = str(i) + " - "
-            expanded_feature_names += [exponent + f for f in LineagePart.all_feature_names[:len_track_feat]]
+        for f in LineagePart.all_feature_names[:len_track_feat]:
+            for i in range(series_expansion_range[0], series_expansion_range[1]):
+                exponent = str(i) + " - "
+                expanded_feature_names += [exponent + f, ]
 
         expanded_feature_names += LineagePart.all_feature_names[len_track_feat:]
         return expanded_feature_names
