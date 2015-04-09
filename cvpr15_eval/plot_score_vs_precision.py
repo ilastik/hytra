@@ -71,7 +71,7 @@ if __name__ == "__main__":
     plt.savefig(filename + "_length_histo" + extension)
 
     # sort according to precision and plot again
-    log_scores = map(math.log, scores)
+    # log_scores = map(math.log, scores)
     prec_score_pairs = zip(list(precisions), scores, num_divs, num_tracks, lengths)
     prec_score_pairs.sort(key=lambda x: x[1]) # sort by score
 
