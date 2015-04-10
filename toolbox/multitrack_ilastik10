@@ -981,6 +981,7 @@ def initializeConservationTracking(options, shape):
 
     fov = getFovFromOptions(options, shape, t0, t1)
     if ndim == 2:
+        [xshape, yshape, zshape] = shape
         assert options.z_scale * (zshape - 1) == 0, "fov of z must be (0,0) if ndim == 2"
 
     if options.method == 'conservation':
