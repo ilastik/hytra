@@ -616,6 +616,10 @@ def extract_features_and_compute_score(reranker_weight_filename,
             print("Trained outlier SVM loaded from " + outlier_svm_filename)
 
     # extract all the features and save them to disk
+    try:
+        os.remove(track_features_filename)
+    except:
+        pass
     feature_extractor.set_track_feature_output_file(track_features_filename)
     sys.stdout.write("\tComputing features...")
     feature_extractor.compute_features()
