@@ -923,7 +923,7 @@ def getTraxelStore(options, ilp_fn,time_range, shape):
             if info[0] != options.mints or (options.maxts != -1 and info[4] != options.maxts - 1):
                 print("Warning: Traxelstore has different time range than requested FOV. Trimming traxels...")
                 fov = getFovFromOptions(options, shape, t0, t1)
-                fov.set_time_bounds(options.mints, options.maxts)
+                fov.set_time_bounds(options.mints, options.maxts - 1)
                 new_ts = track.TraxelStore()
                 ts.filter_by_fov(new_ts, fov)
                 ts = new_ts
