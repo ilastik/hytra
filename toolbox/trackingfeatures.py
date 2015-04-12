@@ -83,7 +83,7 @@ class LineagePart:
 
     track_feature_map = {
         'single': [
-            'track_outlier_svm_score',
+            'track_outlier_svm_score', # TODO: add length?
         ],
         'mean_var': [
             'sq_diff_RegionCenter',
@@ -167,6 +167,19 @@ class LineagePart:
     def feature_to_weight_idx(feature_name):
         return LineagePart.all_feature_names.index(feature_name)
 
+    @staticmethod
+    def get_expanded_feature_names(series_expansion_range):
+        len_track_feat = LineagePart.get_num_track_features()
+
+        expanded_feature_names = []
+        for f in LineagePart.all_feature_names[:len_track_feat]:
+            for i in range(series_expansion_range[0], series_expansion_range[1]):
+                exponent = str(i) + " - "
+                expanded_feature_names += [exponent + f, ]
+
+        expanded_feature_names += LineagePart.all_feature_names[len_track_feat:]
+        return expanded_feature_names
+
     def get_feature_vector(self):
         """
         This should return the feature vector (concatenated track and division features)
@@ -178,6 +191,8 @@ class LineagePart:
         for i, k in enumerate(LineagePart.all_feature_names):
             if k in self.features:
                 result[i] = self.features[k]
+
+        return result
 
     def get_expanded_feature_vector(self, series_expansion_range):
         """
@@ -317,7 +332,10 @@ class Track(LineagePart):
             except:
                 # print("Could not find feature {} for track {}".format(v, self.track_id))
                 pass
-        self.features['track_outlier_svm_score'] = track_features_h5['track_outliers_svm'].value.flatten()[self.track_id]
+        try:
+            self.features['track_outlier_svm_score'] = track_features_h5['track_outliers_svm'].value.flatten()[self.track_id]
+        except:
+            self.features['track_outlier_svm_score'] = -1
 
     def expansion_factor(self, expansion):
         """
@@ -361,7 +379,10 @@ class Division(LineagePart):
                 # print("Could not find feature {} for division {}".format(v, self.division_id))
                 pass
 
-        self.features['div_outlier_svm_score'] = track_features_h5['division_outliers_svm'].value.flatten()[self.division_id]
+        try:
+            self.features['div_outlier_svm_score'] = track_features_h5['division_outliers_svm'].value.flatten()[self.division_id]
+        except:
+            self.features['div_outlier_svm_score'] = -1
 
 
 class LineageTree(LineagePart):
@@ -375,7 +396,7 @@ class LineageTree(LineagePart):
         self.lineage_tree_id = lineage_tree_id
         self.tracks = [track]
         self.divisions = []
-        self.length = 0
+        self.length = 0 # todo remove this, just left in to allow for unpickling
 
         # follow the supplied track along divisions
         from collections import deque
@@ -595,6 +616,10 @@ def extract_features_and_compute_score(reranker_weight_filename,
             print("Trained outlier SVM loaded from " + outlier_svm_filename)
 
     # extract all the features and save them to disk
+    try:
+        os.remove(track_features_filename)
+    except:
+        pass
     feature_extractor.set_track_feature_output_file(track_features_filename)
     sys.stdout.write("\tComputing features...")
     feature_extractor.compute_features()

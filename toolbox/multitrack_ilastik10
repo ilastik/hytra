@@ -225,7 +225,7 @@ def extract_coordinates(coordinate_map, h5file, traxel, options):
         raise Exception
 
 
-def update_merger_features(coordinate_map, h5file, merger_traxel, new_traxel_ids, raw_h5, options, fs, timestep):
+def update_merger_features(coordinate_map, h5file, merger_traxel, new_traxel_ids, raw_h5, options, fs, ts, timestep):
     # add coordinate lists with armadillo matrixes
     shape = h5file['/'.join(options.label_img_path.split('/')[:-1])].values()[0].shape[1:4]
     ndim = 2 if shape[-1]==1 else 3
@@ -252,6 +252,7 @@ def update_merger_features(coordinate_map, h5file, merger_traxel, new_traxel_ids
         for traxel_id in new_traxel_ids:
             label_image_excerpt = track.update_labelimage(coordinate_map,
                                      label_image_excerpt,
+                                     ts,
                                      np.array(lower).astype(np.int64),
                                      int(merger_traxel.Timestep),
                                      int(traxel_id))
@@ -341,7 +342,7 @@ def generate_traxelstore(h5file,
     if time_range is not None:
         if time_range[1] == -1:
             time_range[1] = shape_t
-        keys_sorted = [key for key in keys_sorted if int(key) >= time_range[0] and int(key) < time_range[1]]
+        keys_sorted = [key for key in keys_sorted if time_range[0] <= int(key) < time_range[1]]
     else:
         time_range = (0, shape_t)
 
@@ -734,6 +735,8 @@ def getH5Dataset(h5group, ds_name):
 
 def train_outlier_svm(options, tracker, ts, fov):
     import pickle
+    import trackingfeatures
+
     print("Storing ground truth labels in hypotheses graph and training an outlier detector SVM from that")
     g = tracker.buildGraph(ts)
     store_label_in_hypotheses_graph(options, g, tracker)
@@ -753,6 +756,21 @@ def train_outlier_svm(options, tracker, ts, fov):
 
     print("SVM is trained and stored in " + options.save_outlier_svm)
     options.load_outlier_svm = options.save_outlier_svm
+
+    gt_features_file = options.out_dir.rstrip('/') + "/gt_features.h5"
+    feature_extractor.set_track_feature_output_file(gt_features_file)
+    feature_extractor.compute_features()
+
+    # create complete lineage trees with extracted features:
+    with h5py.File(gt_features_file, 'r') as track_features_h5:
+        tracks, divisions = trackingfeatures.create_and_link_tracks_and_divisions(track_features_h5,
+                                                                                  ts,
+                                                                                  getRegionFeatures(ndim))
+        lineage_trees = trackingfeatures.build_lineage_trees(tracks, divisions)
+
+    # save lineage trees
+    lineage_tree_dump_filename = options.out_dir.rstrip('/') + '/gt_lineage_trees.dump'
+    trackingfeatures.save_lineage_dump(lineage_tree_dump_filename, tracks, divisions, lineage_trees)
 
 
 def store_label_in_hypotheses_graph(options, graph, tracker):
@@ -905,7 +923,7 @@ def getTraxelStore(options, ilp_fn,time_range, shape):
             if info[0] != options.mints or (options.maxts != -1 and info[4] != options.maxts - 1):
                 print("Warning: Traxelstore has different time range than requested FOV. Trimming traxels...")
                 fov = getFovFromOptions(options, shape, t0, t1)
-                fov.set_time_bounds(options.mints, options.maxts)
+                fov.set_time_bounds(options.mints, options.maxts - 1)
                 new_ts = track.TraxelStore()
                 ts.filter_by_fov(new_ts, fov)
                 ts = new_ts
@@ -963,6 +981,7 @@ def initializeConservationTracking(options, shape):
 
     fov = getFovFromOptions(options, shape, t0, t1)
     if ndim == 2:
+        [xshape, yshape, zshape] = shape
         assert options.z_scale * (zshape - 1) == 0, "fov of z must be (0,0) if ndim == 2"
 
     if options.method == 'conservation':
@@ -1227,6 +1246,20 @@ def runMergerResolving(options,
                         if event.type == track.EventType.ResolvedTo:
                             merger_traxel = ts.get_traxel(event.traxel_ids[0], timestep)
                             new_traxel_ids = event.traxel_ids[1:]
+                            for new_id in new_traxel_ids:
+                                try:
+                                    ts.get_traxel(new_id, timestep)
+                                    # print("MR: Found traxel {} at timestep {} in traxelstore.".format(new_id, timestep))
+                                except:
+                                    # print("MR: Could not find traxel {} at timestep {} in traxelstore, adding it now.".format(new_id, timestep))
+                                    traxel = track.Traxel()
+                                    traxel.set_feature_store(fs)
+                                    # traxel.set_x_scale(x_scale)
+                                    # traxel.set_y_scale(y_scale)
+                                    # traxel.set_z_scale(z_scale)
+                                    traxel.Id = int(new_id)
+                                    traxel.Timestep = int(timestep)
+                                    ts.add(fs, traxel)
                             update_merger_features(coordinate_map,
                                                    h5file,
                                                    merger_traxel,
@@ -1234,6 +1267,7 @@ def runMergerResolving(options,
                                                    raw_h5,
                                                    options,
                                                    fs,
+                                                   ts,
                                                    timestep)
             resolved_graph = tracker.get_resolved_hypotheses_graph()
             # extract features of this solution
@@ -1384,9 +1418,9 @@ if __name__ == "__main__":
 
     tracker.setTrackLabelingExportFile('')
 
-    # dispatch saving events already while merger resolving runs
-    if not options.skip_saving and not options.save_first:
-        parallel_save_process_pool = save_events_parallel(options, all_events, max_traxel_id_at, ilp_fn, t0, t1, False)
+    # # dispatch saving events already while merger resolving runs
+    # if not options.skip_saving and not options.save_first:
+    #     parallel_save_process_pool = save_events_parallel(options, all_events, max_traxel_id_at, ilp_fn, t0, t1, False)
 
     # run merger resolving
     if options.with_merger_resolution and options.max_num_objects > 1 and len(options.raw_filename) > 0:
@@ -1411,8 +1445,9 @@ if __name__ == "__main__":
         save_events(out_dir, events, t0, t1,
                       options.label_img_path, max_traxel_id_at, ilp_fn, first_events)
     elif not options.skip_saving:
-        parallel_save_process_pool.close()
-        parallel_save_process_pool.join()
+        # parallel_save_process_pool.close()
+        # parallel_save_process_pool.join()
+        save_events_parallel(options, all_events, max_traxel_id_at, ilp_fn, t0, t1, True)
 
     print "Elapsed time [s]: " + str(int(since))
     print "Elapsed time [min]: " + str(int(since) / 60)

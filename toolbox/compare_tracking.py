@@ -49,6 +49,18 @@ def construct_associations(base_fns, cont_fns, timesteps, verbose=False):
     return assocs
 
 
+def get_all_frame_files_from_folder(folder):
+    fns = []
+    for fn in os.listdir(folder):
+        name, ext = os.path.splitext(os.path.basename(cont_fns[0]))
+        try:
+            int(name)
+            if ext == '.h5':
+                fns.append(path.abspath(path.join(folder, fn)))
+        except:
+            pass
+    return fns
+
 if __name__=="__main__":
 
     usage = """%prog [options] BASE_DIR CONTESTANT_DIR
@@ -74,9 +86,9 @@ Compare two tracking results, based only on the association information in the t
         base_dir = args[0]
         cont_dir = args[1]
 
-        base_fns = [path.abspath(path.join(base_dir, fn)) for fn in os.listdir(base_dir)]
+        base_fns = get_all_frame_files_from_folder(base_dir)
         base_fns.sort()
-        cont_fns = [path.abspath(path.join(cont_dir, fn)) for fn in os.listdir(cont_dir)]
+        cont_fns = get_all_frame_files_from_folder(cont_dir)
         cont_fns.sort()
     else:
         parser.print_help()
