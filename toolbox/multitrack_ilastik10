@@ -14,9 +14,10 @@ import time
 import numpy as np
 import h5py
 import itertools
-import copy
 import vigra
+import copy
 import pgmlink as track
+from trackingfeatures import extract_features_and_compute_score, get_feature_vector, ProgressBar
 from empryonic import io
 from multiprocessing import Pool
 
@@ -34,7 +35,7 @@ copied but linked to the original files to improve execution speed and storage r
     parser.add_option('--config-file', type='string', dest='config', default=None,
                       help='path to config file')
     parser.add_option('--method', type='str', default='conservation',
-                      help='conservation [default: %default]')
+                      help='conservation or conservation-dynprog [default: %default]')
     parser.add_option('-o', '--output-dir', type='str', dest='out_dir', default='tracked', help='[default: %default]')
     parser.add_option('--x-scale', type='float', dest='x_scale', default=1., help='[default: %default]')
     parser.add_option('--y-scale', type='float', dest='y_scale', default=1., help='[default: %default]')
@@ -80,6 +81,8 @@ copied but linked to the original files to improve execution speed and storage r
     parser.add_option('--without-classifier', action='store_true', dest='woc', default=False,
                     help='use classifier for labeling [default=%default]')
     parser.add_option('--gt-path', type='string', dest='gt_pth', default="", help='path to ground truth files [default=%default]')
+    parser.add_option('--gt-path-format', type='string', dest='gt_path_format_string', default="{0:04d}", 
+        help='groundtruth file format string, should be {0:05d} or {0:04d} [default=%default]')
     parser.add_option('--funkey-learn', action='store_true', dest='learn_funkey', default=False,
                     help='export labels features and constraints to learn with funkey [default=%default]')
     parser.add_option('--funkey-weights', type='string', dest='funkey_weights', default="",
@@ -163,10 +166,6 @@ copied but linked to the original files to improve execution speed and storage r
                         help='Skip saving if you are just interested in the proposals and features')
     consopts.add_option('--only-save-first', dest='save_first', action='store_true',
                         help='Skip saving of all perturbations, except the unperturbed result')
-    consopts.add_option('--ground-truth-labeling', dest='ground_truth_labeling', type='str', default='',
-                        help='Ground Truth label filename which will be used for reranking the solutions')
-    consopts.add_option('--gt-label-image-path', dest='gt_label_image_path', type='str', default='',
-                        help='Internal path to the label image inside the ground truth HDF5')
     consopts.add_option('--save-outlier-svm', dest='save_outlier_svm', type='str', default='',
                         help='Filename to store the trained SVM for higher order features outlier detection. Requires gt-path to be set')
     consopts.add_option('--load-outlier-svm', dest='load_outlier_svm', type='str', default='',
@@ -198,26 +197,6 @@ copied but linked to the original files to improve execution speed and storage r
 
     return optcfg, args
 
-def get_feature(h5file, feature_path, object_id):
-    if not feature_path in h5file:
-        raise Exception("Feature %s not found in %s." % (feature_path, h5file.filename))
-    return h5file[feature_path][object_id, ...]
-
-
-def get_feature_vector(traxel, feature_name, num_dimensions):
-    #print traxel.print_available_features()
-    result = []
-    for i in range(num_dimensions):
-        try:
-            result.append(traxel.get_feature_value(feature_name, i))
-        except:
-            print("Error when accessing feature {}[{}] for traxel (Id={},Timestep={})".format(feature_name,
-                                                                                              i,
-                                                                                              traxel.Id,
-                                                                                              traxel.Timestep))
-            raise Exception
-    return result
-
 
 def extract_coordinates(coordinate_map, h5file, traxel, options):
     # add coordinate lists with armadillo matrixes
@@ -246,7 +225,7 @@ def extract_coordinates(coordinate_map, h5file, traxel, options):
         raise Exception
 
 
-def update_merger_features(coordinate_map, h5file, merger_traxel, new_traxel_ids, raw_h5, options, fs, timestep):
+def update_merger_features(coordinate_map, h5file, merger_traxel, new_traxel_ids, raw_h5, options, fs, ts, timestep):
     # add coordinate lists with armadillo matrixes
     shape = h5file['/'.join(options.label_img_path.split('/')[:-1])].values()[0].shape[1:4]
     ndim = 2 if shape[-1]==1 else 3
@@ -273,13 +252,18 @@ def update_merger_features(coordinate_map, h5file, merger_traxel, new_traxel_ids
         for traxel_id in new_traxel_ids:
             label_image_excerpt = track.update_labelimage(coordinate_map,
                                      label_image_excerpt,
+                                     ts,
                                      np.array(lower).astype(np.int64),
                                      int(merger_traxel.Timestep),
                                      int(traxel_id))
+            if traxel_id not in label_image_excerpt:
+                print("ERROR: could not find requested traxel_id {} in relabeled image {}".format(traxel_id, label_image_excerpt))
         label_image_excerpt -= min_new_traxel_id - 1
+    except MemoryError:
+        print("WARNING: Something went wrong when updating label image around traxel "
+              "(id={}, timestep={}).".format(merger_traxel.Id, merger_traxel.Timestep))
 
-        # Todo: store updated image somewhere?
-
+    try:
         # compute features for new traxels, which are automatically stored in featurestore
         # the 2d raw sequence is usually saved as a 2d+t+c dataset, the labelimage from ilastik as 3d+t+c
         raw_image_excerpt = np.array(raw_h5[options.raw_path][tuple([timestep, ] + roi[0:ndim] + [0, ])])
@@ -294,8 +278,9 @@ def update_merger_features(coordinate_map, h5file, merger_traxel, new_traxel_ids
                                           fs,
                                           merger_traxel.Timestep)
     except MemoryError:
-        print("WARNING: Something went wrong when updating label image or extracting region features for traxel "
-              "(id={}, timestep={}). Features are left empty".format(merger_traxel.Id, merger_traxel.Timestep))
+        print("WARNING: Something went wrong when extracting region features for traxel "
+              "(id={}, timestep={}) in region {} of image size {}. Features are left empty".format(
+            merger_traxel.Id, merger_traxel.Timestep, roi, ri_ex.shape))
 
 
 def generate_traxelstore(h5file,
@@ -357,7 +342,7 @@ def generate_traxelstore(h5file,
     if time_range is not None:
         if time_range[1] == -1:
             time_range[1] = shape_t
-        keys_sorted = [key for key in keys_sorted if int(key) >= time_range[0] and int(key) < time_range[1]]
+        keys_sorted = [key for key in keys_sorted if time_range[0] <= int(key) < time_range[1]]
     else:
         time_range = (0, shape_t)
 
@@ -567,7 +552,7 @@ def write_events(events, fn):
     mov = []
     mer = []
     mul = []
-    print "-- Writing results to " + path.basename(fn)
+    print "-- Writing results to " + fn
     for event in events:
         if event.type == track.EventType.Appearance:
             app.append((event.traxel_ids[0], event.energy))
@@ -644,7 +629,7 @@ def write_events(events, fn):
     print "-> results successfully written"
 
 
-def save_events_parallel(options, all_events, max_traxel_id_at, ilp_file, t0, t1, out_dir=None):    
+def save_events_parallel(options, all_events, max_traxel_id_at, ilp_file, t0, t1, async=True):
     processing_pool = Pool()
 
     for i in range(len(all_events)):
@@ -652,14 +637,14 @@ def save_events_parallel(options, all_events, max_traxel_id_at, ilp_file, t0, t1
         first_events = events[0]
         events = events[1:]
 
-        if out_dir is None:
-            out_dir = options.out_dir.rstrip('/') + '/iter_' + str(i)
-
+        out_dir = options.out_dir.rstrip('/') + '/iter_' + str(i)
         processing_pool.apply_async(save_events, (out_dir, copy.copy(events), t0, t1,
                                                   options.label_img_path, max_traxel_id_at, ilp_file, first_events))
 
-    processing_pool.close()
-    processing_pool.join()
+    if async:
+        processing_pool.close()
+        processing_pool.join()
+    return processing_pool
 
 
 def save_events(out_dir, events, t0, t1, label_image_path, max_traxel_id_at, src_filename, first_events):
@@ -719,22 +704,6 @@ def save_events(out_dir, events, t0, t1, label_image_path, max_traxel_id_at, src
 
             write_events(events_at, working_fns[i + 1])
 
-def rank_solutions(ground_truth_filename, feature_vector_filename, proposal_basename, num_iterations):
-    import structsvm
-    proposal_filenames = [proposal_basename + '_' + str(i) + '.txt' for i in range(num_iterations)]
-
-    problem = structsvm.struct_svm_ranking_problem(feature_vector_filename,
-                                         ground_truth_filename,
-                                         proposal_filenames)
-                                         #,args.loss_weights)
-    solver = structsvm.struct_svm_solver_primal(problem)
-    weights = solver.solve()
-    weights = np.array(weights)
-    problem.print_scores(weights)
-
-    print("Found weights: {}".format(weights))
-    return weights
-
 def loadGPClassifier(fn, h5_group='/TransitionGPClassifier/'):
     try:
         from lazyflow.classifiers.gaussianProcessClassifier import GaussianProcessClassifier
@@ -757,22 +726,51 @@ def loadGPClassifier(fn, h5_group='/TransitionGPClassifier/'):
 
     return gpc, features
 
-def construct_feature_vector(feature_matrix_basename,
-                             proposal_basename,
-                             iteration,
-                             feature_vector):
-    feature_matrix = np.loadtxt(feature_matrix_basename + '_{}.txt'.format(iteration))
-    proposal_label = np.loadtxt(proposal_basename + '_{}.txt'.format(iteration))
-
-    new_features = np.dot(proposal_label, feature_matrix)
-    feature_vector = list(feature_vector) + list(new_features)
-    return feature_vector
-
 def getH5Dataset(h5group, ds_name):
     if ds_name in h5group.keys():
         return np.array(h5group[ds_name])
 
     return np.array([])
+
+
+def train_outlier_svm(options, tracker, ts, fov):
+    import pickle
+    import trackingfeatures
+
+    print("Storing ground truth labels in hypotheses graph and training an outlier detector SVM from that")
+    g = tracker.buildGraph(ts)
+    store_label_in_hypotheses_graph(options, g, tracker)
+    print("Setting injected solution as active")
+    g.set_injected_solution()
+    feature_extractor = track.TrackingFeatureExtractor(g, fov)
+    print("Train svm")
+    feature_extractor.train_track_svm()
+    feature_extractor.train_division_svm()
+    print("Done training, saving...")
+    outlier_track_svm = feature_extractor.get_track_svm()
+    outlier_division_svm = feature_extractor.get_division_svm()
+
+    with open(options.save_outlier_svm, 'w') as svm_dump:
+        pickle.dump(outlier_track_svm, svm_dump)
+        pickle.dump(outlier_division_svm, svm_dump)
+
+    print("SVM is trained and stored in " + options.save_outlier_svm)
+    options.load_outlier_svm = options.save_outlier_svm
+
+    gt_features_file = options.out_dir.rstrip('/') + "/gt_features.h5"
+    feature_extractor.set_track_feature_output_file(gt_features_file)
+    feature_extractor.compute_features()
+
+    # create complete lineage trees with extracted features:
+    with h5py.File(gt_features_file, 'r') as track_features_h5:
+        tracks, divisions = trackingfeatures.create_and_link_tracks_and_divisions(track_features_h5,
+                                                                                  ts,
+                                                                                  getRegionFeatures(ndim))
+        lineage_trees = trackingfeatures.build_lineage_trees(tracks, divisions)
+
+    # save lineage trees
+    lineage_tree_dump_filename = options.out_dir.rstrip('/') + '/gt_lineage_trees.dump'
+    trackingfeatures.save_lineage_dump(lineage_tree_dump_filename, tracks, divisions, lineage_trees)
 
 
 def store_label_in_hypotheses_graph(options, graph, tracker):
@@ -794,7 +792,7 @@ def store_label_in_hypotheses_graph(options, graph, tracker):
 
     #load ground truth from hd5 files and label graph accordingly
     for i in range(graph.earliest_timestep(), graph.latest_timestep() + 1):
-        fn = options.gt_pth.rstrip('/') + '/' + "{0:04d}".format(i) + '.h5'
+        fn = options.gt_pth.rstrip('/') + '/' + options.gt_path_format_string.format(i) + '.h5'
         print "open file:", fn
         with h5py.File(fn, 'r') as f:
             print f
@@ -858,158 +856,6 @@ def store_label_in_hypotheses_graph(options, graph, tracker):
     return graph
 
 
-def train_outlier_svm(options, tracker, ts, fov):
-    import pickle
-    print("Storing ground truth labels in hypotheses graph and training an outlier detector SVM from that")
-    g = tracker.buildGraph(ts)
-    store_label_in_hypotheses_graph(options, g, tracker)
-    print("Setting injected solution as active")
-    g.set_injected_solution()
-    feature_extractor = track.TrackingFeatureExtractor(g, fov)
-    print("Train svm")
-    feature_extractor.train_track_svm()
-    feature_extractor.train_division_svm()
-    print("Done training, saving...")
-    outlier_track_svm = feature_extractor.get_track_svm()
-    outlier_division_svm = feature_extractor.get_division_svm()
-
-    with open(options.save_outlier_svm, 'w') as svm_dump:
-        pickle.dump(outlier_track_svm, svm_dump)
-        pickle.dump(outlier_division_svm, svm_dump)
-
-    print("SVM is trained and stored in " + options.save_outlier_svm)
-    options.load_outlier_svm = options.save_outlier_svm
-
-
-def get_track_feature_matrix(track_features_filename, region_features, normalize=False):
-    num_features = sum([i for n,i in region_features])
-    track_feature_matrix = np.array([]).reshape(0, num_features)
-    with h5py.File(track_features_filename, 'r') as track_features:
-        # examine all tracks
-        for track_id in track_features['tracks'].keys():
-            merged_features = np.zeros(num_features)
-
-            try:
-                # get accumulated feature vector
-                traxels = np.array(track_features['tracks/' + track_id + '/traxels']).transpose()
-                for timestep, idx in traxels:
-                    feats = []
-                    traxel = ts.get_traxel(int(idx), int(timestep))
-                    for feat_name, feat_dims in region_features:
-                        feats += get_feature_vector(traxel, feat_name, feat_dims)
-
-                    merged_features += np.array(feats)
-            except:
-                print("Warning: could not extract some feature of track {}, setting it's feature value to zero")
-
-            # divide by num traxels to get average
-            if normalize:
-                merged_features = [f / len(traxels) for f in merged_features]
-
-            track_feature_matrix = np.vstack([track_feature_matrix, merged_features])
-
-    # create list of names of the features, to ease later analysis and plotting
-    track_feature_names = []
-    for f, dim in region_features:
-        track_feature_names += [f + '[' + str(i) + ']' for i in range(dim)]
-
-    return track_feature_matrix, track_feature_names
-
-
-def extract_features_and_compute_score(options, i, hypotheses_graph, ts, fov, feature_vector_filename, region_features):
-    import pickle
-    # extract higher order features and per-track features
-    print("Extracting features of solution {}".format(i))
-    track_features_filename = options.out_dir.rstrip('/') + '/iter_' + str(i) + '/track_features.h5'
-    feature_extractor = track.TrackingFeatureExtractor(hypotheses_graph, fov)
-    if len(options.load_outlier_svm) > 0:  # when the svm was trained in this run, it automatically sets load_outlier_svm
-        with open(options.load_outlier_svm, 'r') as svm_dump:
-            outlier_track_svm = pickle.load(svm_dump)
-            outlier_division_svm = pickle.load(svm_dump)
-
-            feature_extractor.set_track_svm(outlier_track_svm)
-            feature_extractor.set_division_svm(outlier_division_svm)
-            print("Trained outlier SVM loaded from " + options.load_outlier_svm)
-    feature_extractor.set_track_feature_output_file(track_features_filename)
-    feature_extractor.compute_features()
-    feature_vector = [f for f in feature_extractor.get_feature_vector()]
-    feature_names = [feature_extractor.get_feature_description(f) for f in range(len(feature_vector))]
-
-    track_feature_matrix, track_feature_names = get_track_feature_matrix(track_features_filename, region_features, False)
-    sum_of_track_features = np.sum(track_feature_matrix, axis=0)
-
-    feature_vector += list(sum_of_track_features)
-    feature_names += track_feature_names
-    overall_score = 0
-
-    # if reranker weights are already given, compute overall, and track scores
-    if options.reranker_weight_file and len(options.reranker_weight_file) > 0:
-        reranker_weights = np.loadtxt(options.reranker_weight_file)
-        overall_score = np.dot(reranker_weights, np.array(feature_vector))
-
-        # track scores
-        track_feature_matrix = get_track_feature_matrix(track_features_filename, region_features, True)
-        with h5py.File(track_features_filename, 'r') as track_features:
-            track_scores = []
-            # examine all tracks, extract HO features for quality measures
-            for track_id in track_features['tracks'].keys():
-
-                # ugly way of using the learned weights to compute track quality measurements
-                score = 0
-
-                def get_feature_score(mean_weight_idx, name):
-                    try:
-                        value = np.array(track_features['tracks/' + track_id + '/' + name])
-                        return reranker_weights[mean_weight_idx] * np.mean(value) \
-                               + reranker_weights[mean_weight_idx + 1] * np.var(value)
-                    except:
-                        print("Track {} has no feature: {}".format(track_id, name))
-                        return 0
-
-                score += get_feature_score(0, 'sq_diff_RegionCenter')
-                score += get_feature_score(4, 'sq_diff_Count')
-                score += get_feature_score(8, 'sq_diff_Mean')
-                score += get_feature_score(12, 'sq_diff_Variance')
-                score += get_feature_score(16, 'sq_accel_RegionCenter')
-                score += get_feature_score(20, 'sq_accel_Count')
-                score += get_feature_score(24, 'sq_accel_Mean')
-                score += get_feature_score(28, 'sq_accel_Variance')
-                score += get_feature_score(32, 'angles_RegionCenter')
-                score += get_feature_score(38, 'outlier_id_RegionCenter')
-                score += get_feature_score(42, 'outlier_id_Count')
-                score += get_feature_score(46, 'outlier_id_Mean')
-                score += get_feature_score(50, 'outlier_id_Variance')
-                score += get_feature_score(54, 'diff_outlier_RegionCenter')
-                score += get_feature_score(58, 'diff_outlier_Count')
-                score += get_feature_score(62, 'diff_outlier_Mean')
-                score += get_feature_score(66, 'diff_outlier_Variance')
-
-                if len(options.load_outlier_svm) > 0:
-                    outlier_svm_score = track_features['track_outliers_svm'][int(track_id)]
-                    score += outlier_svm_score * reranker_weights[70]
-                    # outlier_svm_score = track_features['track_outliers_svm'][int(track_id)]
-                    # score += outlier_svm_score * reranker_weights[114]
-
-                track_scores.append([float(track_id), score])
-
-            #Todo: analyze all divisions
-
-            #Todo: stitch tracks (match last track traxel id to first division traxel id and vice versa)
-            #       and then compute quality measures
-            track_scores = np.array(track_scores)
-            print("Saving track scores for iteration " + str(i))
-            np.savetxt(options.out_dir.rstrip('/') + '/iter_' + str(i) + '/track_scores.txt', track_scores)
-
-            import matplotlib.pyplot as plt
-            plt.figure()
-            plt.hist(track_scores[:, 1], 100)
-            plt.savefig(options.out_dir.rstrip('/') + '/iter_' + str(i) + '/track_scores.pdf')
-
-        print("Overall score of tracking is: {}".format(score))
-
-    return feature_vector, overall_score, feature_names
-
-
 def loadTransClassifier(options):
     if options.trans_fn is None or len(options.trans_fn) == 0:
         trans_classifier = None
@@ -1025,6 +871,7 @@ def loadTransClassifier(options):
         trans_classifier = TransitionClassifier(gpc, selected_features)
 
     return trans_classifier
+
 
 def getRegionFeatures(ndim):
     region_features = [
@@ -1045,10 +892,11 @@ def getRegionFeatures(ndim):
             ("Weighted<PowerSum<0> >", 1),
             ("Coord< Minimum >", ndim),
             ("Coord< Maximum >", ndim)
-        ]
+    ]
     return region_features
 
-def getTraxelStore(options, ilp_fn,time_range):
+
+def getTraxelStore(options, ilp_fn,time_range, shape):
     max_traxel_id_at = []
     with h5py.File(ilp_fn, 'r') as h5file:
         ndim = 3
@@ -1069,6 +917,16 @@ def getTraxelStore(options, ilp_fn,time_range):
                 fs = pickle.load(ts_in)
                 max_traxel_id_at = pickle.load(ts_in)
                 ts.set_feature_store(fs)
+
+            info = [int(x) for x in ts.bounding_box()]
+            t0, t1 = (info[0], info[4])
+            if info[0] != options.mints or (options.maxts != -1 and info[4] != options.maxts - 1):
+                print("Warning: Traxelstore has different time range than requested FOV. Trimming traxels...")
+                fov = getFovFromOptions(options, shape, t0, t1)
+                fov.set_time_bounds(options.mints, options.maxts - 1)
+                new_ts = track.TraxelStore()
+                ts.filter_by_fov(new_ts, fov)
+                ts = new_ts
         else:
             max_num_mer = int(options.max_num_objects)
 
@@ -1093,6 +951,10 @@ def getTraxelStore(options, ilp_fn,time_range):
                                                             ext_probs=options.ext_probs
             )
 
+        info = [int(x) for x in ts.bounding_box()]
+        t0, t1 = (info[0], info[4])
+        print "-> Traxelstore bounding box: " + str(info)
+
         if options.dump_traxelstore:
             print 'dumping traxelstore to file'
             import pickle
@@ -1102,23 +964,50 @@ def getTraxelStore(options, ilp_fn,time_range):
                 pickle.dump(fs, ts_out)
                 pickle.dump(max_traxel_id_at, ts_out)
 
-    return ts, fs, max_traxel_id_at, ndim
+    return ts, fs, max_traxel_id_at, ndim, t0, t1
 
+
+def getFovFromOptions(options, shape, t0, t1):
+    [xshape, yshape, zshape] = shape
+
+    fov = track.FieldOfView(t0, 0, 0, 0, t1, options.x_scale * (xshape - 1), options.y_scale * (yshape - 1),
+                            options.z_scale * (zshape - 1))
+    return fov
 
 def initializeConservationTracking(options, shape):
     rf_fn = 'none'
     if options.rf_fn:
         rf_fn = options.rf_fn
 
-    [xshape, yshape, zshape] = shape
-
-    fov = track.FieldOfView(t0, 0, 0, 0, t1, options.x_scale * (xshape - 1), options.y_scale * (yshape - 1),
-                            options.z_scale * (zshape - 1))
+    fov = getFovFromOptions(options, shape, t0, t1)
     if ndim == 2:
+        [xshape, yshape, zshape] = shape
         assert options.z_scale * (zshape - 1) == 0, "fov of z must be (0,0) if ndim == 2"
 
-    tracker = track.ConsTracking(int(options.max_num_objects), bool(options.size_dependent_detection_prob), obj_size[0], options.mnd,
-                                 not bool(options.without_divisions), options.division_threshold, rf_fn, fov, "none")
+    if options.method == 'conservation':
+        tracker = track.ConsTracking(int(options.max_num_objects),
+                                     bool(options.size_dependent_detection_prob),
+                                     obj_size[0],
+                                     options.mnd,
+                                     not bool(options.without_divisions),
+                                     options.division_threshold,
+                                     rf_fn,
+                                     fov,
+                                     "none",
+                                     track.ConsTrackingSolverType.CplexSolver)
+    elif options.method == 'conservation-dynprog':
+        tracker = track.ConsTracking(int(options.max_num_objects),
+                                     bool(options.size_dependent_detection_prob),
+                                     obj_size[0],
+                                     options.mnd,
+                                     not bool(options.without_divisions),
+                                     options.division_threshold,
+                                     rf_fn,
+                                     fov,
+                                     "none",
+                                     track.ConsTrackingSolverType.DynProgSolver)
+    else:
+        raise InvalidArgumentException("Must be conservation or conservation-dynprog")
     return tracker, fov
 
 
@@ -1176,30 +1065,42 @@ def exportFunkeyFiles(options, ts, tracker, trans_classifier):
     g = tracker.buildGraph(ts)
     store_label_in_hypotheses_graph(options, g, tracker)
 
-    tracker.SetFunkeyExportLabeledGraph(True)
+    # tracker.SetFunkeyExportLabeledGraph(True)
 
     outpath = prepareFunkeyFiles(options, g)
 
-    features_filename = outpath+"/features.txt"
-    constraints_filename = outpath+"/constraints.txt"
-    labels_filename = outpath+"/labels.txt"
+    features_filename = outpath + "/features.txt"
+    constraints_filename = outpath + "/constraints.txt"
+    labels_filename = outpath + "/labels.txt"
 
     if options.only_labels:
         features_filename = ""
         constraints_filename = ""
 
+    tracking_param = tracker.get_conservation_tracking_parameters(
+        options.forbidden_cost,
+        options.ep_gap,
+        not bool(options.without_tracklets),
+        options.detection_weight,
+        options.division_weight,
+        options.transition_weight,
+        options.disappearance_cost,
+        options.appearance_cost,
+        options.with_merger_resolution,
+        ndim,
+        options.trans_par,
+        options.border_width,
+        True, # with_constraints,
+        getUncertaintyParameter(options, n_iterations=1),
+        options.timeout,
+        trans_classifier,
+        track.ConsTrackingSolverType.CplexSolver
+    )
 
-    tracker.writeFunkeyFiles(ts,features_filename,
-                                constraints_filename,
-                                labels_filename,
-                                track.WeightVector(),
-                                getUncertaintyParameter(options, n_iterations=1),
-                                options.forbidden_cost,
-                                ndim,
-                                not bool(options.without_tracklets),
-                                options.trans_par,
-                                options.border_width,
-                                trans_classifier)
+    tracker.writeStructuredLearningFiles(features_filename,
+                                         constraints_filename,
+                                         labels_filename,
+                                         tracking_param)
 
     return outpath
 
@@ -1212,9 +1113,9 @@ def learnFunkey(options, tracker, outpath):
                                              options.funkey_weights,
                                              "--regularizerWeight="+str(options.funkey_regularizerWeight))
 
-    learnedWeightsName = ["  --det=","  --div=","  --tr=","  --dis=","  --app="]
+    learnedWeightsName = ["  --det=", "  --div=", "  --tr=", "  --dis=", "  --app="]
 
-    with open(outpath+'/weights.txt','w') as f:
+    with open(outpath+'/weights.txt', 'w') as f:
         for i, w in enumerate(learnedWeights):
             f.write(learnedWeightsName[i] + str(w))
 
@@ -1227,8 +1128,8 @@ def learn_perturbation_weights(ts, options, shape, trans_classifier):
     optimal_loss = 1e+75
     optimal_parameters = []
 
-    os.system("mkdir -p "+outpath+"/pertubation_labels")
-    with open(outpath+"/pertubation_labels/pertubation.log",'w') as f:
+    os.system("mkdir -p " + outpath + "/pertubation_labels")
+    with open(outpath+"/pertubation_labels/pertubation.log", 'w') as f:
         for pertubation_parameter in itertools.product(np.arange(-2, 2, 1), repeat=3):
             parameter_name = ""
 
@@ -1236,7 +1137,7 @@ def learn_perturbation_weights(ts, options, shape, trans_classifier):
 
             pert_tracker.buildGraph(ts)
 
-            sigmas = [0.,0.]
+            sigmas = [0., 0.]
             for si in pertubation_parameter:
                 sigmas.append(float(10**si))
                 parameter_name += "_" + str(float(10**si))
@@ -1267,19 +1168,31 @@ def learn_perturbation_weights(ts, options, shape, trans_classifier):
             except:
                 print "ERROR tracker failed to track"
 
-            loss = pert_tracker.HamminglossOfFiles(outpath+"/labels.txt",outpath+'/pertubation_labels/perturbed_labeling'+parameter_name+'_'+str(options.num_iterations-1)+'.txt')
-            print "pertubation learning result ",str(loss) +"\t"+ str(pertubation_parameter)
-            f.write(str(loss) +"\t"+ str(pertubation_parameter)+ "\n")
+            loss = pert_tracker.HamminglossOfFiles(outpath + "/labels.txt",
+                                                   outpath + '/pertubation_labels/perturbed_labeling' + parameter_name
+                                                           + '_' + str(options.num_iterations - 1) + '.txt')
+            print "pertubation learning result ",str(loss) + "\t" + str(pertubation_parameter)
+            f.write(str(loss) + "\t" + str(pertubation_parameter) + "\n")
 
-            if(loss < optimal_loss):
+            if loss < optimal_loss:
                 optimal_loss = loss
                 optimal_parameters = pertubation_parameter
-                print "found better pertubation parameters:  loss:" ,optimal_loss,"  para: ",optimal_parameters
+                print "found better pertubation parameters:  loss:", optimal_loss, "  para: ", optimal_parameters
             del pert_tracker
 
-    print "result:   found solution with loss:", optimal_loss ," with parameters ", optimal_parameters
+    print "result:   found solution with loss:", optimal_loss, " with parameters ", optimal_parameters
 
-def runMergerResolving(options, tracker, ts, hypotheses_graph, ilp_fn, all_events, fov, region_features, trans_classifier, t0, with_feature_computation=False):
+def runMergerResolving(options,
+                       tracker,
+                       ts,
+                       hypotheses_graph,
+                       ilp_fn,
+                       all_events,
+                       fov,
+                       region_features,
+                       trans_classifier,
+                       t0,
+                       with_feature_computation=False):
     with h5py.File(ilp_fn, 'r') as h5file:  # open file to access label images
         feature_vectors = []
         for i, event_vector in enumerate(all_events):  # go through all solutions
@@ -1325,12 +1238,28 @@ def runMergerResolving(options, tracker, ts, hypotheses_graph, ilp_fn, all_event
             with h5py.File(options.raw_filename, 'r') as raw_h5:
                 print("Update labelimage and compute new features after merger resolving "
                       "for solution {}".format(i))
+                pb = ProgressBar(0, len(resolved_events))
                 for timestep, timestep_events in enumerate(resolved_events):
+                    pb.show()
                     timestep += t0
                     for event in timestep_events:
                         if event.type == track.EventType.ResolvedTo:
                             merger_traxel = ts.get_traxel(event.traxel_ids[0], timestep)
                             new_traxel_ids = event.traxel_ids[1:]
+                            for new_id in new_traxel_ids:
+                                try:
+                                    ts.get_traxel(new_id, timestep)
+                                    # print("MR: Found traxel {} at timestep {} in traxelstore.".format(new_id, timestep))
+                                except:
+                                    # print("MR: Could not find traxel {} at timestep {} in traxelstore, adding it now.".format(new_id, timestep))
+                                    traxel = track.Traxel()
+                                    traxel.set_feature_store(fs)
+                                    # traxel.set_x_scale(x_scale)
+                                    # traxel.set_y_scale(y_scale)
+                                    # traxel.set_z_scale(z_scale)
+                                    traxel.Id = int(new_id)
+                                    traxel.Timestep = int(timestep)
+                                    ts.add(fs, traxel)
                             update_merger_features(coordinate_map,
                                                    h5file,
                                                    merger_traxel,
@@ -1338,14 +1267,18 @@ def runMergerResolving(options, tracker, ts, hypotheses_graph, ilp_fn, all_event
                                                    raw_h5,
                                                    options,
                                                    fs,
+                                                   ts,
                                                    timestep)
             resolved_graph = tracker.get_resolved_hypotheses_graph()
             # extract features of this solution
 
             if with_feature_computation:
-                feature_vector, score, feature_names = extract_features_and_compute_score(options, i, resolved_graph,
-                                                                                      ts, fov, feature_vector_filename,
-                                                                                      region_features)
+                feature_vector, score, feature_names = extract_features_and_compute_score(options.reranker_weight_file, 
+                                                                                    options.load_outlier_svm,
+                                                                                    options.out_dir,
+                                                                                    i, resolved_graph,
+                                                                                    ts, fov, feature_vector_filename,
+                                                                                    region_features)
                 feature_vectors.append(feature_vector)
 
         if with_feature_computation:
@@ -1360,6 +1293,7 @@ def runMergerResolving(options, tracker, ts, hypotheses_graph, ilp_fn, all_event
 if __name__ == "__main__":
     options, args = getConfigAndCommandLineArguments()
 
+    # get filenames
     numArgs = len(args)
     fns = []
     if numArgs > 0:
@@ -1372,6 +1306,13 @@ if __name__ == "__main__":
     print fns
     ilp_fn = fns[0]
 
+    # create output path
+    if not path.exists(options.out_dir):
+        try:
+            os.makedirs(options.out_dir)
+        except:
+            pass
+
     ### Do the tracking
     start = time.time()
 
@@ -1379,37 +1320,34 @@ if __name__ == "__main__":
     with_div = True
     with_merger_prior = True
 
-    # read all traxels into TraxelStore
+    # get selected time range
     time_range = [options.mints, options.maxts]
     if options.maxts == -1 and options.mints == 0:
         time_range = None
-    obj_size = [0]
 
     trans_classifier = loadTransClassifier(options)
 
-    ts, fs, max_traxel_id_at, ndim = getTraxelStore(options, ilp_fn,time_range)
-
+    # set average object size if chosen
+    obj_size = [0]
     if options.avg_obj_size != 0:
         obj_size[0] = options.avg_obj_size
 
-    info = [int(x) for x in ts.bounding_box()]
-    if info[0] > options.mints or info[4] < options.maxts - 1:
-        print("Warning: Traxelstore has different time range than requested. Using full traxelstore range.")
-    t0, t1 = (info[0], info[4])
-    print "-> Traxelstore bounding box: " + str(info)
-
+    # find shape of dataset
     with h5py.File(ilp_fn, 'r') as h5file:
         shape = h5file['/'.join(options.label_img_path.split('/')[:-1])].values()[0].shape[1:4]
 
+    # read all traxels into TraxelStore
+    ts, fs, max_traxel_id_at, ndim, t0, t1 = getTraxelStore(options, ilp_fn, time_range, shape)
+
     print "Start tracking..."
-    if options.method != "conservation":
+    if options.method != "conservation" and options.method != 'conservation-dynprog':
         raise Exception("unknown tracking method: " + options.method)
 
     w_det, w_div, w_trans, w_dis, w_app, = (options.detection_weight, options.division_weight, options.transition_weight,
         options.disappearance_cost, options.appearance_cost,)
 
-    all_events = []
-    if options.export_funkey and len(options.gt_pth) > 0: # generate structured learning files
+    # generate structured learning files
+    if options.export_funkey and len(options.gt_pth) > 0:
         tracker, fov = initializeConservationTracking(options, shape)
         outpath = exportFunkeyFiles(options, ts, tracker, trans_classifier)
 
@@ -1425,18 +1363,22 @@ if __name__ == "__main__":
             learn_perturbation_weights(ts, options, shape, trans_classifier)
             exit(0)
 
+    # higher order feature file preparation
     feature_vector_filename = options.out_dir.rstrip('/') + '/ho_feature_vectors.txt'
     try:
         os.remove(feature_vector_filename)
     except:
         pass
 
+    # -------------------------------------------------------
     # perform the real tracking
     tracker, fov = initializeConservationTracking(options, shape)
 
+    # train outlier svm if needed
     if len(options.save_outlier_svm) > 0 and len(options.gt_pth) > 0:
         train_outlier_svm(options, tracker, ts, fov)
 
+    # build hypotheses graph
     print "tracking with weights ", w_det, w_div, w_trans, w_dis, w_app
     hypotheses_graph = tracker.buildGraph(ts)
 
@@ -1444,15 +1386,17 @@ if __name__ == "__main__":
         assert len(options.gt_pth) > 0, 'if labeling should be loaded, please provide a path to the ground truth in --gt-pth'
         store_label_in_hypotheses_graph(options, hypotheses_graph, tracker)
 
+    # perturbation settings
     uncertaintyParam = getUncertaintyParameter(options)
-
     if options.num_iterations == 0 or options.num_iterations == 1 or options.save_first:
         proposal_out = ''
     else:
         proposal_out = options.out_dir.rstrip('/') + '/proposal_labeling'
         
-    tracker.SetFunkeyOutputFiles('', '', proposal_out, False, uncertaintyParam)
+    
+    tracker.setTrackLabelingExportFile(proposal_out)
 
+    # track!
     all_events = tracker.track(
         options.forbidden_cost,
         options.ep_gap,
@@ -1472,10 +1416,19 @@ if __name__ == "__main__":
         trans_classifier, # pointer to transition classifier
     )
 
+    tracker.setTrackLabelingExportFile('')
+
+    # # dispatch saving events already while merger resolving runs
+    # if not options.skip_saving and not options.save_first:
+    #     parallel_save_process_pool = save_events_parallel(options, all_events, max_traxel_id_at, ilp_fn, t0, t1, False)
+
     # run merger resolving
     if options.with_merger_resolution and options.max_num_objects > 1 and len(options.raw_filename) > 0:
         region_features = getRegionFeatures(ndim)
-        runMergerResolving(options, tracker, ts, hypotheses_graph, ilp_fn, all_events, fov, region_features, trans_classifier, t0)
+        try:
+            runMergerResolving(options, tracker, ts, hypotheses_graph, ilp_fn, all_events, fov, region_features, trans_classifier, t0, True)
+        except BaseException as e:
+            print("WARNING: Merger Resolving crashed...: {}".format(e))
 
     stop = time.time()
     since = stop - start
@@ -1483,6 +1436,7 @@ if __name__ == "__main__":
     if options.w_labeling:
         hypotheses_graph.write_hypotheses_graph_state(options.out_dir.rstrip('/') + '/results_all.txt')
     
+    # save
     if options.save_first:
         events = all_events[0]
         first_events = events[0]
@@ -1491,7 +1445,9 @@ if __name__ == "__main__":
         save_events(out_dir, events, t0, t1,
                       options.label_img_path, max_traxel_id_at, ilp_fn, first_events)
     elif not options.skip_saving:
-        save_events_parallel(options, all_events, max_traxel_id_at, ilp_fn, t0, t1)
+        # parallel_save_process_pool.close()
+        # parallel_save_process_pool.join()
+        save_events_parallel(options, all_events, max_traxel_id_at, ilp_fn, t0, t1, True)
 
     print "Elapsed time [s]: " + str(int(since))
     print "Elapsed time [min]: " + str(int(since) / 60)

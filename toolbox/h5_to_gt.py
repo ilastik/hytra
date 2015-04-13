@@ -10,6 +10,15 @@ import fnmatch
 import ntpath
 import operator
 
+def getErrorIds(list1,list2):
+
+    returnlist = []
+    for idx in list1:
+        if np.any(list1==idx):
+            returnlist.append(idx)
+    print returnlist
+    return returnlist
+
 def getoutLabelImage(labelfile,t):
     try:
         return np.array(labelfile["exported_data_T"][t,...]).squeeze().astype(np.int)        
@@ -67,7 +76,7 @@ def generate_groundtruth(options):
                 labelfile = vigra.impex.readVolume(options.label_image)
             else: 
                 labelfile = load_4d_image(options.label_image)#+"/seg{0:03d}.tif".format(t))
-        print "labelfile.shape: ",labelfile.shape
+        print "labelfile.shape: ",labelfile#.shape
 
 
         for t in xrange(options.start,options.end+1,1):
@@ -98,7 +107,7 @@ def generate_groundtruth(options):
                         # outLabelImage = load_4d_image(options.label_image).squeeze().astype(np.int)#+"/seg{0:03d}.tif".format(t))
 
 
-                inputLabelImage   = np.array(inputfile["label_image"][t,...]).squeeze().astype(np.int)
+                inputLabelImage   = np.array(inputfile["volume"][t,...]).squeeze().astype(np.int)
 
                 inputIds  =  np.unique(inputLabelImage).flatten()
                 outputIds =  np.unique(outLabelImage).flatten()
@@ -142,8 +151,6 @@ def generate_groundtruth(options):
 
                         pixelsOfInterest = outLabelImage[inputLabelImage==inId]
                         inId_to_outId_dics[t][inId] = np.unique(pixelsOfInterest).tolist()
-
-
                         
                         if(0 in inId_to_outId_dics[t][inId]):
                             inId_to_outId_dics[t][inId].remove(0)
@@ -158,12 +165,12 @@ def generate_groundtruth(options):
                             for idx in [0]:# +inId_to_outId_dics[t].keys():
                                 if idx in possibleIdsDic:
                                     del possibleIdsDic[idx]
-                            print pixelsOfInterest
+                            # print pixelsOfInterest
                             #find label with largest area
                             # print max(possibleIdsDic.iteritems(), key=operator.itemgetter(1))[0],inId_to_outId_dics[t][inId][0]
                             mostAreaLabel = max(possibleIdsDic.iteritems(), key=operator.itemgetter(1))[0]
                             # print possibleIdsDic
-                            print "choose ",mostAreaLabel," of ", possibleIdsDic
+                            # print "choose ",mostAreaLabel," of ", possibleIdsDic
 
                             inId_to_outId_dics[t][inId] =  mostAreaLabel
 
@@ -183,36 +190,29 @@ def generate_groundtruth(options):
                     if("Moves" in inputfile["tracking"][options.format.format(t)].keys()):
                         moves = np.array(inputfile["tracking"][options.format.format(t)]["Moves"]).squeeze().astype(np.int)
                         moves = np.reshape(moves, (-1,2))
+
+
+                        # only accept divisions that are visible in the imput_labelimage and therefore appear in the inId_to_outId_dics
                         remlist = []
+                        for i,mov_row in  enumerate(moves):
+                            # print i,mov_row
+                            if (mov_row[0] == 0
+                            or mov_row[1] == 0
+                            or not mov_row[0] in inId_to_outId_dics[t-1]
+                            or not mov_row[1] in inId_to_outId_dics[t]):
+                                remlist.append(i)
 
-                        if(np.any(moves == 0)):
-                            print "ERROR ::: 0 in moves found"
-                            exit()
+                        moves = np.delete(moves,remlist,axis=0)
+                        # for missingId in getErrorIds(moves[:,0],inId_to_outId_dics[t-1].keys()):
+                        #     inId_to_outId_dics[t-1][missingId] = -1
+                        # inId_to_outId_funct[t] = np.vectorize(inId_to_outId_dics[t-1].get)
 
-                        # for i,mov_row in  enumerate(moves):
-                        #     # print i,mov_row
-                        #     if mov_row[0] == 0 or mov_row[1] == 0:
-                        #         remlist.append(i)
+                        # for missingId in getErrorIds(moves[:,1],inId_to_outId_dics[t].keys()):
+                        #     inId_to_outId_dics[t][missingId] = -1
+                        # inId_to_outId_funct[t] = np.vectorize(inId_to_outId_dics[t].get)
 
-                        # moves = np.delete(moves,remlist,axis=0)
-                        # print inId_to_outId_dics
-                        # print "moves",moves[:,0]
 
-                        # print "inputIds",inputIds
-                        # for m in moves[:,0]:
-                        #     print m
-                        #     if(not m in inId_to_outId_dics[t-1]):
-                        #         print m, " not in inId_to_outId_dics","at t=",t-1
-                        #         try:
-                        #             print inId_to_outId_dics[t][m]," at t=",t
-                        #             inId_to_outId_dics[t-1][m] = inId_to_outId_dics[t][m]
-                        #             inId_to_outId_funct[t] = np.vectorize(inId_to_outId_dics[t].get)
-                        #             print "but found in next label image"
-                        #         except:
-                        #             print "and not even found in the next label image"
 
-                        # print inId_to_outId_funct[t-1](moves[:,0])
-                        # print inId_to_outId_funct[t](moves[:,1])
                         moves[:,0] = inId_to_outId_funct[t-1](moves[:,0])
                         moves[:,1] = inId_to_outId_funct[t](moves[:,1])
 
@@ -222,7 +222,7 @@ def generate_groundtruth(options):
                         movelist = moves.tolist()
                         for mov in movelist:
                             if (-1 in mov):
-                                print "\nresolving ", mov, "at ",t
+                                print "\t\tresolving ", mov, "at ",t
                                 if(mov[0] == -1 and mov[1] > 0):#appearance
                                     applist.append(mov[1])
                                 if(mov[1] == -1 and mov[0] > 0):#disappearance
@@ -235,79 +235,31 @@ def generate_groundtruth(options):
                     if("Splits" in inputfile["tracking"][options.format.format(t)].keys()):
                         splits = np.array(inputfile["tracking"][options.format.format(t)]["Splits"]).squeeze().astype(np.int)
                         splits = np.reshape(splits,(-1,3))
-                        splits[:,0] = inId_to_outId_funct[t-1](splits[:,0])
-                        splits[:,1:] = inId_to_outId_funct[t](splits[:,1:])
+
+                        # only accept divisions that are visible in the imput_labelimage and therefore appear in the inId_to_outId_dics
+                        remlist = []
+                        for i,split_row in  enumerate(splits):
+                            # print i,mov_row
+                            if (split_row[0] == 0 
+                            or split_row[1] == 0 
+                            or split_row[2] == 0
+                            or not split_row[0] in inId_to_outId_dics[t-1]
+                            or not split_row[1] in inId_to_outId_dics[t]
+                            or not split_row[2] in inId_to_outId_dics[t]):
+                                remlist.append(i)
+
+                        splits = np.delete(splits,remlist,axis=0)
+                        # for missingId in getErrorIds(splits[:,0],inId_to_outId_dics[t-1].keys()):
+                        #     inId_to_outId_dics[t-1][missingId] = -1
+                        # inId_to_outId_funct[t] = np.vectorize(inId_to_outId_dics[t-1].get)
+
+                        # for missingId in getErrorIds(splits[:,1:],inId_to_outId_dics[t].keys()):
+                        #     inId_to_outId_dics[t][missingId] = -1
+                        # inId_to_outId_funct[t] = np.vectorize(inId_to_outId_dics[t].get)
 
                         # splitlist = splits.tolist()
                         # for spl in splits:
                         #     if (-1 in spl):
-                        #         print "error can not resolve split"
-                        #         exit()
-
-                        splitlist = splits.tolist()
-                        for spl in splitlist:
-                            if (-1 in spl):
-                                print "\nresolving ", spl, "at ",
-                                if(spl[0] == -1):
-                                    if spl[1] > 0:
-                                        applist.append(spl[1])
-                                    if spl[2] > 0:
-                                        applist.append(spl[2])
-                                else:
-                                    disapplist.append(spl[0])
-                                    if spl[1] > 0:
-                                        movelist.append([spl[0],spl[1]])
-                                    if spl[2] > 0:
-                                        movelist.append([spl[0],spl[2]])
-
-                        splitlist = [spl for spl in splitlist if (not -1 in spl)]
-
-
-                    for i in inId_to_outId_dics[t]:
-                        outid = inId_to_outId_dics[t][i]
-                        if outid > 0:
-                            if((t in movedict and not np.any(movedict[t][:,1]==outid)) and 
-                               (t in splitdict and not np.any(splitdict[t][:,1:]==outid))):
-                                applist.append(outid)
-
-
-                    for i in inId_to_outId_dics[t-1]:
-                        outid = inId_to_outId_dics[t-1][i]
-                        if outid > 0:
-                            if((t in movedict and not np.any(movedict[t][:,0]==outid)) and 
-                               (t in splitdict and not np.any(splitdict[t][:,0]==outid))):
-                                disapplist.append(outid)
-
-                    if(len(movelist) > 0):
-                        moves = np.array(movelist)
-                        trackingdata.create_dataset("Moves", data=moves, dtype='u2')
-                        if(np.any(moves == -1)):
-                            print "-1 in moves !!! at timestep",t
-                            print "#####################################"
-                            print np.array(inputfile["tracking"][options.format.format(t)]["Moves"]).squeeze().astype(np.int)
-                            print movelist
-                            print moves
-                            exit()
-
-
-
-
-                    if(len(splitlist) > 0):
-                        splits = np.array(splitlist)
-                        trackingdata.create_dataset("Splits", data=splits, dtype='u2') 
-                        splitdict[t] = splits
-
-                        if(np.any(splits == -1)):
-                            print "-1 in splits !!! at timestep",t
-                            print "#####################################"
-                            print splits
-                            exit()
-
-
-                    if(len(applist) > 0):
-                        trackingdata.create_dataset("Appearances", data=np.reshape(np.asarray(applist),(-1,1)), dtype='u2')
-                    if(len(disapplist) > 0):
-                        trackingdata.create_dataset("Disappearances", data=np.reshape(np.asarray(disapplist),(-1,1)), dtype='u2') 
 
 
 
@@ -326,7 +278,7 @@ if __name__ == "__main__":
                         help='Filename for the resulting HDF5 file.')
 
     parser.add_option('--input_format', type=str, dest='format',
-                        help='added 0 to number string, default="{0:03d}", produces 004 from 4',default="{0:04d}")
+                        help='added 0 to number string, default="{0:03d}", produces 004 from 4',default="{0:03d}")
 
     parser.add_option('--start', type=int, dest='start',
                         help='first timestep',default=0)

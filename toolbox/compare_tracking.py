@@ -22,6 +22,44 @@ def match(fn_pair):
     return assoc
 
 
+def construct_associations(base_fns, cont_fns, timesteps, verbose=False):
+    assocs = []
+    for t in range(timesteps):
+        base_fn = base_fns[t]
+        cont_fn = cont_fns[t]
+        with h5py.File(base_fn, 'r') as f:
+            base_ids = np.sort(f['objects/meta/id'].value)            
+            base_valid = f['objects/meta/valid'].value
+            # base_detection = f['objects/meta/detection'].value
+
+        with h5py.File(cont_fn, 'r') as f:
+            cont_ids = np.sort(f['objects/meta/id'].value)
+            cont_valid = f['objects/meta/valid'].value
+            # cont_detection = f['objects/meta/detection'].value
+
+        if verbose:
+            print "sanity checking %d" % t
+        assert(np.all(base_ids == cont_ids))
+        assert(np.all(base_valid == 1))
+        assert(np.all(cont_valid == 1))
+        base_ids = map(int, base_ids)
+        cont_ids = map(int, cont_ids)
+        assoc = {'lhs':dict(zip(base_ids, cont_ids)), 'rhs':dict(zip(cont_ids, base_ids))}
+        assocs.append(assoc)
+    return assocs
+
+
+def get_all_frame_files_from_folder(folder):
+    fns = []
+    for fn in os.listdir(folder):
+        name, ext = os.path.splitext(os.path.basename(cont_fns[0]))
+        try:
+            int(name)
+            if ext == '.h5':
+                fns.append(path.abspath(path.join(folder, fn)))
+        except:
+            pass
+    return fns
 
 if __name__=="__main__":
 
@@ -48,9 +86,9 @@ Compare two tracking results, based only on the association information in the t
         base_dir = args[0]
         cont_dir = args[1]
 
-        base_fns = [path.abspath(path.join(base_dir, fn)) for fn in os.listdir(base_dir)]
+        base_fns = get_all_frame_files_from_folder(base_dir)
         base_fns.sort()
-        cont_fns = [path.abspath(path.join(cont_dir, fn)) for fn in os.listdir(cont_dir)]
+        cont_fns = get_all_frame_files_from_folder(cont_dir)
         cont_fns.sort()
     else:
         parser.print_help()
@@ -65,8 +103,8 @@ Compare two tracking results, based only on the association information in the t
     if len(cont_fns) < 2:
         print "Abort: at least two contestant files needed."
         sys.exit(1)
-    if len(base_fns) != len(cont_fns):
-        print "Warning: number of base files has to match number of contestant files."
+    # if len(base_fns) != len(cont_fns):
+    #     print "Warning: number of base files has to match number of contestant files."
 
     timesteps = min((len(base_fns), len(cont_fns)))
 
@@ -74,34 +112,12 @@ Compare two tracking results, based only on the association information in the t
     ## construct id assocs; assumed to be identically mapped in this script 
     ## (i.e. the ids don't differ for the same object in base and contestant) 
     ##
-    assocs = []
-    for t in range(timesteps):
-        base_fn = base_fns[t]
-        cont_fn = cont_fns[t]
-        with h5py.File(base_fn, 'r') as f:
-            base_ids = np.sort(f['objects/meta/id'].value)            
-            base_valid = f['objects/meta/valid'].value
-            # base_detection = f['objects/meta/detection'].value
-
-        with h5py.File(cont_fn, 'r') as f:
-            cont_ids = np.sort(f['objects/meta/id'].value)
-            cont_valid = f['objects/meta/valid'].value
-            # cont_detection = f['objects/meta/detection'].value
-
-        if verbose:
-            print "sanity checking %d" % t
-        assert(np.all(base_ids == cont_ids))
-        assert(np.all(base_valid == 1))
-        assert(np.all(cont_valid == 1))
-        base_ids = map(int, base_ids)
-        cont_ids = map(int, cont_ids)
-        assoc = {'lhs':dict(zip(base_ids, cont_ids)), 'rhs':dict(zip(cont_ids, base_ids))}
-        assocs.append(assoc)
+    assocs = construct_associations(base_fns, cont_fns, timesteps, verbose)
 
     ## 
     ## generate taxonomy
     ##
-    fn_pairs = zip(base_fns, cont_fns)
+    fn_pairs = zip(base_fns[0:timesteps], cont_fns[0:timesteps])
     assert(timesteps == len(assocs))
 
 
