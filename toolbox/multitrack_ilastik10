@@ -921,6 +921,8 @@ def getTraxelStore(options, ilp_fn,time_range, shape):
             info = [int(x) for x in ts.bounding_box()]
             t0, t1 = (info[0], info[4])
             if info[0] != options.mints or (options.maxts != -1 and info[4] != options.maxts - 1):
+                if options.maxts == -1:
+                    options.maxts = info[4] + 1
                 print("Warning: Traxelstore has different time range than requested FOV. Trimming traxels...")
                 fov = getFovFromOptions(options, shape, t0, t1)
                 fov.set_time_bounds(options.mints, options.maxts - 1)
@@ -1377,7 +1379,10 @@ if __name__ == "__main__":
     # train outlier svm if needed
     if len(options.save_outlier_svm) > 0 and len(options.gt_pth) > 0:
         train_outlier_svm(options, tracker, ts, fov)
-
+    
+    if options.num_iterations == 0:
+        exit(0)
+    
     # build hypotheses graph
     print "tracking with weights ", w_det, w_div, w_trans, w_dis, w_app
     hypotheses_graph = tracker.buildGraph(ts)
