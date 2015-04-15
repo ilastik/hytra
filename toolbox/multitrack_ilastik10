@@ -671,7 +671,7 @@ def save_events(out_dir, events, t0, t1, label_image_path, max_traxel_id_at, src
             seg.create_dataset("labels", data=label_img)
             meta = dest_file.create_group('objects/meta')
             ids = np.unique(label_img)
-            m = max_traxel_id_at[0]
+            m = max_traxel_id_at[t0]
             assert np.all(ids == np.arange(m + 1, dtype=ids.dtype))
             ids = ids[ids > 0]
             valid = np.ones(ids.shape)
@@ -695,7 +695,7 @@ def save_events(out_dir, events, t0, t1, label_image_path, max_traxel_id_at, src
 
                 meta = dest_file.create_group('objects/meta')
                 ids = np.unique(label_img)
-                m = max_traxel_id_at[i + 1]
+                m = max_traxel_id_at[t0 + i + 1]
                 assert np.all(ids == np.arange(m + 1, dtype=ids.dtype))
                 ids = ids[ids > 0]
                 valid = np.ones(ids.shape)
