@@ -27,7 +27,7 @@ def construct_associations(base_fns, cont_fns, timesteps, verbose=False):
     for t in range(timesteps):
         base_fn = base_fns[t]
         cont_fn = cont_fns[t]
-        assert(int(os.path.splitext(os.path.basename(base_fn)))[0] == int(os.path.splitext(os.path.basename(cont_fn))[0]))
+        assert(int(os.path.splitext(os.path.basename(base_fn))[0]) == int(os.path.splitext(os.path.basename(cont_fn))[0]))
         with h5py.File(base_fn, 'r') as f:
             base_ids = np.sort(f['objects/meta/id'].value)            
             base_valid = f['objects/meta/valid'].value
