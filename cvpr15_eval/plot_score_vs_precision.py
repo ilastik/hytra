@@ -6,6 +6,8 @@ sys.path.append('.')
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../toolbox/.')
 
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import argparse
 import math
