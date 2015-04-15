@@ -6,6 +6,8 @@ sys.path.append('.')
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../toolbox/.')
 
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.axes_divider import make_axes_area_auto_adjustable
 import argparse
