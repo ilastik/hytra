@@ -52,7 +52,7 @@ def construct_associations(base_fns, cont_fns, timesteps, verbose=False):
 def get_all_frame_files_from_folder(folder):
     fns = []
     for fn in os.listdir(folder):
-        name, ext = os.path.splitext(os.path.basename(cont_fns[0]))
+        name, ext = os.path.splitext(os.path.basename(fn))
         try:
             int(name)
             if ext == '.h5':
