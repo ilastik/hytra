@@ -27,6 +27,7 @@ def construct_associations(base_fns, cont_fns, timesteps, verbose=False):
     for t in range(timesteps):
         base_fn = base_fns[t]
         cont_fn = cont_fns[t]
+        assert(int(os.path.splitext(os.path.basename(base_fn)))[0] == int(os.path.splitext(os.path.basename(cont_fn))[0]))
         with h5py.File(base_fn, 'r') as f:
             base_ids = np.sort(f['objects/meta/id'].value)            
             base_valid = f['objects/meta/valid'].value
@@ -60,6 +61,21 @@ def get_all_frame_files_from_folder(folder):
             pass
     return fns
 
+def get_tracking_filenames(base_dir, cont_dir):
+    base_fns = get_all_frame_files_from_folder(base_dir)
+    cont_fns = get_all_frame_files_from_folder(cont_dir)
+    base_ids = set(base_fns.keys())
+    cont_ids = set(cont_fns.keys())
+    # intersect ids
+    shared_ids = base_ids & cont_ids
+    assert(set(range(min(shared_ids), max(shared_ids) + 1)) == shared_ids)
+    base_fns = [base_fns[fid] for fid in shared_ids]
+    cont_fns = [cont_fns[fid] for fid in shared_ids]
+
+    base_fns.sort()
+    cont_fns.sort()
+    return base_fns, cont_fns
+
 if __name__=="__main__":
 
     usage = """%prog [options] BASE_DIR CONTESTANT_DIR
@@ -85,18 +101,7 @@ Compare two tracking results, based only on the association information in the t
         base_dir = args[0]
         cont_dir = args[1]
 
-        base_fns = get_all_frame_files_from_folder(base_dir)
-        cont_fns = get_all_frame_files_from_folder(cont_dir)
-        base_ids = set(base_fns.keys())
-        cont_ids = set(cont_fns.keys())
-        # intersect ids
-        shared_ids = base_ids & cont_ids
-        assert(set(range(min(shared_ids), max(shared_ids) + 1)) == shared_ids)
-        base_fns = [base_fns[fid] for fid in shared_ids]
-        cont_fns = [cont_fns[fid] for fid in shared_ids]
-
-        base_fns.sort()
-        cont_fns.sort()
+        base_fns, cont_fns = get_tracking_filenames(base_dir, cont_dir)
     else:
         parser.print_help()
         sys.exit(1)

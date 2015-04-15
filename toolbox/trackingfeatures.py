@@ -562,13 +562,15 @@ def compute_traxel_set_measures(args):
     return overall
 
 
-def compare_lineage_trees_to_gt(gt_filenames, proposal_filenames, lineage_trees):
+def compare_lineage_trees_to_gt(gt_dir, proposal_dir, lineage_trees):
     import compare_tracking
     from multiprocessing import Pool, cpu_count
     import itertools
 
     print("Parallelizing over {} cores".format(cpu_count()))
     processing_pool = Pool(cpu_count())
+
+    gt_filenames, proposal_filenames = compare_tracking.get_tracking_filenames(gt_dir, proposal_dir)
 
     timesteps = min(len(gt_filenames), len(proposal_filenames))
     associations = compare_tracking.construct_associations(gt_filenames, proposal_filenames, timesteps)
@@ -668,15 +670,17 @@ def analyze_lineage_dump(args):
     # load lineages
     tracks, divisions, lineage_trees = load_lineage_dump(args.lineage_dump_file)
     # find gt an proposal files that start with a number and end with h5
-    gt_filenames = [path.abspath(path.join(args.gt_path, fn))
-                    for fn in os.listdir(args.gt_path) if fn.endswith('.h5') and fn[0].isdigit()]
-    gt_filenames.sort()
-    proposal_filenames = [path.abspath(path.join(args.proposal_path, fn))
-                          for fn in os.listdir(args.proposal_path) if fn.endswith('.h5') and fn[0].isdigit()]
-    proposal_filenames.sort()
+
+    # gt_filenames = [path.abspath(path.join(args.gt_path, fn))
+    #                 for fn in os.listdir(args.gt_path) if fn.endswith('.h5') and fn[0].isdigit()]
+    # gt_filenames.sort()
+    # proposal_filenames = [path.abspath(path.join(args.proposal_path, fn))
+    #                       for fn in os.listdir(args.proposal_path) if fn.endswith('.h5') and fn[0].isdigit()]
+    # proposal_filenames.sort()
+
     # evaluate
     print("Analyzing {} lineage trees".format(len(lineage_trees)))
-    taxonomies = compare_lineage_trees_to_gt(gt_filenames, proposal_filenames, lineage_trees)
+    taxonomies = compare_lineage_trees_to_gt(args.gt_path, args.proposal_path, lineage_trees)
     precisions = [t.precision() for t in taxonomies]
     recalls = [t.recall() for t in taxonomies]
     fmeasures = [t.f_measure() for t in taxonomies]
