@@ -50,13 +50,12 @@ def construct_associations(base_fns, cont_fns, timesteps, verbose=False):
 
 
 def get_all_frame_files_from_folder(folder):
-    fns = []
+    fns = {}
     for fn in os.listdir(folder):
         name, ext = os.path.splitext(os.path.basename(fn))
         try:
-            int(name)
             if ext == '.h5':
-                fns.append(path.abspath(path.join(folder, fn)))
+                fns[int(name)] = path.abspath(path.join(folder, fn))
         except:
             pass
     return fns
@@ -87,8 +86,16 @@ Compare two tracking results, based only on the association information in the t
         cont_dir = args[1]
 
         base_fns = get_all_frame_files_from_folder(base_dir)
-        base_fns.sort()
         cont_fns = get_all_frame_files_from_folder(cont_dir)
+        base_ids = set(base_fns.keys())
+        cont_ids = set(cont_fns.keys())
+        # intersect ids
+        shared_ids = base_ids & cont_ids
+        assert(set(range(min(shared_ids), max(shared_ids) + 1)) == shared_ids)
+        base_fns = [base_fns[fid] for fid in shared_ids]
+        cont_fns = [cont_fns[fid] for fid in shared_ids]
+
+        base_fns.sort()
         cont_fns.sort()
     else:
         parser.print_help()
