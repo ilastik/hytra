@@ -546,7 +546,7 @@ def score_solutions(tracks, divisions, lineage_trees, out_dir, reranker_weight_f
 
 
 def compute_traxel_set_measures(args):
-    (traxel_set, associations, filename_pairs) = args
+    (traxel_set, associations, filename_pairs, timestep0) = args
     from empryonic.learning import quantification as quant
     taxonomies = []
 
@@ -556,7 +556,7 @@ def compute_traxel_set_measures(args):
                                             v[0],
                                             v[1],
                                             traxel_set,
-                                            i + 1)
+                                            i + timestep0 + 1)
         taxonomies.append(t)
     overall = reduce(quant.Taxonomy.union, taxonomies)
     return overall
@@ -571,6 +571,7 @@ def compare_lineage_trees_to_gt(gt_dir, proposal_dir, lineage_trees):
     processing_pool = Pool(cpu_count())
 
     gt_filenames, proposal_filenames = compare_tracking.get_tracking_filenames(gt_dir, proposal_dir)
+    first_timestep = int(os.path.splitext(os.path.basename(gt_filenames[0]))[0])
 
     timesteps = min(len(gt_filenames), len(proposal_filenames))
     associations = compare_tracking.construct_associations(gt_filenames, proposal_filenames, timesteps)
@@ -583,7 +584,8 @@ def compare_lineage_trees_to_gt(gt_dir, proposal_dir, lineage_trees):
     for measure in processing_pool.imap(compute_traxel_set_measures,
                                         itertools.izip(lineage_tree_traxels,
                                                        itertools.repeat(associations),
-                                                       itertools.repeat(filename_pairs))):
+                                                       itertools.repeat(filename_pairs),
+                                                       itertools.repeat(first_timestep))):
         lineage_tree_measures.append(measure)
         pb.show()
 
@@ -792,3 +794,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     analyze_lineage_dump(args)
+

@@ -37,4 +37,4 @@ if __name__ == "__main__":
         feat_vec = lt.get_expanded_feature_vector([-1, 2])
         feature_vectors[i, :] = feat_vec
 
-    np.savetxt(options.out_file, feature_vectors)
+    np.savetxt(options.out_file, feature_vectors.transpose())
