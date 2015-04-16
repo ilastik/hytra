@@ -277,6 +277,22 @@ def update_merger_features(coordinate_map, h5file, merger_traxel, new_traxel_ids
                                           np.array(lower).astype(np.int64),
                                           fs,
                                           merger_traxel.Timestep)
+        # make sure that the traxel is not too small, otherwise copy skewness, kurtosis and variance from parent
+        def copy_feature_from_parent(traxel, feature_name):
+            val = get_feature_vector(merger_traxel, feature_name, 1)
+            traxel.set_feature_value(feature_name, 1, val)
+
+        for traxel_id in new_traxel_ids:
+            traxel = ts.get_traxel(int(traxel_id), int(merger_traxel.Timestep))
+            t_count = get_feature_vector(traxel, "Count", 1)
+            if t_count < 4:
+                copy_feature_from_parent(traxel, "Kurtosis")
+            if t_count < 3:
+                copy_feature_from_parent(traxel, "Skewness")
+            if t_count < 2:
+                copy_feature_from_parent(traxel, "Variance")
+
+
     except MemoryError:
         print("WARNING: Something went wrong when extracting region features for traxel "
               "(id={}, timestep={}) in region {} of image size {}. Features are left empty".format(
