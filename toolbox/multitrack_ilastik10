@@ -280,11 +280,11 @@ def update_merger_features(coordinate_map, h5file, merger_traxel, new_traxel_ids
         # make sure that the traxel is not too small, otherwise copy skewness, kurtosis and variance from parent
         def copy_feature_from_parent(traxel, feature_name):
             val = get_feature_vector(merger_traxel, feature_name, 1)
-            traxel.set_feature_value(feature_name, 1, val)
+            traxel.set_feature_value(feature_name, 1, val[0])
 
         for traxel_id in new_traxel_ids:
             traxel = ts.get_traxel(int(traxel_id), int(merger_traxel.Timestep))
-            t_count = get_feature_vector(traxel, "Count", 1)
+            t_count = get_feature_vector(traxel, "Count", 1)[0]
             if t_count < 4:
                 copy_feature_from_parent(traxel, "Kurtosis")
             if t_count < 3:
