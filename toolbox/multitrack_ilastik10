@@ -280,7 +280,7 @@ def update_merger_features(coordinate_map, h5file, merger_traxel, new_traxel_ids
         # make sure that the traxel is not too small, otherwise copy skewness, kurtosis and variance from parent
         def copy_feature_from_parent(traxel, feature_name):
             val = get_feature_vector(merger_traxel, feature_name, 1)
-            traxel.set_feature_value(feature_name, 1, val[0])
+            traxel.set_feature_value(feature_name, 0, val[0])
 
         for traxel_id in new_traxel_ids:
             traxel = ts.get_traxel(int(traxel_id), int(merger_traxel.Timestep))
@@ -645,7 +645,7 @@ def write_events(events, fn):
     print "-> results successfully written"
 
 
-def save_events_parallel(options, all_events, max_traxel_id_at, ilp_file, t0, t1, async=True):
+def save_events_parallel(options, all_events, max_traxel_id_at, ilp_file, shape, t0, t1, async=True):
     processing_pool = Pool()
 
     for i in range(len(all_events)):
@@ -654,7 +654,7 @@ def save_events_parallel(options, all_events, max_traxel_id_at, ilp_file, t0, t1
         events = events[1:]
 
         out_dir = options.out_dir.rstrip('/') + '/iter_' + str(i)
-        processing_pool.apply_async(save_events, (out_dir, copy.copy(events), t0, t1,
+        processing_pool.apply_async(save_events, (out_dir, copy.copy(events), shape, t0, t1,
                                                   options.label_img_path, max_traxel_id_at, ilp_file, first_events))
 
     if async:
@@ -663,7 +663,7 @@ def save_events_parallel(options, all_events, max_traxel_id_at, ilp_file, t0, t1
     return processing_pool
 
 
-def save_events(out_dir, events, t0, t1, label_image_path, max_traxel_id_at, src_filename, first_events):
+def save_events(out_dir, events, shape, t0, t1, label_image_path, max_traxel_id_at, src_filename, first_events):
     # save events
     print "Saving events..."
     print "Length of events " + str(len(events))
@@ -992,7 +992,8 @@ def getFovFromOptions(options, shape, t0, t1):
                             options.z_scale * (zshape - 1))
     return fov
 
-def initializeConservationTracking(options, shape):
+def initializeConservationTracking(options, shape, t0, t1):
+    ndim = 2 if shape[-1]==1 else 3
     rf_fn = 'none'
     if options.rf_fn:
         rf_fn = options.rf_fn
@@ -1005,7 +1006,7 @@ def initializeConservationTracking(options, shape):
     if options.method == 'conservation':
         tracker = track.ConsTracking(int(options.max_num_objects),
                                      bool(options.size_dependent_detection_prob),
-                                     obj_size[0],
+                                     options.avg_obj_size[0],
                                      options.mnd,
                                      not bool(options.without_divisions),
                                      options.division_threshold,
@@ -1016,7 +1017,7 @@ def initializeConservationTracking(options, shape):
     elif options.method == 'conservation-dynprog':
         tracker = track.ConsTracking(int(options.max_num_objects),
                                      bool(options.size_dependent_detection_prob),
-                                     obj_size[0],
+                                     options.avg_obj_size[0],
                                      options.mnd,
                                      not bool(options.without_divisions),
                                      options.division_threshold,
@@ -1139,7 +1140,7 @@ def learnFunkey(options, tracker, outpath):
 
     return learnedWeights
 
-def learn_perturbation_weights(ts, options, shape, trans_classifier):
+def learn_perturbation_weights(ts, options, shape, trans_classifier, t0, t1):
     print "calling learn_perturbation_weights"
     tracker.SetFunkeyExportLabeledGraph(False)
 
@@ -1151,7 +1152,7 @@ def learn_perturbation_weights(ts, options, shape, trans_classifier):
         for pertubation_parameter in itertools.product(np.arange(-2, 2, 1), repeat=3):
             parameter_name = ""
 
-            pert_tracker, fov = initializeConservationTracking(options, shape)
+            pert_tracker, fov = initializeConservationTracking(options, shape, t0, t1)
 
             pert_tracker.buildGraph(ts)
 
@@ -1203,6 +1204,7 @@ def learn_perturbation_weights(ts, options, shape, trans_classifier):
 def runMergerResolving(options,
                        tracker,
                        ts,
+                       fs,
                        hypotheses_graph,
                        ilp_fn,
                        all_events,
@@ -1211,6 +1213,9 @@ def runMergerResolving(options,
                        trans_classifier,
                        t0,
                        with_feature_computation=False):
+    shape = [int(x) for x in ts.bounding_box()]
+    ndim = 2 if shape[-1]==1 else 3
+
     with h5py.File(ilp_fn, 'r') as h5file:  # open file to access label images
         feature_vectors = []
         for i, event_vector in enumerate(all_events):  # go through all solutions
@@ -1295,7 +1300,7 @@ def runMergerResolving(options,
                                                                                     options.load_outlier_svm,
                                                                                     options.out_dir,
                                                                                     i, resolved_graph,
-                                                                                    ts, fov, feature_vector_filename,
+                                                                                    ts, fov, None,
                                                                                     region_features)
                 feature_vectors.append(feature_vector)
 
@@ -1349,6 +1354,8 @@ if __name__ == "__main__":
     obj_size = [0]
     if options.avg_obj_size != 0:
         obj_size[0] = options.avg_obj_size
+    else:
+        options.avg_obj_size = obj_size
 
     # find shape of dataset
     with h5py.File(ilp_fn, 'r') as h5file:
@@ -1366,7 +1373,7 @@ if __name__ == "__main__":
 
     # generate structured learning files
     if options.export_funkey and len(options.gt_pth) > 0:
-        tracker, fov = initializeConservationTracking(options, shape)
+        tracker, fov = initializeConservationTracking(options, shape, t0, t1)
         outpath = exportFunkeyFiles(options, ts, tracker, trans_classifier)
 
         if options.only_labels:
@@ -1378,19 +1385,12 @@ if __name__ == "__main__":
             w_det, w_div, w_trans, w_dis, w_app, = learned_weights
 
         if options.learn_perturbation_weights:
-            learn_perturbation_weights(ts, options, shape, trans_classifier)
+            learn_perturbation_weights(ts, options, shape, trans_classifier, t0, t1)
             exit(0)
-
-    # higher order feature file preparation
-    feature_vector_filename = options.out_dir.rstrip('/') + '/ho_feature_vectors.txt'
-    try:
-        os.remove(feature_vector_filename)
-    except:
-        pass
 
     # -------------------------------------------------------
     # perform the real tracking
-    tracker, fov = initializeConservationTracking(options, shape)
+    tracker, fov = initializeConservationTracking(options, shape, t0, t1)
 
     # train outlier svm if needed
     if len(options.save_outlier_svm) > 0 and len(options.gt_pth) > 0:
@@ -1447,7 +1447,7 @@ if __name__ == "__main__":
     if options.with_merger_resolution and options.max_num_objects > 1 and len(options.raw_filename) > 0:
         region_features = getRegionFeatures(ndim)
         try:
-            runMergerResolving(options, tracker, ts, hypotheses_graph, ilp_fn, all_events, fov, region_features, trans_classifier, t0, True)
+            runMergerResolving(options, tracker, ts, fs, hypotheses_graph, ilp_fn, all_events, fov, region_features, trans_classifier, t0, True)
         except BaseException as e:
             print("WARNING: Merger Resolving crashed...: {}".format(e))
 
@@ -1463,12 +1463,12 @@ if __name__ == "__main__":
         first_events = events[0]
         events = events[1:]
         out_dir = options.out_dir.rstrip('/') + '/iter_0'
-        save_events(out_dir, events, t0, t1,
+        save_events(out_dir, events, shape, t0, t1,
                       options.label_img_path, max_traxel_id_at, ilp_fn, first_events)
     elif not options.skip_saving:
         # parallel_save_process_pool.close()
         # parallel_save_process_pool.join()
-        save_events_parallel(options, all_events, max_traxel_id_at, ilp_fn, t0, t1, True)
+        save_events_parallel(options, all_events, max_traxel_id_at, ilp_fn, shape, t0, t1, True)
 
     print "Elapsed time [s]: " + str(int(since))
     print "Elapsed time [min]: " + str(int(since) / 60)
