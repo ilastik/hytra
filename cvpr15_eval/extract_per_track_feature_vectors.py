@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 __author__ = 'chaubold'
 
-#!/usr/bin/env python
-
 import os.path
 import sys
 sys.path.append('.')
