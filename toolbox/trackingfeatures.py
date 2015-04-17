@@ -95,7 +95,7 @@ class LineagePart:
             'sq_accel_Mean',
             'sq_accel_Variance',
             'angles_RegionCenter',
-            'outlier_id_RegionCenter',
+            # 'outlier_id_RegionCenter',
             'outlier_id_Count',
             'outlier_id_Mean',
             'outlier_id_Variance',
