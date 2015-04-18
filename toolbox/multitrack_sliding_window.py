@@ -36,7 +36,8 @@ def track_subgraphs(graph,
                     ts, 
                     fs,
                     t0,
-                    trans_classifier
+                    trans_classifier,
+                    uncertaintyParam
                     ):
     """
     Experiment: track only subgraphs of the full hypotheses graph with some overlap,
@@ -53,9 +54,18 @@ def track_subgraphs(graph,
     arc_solutions = {}
     div_solutions = {}
 
+    original_out_dir = options.out_dir
+
     # track all segments individually
     for i, segment in enumerate(segments):
         print("Creating subgraph for timesteps in {}".format(segment))
+
+        # use special out-dir per window
+        options.out_dir = original_out_dir.rstrip('/') + '/window_' + str(i) + '/'
+        try:
+            os.makedirs(options.out_dir)
+        except:
+            pass
 
         # create subgraph for this segment
         node_mask = track.NodeMask(graph)
@@ -89,6 +99,7 @@ def track_subgraphs(graph,
         subgraph_tracker = track.ConsTracking(subgraph,
                                                 ts,
                                                 conservation_tracking_parameter,
+                                                uncertaintyParam,
                                                 fov,
                                                 bool(options.size_dependent_detection_prob),
                                                 options.avg_obj_size[0],
@@ -97,9 +108,9 @@ def track_subgraphs(graph,
         all_events = subgraph_tracker.track(conservation_tracking_parameter, bool(i > 0))
 
         if len(options.raw_filename) > 0:
-            # for reranking we need a tracker that can run merger resolving
+            # run merger resolving and feature extraction, which also returns the score of each proposal
             region_features = multitrack.getRegionFeatures(ndim)
-            multitrack.runMergerResolving(options, 
+            scores = multitrack.runMergerResolving(options, 
                 subgraph_tracker, 
                 ts,
                 fs,
@@ -109,11 +120,12 @@ def track_subgraphs(graph,
                 fov,
                 region_features,
                 trans_classifier,
-                t0,
+                segment[0],
                 True)
 
-            best_sol_idx = rank_solutions(options)
+            best_sol_idx = int(np.argmax(np.array(scores)))
             subgraph.set_solution(best_sol_idx)
+            print("====> selected solution {} in window {} <=====".format(best_sol_idx, i))
         else:
             subgraph.set_solution(0)
         print("Done tracking subgraph")
@@ -140,6 +152,9 @@ def track_subgraphs(graph,
             origin_arc_id = graph.id(origin_arc)
             arc_solutions[origin_arc_id] = subgraph_arc_active_map[a]
         print("Done storing solutions")
+
+    # reset out-dir
+    options.out_dir = original_out_dir
 
     # find overlapping variables
     print("Computing overlap statistics...")
@@ -172,6 +187,8 @@ def track_subgraphs(graph,
             a_id = graph.id(a)
             graph.addArcLabel(a, arc_solutions[a_id])
         graph.set_injected_solution()
+    else:
+        raise AssertionError("Nodes did disagree, cannot create stitched solution")
 
 if __name__ == "__main__":
     options, args = multitrack.getConfigAndCommandLineArguments()
@@ -320,7 +337,8 @@ if __name__ == "__main__":
         ts, 
         fs,
         t0,
-        trans_classifier)
+        trans_classifier,
+        uncertaintyParam)
     all_events = [track.getEventsOfGraph(hypotheses_graph)]
     # # track!
     # all_events = tracker.track(

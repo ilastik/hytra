@@ -1218,6 +1218,7 @@ def runMergerResolving(options,
 
     with h5py.File(ilp_fn, 'r') as h5file:  # open file to access label images
         feature_vectors = []
+        scores = []
         for i, event_vector in enumerate(all_events):  # go through all solutions
             if not (options.save_first and i > 0):
                 try:
@@ -1303,6 +1304,7 @@ def runMergerResolving(options,
                                                                                     ts, fov, None,
                                                                                     region_features)
                 feature_vectors.append(feature_vector)
+                scores.append(score)
 
         if with_feature_computation:
             print("Storing feature vectors of all solutions")
@@ -1311,6 +1313,7 @@ def runMergerResolving(options,
             with open(options.out_dir.rstrip('/') + '/feature_names.txt', 'w') as feature_names_file:
                 for f in feature_names:
                     feature_names_file.write(f + '\n')
+    return scores
 
 
 if __name__ == "__main__":

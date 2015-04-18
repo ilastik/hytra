@@ -55,21 +55,21 @@ def get_feature_vector(traxel, feature_name, num_dimensions):
     return result
 
 
-def rank_solutions(ground_truth_filename, feature_vector_filename, proposal_basename, num_iterations):
-    import structsvm
-    proposal_filenames = [proposal_basename + '_' + str(i) + '.txt' for i in range(num_iterations)]
+# def rank_solutions(ground_truth_filename, feature_vector_filename, proposal_basename, num_iterations):
+#     import structsvm
+#     proposal_filenames = [proposal_basename + '_' + str(i) + '.txt' for i in range(num_iterations)]
 
-    problem = structsvm.struct_svm_ranking_problem(feature_vector_filename,
-                                                   ground_truth_filename,
-                                                   proposal_filenames)
-                                                   #,args.loss_weights)
-    solver = structsvm.struct_svm_solver_primal(problem)
-    weights = solver.solve()
-    weights = np.array(weights)
-    problem.print_scores(weights)
+#     problem = structsvm.struct_svm_ranking_problem(feature_vector_filename,
+#                                                    ground_truth_filename,
+#                                                    proposal_filenames)
+#                                                    #,args.loss_weights)
+#     solver = structsvm.struct_svm_solver_primal(problem)
+#     weights = solver.solve()
+#     weights = np.array(weights)
+#     problem.print_scores(weights)
 
-    print("Found weights: {}".format(weights))
-    return weights
+#     print("Found weights: {}".format(weights))
+#     return weights
 
 
 class LineagePart:
@@ -236,12 +236,16 @@ class LineagePart:
         """
         raise NotImplementedError("Please Specialize this method")
 
-    def compute_score(self, weights):
+    def compute_score(self, weights, series_expansion_range=[0,1], feature_means=None, feature_variances=None):
         """
         :return: the score as linear combination of feature vector and supplied weights
         """
-        feature_vec = self.get_feature_vector()
-        return np.dot(weights, feature_vec)
+        import structsvm
+        feature_vec = self.get_expanded_feature_vector(series_expansion_range)
+        feature_vec = np.expand_dims(feature_vec, axis=1)
+        if feature_means != None and feature_variances != None:
+            structsvm.utils.apply_feature_normalization(feat_vec, feature_means, feature_variances)
+        return np.dot(weights, feature_vec[:,0])
 
 
 class Track(LineagePart):
@@ -513,14 +517,14 @@ def build_lineage_trees(tracks, divisions):
     return lineageTrees
 
 
-def score_solutions(tracks, divisions, lineage_trees, out_dir, reranker_weight_filename):
+def score_solutions(tracks, divisions, lineage_trees, out_dir, reranker_weight_filename, series_expansion_range):
     # if reranker weights are already given, compute overall, and track scores and plot a histogram
     if reranker_weight_filename and len(reranker_weight_filename) > 0:
         reranker_weights = np.loadtxt(reranker_weight_filename)
 
-        track_scores = [t.compute_score(reranker_weights) for t in tracks.values()]
-        division_scores = [d.compute_score(reranker_weights) for d in divisions.values()]
-        lineage_scores = [l.compute_score(reranker_weights) for l in lineage_trees]
+        track_scores = [t.compute_score(reranker_weights, series_expansion_range) for t in tracks.values()]
+        division_scores = [d.compute_score(reranker_weights, series_expansion_range) for d in divisions.values()]
+        lineage_scores = [l.compute_score(reranker_weights, series_expansion_range) for l in lineage_trees]
         overall_score = sum(lineage_scores)
 
         for s_name, scores in [("track_scores", track_scores), 
@@ -645,7 +649,9 @@ def extract_features_and_compute_score(reranker_weight_filename,
 
     # compute score if weight file is given
     overall_score = score_solutions(tracks, divisions, lineage_trees,
-                                    out_dir.rstrip('/') + '/iter_' + str(iteration), reranker_weight_filename)
+                                    out_dir.rstrip('/') + '/iter_' + str(iteration), 
+                                    reranker_weight_filename,
+                                    series_expansion_range)
 
     return feature_vector, overall_score, LineagePart.get_expanded_feature_names(series_expansion_range)
 
