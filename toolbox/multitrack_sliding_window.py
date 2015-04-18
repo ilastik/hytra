@@ -17,11 +17,27 @@ import vigra
 import pgmlink as track
 from multiprocessing import Pool
 
+def rank_solutions(options):
+    assert(len(options.reranker_weight_file) > 0)
+    feature_vectors = np.loadtxt(options.out_dir.rstrip('/') + '/feature_vectors.txt')
+    weights = np.loadtxt(options.reranker_weight_file)
+
+    scores = np.dot(feature_vectors, weights)
+    print("Reranker Assigned window scores: ".format(scores))
+    return np.argmax(scores)
+
 def track_subgraphs(graph,
                     time_range,
                     timesteps_per_segment,
                     segment_overlap_timesteps,
-                    conservation_tracking_parameter):
+                    conservation_tracking_parameter,
+                    fov,
+                    ilp_fn,
+                    ts, 
+                    fs,
+                    t0,
+                    trans_classifier
+                    ):
     """
     Experiment: track only subgraphs of the full hypotheses graph with some overlap,
     and then stitch the results together using fusion moves.
@@ -70,13 +86,36 @@ def track_subgraphs(graph,
         print("Subgraph has {} nodes and {} arcs".format(track.countNodes(subgraph), track.countArcs(subgraph)))
 
         # create subgraph tracker
-        subgraph_tracker = track.ConservationTracking(conservation_tracking_parameter)
-        if i > 0:
-            subgraph_tracker.fixLabeledAppearanceNodes()
-        subgraph_tracker.perturbedInference(subgraph)
+        subgraph_tracker = track.ConsTracking(subgraph,
+                                                ts,
+                                                conservation_tracking_parameter,
+                                                fov,
+                                                bool(options.size_dependent_detection_prob),
+                                                options.avg_obj_size[0],
+                                                options.mnd,
+                                                options.division_threshold)
+        all_events = subgraph_tracker.track(conservation_tracking_parameter, bool(i > 0))
 
-        # TODO: rerank and pick best solution instead of 0!
-        subgraph.set_solution(0)
+        if len(options.raw_filename) > 0:
+            # for reranking we need a tracker that can run merger resolving
+            region_features = multitrack.getRegionFeatures(ndim)
+            multitrack.runMergerResolving(options, 
+                subgraph_tracker, 
+                ts,
+                fs,
+                subgraph,
+                ilp_fn,
+                all_events,
+                fov,
+                region_features,
+                trans_classifier,
+                t0,
+                True)
+
+            best_sol_idx = rank_solutions(options)
+            subgraph.set_solution(best_sol_idx)
+        else:
+            subgraph.set_solution(0)
         print("Done tracking subgraph")
 
         # collect solutions
@@ -271,7 +310,17 @@ if __name__ == "__main__":
         solver
     )
 
-    track_subgraphs(hypotheses_graph, (t0, t1), 6, 1, conservation_tracking_parameter)
+    track_subgraphs(hypotheses_graph, 
+        (t0, t1), 
+        6, 
+        1, 
+        conservation_tracking_parameter, 
+        fov, 
+        ilp_fn,
+        ts, 
+        fs,
+        t0,
+        trans_classifier)
     all_events = [track.getEventsOfGraph(hypotheses_graph)]
     # # track!
     # all_events = tracker.track(
