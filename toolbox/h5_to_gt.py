@@ -53,9 +53,9 @@ def count_files(pattern,path):
     return count
 
 def generate_groundtruth(options):
-    # read image
 
-    # read ground truth file
+    number_of_resolutions = 0
+
     with h5py.File(options.input_file, 'r') as inputfile:
 
         if(options.end == -1):
@@ -84,7 +84,7 @@ def generate_groundtruth(options):
             # #just for fun :)
             sys.stdout.write('\r')
             # the exact output you're looking for:
-            sys.stdout.write("[%-20s] %d%%" % ('='*(20*t/options.end), (100*t/options.end)))
+            sys.stdout.write("[%-20s] %d%% (resolved %d instances)" % ('='*(20*t/options.end), (100*t/options.end),number_of_resolutions))
             sys.stdout.flush()
 
             outputFileName = options.output_dir.rstrip('/')+ "/%04d.h5" % (t)
@@ -117,6 +117,7 @@ def generate_groundtruth(options):
                 inputIds = np.delete(inputIds,np.where(inputIds == 0))
                 outputIds = np.delete(outputIds,np.where(outputIds == 0))
 
+
                 meta.create_dataset("id", data=outputIds, dtype='u2')
                 meta.create_dataset("valid", data=np.ones(outputIds.shape[0]), dtype='u2')
 
@@ -145,6 +146,12 @@ def generate_groundtruth(options):
                         else:
                             merlist.append([outId,len(outId_to_inId_dics[t][outId])])
                             outId_to_inId_dics[t][outId] = outId_to_inId_dics[t][outId][0]
+
+	
+          #       correctedoutputIds = np.array(outId_to_inId_dics[t].keys())	
+          #       meta.create_dataset("id", data=correctedoutputIds, dtype='u2')
+          #       meta.create_dataset("valid", data=np.ones(correctedoutputIds.shape[0]), dtype='u2')
+
 
                 for inId in inputIds:
                     if( inId > 0 ):
@@ -222,7 +229,8 @@ def generate_groundtruth(options):
                         movelist = moves.tolist()
                         for mov in movelist:
                             if (-1 in mov):
-                                print "\t\tresolving ", mov, "at ",t
+                                # print "\t\tresolving ", mov, "at ",t
+                                number_of_resolutions += 1
                                 if(mov[0] == -1 and mov[1] > 0):#appearance
                                     applist.append(mov[1])
                                 if(mov[1] == -1 and mov[0] > 0):#disappearance
@@ -260,7 +268,80 @@ def generate_groundtruth(options):
                         # splitlist = splits.tolist()
                         # for spl in splits:
                         #     if (-1 in spl):
+                        #         print "error can not resolve split"
+                        #         exit()
 
+                        splits[:,0] = inId_to_outId_funct[t-1](splits[:,0])
+                        splits[:,1] = inId_to_outId_funct[t](splits[:,1])
+                        splits[:,2] = inId_to_outId_funct[t](splits[:,2])
+
+                        splitlist = splits.tolist()
+                        for spl in splitlist:
+                            if (-1 in spl):
+                                # print "\nresolving ", spl, "at ",
+                                number_of_resolutions += 1
+                                if(spl[0] == -1):
+                                    if spl[1] > 0:
+                                        applist.append(spl[1])
+                                    if spl[2] > 0:
+                                        applist.append(spl[2])
+                                else:
+                                    disapplist.append(spl[0])
+                                    if spl[1] > 0:
+                                        movelist.append([spl[0],spl[1]])
+                                    if spl[2] > 0:
+                                        movelist.append([spl[0],spl[2]])
+
+                        splitlist = [spl for spl in splitlist if (not -1 in spl)]
+
+
+                    for i in inId_to_outId_dics[t]:
+                        outid = inId_to_outId_dics[t][i]
+                        if outid > 0:
+                            if((t in movedict and not np.any(movedict[t][:,1]==outid)) and 
+                               (t in splitdict and not np.any(splitdict[t][:,1:]==outid))):
+                                applist.append(outid)
+
+
+                    for i in inId_to_outId_dics[t-1]:
+                        outid = inId_to_outId_dics[t-1][i]
+                        if outid > 0:
+                            if((t in movedict and not np.any(movedict[t][:,0]==outid)) and 
+                               (t in splitdict and not np.any(splitdict[t][:,0]==outid))):
+                                disapplist.append(outid)
+
+                    if(len(movelist) > 0):
+                        moves = np.array(movelist)
+                        trackingdata.create_dataset("Moves", data=moves, dtype='u2')
+                        if(np.any(moves == -1)):
+                            print "-1 in moves !!! at timestep",t
+                            print "#####################################"
+                            print np.array(inputfile["tracking"][options.format.format(t)]["Moves"]).squeeze().astype(np.int)
+                            print movelist
+                            print moves
+                            exit()
+
+
+
+
+                    if(len(splitlist) > 0):
+                        splits = np.array(splitlist)
+                        trackingdata.create_dataset("Splits", data=splits, dtype='u2') 
+                        splitdict[t] = splits
+
+                        if(np.any(splits == -1)):
+                            print "-1 in splits !!! at timestep",t
+                            print "#####################################"
+                            print splits
+                            exit()
+
+
+                    if(len(applist) > 0):
+                        trackingdata.create_dataset("Appearances", data=np.reshape(np.asarray(applist),(-1,1)), dtype='u2')
+                    if(len(disapplist) > 0):
+                        trackingdata.create_dataset("Disappearances", data=np.reshape(np.asarray(disapplist),(-1,1)), dtype='u2') 
+  
+  
 
 
 
