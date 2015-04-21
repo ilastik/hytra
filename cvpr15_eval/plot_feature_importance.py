@@ -19,6 +19,8 @@ if __name__ == "__main__":
     # file paths
     parser.add_argument('--weights', required=True, type=str,nargs='+', dest='weights',
                         help='File containing the learned re-ranker weights')
+    parser.add_argument('--legend', type=str, dest='legend',
+                        help='File containing the legend of weight files',default="")
     parser.add_argument('--feature-names', type=str, dest='feature_names', default='',
                         help='Description for each feature')
     parser.add_argument('--expansion-range', type=int, nargs='+', dest='expansion_range',
@@ -31,6 +33,8 @@ if __name__ == "__main__":
     parser.add_argument('--sort', action='store_true', dest='sort', help='sort features')
     parser.add_argument('--limit', type=float, dest='limit',
                         help='threshold for featureweight if non zero is used',default=0)
+    parser.add_argument('--fontsize', type=int,  dest='fontsize', help='fontsize of ticks',default=4)
+
     options = parser.parse_args()
 
     colors = ['b', 'g', 'r', 'c', 'm', 'y','dodgerblue','orangered','cyan']
@@ -57,6 +61,11 @@ if __name__ == "__main__":
                 print("Invalid range specified, using default features...")
             feature_names = trackingfeatures.LineagePart.all_feature_names
 
+    if len(options.legend) > 0:
+        with open(options.legend) as f:
+            labels = f.read().splitlines()
+
+
     plt.figure()
     ax = plt.axes()
 
@@ -72,10 +81,14 @@ if __name__ == "__main__":
     width = 1./(len(weightList)+1)
     offset = -0.5 * width * (NumberOfWeightFiles-1)
     x_pos = 1.0 * np.arange(len(feature_names))
+    l = ''
     for i in xrange(NumberOfWeightFiles):
-        plt.bar(x_pos+offset, [w[i] for w in weights], color=colors[i],align='center', width=width,log=options.logscale,linewidth=0)
+        if len(options.legend) > 0:
+            l = labels[i]
+        plt.bar(x_pos+offset, [w[i] for w in weights], color=colors[i],align='center', width=width,log=options.logscale,linewidth=0,label=l)
         offset += width
 
-    plt.xticks(x_pos, feature_names, rotation='vertical', fontsize=2)
+    plt.xticks(x_pos, feature_names, rotation='vertical', fontsize=options.fontsize)
+    plt.legend()
     make_axes_area_auto_adjustable(ax)
     plt.savefig(options.out_file)
