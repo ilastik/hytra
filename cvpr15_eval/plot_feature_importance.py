@@ -17,7 +17,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Plot feature importance')
 
     # file paths
-    parser.add_argument('--weights', required=True, type=str, dest='weights',
+    parser.add_argument('--weights', required=True, type=str,nargs='+', dest='weights',
                         help='File containing the learned re-ranker weights')
     parser.add_argument('--feature-names', type=str, dest='feature_names', default='',
                         help='Description for each feature')
@@ -27,9 +27,22 @@ if __name__ == "__main__":
                         help='Name of the file the plot is saved to')
     parser.add_argument('--non-zero', action='store_true', dest='non_zero', help='display only non zero feature importance')
 
+    parser.add_argument('--log', action='store_true', dest='logscale', help='use log scale on y axis')
+    parser.add_argument('--sort', action='store_true', dest='sort', help='sort features')
+    parser.add_argument('--limit', type=float, dest='limit',
+                        help='threshold for featureweight if non zero is used',default=0)
     options = parser.parse_args()
 
-    weights = np.loadtxt(options.weights)
+    colors = ['b', 'g', 'r', 'c', 'm', 'y','dodgerblue','orangered','cyan']
+
+    weightList = []
+    NumberOfWeightFiles = 0
+    for weightFile in options.weights:
+        weightList.append(np.loadtxt(weightFile))
+        NumberOfWeightFiles += 1
+
+    assert(NumberOfWeightFiles <= len(colors))
+
     feature_names = []
     if len(options.feature_names) > 0:
         with open(options.feature_names, 'r') as fn:
@@ -47,12 +60,22 @@ if __name__ == "__main__":
     plt.figure()
     ax = plt.axes()
 
+    weights = zip(*weightList)
+
     if options.non_zero:
-        weights,feature_names = zip(*[d for d in zip(weights,feature_names) if d[0] > 0])
+        weights,feature_names = zip(*[d for d in zip(weights,feature_names) if np.any(np.array(d[0])>options.limit) ])
 
-    x_pos = 2.0 * np.arange(len(feature_names))
+    if options.sort:
+        sortingmeasure = [np.sum(np.array(d)) for d in weights]
+        weights,feature_names = zip(*[(x,f) for (s,x,f) in sorted(zip(sortingmeasure,weights,feature_names), key=lambda pair: pair[0],reverse=True)])
 
-    plt.bar(x_pos, weights, align='center', width=0.8, alpha=0.4)
+    width = 1./(len(weightList)+1)
+    offset = -0.5 * width * (NumberOfWeightFiles-1)
+    x_pos = 1.0 * np.arange(len(feature_names))
+    for i in xrange(NumberOfWeightFiles):
+        plt.bar(x_pos+offset, [w[i] for w in weights], color=colors[i],align='center', width=width,log=options.logscale,linewidth=0)
+        offset += width
+
     plt.xticks(x_pos, feature_names, rotation='vertical', fontsize=2)
     make_axes_area_auto_adjustable(ax)
     plt.savefig(options.out_file)
