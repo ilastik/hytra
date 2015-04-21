@@ -25,6 +25,7 @@ if __name__ == "__main__":
                         help='Lower and upper bound of track weight expansions (default 0, 1)')
     parser.add_argument('-o', required=True, type=str, dest='out_file',
                         help='Name of the file the plot is saved to')
+    parser.add_argument('--non-zero', action='store_true', dest='non_zero', help='display only non zero feature importance')
 
     options = parser.parse_args()
 
@@ -44,8 +45,13 @@ if __name__ == "__main__":
             feature_names = trackingfeatures.LineagePart.all_feature_names
 
     plt.figure()
-    x_pos = 2.0 * np.arange(len(feature_names))
     ax = plt.axes()
+
+    if options.non_zero:
+        weights,feature_names = zip(*[d for d in zip(weights,feature_names) if d[0] > 0])
+
+    x_pos = 2.0 * np.arange(len(feature_names))
+
     plt.bar(x_pos, weights, align='center', width=0.8, alpha=0.4)
     plt.xticks(x_pos, feature_names, rotation='vertical', fontsize=2)
     make_axes_area_auto_adjustable(ax)
