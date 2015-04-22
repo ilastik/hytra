@@ -28,6 +28,8 @@ if __name__ == "__main__":
                         help='file containing the learned reranker weights')
     parser.add_argument('-o', required=True, type=str, dest='out_file',
                         help='Name of the file the plot is saved to')
+    parser.add_argument('--min-length', type=int, default=1, dest='min_length',
+                        help='Minimal length that a lineage tree must have to be included in the plots')
 
     options = parser.parse_args()
 
@@ -46,16 +48,22 @@ if __name__ == "__main__":
     num_divs = []
     num_tracks = []
     lengths = []
-    for lt in lineage_trees:
+    valid_indices = []
+    for i, lt in enumerate(lineage_trees):
+        length = sum([t.length for t in lt.tracks])
+        if length < options.min_length:
+            continue
+        valid_indices.append(i)
+        lengths.append(length)
         feat_vec = np.expand_dims(lt.get_expanded_feature_vector([-1, 2]), axis=1)
         structsvm.utils.apply_feature_normalization(feat_vec, means, variances)
         score = np.dot(weights, feat_vec[:, 0])
         scores.append(score)
         num_divs.append(len(lt.divisions))
         num_tracks.append(len(lt.tracks))
-        lengths.append(sum([t.length for t in lt.tracks]))
 
     filename, extension = os.path.splitext(options.out_file)
+    precisions = precisions[valid_indices]
 
     # scatter plot
     plt.figure()
@@ -114,7 +122,9 @@ if __name__ == "__main__":
     outlier_svm_scores = []
     track_outlier_feature_idx = trackingfeatures.LineagePart.feature_to_weight_idx('track_outlier_svm_score')
     div_outlier_feature_idx = trackingfeatures.LineagePart.feature_to_weight_idx('div_outlier_svm_score')
-    for lt in lineage_trees:
+    for i, lt in enumerate(lineage_trees):
+        if i not in valid_indices:
+            continue
         fv = lt.get_feature_vector()
         outlier_svm_scores.append(fv[track_outlier_feature_idx] + fv[div_outlier_feature_idx])
 
