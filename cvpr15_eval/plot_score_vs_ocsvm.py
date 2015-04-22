@@ -57,15 +57,15 @@ if __name__ == "__main__":
     sorted_precs, sorted_scores = zip(*prec_score_pairs)
     
     threshold = 0.9
-def filter_precs(threshold, precs):
-    precs = list(precs)
-    i = 0
-    num_below_thresh = sum(np.array(precs) < threshold)
-    for c in range(len(precs)):
-        if precs[c] < threshold:
-            i+=1
-        precs[c] = 1.0 - float(i) / num_below_thresh
-    return precs
+    def filter_precs(threshold, precs):
+        precs = list(precs)
+        i = 0
+        num_below_thresh = sum(np.array(precs) < threshold)
+        for c in range(len(precs)):
+            if precs[c] < threshold:
+                i+=1
+            precs[c] = 1.0 - float(i) / num_below_thresh
+        return precs
 
     sorted_precs = filter_precs(threshold, sorted_precs)
 
@@ -91,6 +91,7 @@ def filter_precs(threshold, precs):
     #plt.savefig(filename + "_outlier_score" + extension)
     plt.legend()
     plt.savefig(options.out_file)
+    print("Saved figure ", options.out_file) 
 
     # # scatter plot
     # plt.figure()
