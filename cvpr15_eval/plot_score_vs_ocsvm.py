@@ -64,7 +64,7 @@ if __name__ == "__main__":
         for c in range(len(precs)):
             if precs[c] < threshold:
                 i+=1
-            precs[c] = 1.0 - float(i) / num_below_thresh
+            precs[c] = 1.0 - float(i) / len(precs)
         return precs
 
     sorted_precs = filter_precs(threshold, sorted_precs)
