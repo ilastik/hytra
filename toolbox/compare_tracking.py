@@ -119,6 +119,7 @@ Compare two tracking results, based only on the association information in the t
     #     print "Warning: number of base files has to match number of contestant files."
 
     timesteps = min((len(base_fns), len(cont_fns)))
+    first_timestep = int(os.path.splitext(os.path.basename(base_fns[0]))[0])
 
     ##
     ## construct id assocs; assumed to be identically mapped in this script 
@@ -137,7 +138,7 @@ Compare two tracking results, based only on the association information in the t
     for i,v in enumerate(fn_pairs[1:]):
         if verbose:
             print path.basename(v[0]), path.basename(v[1])
-        t = quant.compute_taxonomy(assocs[i], assocs[i+1], v[0], v[1], i+1)
+        t = quant.compute_taxonomy(assocs[i], assocs[i+1], v[0], v[1], i + first_timestep + 1)
         ts.append(t)
         #sys.stdout.write('%d ' % i)
         sys.stdout.flush()

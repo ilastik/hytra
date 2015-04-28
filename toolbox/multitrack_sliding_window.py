@@ -58,7 +58,7 @@ def track_subgraphs(graph,
 
     # track all segments individually
     for i, segment in enumerate(segments):
-        print("Creating subgraph for timesteps in {}".format(segment))
+        print("************** Creating subgraph for timesteps in {}".format(segment))
 
         # use special out-dir per window
         options.out_dir = original_out_dir.rstrip('/') + '/window_' + str(i) + '/'
@@ -92,6 +92,7 @@ def track_subgraphs(graph,
                     origin_node = subgraph_node_origin_map[n]
                     origin_node_id = graph.id(origin_node)
                     subgraph.addAppearanceLabel(n, solutions[origin_node_id][-1])
+                    print "fixing node ", origin_node_id, " which is ", subgraph.id(n), " in subgraph"
 
         print("Subgraph has {} nodes and {} arcs".format(track.countNodes(subgraph), track.countArcs(subgraph)))
 
@@ -107,7 +108,7 @@ def track_subgraphs(graph,
                                                 options.division_threshold)
         all_events = subgraph_tracker.track(conservation_tracking_parameter, bool(i > 0))
 
-        if len(options.raw_filename) > 0:
+        if len(options.raw_filename) > 0 and len(options.reranker_weight_file) > 0:
             # run merger resolving and feature extraction, which also returns the score of each proposal
             region_features = multitrack.getRegionFeatures(ndim)
             scores = multitrack.runMergerResolving(options, 
@@ -175,6 +176,7 @@ def track_subgraphs(graph,
         n_it = track.NodeIt(graph)
         for n in n_it:
             n_id = graph.id(n)
+
             graph.addAppearanceLabel(n, solutions[n_id][-1])
             graph.addDisappearanceLabel(n, solutions[n_id][-1])
 
@@ -329,8 +331,8 @@ if __name__ == "__main__":
 
     track_subgraphs(hypotheses_graph, 
         (t0, t1), 
-        6, 
-        1, 
+        10, # timesteps_per_segment,
+        1, # segment_overlap_timesteps,
         conservation_tracking_parameter, 
         fov, 
         ilp_fn,
