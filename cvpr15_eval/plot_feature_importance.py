@@ -42,7 +42,10 @@ if __name__ == "__main__":
     weightList = []
     NumberOfWeightFiles = 0
     for weightFile in options.weights:
-        weightList.append(np.loadtxt(weightFile))
+        w = np.loadtxt(weightFile)
+        length = np.sqrt(np.dot(w,w))
+        w /= length
+        weightList.append(w)
         NumberOfWeightFiles += 1
 
     assert(NumberOfWeightFiles <= len(colors))
@@ -89,6 +92,6 @@ if __name__ == "__main__":
         offset += width
 
     plt.xticks(x_pos, feature_names, rotation='vertical', fontsize=options.fontsize)
-    plt.legend()
+    plt.legend(prop={'size':6})
     make_axes_area_auto_adjustable(ax)
     plt.savefig(options.out_file)
