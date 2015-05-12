@@ -83,7 +83,8 @@ class LineagePart:
 
     track_feature_map = {
         'single': [
-            'track_outlier_svm_score', # TODO: add length?
+            'track_outlier_svm_score',
+            'track_length'
         ],
         'mean_var': [
             'sq_diff_RegionCenter',
@@ -112,7 +113,9 @@ class LineagePart:
             'Weighted<PowerSum<0> >',
             'Central< PowerSum<2> >',
             'Central< PowerSum<3> >',
-            'Central< PowerSum<4> >'
+            'Central< PowerSum<4> >',
+            'detProb',
+            'divProb'
         ]
     }
 
@@ -136,7 +139,9 @@ class LineagePart:
             'sq_diff_RegionCenter',
             'sq_diff_RegionCenter_outlier_score',
             'sq_diff_Variance',
-            'sq_diff_Variance_outlier_score'
+            'sq_diff_Variance_outlier_score',
+            'detProb',
+            'divProb'
         ]
     }
 
@@ -480,6 +485,10 @@ def create_and_link_tracks_and_divisions(track_features_h5, ts, region_features)
         # create mappings
         track_starts_with_traxel_id[t.start_traxel_id] = track_id_int
         track_ends_with_traxel_id[t.end_traxel_id] = track_id_int
+
+    max_length = max([t.length for t in tracks.values()])   
+    for t in tracks.values():
+        t.features['track_length'] = float(t.length) / max_length
 
     for division_id in track_features_h5['divisions'].keys():
         pb.show()
