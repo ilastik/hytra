@@ -48,6 +48,7 @@ if __name__ == "__main__":
     num_divs = []
     num_tracks = []
     lengths = []
+    marker_sizes = []
     valid_indices = []
     for i, lt in enumerate(lineage_trees):
         length = sum([t.length for t in lt.tracks])
@@ -55,6 +56,8 @@ if __name__ == "__main__":
             continue
         valid_indices.append(i)
         lengths.append(length)
+        # marker_sizes.append(np.log(length))
+        marker_sizes.append(length)
         feat_vec = np.expand_dims(lt.get_expanded_feature_vector([-1, 2]), axis=1)
         structsvm.utils.apply_feature_normalization(feat_vec, means, variances)
         score = np.dot(weights, feat_vec[:, 0])
@@ -68,7 +71,7 @@ if __name__ == "__main__":
     # scatter plot
     plt.figure()
     plt.hold(True)
-    plt.scatter(precisions, scores)
+    plt.scatter(precisions, scores, s=marker_sizes, alpha=0.5)
     plt.xlabel("Precision")
     plt.ylabel("Score")
     plt.savefig(options.out_file)
@@ -130,7 +133,7 @@ if __name__ == "__main__":
 
     plt.figure()
     plt.hold(True)
-    plt.scatter(precisions, outlier_svm_scores)
+    plt.scatter(precisions, outlier_svm_scores, s=marker_sizes, alpha=0.5)
     plt.xlabel("Precision")
     plt.ylabel("Outlier SVM Score")
     plt.savefig(filename + "_outlier_score" + extension)
