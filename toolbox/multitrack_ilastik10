@@ -58,6 +58,8 @@ copied but linked to the original files to improve execution speed and storage r
                       help='use cellness prediction instead of indicator function for (mis-)detection energy')
     parser.add_option('--ep_gap', type='float', dest='ep_gap', default=0.01,
                       help='stop optimization as soon as a feasible integer solution is found proved to be within the given percent of the optimal solution')
+    parser.add_option('--num-threads', type=int, dest='num_threads', default=0,
+                      help='Number of threads for CPLEX, 0 -> number of cores')
     parser.add_option('-f', '--forbidden_cost', type='float', dest='forbidden_cost', default=0,
                       help='forbidden cost [default: %default]')
     parser.add_option('--min-ts', type='int', dest='mints', default=0, help='[default: %default]')
@@ -1438,6 +1440,7 @@ if __name__ == "__main__":
         uncertaintyParam,
         options.timeout,
         trans_classifier, # pointer to transition classifier
+        options.num_threads,
     )
 
     tracker.setTrackLabelingExportFile('')
