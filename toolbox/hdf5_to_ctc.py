@@ -80,12 +80,15 @@ def convert_label_volume(options):
 
     # handle frame 0 -> only add those nodes that are referenced from frame 1 events
     label_image = get_frame_label_image(0, options)
+    label_image_indices = np.unique(label_image)
     print("Processing frame 0 of shape {}".format(label_image.shape))
 
     moves = get_frame_dataset(1, "Moves", options)
     splits = get_frame_dataset(1, "Splits", options)
     referenced_labels = set(moves[:, 0]) | set(splits[:, 0]) # set union
     for l in referenced_labels:
+        if l == 0 or not l in label_image_indices:
+            continue
         old_mapping[l] = new_track_id
         tracks[new_track_id] = [0, 0]
         new_track_id += 1
@@ -95,49 +98,57 @@ def convert_label_volume(options):
 
     # handle all further frames by remapping their indices
     for frame in range(1, num_frames):
+        old_label_image = label_image
+        old_label_image_indices = np.unique(old_label_image)
         start_time = time.time()
         label_image = get_frame_label_image(frame, options)
+        label_image_indices = np.unique(label_image)
         print("Processing frame {} of shape {}".format(frame, label_image.shape))
         mapping = {}
 
         # find the continued tracks
         moves = get_frame_dataset(frame, "Moves", options)
         for src, dest in moves:
-            if src == 0 or dest == 0:
+            if src == 0 or dest == 0 or not src in old_label_image_indices or not dest in label_image_indices:
                 continue
             # see whether this was a track continuation or the first leg of a new track
             if src in old_mapping.keys():
                 mapping[dest] = old_mapping[src]
             else:
                 mapping[dest] = new_track_id
-                tracks[new_track_id] = [0, frame - 1]
+                tracks[new_track_id] = [0, frame]
                 new_track_id += 1
 
         # find all divisions
         splits = get_frame_dataset(frame, "Splits", options)
-        parents = []
-        children = []
 
         for s in range(splits.shape[0]):
             # end parent track
             parent = splits[s, 0]
-            parents.append(parent)
 
             if parent in old_mapping.keys():
                 tracks[old_mapping[parent]].append(frame - 1)
+            elif not parent in old_label_image_indices:
+                print("Found division where parent id was not present in previous frame")
+                parent = 0
+                old_mapping[parent] = 0
             else:
                 # insert a track of length 1 as parent of the new track
-                mapping[parent] = new_track_id
+                old_mapping[parent] = new_track_id
                 tracks[new_track_id] = [0, frame - 1, frame - 1]
                 new_track_id += 1
-                print("Adding single-node-track parent of division")
+                print("Adding single-node-track parent of division with id {}".format(new_track_id - 1))
+                remapped_label_image = remap_label_image(old_label_image, old_mapping)
+                save_frame_to_tif(frame-1, remapped_label_image, options)
 
             # create new tracks for all children
             for c in splits[s, 1:]:
-                tracks[new_track_id] = [parent, frame]
-                mapping[c] = new_track_id
-                new_track_id += 1
-                children.append(c)
+                if c in label_image_indices:
+                    tracks[new_track_id] = [old_mapping[parent], frame]
+                    mapping[c] = new_track_id
+                    new_track_id += 1
+                else:
+                    print("Discarding child {} of parent track {} because it is not present in image".format(c, parent))
 
         # find all tracks that ended (so not in a move or split (-> is parent))
         disappeared_indices = set(old_mapping.values()) - set(mapping.values())
