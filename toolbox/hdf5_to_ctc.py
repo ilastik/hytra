@@ -25,7 +25,7 @@ def get_frame_label_image(timestep, options):
 def get_frame_dataset(timestep, dataset, options):
     if len(options.input_files) == 1:
         with h5py.File(options.input_files[0], 'r') as in_h5:
-            ds_name = 'tracking/' + format(timestep, "04") + '/' + dataset
+            ds_name = 'tracking/' + format(timestep, "0{}".format(options.h5group_zero_padding)) + '/' + dataset
             if ds_name in in_h5:
                 return np.array(in_h5[ds_name])
     else:
@@ -39,10 +39,10 @@ def get_frame_dataset(timestep, dataset, options):
 
 def save_frame_to_tif(timestep, label_image, options):
     if len(options.input_files) == 1:
-        filename = options.output_dir + '/man_track' + format(timestep, "03") + '.tif'
+        filename = options.output_dir + '/man_track' + format(timestep, "0{}".format(options.filename_zero_padding)) + '.tif'
     else:
-        filename = options.output_dir + '/mask' + format(timestep, "03") + '.tif'
-    vigra.impex.writeVolume(label_image, filename, '', dtype='UINT16')
+        filename = options.output_dir + '/mask' + format(timestep, "0{}".format(options.filename_zero_padding)) + '.tif'
+    vigra.impex.writeImage(label_image.astype('uint16'), filename)
 
 
 def save_tracks(tracks, num_frames, options):
@@ -168,6 +168,8 @@ if __name__ == "__main__":
                         help='HDF5 file of ground truth, or list of files for individual frames')
     parser.add_argument('--label-image-path', type=str, dest='label_image_path', default='label_image',
                         help='Path inside the HDF5 file(s) to the label image')
+    parser.add_argument('--filename-zero-pad-length', type=int, dest='filename_zero_padding', default='3')
+    parser.add_argument('--h5group-zero-pad-length', type=int, dest='h5group_zero_padding', default='4')
 
     # parse command line
     args = parser.parse_args()

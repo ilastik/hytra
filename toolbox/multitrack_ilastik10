@@ -74,6 +74,8 @@ copied but linked to the original files to improve execution speed and storage r
                       help='filename to the raw h5 file')
     parser.add_option('--raw-data-path', type='string', dest='raw_path', default='volume/data',
                       help='Path inside the raw h5 file to the data')
+    parser.add_option('--dump-hypotheses-graph', type='string', dest='hypotheses_graph_filename', default=None,
+                      help='save hypotheses graph so it can be loaded later')
 
     #funkey learning parameters
     parser.add_option('--export-funkey-files', action='store_true', dest='export_funkey', default=False,
@@ -1408,6 +1410,14 @@ if __name__ == "__main__":
     print "tracking with weights ", w_det, w_div, w_trans, w_dis, w_app
     hypotheses_graph = tracker.buildGraph(ts)
 
+    if options.hypotheses_graph_filename:
+        import pickle
+        with open(options.hypotheses_graph_filename, 'wb') as hg_out:
+                pickle.dump(hypotheses_graph, hg_out)
+                pickle.dump(fov, hg_out)
+                pickle.dump(fs, hg_out)
+        sys.exit(0)
+
     if options.w_labeling:
         assert len(options.gt_pth) > 0, 'if labeling should be loaded, please provide a path to the ground truth in --gt-pth'
         store_label_in_hypotheses_graph(options, hypotheses_graph, tracker)
@@ -1441,6 +1451,7 @@ if __name__ == "__main__":
         options.timeout,
         trans_classifier, # pointer to transition classifier
         options.num_threads,
+        False,
     )
 
     tracker.setTrackLabelingExportFile('')
