@@ -951,7 +951,6 @@ def getTraxelStore(options, ilp_fn,time_range, shape):
                 ts = new_ts
         else:
             max_num_mer = int(options.max_num_objects)
-
             ts, fs, max_traxel_id_at = generate_traxelstore(h5file=h5file,
                                                             options=options,
                                                             feature_path=feature_path,
@@ -1347,7 +1346,7 @@ if __name__ == "__main__":
     start = time.time()
 
     feature_path = options.feats_path
-    with_div = True
+    with_div = not bool(options.without_divisions)
     with_merger_prior = True
 
     # get selected time range
