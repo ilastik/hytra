@@ -21,6 +21,59 @@ from trackingfeatures import extract_features_and_compute_score, get_feature_vec
 from empryonic import io
 from multiprocessing import Pool
 
+def swirl_motion_func_creator(angleWeight, velocityWeight):
+    def swirl_motion_func(traxelA, traxelB, traxelC, traxelD):
+        # print("SwirlMotion evaluated for traxels: {}, {}, {}".format(traxelA, traxelB, traxelC))
+        traxels = [traxelA, traxelB, traxelC, traxelD]
+        positions = [np.array([t.X(), t.Y(), t.Z()]) for t in traxels]
+
+        # compute angle -> should be 180 degrees
+        vecs = [positions[1] - positions[0], positions[1] - positions[2], positions[2] - positions[1], positions[2] - positions[3]]
+
+        def computeAngle(vs):
+            lengths = [np.linalg.norm(v) for v in vs]
+            lengthProd = lengths[0] * lengths[1]
+            if lengthProd == 0.0:
+                cosAngle = -1
+            else:
+                cosAngle = vs[0].dot(vs[1]) / lengthProd
+
+            if np.isnan(lengthProd):
+                print("NaN resulted from lengths: {}, {} of vectors {}, {}".format(lengths[0], lengths[1], vs[0], vs[1]))
+            if np.isnan(cosAngle):
+                print("Got a nan cosine for vectors {} {}".format(vs[0], vs[1]))
+            return np.arccos(cosAngle) / np.pi * 180.0
+
+        angle1 = computeAngle(vecs[:2])
+        angle2 = computeAngle(vecs[2:])
+
+        cost = float(angleWeight) * np.abs(angle1 - angle2)
+        # print("Adding cost {} for angles: {}, {}".format(cost, angle1, angle2))
+
+
+        # acceleration penalty
+        lengths = [np.linalg.norm(v) for v in [vecs[1], vecs[3]]]
+        # if lengths[1] == 0.0:
+        #     if lengths[0] == 0.0:
+        #         ratio = 1.0
+        #     else:
+        #         ratio = 0.0
+        # else:
+        #     ratio = np.abs(lengths[0] / lengths[1])
+        # cost += 100.0 * (1.0 - ratio)
+        cost += float(velocityWeight) * np.abs(lengths[0] - lengths[1])
+
+        # compute cost
+        # cost = (cosAngle + 1.0)*10.0 + (1.0 - ratio) * 100.0
+
+        # # alternative: add vecs[0] to pos[1] and measure the distance to pos[2]
+        # expected_pos = positions[2]  + vecs[2]
+        # deviation = np.linalg.norm(expected_pos - positions[3])
+        # cost += 100.0 * deviation
+        # print("Adding cost {} to link between traxels {} at positions {}".format(cost, traxels, positions))
+
+        return cost
+    return swirl_motion_func
 
 def getConfigAndCommandLineArguments():
 
@@ -114,6 +167,8 @@ copied but linked to the original files to improve execution speed and storage r
     consopts.add_option('--dis', dest='disappearance_cost', type='float', default=500.0, help='disappearance cost [default: %default]')
     consopts.add_option('--app', dest='appearance_cost', type='float', default=500.0, help='appearance cost [default: %default]')
     consopts.add_option('--tr', dest='transition_weight', type='float', default=10.0, help='transition weight [default: %default]')
+    consopts.add_option('--angleWeight', dest='angleWeight', type='float', default=0.0, help='angle weight [default: %default]')
+    consopts.add_option('--velocityWeight', dest='velocityWeight', type='float', default=0.0, help='velocity weight [default: %default]')
     consopts.add_option('--without-divisions', dest='without_divisions', action='store_true')
     consopts.add_option('--means', dest='means', type='float', default=0.0,
                         help='means for detection [default: %default]')
@@ -1431,27 +1486,54 @@ if __name__ == "__main__":
     
     tracker.setTrackLabelingExportFile(proposal_out)
 
+    params = tracker.get_conservation_tracking_parameters(
+            options.forbidden_cost,
+            options.ep_gap,
+            not bool(options.without_tracklets),
+            w_det,
+            w_div,
+            w_trans,
+            w_dis,
+            w_app,
+            options.with_merger_resolution,
+            ndim,
+            options.trans_par,
+            options.border_width,
+            not bool(options.woconstr),
+            uncertaintyParam,
+            options.timeout,
+            trans_classifier, # pointer to transition classifier
+            track.ConsTrackingSolverType.DynProgSolver, # Solver
+            options.num_threads,
+            False
+        )
+
+    if options.angleWeight > 0 and options.velocityWeight > 0:
+        print("Registering motion model with weights {} and {}".format(options.angleWeight, options.velocityWeight))
+        params.register_motion_model4_func(swirl_motion_func_creator(options.angleWeight, options.velocityWeight))
+
     # track!
-    all_events = tracker.track(
-        options.forbidden_cost,
-        options.ep_gap,
-        not bool(options.without_tracklets),
-        w_det,
-        w_div,
-        w_trans,
-        w_dis,
-        w_app,
-        options.with_merger_resolution,
-        ndim,
-        options.trans_par,
-        options.border_width,
-        not bool(options.woconstr),
-        uncertaintyParam,
-        options.timeout,
-        trans_classifier, # pointer to transition classifier
-        options.num_threads,
-        False,
-    )
+    all_events = tracker.track(params, False)
+    # all_events = tracker.track(
+    #     options.forbidden_cost,
+    #     options.ep_gap,
+    #     not bool(options.without_tracklets),
+    #     w_det,
+    #     w_div,
+    #     w_trans,
+    #     w_dis,
+    #     w_app,
+    #     options.with_merger_resolution,
+    #     ndim,
+    #     options.trans_par,
+    #     options.border_width,
+    #     not bool(options.woconstr),
+    #     uncertaintyParam,
+    #     options.timeout,
+    #     trans_classifier, # pointer to transition classifier
+    #     options.num_threads,
+    #     False,
+    # )
 
     tracker.setTrackLabelingExportFile('')
 
