@@ -21,56 +21,28 @@ from trackingfeatures import extract_features_and_compute_score, get_feature_vec
 from empryonic import io
 from multiprocessing import Pool
 
-def swirl_motion_func_creator(angleWeight, velocityWeight):
+def swirl_motion_func_creator(velocityWeight):
     def swirl_motion_func(traxelA, traxelB, traxelC, traxelD):
-        # print("SwirlMotion evaluated for traxels: {}, {}, {}".format(traxelA, traxelB, traxelC))
+        #print("SwirlMotion evaluated for traxels: {}, {}, {}".format(traxelA, traxelB, traxelC))
         traxels = [traxelA, traxelB, traxelC, traxelD]
         positions = [np.array([t.X(), t.Y(), t.Z()]) for t in traxels]
+        vecs = [positions[1] - positions[0], positions[2] - positions[1]]
 
-        # compute angle -> should be 180 degrees
-        vecs = [positions[1] - positions[0], positions[1] - positions[2], positions[2] - positions[1], positions[2] - positions[3]]
+        # acceleration is change in velocity
+        acc = vecs[1] - vecs[0]
 
-        def computeAngle(vs):
-            lengths = [np.linalg.norm(v) for v in vs]
-            lengthProd = lengths[0] * lengths[1]
-            if lengthProd == 0.0:
-                cosAngle = -1
-            else:
-                cosAngle = vs[0].dot(vs[1]) / lengthProd
+        # assume constant acceleration to find expected velocity vector
+        expected_vel = vecs[1] + acc
 
-            if np.isnan(lengthProd):
-                print("NaN resulted from lengths: {}, {} of vectors {}, {}".format(lengths[0], lengths[1], vs[0], vs[1]))
-            if np.isnan(cosAngle):
-                print("Got a nan cosine for vectors {} {}".format(vs[0], vs[1]))
-            return np.arccos(cosAngle) / np.pi * 180.0
+        # construct expected position
+        expected_pos = positions[2] + expected_vel
 
-        angle1 = computeAngle(vecs[:2])
-        angle2 = computeAngle(vecs[2:])
-
-        cost = float(angleWeight) * np.abs(angle1 - angle2)
-        # print("Adding cost {} for angles: {}, {}".format(cost, angle1, angle2))
-
-
-        # acceleration penalty
-        lengths = [np.linalg.norm(v) for v in [vecs[1], vecs[3]]]
-        # if lengths[1] == 0.0:
-        #     if lengths[0] == 0.0:
-        #         ratio = 1.0
-        #     else:
-        #         ratio = 0.0
-        # else:
-        #     ratio = np.abs(lengths[0] / lengths[1])
-        # cost += 100.0 * (1.0 - ratio)
-        cost += float(velocityWeight) * np.abs(lengths[0] - lengths[1])
-
-        # compute cost
-        # cost = (cosAngle + 1.0)*10.0 + (1.0 - ratio) * 100.0
-
-        # # alternative: add vecs[0] to pos[1] and measure the distance to pos[2]
-        # expected_pos = positions[2]  + vecs[2]
-        # deviation = np.linalg.norm(expected_pos - positions[3])
-        # cost += 100.0 * deviation
-        # print("Adding cost {} to link between traxels {} at positions {}".format(cost, traxels, positions))
+        # penalize deviation from that position
+        deviation = np.linalg.norm(expected_pos - positions[3])
+        #print("\tExpected next traxel at pos {}, but found {}. Distance={}".format(expected_pos, positions[3], deviation))
+        cost = float(velocityWeight) * deviation
+        tIds = [(t.Timestep, t.Id) for t in traxels]
+        #print("Adding cost {} to link between traxels {} at positions {}".format(cost, tIds, positions))
 
         return cost
     return swirl_motion_func
@@ -154,6 +126,7 @@ copied but linked to the original files to improve execution speed and storage r
     consopts.add_option('--max-number-objects', dest='max_num_objects', type='float', default=2,
                         help='Give maximum number of objects one connected component may consist of [default: %default]')
     consopts.add_option('--max-neighbor-distance', dest='mnd', type='float', default=30, help='[default: %default]')
+    consopts.add_option('--max-nearest-neighbors', dest='max_nearest_neighbors', type='int', default=1, help='[default: %default]')
     consopts.add_option('--division-threshold', dest='division_threshold', type='float', default=0.1, help='[default: %default]')
     # detection_rf_filename in general parser options
     consopts.add_option('--size-dependent-detection-prob', dest='size_dependent_detection_prob', action='store_true')
@@ -167,8 +140,7 @@ copied but linked to the original files to improve execution speed and storage r
     consopts.add_option('--dis', dest='disappearance_cost', type='float', default=500.0, help='disappearance cost [default: %default]')
     consopts.add_option('--app', dest='appearance_cost', type='float', default=500.0, help='appearance cost [default: %default]')
     consopts.add_option('--tr', dest='transition_weight', type='float', default=10.0, help='transition weight [default: %default]')
-    consopts.add_option('--angleWeight', dest='angleWeight', type='float', default=0.0, help='angle weight [default: %default]')
-    consopts.add_option('--velocityWeight', dest='velocityWeight', type='float', default=0.0, help='velocity weight [default: %default]')
+    consopts.add_option('--motionModelWeight', dest='motionModelWeight', type='float', default=0.0, help='motion model weight [default: %default]')
     consopts.add_option('--without-divisions', dest='without_divisions', action='store_true')
     consopts.add_option('--means', dest='means', type='float', default=0.0,
                         help='means for detection [default: %default]')
@@ -1462,7 +1434,7 @@ if __name__ == "__main__":
     
     # build hypotheses graph
     print "tracking with weights ", w_det, w_div, w_trans, w_dis, w_app
-    hypotheses_graph = tracker.buildGraph(ts)
+    hypotheses_graph = tracker.buildGraph(ts, options.max_nearest_neighbors)
 
     if options.hypotheses_graph_filename:
         import pickle
@@ -1508,9 +1480,9 @@ if __name__ == "__main__":
             False
         )
 
-    if options.angleWeight > 0 and options.velocityWeight > 0:
-        print("Registering motion model with weights {} and {}".format(options.angleWeight, options.velocityWeight))
-        params.register_motion_model4_func(swirl_motion_func_creator(options.angleWeight, options.velocityWeight))
+    if options.motionModelWeight > 0:
+        print("Registering motion model with weight {}".format(options.motionModelWeight))
+        params.register_motion_model4_func(swirl_motion_func_creator(options.motionModelWeight), options.motionModelWeight*25.0)
 
     # track!
     all_events = tracker.track(params, False)
