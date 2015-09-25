@@ -1476,8 +1476,7 @@ if __name__ == "__main__":
             options.timeout,
             trans_classifier, # pointer to transition classifier
             track.ConsTrackingSolverType.DynProgSolver, # Solver
-            options.num_threads,
-            False
+            options.num_threads
         )
 
     if options.motionModelWeight > 0:
@@ -1503,8 +1502,7 @@ if __name__ == "__main__":
     #     uncertaintyParam,
     #     options.timeout,
     #     trans_classifier, # pointer to transition classifier
-    #     options.num_threads,
-    #     False,
+    #     options.num_threads
     # )
 
     tracker.setTrackLabelingExportFile('')
