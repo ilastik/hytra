@@ -172,7 +172,7 @@ copied but linked to the original files to improve execution speed and storage r
     consopts.add_option('--with-graph-labeling', dest='w_labeling', action='store_true', default=False, 
                         help='load ground truth labeling into hypotheses graph for further evaluation on C++ side,\
                         requires gt-path to point to the groundtruth files')
-    consopts.add_option('--without-swaps', dest='without_swaps', action='store_true')
+    consopts.add_option('--without-swaps', dest='without_swaps', action='store_true', default=False)
     consopts.add_option('--max-num-paths', dest='max_num_paths', type='int', default=None, help='Max number of paths DynProg is allowed to find')
 
     # options for perturbing and re-ranking
@@ -1508,7 +1508,7 @@ if __name__ == "__main__":
     # dynprog settings
     if options.max_num_paths is not None:
         params.max_number_paths = options.max_num_paths
-    params.with_swaps = not options.without_swaps
+    params.with_swap = not options.without_swaps
     
     # track!
     all_events = tracker.track(params, False)
