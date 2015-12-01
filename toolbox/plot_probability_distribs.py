@@ -570,6 +570,21 @@ if __name__ == "__main__":
     mean_energies = []
     mean_convexified_energies = []
 
+    # fit a parabola with origin (x_m, y_m)
+    def fit_parabola(x_m, y_m, X, Y):
+        x_diff_sqr = (X - x_m) ** 2
+        y_diff = -1.0 * (Y - y_m)
+        a = -1.0 * np.dot(x_diff_sqr, y_diff) / np.sum(x_diff_sqr ** 2)
+        # print("Fitted parabola is {}x**2 + {}".format(a, y_m))
+
+        def parabola(X):
+            ret = ((X - x_m) ** 2) * a + y_m
+            ret[ret < 0] = 0 # make sure the probability never goes below zero
+            return ret
+
+        return parabola
+
+    # loop over all detections grouped by their min-energy class
     for i in range(int(options.max_num_objects+1)):
         grouped_detections.append([probs for best,probs in zip(det_max_prob, detection_probabilities) if best == i])
         # mean probability per group
@@ -581,32 +596,71 @@ if __name__ == "__main__":
 
         for d in grouped_detections[-1]:
             model = make_pipeline(PolynomialFeatures(degree=2,include_bias=False), Ridge())
-            X_values = range(len(d))
-            desired_shape = (len(d),1)
-            model.fit(np.array(X_values).reshape(desired_shape), np.array(d).reshape(desired_shape))
-            Y_predictions = model.predict(np.array(X_values).reshape(desired_shape))
+            X_values = np.array(range(len(d)))
+
+            # reorder to get minimum to the end
+            X_values_but_min = range(len(d))
+            d_values_but_min = list(d)
+            del X_values_but_min[i]
+            del d_values_but_min[i]
+
+            parabola = fit_parabola(i, d[i], np.array(X_values_but_min), np.array(d_values_but_min))
+            Y_predictions = parabola(X_values)
+            # for y in Y_predictions:
+            #     if y < 0:
+            #         print("Found negative value in {} as prediction for {} which has class {}".format(Y_predictions, X_values, i))
+
             fitted_det_energies.append(list(Y_predictions))
 
+        # m = np.max(0.0, np.mean(np.array(fitted_det_energies), axis=0)) # make sure mean > 0
         m = np.mean(np.array(fitted_det_energies), axis=0)
         m = -1.0 * np.log(m + 0.000001)
         mean_convexified_energies.append(m)
 
         print("Averaging over {} RF predictions for class {}".format(len(grouped_detections[-1]), i))
 
-    plt.figure()
+    # plot mean energies
+    fig = plt.figure()
     for i in range(int(options.max_num_objects+1)):
         plt.subplot(3,2,i+1)
         plt.hold(True)
-        plt.plot(mean_energies[i], label='mean energies')
-        plt.plot(mean_convexified_energies[i], label='mean of convexified')
+        l1, = plt.plot(mean_energies[i], label='mean energies')
+        l2, = plt.plot(mean_convexified_energies[i], label='mean of convexified')
 
         # fit quadratic function:
-        model = make_pipeline(PolynomialFeatures(degree=2,include_bias=False), Ridge())
-        X_values = range(len(mean_energies[i]))
-        desired_shape = (len(mean_energies[i]),1)
-        model.fit(np.array(X_values).reshape(desired_shape), np.array(mean_energies[i]).reshape(desired_shape))
-        Y_predictions = model.predict(np.array(X_values).reshape(desired_shape))
-        plt.plot(X_values, Y_predictions, label='convexified mean')
+        X_values = np.array(range(len(mean_energies[i])))
+        parabola = fit_parabola(i, mean_energies[i][i], X_values, mean_energies[i])
+        Y_predictions = parabola(X_values)
+        l3, = plt.plot(X_values, Y_predictions, label='convexified mean')
 
         plt.title("Mean Energy for class {}".format(i))
+
+    fig.legend((l1,l2,l3), ('mean energies','mean of convexified','convexified mean'), loc = 'lower right')
     plt.savefig(os.path.join(options.out_dir, "detection_probabilities.pdf"))
+
+    # plot examples
+    fig = plt.figure()
+    for i in range(int(options.max_num_objects+1)):
+        plt.subplot(3,2,i+1)
+        plt.hold(True)
+        plt.title("Probability Example for class {}".format(i))
+        grouped_detections = [probs for best,probs in zip(det_max_prob, detection_probabilities) if best == i]
+        
+        d = grouped_detections[0]
+        model = make_pipeline(PolynomialFeatures(degree=2,include_bias=False), Ridge())
+        X_values = np.array(range(len(d)))
+
+        # reorder to get minimum to the end
+        X_values_but_min = range(len(d))
+        d_values_but_min = list(d)
+        del X_values_but_min[i]
+        del d_values_but_min[i]
+
+        parabola = fit_parabola(i, d[i], np.array(X_values_but_min), np.array(d_values_but_min))
+        Y_predictions = parabola(X_values)
+
+        l1, = plt.plot(d, label='raw')
+        l2, = plt.plot(Y_predictions, label='convexified')
+
+    fig.legend((l1,l2), ('raw-probs', 'convexified'), loc = 'lower right')
+    plt.savefig(os.path.join(options.out_dir, "detection_probability_examples.pdf"))
