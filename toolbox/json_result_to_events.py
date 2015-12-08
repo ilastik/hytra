@@ -9,6 +9,7 @@ import os
 import argparse
 import numpy as np
 import h5py
+from multiprocessing import Pool
 
 def writeEvents(timestep, activeLinks, activeDivisions, mergers, detections, fn, labelImagePath, ilpFilename):
     dis = []
@@ -114,8 +115,16 @@ if __name__ == "__main__":
     # load results and map indices
     mergers = [timestepIdTuple + (entry['value'],) for entry in result['detectionResults'] if entry['value'] > 1 for timestepIdTuple in uuidToTraxelMap[int(entry['id'])]]
     detections = [timestepIdTuple for entry in result['detectionResults'] if entry['value'] > 0 for timestepIdTuple in uuidToTraxelMap[int(entry['id'])]]
-    divisions = [timestepIdTuple for entry in result['divisionResults'] if entry['value'] == True for timestepIdTuple in uuidToTraxelMap[int(entry['id'])]]
+    divisions = [uuidToTraxelMap[int(entry['id'])][-1] for entry in result['divisionResults'] if entry['value'] == True]
     links = [(uuidToTraxelMap[int(entry['src'])][-1], uuidToTraxelMap[int(entry['dest'])][0]) for entry in result['linkingResults'] if entry['value'] > 0]
+
+    # add all internal links of tracklets
+    for v in uuidToTraxelMap.values():
+        prev = None
+        for timestepIdTuple in v:
+            if prev is not None:
+                links.append((prev, timestepIdTuple))
+            prev = timestepIdTuple
 
     # group by timestep for event creation
     mergersPerTimestep = dict([(t, [(idx, count) for timestep, idx, count in mergers if timestep == int(t)]) for t in timesteps])
@@ -133,16 +142,20 @@ if __name__ == "__main__":
                 assert(len(children) == 2)
                 divisionsPerTimestep[t].append((div_idx,) + tuple(children))
 
-    # save to disk
+    # save to disk in parallel
+    processing_pool = Pool()
     for timestep in traxelIdPerTimestepToUniqueIdMap.keys():
         fn = os.path.join(args.out_dir, "{0:05d}.h5".format(int(timestep)))
-        writeEvents(
-            int(timestep),
+        processing_pool.apply_async(writeEvents,
+            (int(timestep),
             linksPerTimestep[timestep], 
             divisionsPerTimestep[timestep], 
             mergersPerTimestep[timestep], 
             detectionsPerTimestep[timestep], 
             fn, 
             args.label_img_path, 
-            args.ilp_filename)
+            args.ilp_filename))
+
+    processing_pool.close()
+    processing_pool.join()
 
