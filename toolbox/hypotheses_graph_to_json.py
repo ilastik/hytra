@@ -596,7 +596,7 @@ if __name__ == "__main__":
 
     numElements = track.countNodes(hypotheses_graph) + track.countArcs(hypotheses_graph)
     progressBar = ProgressBar(stop=numElements)
-    maxNumObjects = int(options.max_num_objects)
+    maxNumObjects = int(options.max_num_objects) + 1 # because we need features for state 0 as well!
     margin = float(options.border_width)
 
     # add all detections
@@ -612,7 +612,7 @@ if __name__ == "__main__":
         # store mapping of all contained traxels to this detection uuid
         for t in traxels:
             traxelIdPerTimestepToUniqueIdMap.setdefault(str(t.Timestep), {})[str(t.Id)] = i
-            
+
         detection['id'] = i
 
         # accumulate features over all contained traxels
@@ -627,12 +627,23 @@ if __name__ == "__main__":
         detection['features'] = listify(list(detFeats))
 
         # division only if probability is big enough
-        divFeats = getDivisionFeatures(traxels[-1])
-        if divFeats[1] > options.division_threshold:
-            detection['divisionFeatures'] = listify(negLog(divFeats))
+        try:
+            divFeats = getDivisionFeatures(traxels[-1])
+            if divFeats[1] > options.division_threshold:
+                detection['divisionFeatures'] = listify(negLog(divFeats))
+        except:
+            pass
         
-        detection['appearanceFeatures'] = listify([0.0] + [float(options.appearance_cost) * getBoundaryCostMultiplier(traxels[0], fov, margin)] * (maxNumObjects-1))
-        detection['disappearanceFeatures'] = listify([0.0] + [float(options.disappearance_cost) * getBoundaryCostMultiplier(traxels[-1], fov, margin)] * (maxNumObjects-1))
+        if traxels[0].Timestep <= t0:
+            detection['appearanceFeatures'] = listify([0.0]*(maxNumObjects))
+        else:
+            detection['appearanceFeatures'] = listify([0.0] + [float(options.appearance_cost) * getBoundaryCostMultiplier(traxels[0], fov, margin)] * (maxNumObjects-1))
+        
+        if traxels[-1].Timestep >= t1:
+            detection['disappearanceFeatures'] = listify([0.0]*(maxNumObjects))
+        else:
+            detection['disappearanceFeatures'] = listify([0.0] + [float(options.disappearance_cost) * getBoundaryCostMultiplier(traxels[-1], fov, margin)] * (maxNumObjects-1))
+
         detections.append(detection)
         progressBar.show()
 
@@ -652,10 +663,18 @@ if __name__ == "__main__":
         links.append(link)
         progressBar.show()
 
+    settings = {}
+    settings['statesShareWeights'] = True
+    settings['allowPartialMergerAppearance'] = False
+    settings['requireSeparateChildrenOfDivision'] = True
+    settings['optimizerEpGap'] = 0.01
+    settings['optimizerVerbose'] = False
+    settings['optimizerNumThreads'] = 1
+
     jsonRoot['traxelToUniqueId'] = traxelIdPerTimestepToUniqueIdMap
     jsonRoot['segmentationHypotheses'] = detections
     jsonRoot['linkingHypotheses'] = links
-    jsonRoot['statesShareWeights'] = True
+    jsonRoot['settings'] = settings
     jsonRoot['exclusions'] = []
 
     with open(options.json_filename, 'w') as f:
