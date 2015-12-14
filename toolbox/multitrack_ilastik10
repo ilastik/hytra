@@ -1278,8 +1278,10 @@ def runMergerResolving(options,
             num_mergers = 0
             for timestep, timestep_events in enumerate(event_vector):
                 timestep += t0
+                mergers = []
                 for event in timestep_events:
                     if event.type == track.EventType.Merger:
+                        mergers.append(event.traxel_ids[0])
                         traxel = ts.get_traxel(event.traxel_ids[0], timestep)
                         try:
                             extract_coordinates(coordinate_map, h5file, traxel, options)
@@ -1289,6 +1291,13 @@ def runMergerResolving(options,
                             print(e)
                             raise Exception
                         num_mergers += 1
+                for event in timestep_events:
+                    if event.type == track.EventType.Move and event.traxel_idx[1] in mergers:
+                        traxel = ts.get_traxel(event.traxel_ids[0], timestep - 1)
+                        try:
+                            extract_coordinates(coordinate_map, h5file, traxel, options)
+                        except Exception as e:
+                            print("Error when extracting coordinates for id={} in timestep={}".format(event.traxel_ids[0], timestep - 1))
 
             print("Found {} merger events in proposal {}. Resolving them...".format(num_mergers, i))
 
