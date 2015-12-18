@@ -19,7 +19,8 @@ import copy
 import pgmlink as track
 from empryonic import io
 import json
-from trackingfeatures import get_feature_vector, ProgressBar
+from trackingfeatures import get_feature_vector
+from progressbar import ProgressBar
 
 def getConfigAndCommandLineArguments():
 

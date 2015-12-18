@@ -17,7 +17,8 @@ import itertools
 import vigra
 import copy
 import pgmlink as track
-from trackingfeatures import extract_features_and_compute_score, get_feature_vector, ProgressBar
+from trackingfeatures import extract_features_and_compute_score, get_feature_vector
+from progressbar import ProgressBar
 from empryonic import io
 from multiprocessing import Pool
 
@@ -1519,6 +1520,24 @@ if __name__ == "__main__":
         params.max_number_paths = options.max_num_paths
     params.with_swap = not options.without_swaps
     
+    if not options.without_tracklets:
+        traxel_graph = hypotheses_graph
+        hypotheses_graph = traxel_graph.generate_tracklet_graph()
+
+    tracker.plot_hypotheses_graph(
+        hypotheses_graph, 
+        "/Users/chaubold/Desktop/multitrack-graph.dot", 
+        not bool(options.without_tracklets),
+        not bool(options.without_divisions),
+        1,
+        1,
+        1,
+        1,
+        1,
+        options.trans_par,
+        options.border_width
+        )
+
     # track!
     all_events = tracker.track(params, False)
     # all_events = tracker.track(
