@@ -326,6 +326,8 @@ class Traxelstore:
                         sys.exit()
                     try:
                         self._setTraxelFeatureArray(traxel, featureValues, key)
+                        if key == 'RegionCenter':
+                            self._setTraxelFeatureArray(traxel, featureValues, 'com')
                     except:
                         print("Could not add feature array {} of shape {} for {}".format(featureValues, featureValues.shape, key))
                         sys.exit()
@@ -378,7 +380,7 @@ class Traxelstore:
         res=[]
         res2=[]
 
-        for key in featureDictObjectA.keys():
+        for key in selectedFeatures:
             if key == "Global<Maximum >" or key=="Global<Minimum >":
                 # the global min/max intensity is not interesting
                 continue
@@ -401,6 +403,7 @@ class Traxelstore:
         assert(np.any(np.isinf(x2)) == False)
         
         features = np.concatenate((x,x2))
+        features = np.expand_dims(features, axis=0)
         return features
 
 if __name__ == '__main__':
