@@ -77,7 +77,8 @@ def writeEvents(timestep, activeLinks, activeDivisions, mergers, detections, fn,
     print "-> results successfully written"
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Take a json file containing a result to a set of HDF5 events files')
+    parser = argparse.ArgumentParser(description='Take a json file containing a result to a set of HDF5 events files',
+                                    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--model', required=True, type=str, dest='model_filename',
                         help='Filename of the json model description')
     parser.add_argument('--result', required=True, type=str, dest='result_filename',
@@ -112,10 +113,15 @@ if __name__ == "__main__":
     for v in uuidToTraxelMap.values():
         v.sort(key=lambda timestepIdTuple: timestepIdTuple[0])
 
+    assert(result['detectionResults'] is not None)
+    assert(result['linkingResults'] is not None)
+    withDivisions = result['divisionResults'] is not None
+
     # load results and map indices
     mergers = [timestepIdTuple + (entry['value'],) for entry in result['detectionResults'] if entry['value'] > 1 for timestepIdTuple in uuidToTraxelMap[int(entry['id'])]]
     detections = [timestepIdTuple for entry in result['detectionResults'] if entry['value'] > 0 for timestepIdTuple in uuidToTraxelMap[int(entry['id'])]]
-    divisions = [uuidToTraxelMap[int(entry['id'])][-1] for entry in result['divisionResults'] if entry['value'] == True]
+    if withDivisions:
+        divisions = [uuidToTraxelMap[int(entry['id'])][-1] for entry in result['divisionResults'] if entry['value'] == True]
     links = [(uuidToTraxelMap[int(entry['src'])][-1], uuidToTraxelMap[int(entry['dest'])][0]) for entry in result['linkingResults'] if entry['value'] > 0]
 
     # add all internal links of tracklets
@@ -131,18 +137,24 @@ if __name__ == "__main__":
     detectionsPerTimestep = dict([(t, [idx for timestep, idx in detections if timestep == int(t)]) for t in timesteps])
     linksPerTimestep = dict([(t, [(a[1], b[1]) for a, b in links if b[0] == int(t)]) for t in timesteps])
 
-    # find children of divisions by looking for the active links
-    divisionsPerTimestep = {}
-    for t in timesteps:
-        divisionsPerTimestep[t] = []
-        for div_timestep, div_idx in divisions:
-            if div_timestep == int(t) - 1:
-                # we have an active division of the mother cell "div_idx" in the previous frame
-                children = [b for a,b in linksPerTimestep[t] if a == div_idx]
-                assert(len(children) == 2)
-                divisionsPerTimestep[t].append((div_idx,) + tuple(children))
+    if withDivisions:
+        # find children of divisions by looking for the active links
+        divisionsPerTimestep = {}
+        for t in timesteps:
+            divisionsPerTimestep[t] = []
+            for div_timestep, div_idx in divisions:
+                if div_timestep == int(t) - 1:
+                    # we have an active division of the mother cell "div_idx" in the previous frame
+                    children = [b for a,b in linksPerTimestep[t] if a == div_idx]
+                    assert(len(children) == 2)
+                    divisionsPerTimestep[t].append((div_idx,) + tuple(children))
+    else:
+        divisionsPerTimestep = dict([(t,[]) for t in timesteps])
 
     # save to disk in parallel
+    if not os.path.exists(args.out_dir):
+        os.makedirs(args.out_dir)
+
     processing_pool = Pool()
     for timestep in traxelIdPerTimestepToUniqueIdMap.keys():
         fn = os.path.join(args.out_dir, "{0:05d}.h5".format(int(timestep)))
