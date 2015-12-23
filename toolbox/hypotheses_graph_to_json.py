@@ -587,7 +587,8 @@ if __name__ == "__main__":
     try:
         ts, fs, _, ndim, t0, t1 = getTraxelStore(options, ilp_fn, time_range, shape)
         foundDetectionProbabilities = True
-    except:
+    except Exception as e:
+        print(e)
         foundDetectionProbabilities = False
         print("WARNING: could not load detection (and/or division) probabilities from ilastik project file")
 
@@ -663,7 +664,10 @@ if __name__ == "__main__":
         for t in traxels:
             detFeats += np.array(negLog(getDetectionFeatures(t, maxNumObjects)))
             if previousTraxel is not None:
-                detFeats += np.array(negLog(getTransitionFeatures(previousTraxel, t, options.trans_par, maxNumObjects)))
+                if transitionClassifier is None:
+                    detFeats += np.array(negLog(getTransitionFeaturesDist(previousTraxel, t, options.trans_par, maxNumObjects)))
+                else:
+                    detFeats += np.array(negLog(getTransitionFeaturesRF(previousTraxel, t, transitionClassifier, pyTraxelstore, maxNumObjects)))
             previousTraxel = t
 
         detection['features'] = listify(list(detFeats))
