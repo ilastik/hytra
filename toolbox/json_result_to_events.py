@@ -20,61 +20,64 @@ def writeEvents(timestep, activeLinks, activeDivisions, mergers, detections, fn,
     mul = []
     
     print "-- Writing results to " + fn
-    # TODO: find appearances/disappearances?
+    try:
+        # TODO: find appearances/disappearances?
 
-    # convert to ndarray for better indexing
-    dis = np.asarray(dis)
-    app = np.asarray(app)
-    div = np.asarray(activeDivisions)
-    mov = np.asarray(activeLinks)
-    mer = np.asarray(mergers)
-    mul = np.asarray(mul)
+        # convert to ndarray for better indexing
+        dis = np.asarray(dis)
+        app = np.asarray(app)
+        div = np.asarray(activeDivisions)
+        mov = np.asarray(activeLinks)
+        mer = np.asarray(mergers)
+        mul = np.asarray(mul)
 
-    with h5py.File(ilpFilename, 'r') as src_file:
-        # find shape of dataset
-        shape = src_file['/'.join(labelImagePath.split('/')[:-1])].values()[0].shape[1:4]
+        with h5py.File(ilpFilename, 'r') as src_file:
+            # find shape of dataset
+            shape = src_file['/'.join(labelImagePath.split('/')[:-1])].values()[0].shape[1:4]
 
-        with io.LineageH5(fn, 'w') as dest_file:
-            # write meta fields and copy segmentation from project
-            li_name = labelImagePath % (timestep, timestep + 1, shape[0], shape[1], shape[2])
-            label_img = np.array(src_file[li_name][0, ..., 0]).squeeze()
-            seg = dest_file.create_group('segmentation')
-            seg.create_dataset("labels", data=label_img)
-            meta = dest_file.create_group('objects/meta')
-            ids = np.unique(label_img)
-            ids = ids[ids > 0]
-            valid = np.ones(ids.shape)
-            meta.create_dataset("id", data=ids, dtype=np.uint32)
-            meta.create_dataset("valid", data=valid, dtype=np.uint32)
+            with io.LineageH5(fn, 'w') as dest_file:
+                # write meta fields and copy segmentation from project
+                li_name = labelImagePath % (timestep, timestep + 1, shape[0], shape[1], shape[2])
+                label_img = np.array(src_file[li_name][0, ..., 0]).squeeze()
+                seg = dest_file.create_group('segmentation')
+                seg.create_dataset("labels", data=label_img)
+                meta = dest_file.create_group('objects/meta')
+                ids = np.unique(label_img)
+                ids = ids[ids > 0]
+                valid = np.ones(ids.shape)
+                meta.create_dataset("id", data=ids, dtype=np.uint32)
+                meta.create_dataset("valid", data=valid, dtype=np.uint32)
 
-            tg = dest_file.create_group("tracking")
+                tg = dest_file.create_group("tracking")
 
-            # write associations
-            if len(app):
-                ds = tg.create_dataset("Appearances", data=app, dtype=np.int32)
-                ds.attrs["Format"] = "cell label appeared in current file"
+                # write associations
+                if len(app):
+                    ds = tg.create_dataset("Appearances", data=app, dtype=np.int32)
+                    ds.attrs["Format"] = "cell label appeared in current file"
 
-            if len(dis):
-                ds = tg.create_dataset("Disappearances", data=dis, dtype=np.int32)
-                ds.attrs["Format"] = "cell label disappeared in current file"
+                if len(dis):
+                    ds = tg.create_dataset("Disappearances", data=dis, dtype=np.int32)
+                    ds.attrs["Format"] = "cell label disappeared in current file"
 
-            if len(mov):
-                ds = tg.create_dataset("Moves", data=mov, dtype=np.int32)
-                ds.attrs["Format"] = "from (previous file), to (current file)"
+                if len(mov):
+                    ds = tg.create_dataset("Moves", data=mov, dtype=np.int32)
+                    ds.attrs["Format"] = "from (previous file), to (current file)"
 
-            if len(div):
-                ds = tg.create_dataset("Splits", data=div, dtype=np.int32)
-                ds.attrs["Format"] = "ancestor (previous file), descendant (current file), descendant (current file)"
+                if len(div):
+                    ds = tg.create_dataset("Splits", data=div, dtype=np.int32)
+                    ds.attrs["Format"] = "ancestor (previous file), descendant (current file), descendant (current file)"
 
-            if len(mer):
-                ds = tg.create_dataset("Mergers", data=mer, dtype=np.int32)
-                ds.attrs["Format"] = "descendant (current file), number of objects"
+                if len(mer):
+                    ds = tg.create_dataset("Mergers", data=mer, dtype=np.int32)
+                    ds.attrs["Format"] = "descendant (current file), number of objects"
 
-            if len(mul):
-                ds = tg.create_dataset("MultiFrameMoves", data=mul, dtype=np.int32)
-                ds.attrs["Format"] = "from (given by timestep), to (current file), timestep"
+                if len(mul):
+                    ds = tg.create_dataset("MultiFrameMoves", data=mul, dtype=np.int32)
+                    ds.attrs["Format"] = "from (given by timestep), to (current file), timestep"
 
-    print "-> results successfully written"
+        print "-> results successfully written"
+    except Exception as e:
+        print("ERROR while writing events: {}".format(str(e)))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Take a json file containing a result to a set of HDF5 events files',
