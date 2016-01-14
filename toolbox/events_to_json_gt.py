@@ -10,6 +10,7 @@ import argparse
 import numpy as np
 import h5py
 from multiprocessing import Pool
+import networkx as nx
 
 def get_num_frames(options):
     if len(options.input_files) == 1:
@@ -57,7 +58,7 @@ if __name__ == "__main__":
     parser.add_argument('--input-files', type=str, nargs='+', dest='input_files', required=True,
                         help='HDF5 file of ground truth, or list of files for individual frames')
     parser.add_argument('--label-image-path', type=str, dest='label_image_path', default='label_image',
-                        help='Path inside the HDF5 file(s) to the label image')
+                        help='Path inside the HDF5 file(s) to the label image (only needed if it is a single HDF5)')
     parser.add_argument('--h5group-zero-pad-length', type=int, dest='h5group_zero_padding', default='4')
     parser.add_argument('--out', type=str, dest='out', required=True, help='Filename of the resulting json groundtruth')
     
@@ -107,7 +108,14 @@ if __name__ == "__main__":
             if s == t:
                 continue
 
-            # print("Found link {} -> {} ({}:{} -> {}:{})".format(s,t, frame-1, src, frame, dest))
+            # ignore moves if they cannot be represented in the given model (due to missing edge in graph)
+            found = False
+            for link in model['linkingHypotheses']:
+                if link['src'] == s and link['dest'] == t:
+                    found = True
+            if not found:
+                print("Did not find link {} to {}, ignoring it.".format(s, t))
+                continue
 
             if s not in objectCounts:
                 objectCounts[s] = 1
@@ -133,12 +141,7 @@ if __name__ == "__main__":
             # print("Found merger {}: {} ({}:{})".format(traxelIdPerTimestepToUniqueIdMap[str(frame)][str(obj)], count, frame, obj))
             objectCounts[traxelIdPerTimestepToUniqueIdMap[str(frame)][str(obj)]] = count
 
-        # add all object counts to JSON
-        for obj, val in objectCounts.iteritems():
-            detection = {}
-            detection['id'] = int(obj)
-            detection['value'] = int(val)
-            detectionsJson.append(detection)
+    maxCapacity = max(objectCounts.values())
 
     def addLinkToJson(s,t,value):
         link = {}
@@ -147,26 +150,91 @@ if __name__ == "__main__":
         link['value'] = int(value)
         linksJson.append(link)
 
-    # figure out the values of links depending on the involved detections:
-    # 1.) all active arcs with target detection count = 1 are easy, set and also decrease count values of targets
-    for node, sources in activeIncomingLinks.iteritems():
-        if objectCounts[node] == 1:
-            assert(len(sources) <= 1)
-            addLinkToJson(sources[0], node, 1)
-            activeOutgoingLinks[sources[0]].remove(node)
-            sources.remove(sources[0])
-            # del objectCounts[node]
-        elif len(sources) == 1 and objectCounts[sources[0]] == objectCounts[node]:
-            # two mergers of same size have an active link in between
-            addLinkToJson(sources[0], node, objectCounts[node])
-            activeOutgoingLinks[sources[0]].remove(node)
-            sources.remove(sources[0])
-        elif len(sources) == objectCounts[node]:
-            # merger forms from single nodes
+    # run min-cost max flow here!
+    def resolveMergerArcFlows(maxCapacity):
+        """
+        The old ground truth is ambiguous when it comes to the number of targets going along each move arc.
+        This is because arcs only get "active" labels, which is not enough when we have mergers.
+        So we set up a graph where we first find the maximum flow along all the active arcs, and then
+        look for the minimum cost configuration of doing so (including the original transition costs).
+        This should correspond to the lowest energy configuration found by the ILP.
+        """
+        graph = nx.DiGraph()
+        graph.add_node('sink')
+        graph.add_node('source')
+
+        def targetNodeName(n):
+            return str(n) + '-V'
+        def sourceNodeName(n):
+            return str(n) + '-U'
+
+        # add all nodes as two networkx nodes with an arc between them 
+        # that has the capacity of the detection's cell count
+        for obj, val in objectCounts.iteritems():
+            graph.add_node(sourceNodeName(obj))
+            graph.add_node(targetNodeName(obj))
+            graph.add_edge(sourceNodeName(obj), targetNodeName(obj), capacity=int(val), cost=0)
+
+            # each node with no active incoming arcs gets connection to source
+            if obj not in activeIncomingLinks or len(activeIncomingLinks[obj]) == 0:
+                graph.add_edge('source', sourceNodeName(obj), capacity=int(val), cost=0)
+
+            # each node without outgoing active arcs gets connection to sink
+            if obj not in activeOutgoingLinks or len(activeOutgoingLinks[obj]) == 0:
+                graph.add_edge(targetNodeName(obj), 'sink', capacity=int(val), cost=0)
+
+            # each node with division gets an additional 1-capacity link from source to targetNodeName(obj)
+            if obj in activeDivisions:
+                assert(val == 1)
+                graph.add_edge('source', targetNodeName(obj), capacity=1, cost=0)
+
+        # add move edges with their transition cost (assume weight = 1 as we do not include any other costs)
+        for target, sources in activeIncomingLinks.iteritems():
             for s in sources:
-                addLinkToJson(s, node, objectCounts[node])
-                activeOutgoingLinks[s].remove(node)
-            activeIncomingLinks[node] = []
+                cost = -1.0
+                found = False
+                for link in model['linkingHypotheses']:
+                    if link['src'] == s and link['dest'] == target:
+                        # in the conservation tracking model, there is one feature per state (0,1,2,..) 
+                        # and 1,2,... have the same value. So we take the delta between 0 and 1
+                        # FIXME: min-cost flow below will use costs linearly (cost * flow along each arc), which is not
+                        # what the Conservation Tracking Model does!
+                        cost = link['features'][1][0] - link['features'][0][0]
+                        found = True
+                if not found:
+                    print("Did not find link {} to {}, ignoring it.".format(s, target))
+                    continue
+                graph.add_edge(targetNodeName(s), sourceNodeName(target), capacity=maxCapacity, cost=cost)
+
+        # find max flow that can fit through graph
+        flowAmount,flowDict = nx.maximum_flow(graph, 'source', 'sink', capacity='capacity')
+        print("Maximum Flow through GT graph is {}".format(flowAmount))
+
+        # # run min cost max flow to disambiguate
+        # graph['sink']['demand'] = flowAmount
+        # graph['source']['demand'] = -flowAmount # negative means sending
+        # # nodes without attribute demand are assumed to have a net flow of 0
+        # flowCost, flowDict = nx.capacity_scaling(graph, demand='demand', capacity='capacity', weight='cost')
+
+        # translate result back to our original edges
+        for target, sources in activeIncomingLinks.iteritems():
+            for s in sources:
+                try:
+                    addLinkToJson(s, target, flowDict[targetNodeName(s)][sourceNodeName(target)])
+                except:
+                    # this will fail if we encountered a link that is not present in the JSON graph, but we've already complained about that before
+                    print("Did not add link {} -> {} to GT, ignoring it.".format(targetNodeName(s), sourceNodeName(target)))
+                    pass
+
+        # add all object counts to JSON, which have possibly been updated according to missing links in model
+        for obj, val in objectCounts.iteritems():
+            detection = {}
+            detection['id'] = int(obj)
+            fixedValue = flowDict[sourceNodeName(obj)][targetNodeName(obj)]
+            detection['value'] = int(fixedValue)
+            detectionsJson.append(detection)
+
+    resolveMergerArcFlows(maxCapacity)
 
     jsonRoot = {}
     jsonRoot['linkingResults'] = linksJson
