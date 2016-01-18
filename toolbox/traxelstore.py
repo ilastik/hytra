@@ -3,7 +3,6 @@ sys.path.append('../.')
 sys.path.append('.')
 
 import os
-import pgmlink
 from empryonic import io
 import json
 from trackingfeatures import get_feature_vector, ProgressBar
@@ -121,6 +120,33 @@ class RandomForestClassifier:
 
         return probabilities
 
+class Traxel:
+    """
+    A simple Python variant of the C++ traxel with the same interface of the one of pgmlink so it can act as drop-in replacement.
+    """
+    def __init__(self):
+        self._scale = np.array([1,1,1])
+        self.Id = None
+        self.Timestep = None
+
+        # dictionary of a np.array per feature (keys should be strings!)
+        self.Features = {}
+
+    def set_x_scale(self, val):
+        self._scale[0] = val
+    def set_y_scale(self, val):
+        self._scale[1] = val
+    def set_z_scale(self, val):
+        self._scale[2] = val
+    def add_feature_array(self, name, length):
+        self.Features[name] = np.zeros(length)
+    def set_feature_value(self, name, index, value):
+        assert name in self.Features
+        self.Features[name][index] = value
+    def get_feature_value(self, name, index, value):
+        assert name in self.Features
+        return self.Features[name][index]
+
 class Traxelstore:
     """
     The traxelstore is a python wrapper around pgmlink's C++ traxelstore, 
@@ -161,6 +187,9 @@ class Traxelstore:
         self.z_scale = 1.0
         self.divisionProbabilityFeatureName = 'divProb'
         self.detectionProbabilityFeatureName = 'detProb'
+
+        # this public variable contains all traxels if we're not using pgmlink
+        self.TraxelsPerFrame = {}
 
     @staticmethod
     def computeRegionFeatures(rawImage, labelImage):
@@ -286,17 +315,25 @@ class Traxelstore:
         for i, v in enumerate(featureArray):
             traxel.set_feature_value(name, i, float(v))
 
-    def fillTraxelStore(self, ts=None, fs=None):
+    def fillTraxelStore(self, usePgmlink=True, ts=None, fs=None):
         """
         Compute all the features and predict object count as well as division probabilities. 
         Store the resulting information (and all other features) in the given pgmlink::TraxelStore, 
         or create a new one if ts=None.
+
+        usePgmlink: boolean whether pgmlink should be used and a pgmlink.TraxelStore and pgmlink.FeatureStore returned
+        ts: an initial pgmlink.TraxelStore (only used if usePgmlink=True)
+        fs: an initial pgmlink.FeatureStore (only used if usePgmlink=True)
+
+        returns (ts, fs) but only if usePgmlink=True, otherwise it fills self.TraxelsPerFrame
         """
-        if ts is None:
-            ts = pgmlink.TraxelStore()
-            fs = pgmlink.FeatureStore()
-        else:
-            assert(fs is not None)
+        if usePgmlink:
+            import pgmlink
+            if ts is None:
+                ts = pgmlink.TraxelStore()
+                fs = pgmlink.FeatureStore()
+            else:
+                assert(fs is not None)
 
         print("Extracting features...")
         self._featuresPerFrame = self._extractAllFeatures()
@@ -310,7 +347,10 @@ class Traxelstore:
                 # print("Frame {} Object {}".format(frame, objectId))
 
                 # create traxel
-                traxel = pgmlink.Traxel()
+                if usePgmlink:
+                    traxel = pgmlink.Traxel()
+                else:
+                    traxel = Traxel()
                 traxel.Id = objectId
                 traxel.Timestep = frame
 
@@ -346,11 +386,15 @@ class Traxelstore:
                 traxel.set_y_scale(self.y_scale)
                 traxel.set_z_scale(self.z_scale)
 
-                # add to pgmlink's traxelstore
-                ts.add(fs, traxel)
+                if usePgmlink:
+                    # add to pgmlink's traxelstore
+                    ts.add(fs, traxel)
+                else:
+                    self.TraxelsPerFrame.setdefault(frame, {})[objectId] = traxel
             progressBar.show()
 
-        return ts, fs
+        if usePgmlink:
+            return ts, fs
 
     def getTransitionProbability(self, timeframeA, objectIdA, timeframeB, objectIdB):
         """
