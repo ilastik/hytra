@@ -151,10 +151,10 @@ class HypothesesGraph:
             if forwardBackwardCheck:
                 for obj, traxel in traxelstore.TraxelsPerFrame[frame+1].iteritems():
                     neighbors = self._findNearestNeighbors(kdTreeThisFrame, traxel, numNearestNeighbors, maxNeighborDist)
-                for n in neighbors:
-                    checkNodeWhileAddingLinks(frame, n)
-                    checkNodeWhileAddingLinks(frame+1, obj)
-                    self._graph.add_edge((frame, n), (frame+1, obj))
+                    for n in neighbors:
+                        checkNodeWhileAddingLinks(frame, n)
+                        checkNodeWhileAddingLinks(frame+1, obj)
+                        self._graph.add_edge((frame, n), (frame+1, obj))
 
     def generateTrackletGraph(self):
         raise NotImplementedError()
