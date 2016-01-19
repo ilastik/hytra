@@ -44,18 +44,22 @@ if __name__ == "__main__":
     print("Nodes that differed: {}".format(nodesA ^ nodesB))
 
     nodeMapAtoB = {}
+    nodeMapBtoA = {}
     for a in nodesA:
         trackletA = uuidToTraxelMapA[a]
         for b, trackletB in uuidToTraxelMapB.iteritems():
             if trackletA == trackletB:
                 assert b in nodesB
                 nodeMapAtoB[a] = b
+                nodeMapBtoA[b] = a
 
     linksA = set([(obj['src'], obj['dest']) for obj in modelA['linkingHypotheses']])
     linksAtransformed = set([(nodeMapAtoB[s], nodeMapAtoB[t]) for s,t in linksA])
     linksB = set([(obj['src'], obj['dest']) for obj in modelB['linkingHypotheses']])
     print("Size difference: len(A.links) - len(B.links) = {} - {} = {}".format(len(linksAtransformed), len(linksB), len(linksAtransformed)-len(linksB)))
     linkDiff = linksAtransformed ^ linksB
-    print("Links that differed ({}):".format(len(linkDiff)))
+    print("Links that are not in both sets ({}):".format(len(linkDiff)))
     for a,b in linkDiff:
-        print("\t {}: {} -> {}".format((a,b), uuidToTraxelMapB[a], uuidToTraxelMapB[b]))
+        print("\t {}: {} -> {} (in model A: {})".format((a,b), uuidToTraxelMapB[a], uuidToTraxelMapB[b], (nodeMapBtoA[a], nodeMapBtoA[b])))
+
+        
