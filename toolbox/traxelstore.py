@@ -138,14 +138,25 @@ class Traxel:
         self._scale[1] = val
     def set_z_scale(self, val):
         self._scale[2] = val
+    def X(self):
+        return self.Features['com'][0]
+    def Y(self):
+        return self.Features['com'][1]
+    def Z(self):
+        try:
+            return self.Features['com'][2]
+        except:
+            return 0.0
     def add_feature_array(self, name, length):
         self.Features[name] = np.zeros(length)
     def set_feature_value(self, name, index, value):
         assert name in self.Features
         self.Features[name][index] = value
-    def get_feature_value(self, name, index, value):
+    def get_feature_value(self, name, index):
         assert name in self.Features
         return self.Features[name][index]
+    def print_available_features(self):
+        print self.Features.keys()
 
 class Traxelstore:
     """
