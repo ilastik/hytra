@@ -16,20 +16,21 @@ import h5py
 import itertools
 import vigra
 import copy
-import pgmlink as track
-from empryonic import io
+# import pgmlink as track
+# from empryonic import io
 import json
 from trackingfeatures import get_feature_vector
 from progressbar import ProgressBar
+import hypothesesgraph
 
 def getConfigAndCommandLineArguments():
 
     usage = """%prog [options] FILES
-Track cells.
+    Track cells.
 
-Before processing, input files are copied to OUT_DIR. Groups, that will not be modified are not
-copied but linked to the original files to improve execution speed and storage requirements.
-"""
+    Before processing, input files are copied to OUT_DIR. Groups, that will not be modified are not
+    copied but linked to the original files to improve execution speed and storage requirements.
+    """
 
     parser = optparse.OptionParser(usage=usage)
     parser.add_option('--config-file', type='string', dest='config', default=None,
@@ -156,6 +157,7 @@ def generate_traxelstore(h5file,
 ):
     print "generating traxels"
     print "filling traxelstore"
+    import pgmlink as track
     ts = track.TraxelStore()
     fs = track.FeatureStore()
     max_traxel_id_at = track.VectorOfInt()
@@ -427,7 +429,16 @@ def getFovFromOptions(options, shape, t0, t1):
                             options.z_scale * (zshape - 1))
     return fov
 
+def getPythonFovFromOptions(options, shape, t0, t1):
+    from fieldofview import FieldOfView
+    [xshape, yshape, zshape] = shape
+
+    fov = FieldOfView(t0, 0, 0, 0, t1, options.x_scale * (xshape - 1), options.y_scale * (yshape - 1),
+                            options.z_scale * (zshape - 1))
+    return fov
+
 def initializeConservationTracking(options, shape, t0, t1):
+    import pgmlink as track
     ndim = 2 if shape[-1]==1 else 3
     rf_fn = 'none'
     if options.rf_fn:
@@ -468,7 +479,8 @@ def loadPyTraxelstore(options,
         ilpFilename, 
         objectCountClassifierPath=None, 
         divisionClassifierPath=None, 
-        time_range=None):
+        time_range=None,
+        usePgmlink=True):
     """
     Set up a python side traxel store: compute all features, but do not evaluate classifiers.
     """
@@ -482,7 +494,12 @@ def loadPyTraxelstore(options,
     pyTraxelstore = traxelstore.Traxelstore(ilpFilename, options.raw_filename, ilpOptions)
     if time_range is not None:
         pyTraxelstore.timeRange = time_range
-    t,f = pyTraxelstore.fillTraxelStore()
+    a = pyTraxelstore.fillTraxelStore(usePgmlink=usePgmlink)
+    if usePgmlink:
+        t,f = a
+    else:
+        t = None
+        f = None
     return pyTraxelstore, t, f
 
 def loadTransitionClassifier(transitionClassifierFilename, transitionClassifierPath):
@@ -533,6 +550,88 @@ def getBoundaryCostMultiplier(traxel, fov, margin):
 def listify(l):
     return [[e] for e in l]
 
+def getHypothesesGraphAndIterators(options, shape, t0, t1, ts, pyTraxelstore):
+    """
+    Build the hypotheses graph either using pgmlink, or from the python traxelstore in python
+    """
+    if pyTraxelstore is not None:
+        print("Building python hypotheses graph")
+        hypotheses_graph = hypothesesgraph.HypothesesGraph()
+        hypotheses_graph.buildFromTraxelstore(pyTraxelstore, 
+            numNearestNeighbors = options.max_nearest_neighbors,
+            maxNeighborDist = options.mnd,
+            withDivisions = not options.without_divisions,
+            divisionThreshold = options.division_threshold)
+
+        # TODO:
+        # if not options.without_tracklets:
+        #       hypotheses_graph.generateTrackletGraph()
+
+        n_it = hypotheses_graph.nodeIterator()
+        a_it = hypotheses_graph.arcIterator()
+        fov = getPythonFovFromOptions(options, shape, t0, t1)
+
+    else:
+        print("Building pgmlink hypotheses graph")
+        # initialize tracker to get hypotheses graph
+        tracker, fov = initializeConservationTracking(options, shape, t0, t1)
+        hypotheses_graph = tracker.buildGraph(ts, options.max_nearest_neighbors)
+
+        # create tracklet graph if necessary
+        if not options.without_tracklets:
+            traxel_graph = hypotheses_graph
+            hypotheses_graph = traxel_graph.generate_tracklet_graph()
+
+        n_it = track.NodeIt(hypotheses_graph)
+        a_it = track.ArcIt(hypotheses_graph)
+
+    return hypotheses_graph, n_it, a_it, fov
+
+def loadTraxelstoreAndTransitionClassifier(options, ilp_fn, time_range, shape):
+    """
+    Load traxelstore either from ilp or by computing raw features, 
+    loading random forests, and predicting for each object.
+    Also load the transition classifier if raw features were computed and a transitionClassifierFile is given
+    """
+    transitionClassifier = None
+    
+    try:
+        ts, fs, _, ndim, t0, t1 = getTraxelStore(options, ilp_fn, time_range, shape)
+        foundDetectionProbabilities = True
+    except Exception as e:
+        print(e)
+        foundDetectionProbabilities = False
+        print("WARNING: could not load detection (and/or division) probabilities from ilastik project file")
+
+    if options.raw_filename != None:
+        if foundDetectionProbabilities:
+            pyTraxelstore, _, _ = loadPyTraxelstore(options, ilp_fn, time_range, usePgmlink=False)
+        else:
+            # warning: assuming that the classifiers are top-level groups in HDF5
+            objectCountClassifierPath = '/' + [t for t in options.obj_count_path.split('/') if len(t) > 0][0]
+            if not options.without_divisions:
+                divisionClassifierPath = '/' + [t for t in options.div_prob_path.split('/') if len(t) > 0][0]
+            else:    
+                divisionClassifierPath = None
+            pyTraxelstore, ts, fs = loadPyTraxelstore(options, 
+                                        ilp_fn, 
+                                        objectCountClassifierPath=objectCountClassifierPath,
+                                        divisionClassifierPath=divisionClassifierPath,
+                                        time_range=time_range,
+                                        usePgmlink=False)
+            t0, t1 = pyTraxelstore.timeRange
+            ndim = pyTraxelstore.getNumDimensions()
+            foundDetectionProbabilities = True
+
+        if options.transition_classifier_filename != None:
+            transitionClassifier = loadTransitionClassifier(options.transition_classifier_filename, options.transition_classifier_path)
+    else:
+        pyTraxelstore = None
+
+    assert(foundDetectionProbabilities)
+
+    return ts, fs, ndim, t0, t1, pyTraxelstore, transitionClassifier
+
 if __name__ == "__main__":
     options, args = getConfigAndCommandLineArguments()
 
@@ -579,70 +678,33 @@ if __name__ == "__main__":
     with h5py.File(ilp_fn, 'r') as h5file:
         shape = h5file['/'.join(options.label_img_path.split('/')[:-1])].values()[0].shape[1:4]
 
-    # Load traxelstore either from ilp or by computing raw features, 
-    # loading random forests, and predicting for each object.
-    # Also load the transition classifier if raw features were computed and a transitionClassifierFile is given
-    transitionClassifier = None
-    
-    try:
-        ts, fs, _, ndim, t0, t1 = getTraxelStore(options, ilp_fn, time_range, shape)
-        foundDetectionProbabilities = True
-    except Exception as e:
-        print(e)
-        foundDetectionProbabilities = False
-        print("WARNING: could not load detection (and/or division) probabilities from ilastik project file")
+    # load traxelstore
+    ts, fs, ndim, t0, t1, pyTraxelstore, transitionClassifier = loadTraxelstoreAndTransitionClassifier(options, ilp_fn, time_range, shape)
 
-    if options.raw_filename != None:
-        if foundDetectionProbabilities:
-            pyTraxelstore, _, _ = loadPyTraxelstore(options, ilp_fn, time_range)
-        else:
-            # warning: assuming that the classifiers are top-level groups in HDF5
-            objectCountClassifierPath = '/' + [t for t in options.obj_count_path.split('/') if len(t) > 0][0]
-            if not options.without_divisions:
-                divisionClassifierPath = '/' + [t for t in options.div_prob_path.split('/') if len(t) > 0][0]
-            else:    
-                divisionClassifierPath = None
-            pyTraxelstore, ts, fs = loadPyTraxelstore(options, 
-                                        ilp_fn, 
-                                        objectCountClassifierPath=objectCountClassifierPath,
-                                        divisionClassifierPath=divisionClassifierPath,
-                                        time_range=time_range)
-            t0, t1 = pyTraxelstore.timeRange
-            ndim = pyTraxelstore.getNumDimensions()
-            foundDetectionProbabilities = True
+    # build hypotheses graph
+    hypotheses_graph, n_it, a_it, fov = getHypothesesGraphAndIterators(options, shape, t0, t1, ts, pyTraxelstore)
 
-        if options.transition_classifier_filename != None:
-            transitionClassifier = loadTransitionClassifier(options.transition_classifier_filename, options.transition_classifier_path)
+    # prepare json output
+    jsonRoot = {}
+    traxelIdPerTimestepToUniqueIdMap = {}
 
-    assert(foundDetectionProbabilities)
+    if pyTraxelstore is None:
+        import pgmlink
+        numElements = pgmlink.countNodes(hypotheses_graph) + pgmlink.countArcs(hypotheses_graph)
+    else:
+        numElements = hypotheses_graph.countNodes() + hypotheses_graph.countArcs()
 
-    # initialize tracker to get hypotheses graph
-    tracker, fov = initializeConservationTracking(options, shape, t0, t1)
-    hypotheses_graph = tracker.buildGraph(ts, options.max_nearest_neighbors)
+    progressBar = ProgressBar(stop=numElements)
+    maxNumObjects = int(options.max_num_objects) + 1 # because we need features for state 0 as well!
+    margin = float(options.border_width)
 
-    # create tracklet graph if necessary
-    if not options.without_tracklets:
-        traxel_graph = hypotheses_graph
-        hypotheses_graph = traxel_graph.generate_tracklet_graph()
-
-    n_it = track.NodeIt(hypotheses_graph)
-    a_it = track.ArcIt(hypotheses_graph)
-    
     # get the map of node -> list(traxel) or just traxel
     if options.without_tracklets:
         traxelMap = hypotheses_graph.getNodeTraxelMap()
     else:
         traxelMap = hypotheses_graph.getNodeTrackletMap()
 
-    jsonRoot = {}
-    traxelIdPerTimestepToUniqueIdMap = {}
-
-    numElements = track.countNodes(hypotheses_graph) + track.countArcs(hypotheses_graph)
-    progressBar = ProgressBar(stop=numElements)
-    maxNumObjects = int(options.max_num_objects) + 1 # because we need features for state 0 as well!
-    margin = float(options.border_width)
-
-    # add all detections
+    # add all detections to JSON
     detections = []
     for i,n in enumerate(n_it):
         detection = {}
@@ -712,6 +774,7 @@ if __name__ == "__main__":
         links.append(link)
         progressBar.show()
 
+    # write everything to JSON
     settings = {}
     settings['statesShareWeights'] = True
     settings['allowPartialMergerAppearance'] = False
