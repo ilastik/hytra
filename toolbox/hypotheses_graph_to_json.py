@@ -16,8 +16,6 @@ import h5py
 import itertools
 import vigra
 import copy
-# import pgmlink as track
-# from empryonic import io
 import json
 from trackingfeatures import get_feature_vector
 from progressbar import ProgressBar

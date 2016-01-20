@@ -5,7 +5,7 @@ sys.path.append('.')
 import os
 from empryonic import io
 import json
-from trackingfeatures import get_feature_vector, ProgressBar
+from progressbar import ProgressBar
 import vigra
 import divisionfeatures
 import numpy as np
