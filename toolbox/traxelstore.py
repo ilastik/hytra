@@ -48,13 +48,16 @@ class RandomForestClassifier:
         Read in a list of random forests at a given location in the hdf5 file
         """
         with h5py.File(self._ilpFilename, 'r') as h5file:
-            fullPath = os.path.join(self._classifierPath, self._options.classifierForestsGroupName)
+            if self._classifierPath == '/':
+                fullPath = '/' + self._options.classifierForestsGroupName
+            else:
+                fullPath = '/'.join([self._classifierPath, self._options.classifierForestsGroupName])
             randomForests = []
             print("trying to read {} classifiers in {} from {}".format(len(h5file[fullPath].keys()),self._ilpFilename, fullPath))
             for k in h5file[fullPath].keys():
                 if 'Forest' in k:
                     print(str('/'.join([fullPath, k])))
-                    rf = vigra.learning.RandomForest(str(self._ilpFilename), str(os.path.join(fullPath, k)))
+                    rf = vigra.learning.RandomForest(str(self._ilpFilename), str('/'.join([fullPath, k])))
                     randomForests.append(rf)
             return randomForests
 
@@ -63,7 +66,10 @@ class RandomForestClassifier:
         Read which features were selected when training this RF
         """
         with h5py.File(self._ilpFilename, 'r') as h5file:
-            fullPath = os.path.join(self._classifierPath, self._options.selectedFeaturesGroupName)
+            if self._classifierPath == '/':
+                fullPath = '/' + self._options.selectedFeaturesGroupName
+            else:
+                fullPath = '/'.join([self._classifierPath, self._options.selectedFeaturesGroupName])
             featureNameList = []
 
             for feature_group_name in h5file[fullPath].keys():
@@ -165,18 +171,18 @@ class Traxel:
 
 class Traxelstore:
     """
-    The traxelstore is a python wrapper around pgmlink's C++ traxelstore, 
+    The traxelstore is a python wrapper around pgmlink's C++ traxelstore,
     but with the functionality to compute all region features and evaluate the division/count/transition classifiers.
     """
     def __init__(self, ilpOptions):
         assert(os.path.exists(ilpOptions.labelImageFilename))
         assert(os.path.exists(ilpOptions.rawImageFilename))
-        
+
         self._options = ilpOptions
         self._countClassifier = None
         self._divisionClassifier = None
         self._transitionClassifier = None
-        
+
         if ilpOptions.objectCountClassifierPath != None and ilpOptions.objectCountClassifierFilename != None:
             self._countClassifier = RandomForestClassifier(ilpOptions.objectCountClassifierPath, ilpOptions.objectCountClassifierFilename, ilpOptions)
         if ilpOptions.divisionClassifierPath != None and ilpOptions.divisionClassifierFilename != None:
@@ -187,11 +193,11 @@ class Traxelstore:
         self.shape, self.timeRange = self._getShapeAndTimeRange()
 
         # set default division feature names
-        self._divisionFeatureNames = ['ParentChildrenRatio_Count', 
-            'ParentChildrenRatio_Mean', 
-            'ChildrenRatio_Count', 
+        self._divisionFeatureNames = ['ParentChildrenRatio_Count',
+            'ParentChildrenRatio_Mean',
+            'ChildrenRatio_Count',
             'ChildrenRatio_Mean',
-            'ParentChildrenAngle_RegionCenter', 
+            'ParentChildrenAngle_RegionCenter',
             'ChildrenRatio_SquaredDistances']
 
         # other parameters that one might want to set
@@ -221,7 +227,7 @@ class Traxelstore:
         # additional features can only be computed for 2D data at the moment, so return pure region features only
         if len(labelImage.shape) > 2:
             return regionFeatures
-        
+
         convexHullFeatures = vigra.analysis.extractConvexHullFeatures(labelImage.squeeze(), ignoreLabel=0)
         skeletonFeatures = vigra.analysis.extractSkeletonFeatures(labelImage.squeeze()) # , ignoreLabel=0 <- imposed automatically
         return dict(regionFeatures.items() + convexHullFeatures.items() + skeletonFeatures.items())
@@ -281,7 +287,7 @@ class Traxelstore:
 
     def _extractFeaturesForFrame(self, timeframe):
         """
-        extract the features of one frame, return a dictionary of features, 
+        extract the features of one frame, return a dictionary of features,
         where each feature vector contains N entries per object (where N is the dimensionality of the feature)
         """
         rawImage = self.getRawImageForFrame(timeframe)
@@ -330,8 +336,8 @@ class Traxelstore:
 
     def fillTraxelStore(self, usePgmlink=True, ts=None, fs=None):
         """
-        Compute all the features and predict object count as well as division probabilities. 
-        Store the resulting information (and all other features) in the given pgmlink::TraxelStore, 
+        Compute all the features and predict object count as well as division probabilities.
+        Store the resulting information (and all other features) in the given pgmlink::TraxelStore,
         or create a new one if ts=None.
 
         usePgmlink: boolean whether pgmlink should be used and a pgmlink.TraxelStore and pgmlink.FeatureStore returned
@@ -411,7 +417,7 @@ class Traxelstore:
 
     def getTransitionProbability(self, timeframeA, objectIdA, timeframeB, objectIdB):
         """
-        Evaluate the transition classifier for the two given objects, 
+        Evaluate the transition classifier for the two given objects,
         as this probability doesn't go into pgmlink's traxelstore.
         """
         raise NotImplementedError()
@@ -451,14 +457,14 @@ class Traxelstore:
             else:
                 res.append((featureDictObjectA[key]-featureDictObjectB[key]).tolist() )  #prepare for flattening
                 res2.append((featureDictObjectA[key]*featureDictObjectB[key]).tolist() )  #prepare for flattening
-            
+
         x= np.asarray(flatten(res)) #flatten
         x2= np.asarray(flatten(res2)) #flatten
         assert(np.any(np.isnan(x)) == False)
         assert(np.any(np.isnan(x2)) == False)
         assert(np.any(np.isinf(x)) == False)
         assert(np.any(np.isinf(x2)) == False)
-        
+
         features = np.concatenate((x,x2))
         features = np.expand_dims(features, axis=0)
         return features
