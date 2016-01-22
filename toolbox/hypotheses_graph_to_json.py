@@ -95,8 +95,12 @@ def getConfigAndCommandLineArguments():
     consopts.add_option('--objCountPath', dest='obj_count_path', type='string',
                         default='/CountClassification/Probabilities/0/',
                         help='internal hdf5 path to object count probabilities [default=%default]')
+    consopts.add_option('--objCountFile', dest='obj_count_file', type='string', default=None,
+                        help='Filename of the HDF file containing the object count classifier. If None, will be taken from ILP [default=%default]')
     consopts.add_option('--divPath', dest='div_prob_path', type='string', default='/DivisionDetection/Probabilities/0/',
                         help='internal hdf5 path to division probabilities [default=%default]')
+    consopts.add_option('--divFile', dest='div_file', type='string', default=None,
+                        help='Filename of the HDF file containing the division classifier. If None, will be taken from ILP [default=%default]')
     consopts.add_option('--featsPath', dest='feats_path', type='string',
                         default='/TrackingFeatureExtraction/RegionFeaturesVigra/0000/[[%d], [%d]]/Default features/%s',
                         help='internal hdf5 path to object features [default=%default]')
@@ -484,8 +488,20 @@ def loadPyTraxelstore(options,
     ilpOptions.divisionClassifierPath = divisionClassifierPath
     ilpOptions.labelImagePath = options.label_img_path
     ilpOptions.rawImagePath = options.raw_path
+    ilpOptions.rawImageFilename = options.raw_filename
+    ilpOptions.labelImageFilename = ilpFilename
 
-    pyTraxelstore = traxelstore.Traxelstore(ilpFilename, options.raw_filename, ilpOptions)
+    if options.obj_count_file != None:
+        ilpOptions.objectCountClassifierFilename = options.obj_count_file
+    else:
+        ilpOptions.objectCountClassifierFilename = ilpFilename
+
+    if options.div_file != None:
+        ilpOptions.divisionClassifierFilename = options.div_file
+    else:
+        ilpOptions.divisionClassifierFilename = ilpFilename
+
+    pyTraxelstore = traxelstore.Traxelstore(ilpOptions)
     if time_range is not None:
         pyTraxelstore.timeRange = time_range
     a = pyTraxelstore.fillTraxelStore(usePgmlink=usePgmlink)

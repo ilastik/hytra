@@ -17,13 +17,18 @@ class IlastikProjectOptions:
     Use this when creating a Traxelstore
     """
     def __init__(self):
+        self.objectCountClassifierFile = None
         self.objectCountClassifierPath = '/CountClassification'
+        self.divisionClassifierFile = None
         self.divisionClassifierPath = '/DivisionDetection'
+        self.transitionClassifierFile = None
         self.transitionClassifierPath = None
         self.selectedFeaturesGroupName = 'SelectedFeatures'
         self.classifierForestsGroupName = 'ClassifierForests'
         self.randomForestZeroPaddingWidth = 4
+        self.labelImageFilename = None
         self.labelImagePath = '/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]'
+        self.rawImageFilename = None
         self.rawImagePath = None
 
 class RandomForestClassifier:
@@ -163,24 +168,21 @@ class Traxelstore:
     The traxelstore is a python wrapper around pgmlink's C++ traxelstore, 
     but with the functionality to compute all region features and evaluate the division/count/transition classifiers.
     """
-    def __init__(self, ilpFilename, rawFilename, ilpOptions=IlastikProjectOptions()):
-        assert(os.path.exists(ilpFilename))
-        assert(os.path.exists(rawFilename))
+    def __init__(self, ilpOptions):
+        assert(os.path.exists(ilpOptions.labelImageFilename))
+        assert(os.path.exists(ilpOptions.rawImageFilename))
         
         self._options = ilpOptions
-        self._rawFilename = rawFilename
-        self._ilpFilename = ilpFilename
-
         self._countClassifier = None
         self._divisionClassifier = None
         self._transitionClassifier = None
         
-        if ilpOptions.objectCountClassifierPath != None:
-            self._countClassifier = RandomForestClassifier(ilpOptions.objectCountClassifierPath, ilpFilename, ilpOptions)
-        if ilpOptions.divisionClassifierPath != None:
-            self._divisionClassifier = RandomForestClassifier(ilpOptions.divisionClassifierPath, ilpFilename, ilpOptions)
-        if ilpOptions.transitionClassifierPath != None:
-            self._transitionClassifier = RandomForestClassifier(ilpOptions.transitionClassifierPath, ilpFilename, ilpOptions)
+        if ilpOptions.objectCountClassifierPath != None and ilpOptions.objectCountClassifierFilename != None:
+            self._countClassifier = RandomForestClassifier(ilpOptions.objectCountClassifierPath, ilpOptions.objectCountClassifierFilename, ilpOptions)
+        if ilpOptions.divisionClassifierPath != None and ilpOptions.divisionClassifierFilename != None:
+            self._divisionClassifier = RandomForestClassifier(ilpOptions.divisionClassifierPath, ilpOptions.divisionClassifierFilename, ilpOptions)
+        if ilpOptions.transitionClassifierPath != None and ilpOptions.transitionClassifierFilename != None:
+            self._transitionClassifier = RandomForestClassifier(ilpOptions.transitionClassifierPath, ilpOptions.transitionClassifierFilename, ilpOptions)
 
         self.shape, self.timeRange = self._getShapeAndTimeRange()
 
@@ -256,7 +258,7 @@ class Traxelstore:
         """
         extract the shape from the labelimage
         """
-        with h5py.File(self._ilpFilename, 'r') as h5file:
+        with h5py.File(self._options.labelImageFilename, 'r') as h5file:
             shape = h5file['/'.join(self._options.labelImagePath.split('/')[:-1])].values()[0].shape[1:4]
             maxTime = len(h5file['/'.join(self._options.labelImagePath.split('/')[:-1])].keys())
             return shape, (0, maxTime)
@@ -265,7 +267,7 @@ class Traxelstore:
         """
         Get the label image(volume) of one time frame
         """
-        with h5py.File(self._ilpFilename, 'r') as h5file:
+        with h5py.File(self._options.labelImageFilename, 'r') as h5file:
             labelImage = h5file[self._options.labelImagePath % (timeframe, timeframe+1, self.shape[0], self.shape[1], self.shape[2])][0, ..., 0].squeeze().astype(np.uint32)
             return labelImage
 
@@ -273,7 +275,7 @@ class Traxelstore:
         """
         Get the raw image(volume) of one time frame
         """
-        with h5py.File(self._rawFilename, 'r') as rawH5:
+        with h5py.File(self._options.rawImageFilename, 'r') as rawH5:
             rawImage = rawH5[self._options.rawImagePath][timeframe, ...]
             return rawImage
 
@@ -501,8 +503,12 @@ if __name__ == '__main__':
     ilpOptions.randomForestZeroPaddingWidth = args.rfZeroPadding
     ilpOptions.labelImagePath = args.labelImagePath
     ilpOptions.rawImagePath = args.rawPath
+    ilpOptions.labelImageFilename = args.ilpFilename
+    ilpOptions.objectCountClassifierFilename = args.ilpFilename
+    ilpOptions.divisionClassifierFilename = args.ilpFilename
+    ilpOptions.rawImageFilename = args.rawFilename
 
-    traxelstore = Traxelstore(args.ilpFilename, args.rawFilename, ilpOptions=ilpOptions)
+    traxelstore = Traxelstore(ilpOptions=ilpOptions)
     traxelstore.timeRange = (0,2)
     ts, fs = traxelstore.fillTraxelStore()
 
