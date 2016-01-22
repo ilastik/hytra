@@ -1,15 +1,12 @@
 #!/usr/bin/env python
 import sys
 
-sys.path.append('../.')
 sys.path.append('.')
 
 import os
 import os.path as path
-import getpass
 import glob
 import optparse
-import socket
 import time
 import numpy as np
 import h5py
@@ -17,7 +14,6 @@ import itertools
 import vigra
 import copy
 import json
-from trackingfeatures import get_feature_vector
 from progressbar import ProgressBar
 import hypothesesgraph
 
@@ -514,7 +510,7 @@ def negLog(features):
     return list(np.log(fa) * -1.0)
 
 def getDetectionFeatures(traxel, max_state):
-    return get_feature_vector(traxel, "detProb", max_state)
+    return hypothesesgraph.getTraxelFeatureVector(traxel, "detProb", max_state)
 
 def getDivisionFeatures(traxel):
     prob = traxel.get_feature_value("divProb", 0)
