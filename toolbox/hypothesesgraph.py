@@ -1,6 +1,27 @@
 import networkx as nx
 from sklearn.neighbors import KDTree
 
+def getTraxelFeatureVector(traxel, featureName, maxNumDimensions=3):
+    """
+    extract a feature vector from a traxel
+    """
+    result = []
+    for i in range(maxNumDimensions):
+        try:
+            result.append(traxel.get_feature_value(featureName, i))
+        except:
+            if i == 0:
+                print("Error when accessing feature {}[{}] for traxel (Id={},Timestep={})".format(featureName,
+                                                                                              i,
+                                                                                              traxel.Id,
+                                                                                              traxel.Timestep))
+                print "Available features are: "
+                print traxel.print_available_features()
+                raise Exception
+            else:
+                pass
+    return result
+
 class NodeMap:
     """
     To access per node features of the hypotheses graph, 
@@ -48,24 +69,6 @@ class HypothesesGraph:
         distances, neighbors = kdtree.query(self._extractCenter(traxel), k=numNeighbors, return_distance=True)
         return [objectIdList[index] for distance, index in zip(distances, neighbors) if distance < maxNeighborDist]
 
-    def __getTraxelFeatureVector(self, traxel, featureName, maxNumDimensions=3):
-        result = []
-        for i in range(maxNumDimensions):
-            try:
-                result.append(traxel.get_feature_value(feature_name, i))
-            except:
-                if i == 0:
-                    print("Error when accessing feature {}[{}] for traxel (Id={},Timestep={})".format(feature_name,
-                                                                                                  i,
-                                                                                                  traxel.Id,
-                                                                                                  traxel.Timestep))
-                    print "Available features are: "
-                    print traxel.print_available_features()
-                    raise Exception
-                else:
-                    pass
-        return result
-
     def _extractCenter(self, traxel):
         try:
             # python traxelstore
@@ -76,10 +79,10 @@ class HypothesesGraph:
         except:
             # C++ pgmlink traxelstore
             try:
-                return self.__getTraxelFeatureVector(traxel, 'com')
+                return getTraxelFeatureVector(traxel, 'com')
             except:
                 try:
-                    return self.__getTraxelFeatureVector(traxel, 'RegionCenter')
+                    return getTraxelFeatureVector(traxel, 'RegionCenter')
                 except:
                     raise InvalidArgumentException('given traxel (t={},id={}) does not have \
                         "com" or "RegionCenter"'.format(traxel.Timestep, traxel.Id))
