@@ -1,5 +1,6 @@
 import vigra
 import argparse
+import numpy as np
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Take two tiff files, one for the sporozite channel and one for the nucleus channel, \
@@ -11,7 +12,7 @@ if __name__ == "__main__":
                         help='Filename of the nucleus tiff')
     parser.add_argument('--3channel-out', type=str, dest='threeChannelOut', required=True, help='Filename of the resulting 3 channel HDF5')
     parser.add_argument('--nucleus-channel-out', type=str, dest='nucleusChannelOut', required=True, help='Filename of the resulting nucleus channel HDF5')
-    
+
     args = parser.parse_args()
 
     sporoChannel = vigra.impex.readVolume(args.sporoFilename)
@@ -19,7 +20,7 @@ if __name__ == "__main__":
     resultVolume = np.zeros((nucleusChannel.shape[0], nucleusChannel.shape[1], nucleusChannel.shape[2], 3), dtype='float32')
     resultVolume[...,1] = sporoChannel[...,0]
     resultVolume[...,2] = nucleusChannel[...,0]
-    resultVolume = np.rollaxis(resultVolume, 2, 0)
-    nucleusChannel = np.rollaxis(nucleusChannel, 2, 0)
+    resultVolume = np.swapaxis(resultVolume, 2, 0)
+    nucleusChannel = np.swapaxis(nucleusChannel, 2, 0)
     vigra.impex.writeHDF5(resultVolume, args.threeChannelOut, 'exported_data')
     vigra.impex.writeHDF5(nucleusChannel, args.nucleusChannelOut, 'exported_data')
