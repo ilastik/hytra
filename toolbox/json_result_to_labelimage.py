@@ -3,6 +3,7 @@ import h5py
 import vigra
 from vigra import numpy as np
 import sys
+import os
 import json
 sys.path.append('.')
 from progressbar import ProgressBar
@@ -108,12 +109,16 @@ if __name__ == "__main__":
 
     # create output array
     resultVolume = np.zeros((len(timesteps),) + shape, dtype='uint32')
+    print("resulting volume shape: {}".format(resultVolume.shape))
+    progressBar = ProgressBar(stop=len(timesteps))
+    progressBar.show(0)
 
     # iterate over timesteps and label tracks from front to back in a distinct color
     nextUnusedColor = 1
     lastFrameColorMap = {}
     lastFrameLabelImage = getLabelImageForFrame(args.labelImageFilename, args.labelImagePath, 0, shape)
-    for t in range(len(timesteps)):
+    for t in range(1,len(timesteps)):
+        progressBar.show()
         thisFrameColorMap = {}
         thisFrameLabelImage = getLabelImageForFrame(args.labelImageFilename, args.labelImagePath, t, shape)
         for a, b in linksPerTimestep[str(t)]:
@@ -125,13 +130,13 @@ if __name__ == "__main__":
                 lastFrameColorMap[a] = thisFrameColorMap[b]  # also store in last frame's color map as it must have been present to participate in a link
                 nextUnusedColor += 1
 
-            # see which objects have been assigned a color in the last frame. set all others to 0 (1?)
-            unusedLabels = set(np.unique(lastFrameLabelImage)) - set([0]) - set(lastFrameColorMap.keys())
-            for l in unusedLabels:
-                lastFrameColorMap[l] = 0
+        # see which objects have been assigned a color in the last frame. set all others to 0 (1?)
+        unusedLabels = set(np.unique(lastFrameLabelImage)) - set([0]) - set(lastFrameColorMap.keys())
+        for l in unusedLabels:
+            lastFrameColorMap[l] = 0
 
-            # write relabeled image
-            resultVolume[t-1,...,0] = relabelImage(lastFrameLabelImage, lastFrameColorMap)
+        # write relabeled image
+        resultVolume[t-1,...,0] = relabelImage(lastFrameLabelImage, lastFrameColorMap)
 
         # swap the color maps so that in the next frame we use "this" as "last"
         lastFrameColorMap, thisFrameColorMap = thisFrameColorMap, lastFrameColorMap
@@ -145,7 +150,10 @@ if __name__ == "__main__":
 
     # write last frame relabeled image
     resultVolume[t,...,0] = relabelImage(lastFrameLabelImage, lastFrameColorMap)
+    progressBar.show()
 
     # save to disk
+    if os.path.exists(args.out):
+        os.remove(args.out)
     vigra.impex.writeHDF5(resultVolume, args.out, 'exported_data')
 
