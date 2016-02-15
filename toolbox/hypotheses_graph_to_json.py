@@ -55,6 +55,8 @@ def getConfigAndCommandLineArguments():
                       help='Path inside the raw h5 file to the data')
     parser.add_option('--dump-hypotheses-graph', type='string', dest='hypotheses_graph_filename', default=None,
                       help='save hypotheses graph so it can be loaded later')
+    parser.add_option('--label-image-file', type='string', dest='label_image_file', default=None,
+                      help='if a label image separate to the one in the ILP should be used, set it here')
 
     parser.add_option('--json-output', type='string', dest='json_filename', default=None,
                       help='filename where to save the generated JSON file to')
@@ -490,7 +492,10 @@ def loadPyTraxelstore(options,
     ilpOptions.labelImagePath = options.label_img_path
     ilpOptions.rawImagePath = options.raw_path
     ilpOptions.rawImageFilename = options.raw_filename
-    ilpOptions.labelImageFilename = ilpFilename
+    if options.label_image_file is not None:
+        ilpOptions.labelImageFilename = options.label_image_file
+    else:
+        ilpOptions.labelImageFilename = ilpFilename
 
     if options.obj_count_file != None:
         ilpOptions.objectCountClassifierFilename = options.obj_count_file
@@ -556,7 +561,10 @@ def getBoundaryCostMultiplier(traxel, fov, margin):
     if dist > margin:
         return 1.0
     else:
-        return float(dist) / margin
+        if margin > 0:
+            return float(dist) / margin
+        else:
+            return 1.0
 
 def listify(l):
     return [[e] for e in l]
