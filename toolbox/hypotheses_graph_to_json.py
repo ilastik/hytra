@@ -753,6 +753,8 @@ if __name__ == "__main__":
                 detection['divisionFeatures'] = listify(negLog(divFeats))
         except:
             pass
+
+        detection['timestep'] = [traxels[0].Timestep, traxels[-1].Timestep]
         
         if traxels[0].Timestep <= t0:
             detection['appearanceFeatures'] = listify([0.0]*(maxNumObjects))
