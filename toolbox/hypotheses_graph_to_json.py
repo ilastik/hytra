@@ -421,6 +421,7 @@ def getTraxelStore(options, ilp_fn,time_range, shape):
 
 
 def getFovFromOptions(options, shape, t0, t1):
+    import pgmlink as track
     [xshape, yshape, zshape] = shape
 
     fov = track.FieldOfView(t0, 0, 0, 0, t1, options.x_scale * (xshape - 1), options.y_scale * (yshape - 1),
@@ -582,6 +583,7 @@ def getHypothesesGraphAndIterators(options, shape, t0, t1, ts, pyTraxelstore):
         fov = getPythonFovFromOptions(options, shape, t0, t1)
 
     else:
+        import pgmlink as track
         print("Building pgmlink hypotheses graph")
         # initialize tracker to get hypotheses graph
         tracker, fov = initializeConservationTracking(options, shape, t0, t1)

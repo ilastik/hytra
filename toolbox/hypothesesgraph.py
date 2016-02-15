@@ -142,9 +142,14 @@ class HypothesesGraph:
             # find forward links
             for obj, traxel in traxelstore.TraxelsPerFrame[frame].iteritems():
                 divisionPreservingNumNearestNeighbors = numNearestNeighbors
-                if divisionPreservingNumNearestNeighbors < 2 and withDivisions and self._traxelMightDivide(traxel, divisionThreshold):
+                if divisionPreservingNumNearestNeighbors < 2 \
+                    and withDivisions \
+                    and self._traxelMightDivide(traxel, divisionThreshold):
                     divisionPreservingNumNearestNeighbors = 2
-                neighbors = self._findNearestNeighbors(kdTreeNextFrame, traxel, numNearestNeighbors, maxNeighborDist)
+                neighbors = self._findNearestNeighbors(kdTreeNextFrame, 
+                                                        traxel, 
+                                                        numNearestNeighbors,
+                                                        maxNeighborDist)
                 for n in neighbors:
                     checkNodeWhileAddingLinks(frame, obj)
                     checkNodeWhileAddingLinks(frame+1, n)
@@ -153,7 +158,10 @@ class HypothesesGraph:
             # find backward links
             if forwardBackwardCheck:
                 for obj, traxel in traxelstore.TraxelsPerFrame[frame+1].iteritems():
-                    neighbors = self._findNearestNeighbors(kdTreeThisFrame, traxel, numNearestNeighbors, maxNeighborDist)
+                    neighbors = self._findNearestNeighbors(kdTreeThisFrame, 
+                                                            traxel, 
+                                                            numNearestNeighbors, 
+                                                            maxNeighborDist)
                     for n in neighbors:
                         checkNodeWhileAddingLinks(frame, n)
                         checkNodeWhileAddingLinks(frame+1, obj)
