@@ -67,7 +67,7 @@ class HypothesesGraph:
         """
         kdtree, objectIdList = kdtreeObjectPair
         distances, neighbors = kdtree.query(self._extractCenter(traxel), k=numNeighbors, return_distance=True)
-        return [objectIdList[index] for distance, index in zip(distances, neighbors) if distance < maxNeighborDist]
+        return [objectIdList[index] for distance, index in zip(distances[0], neighbors[0]) if distance < maxNeighborDist]
 
     def _extractCenter(self, traxel):
         try:
