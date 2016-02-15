@@ -59,7 +59,10 @@ if __name__ == "__main__":
         threshold_max_size = h5file['ThresholdTwoLevels/MaxSize'].value
 
     # load prediction maps
-    predictionMaps = vigra.impex.readHDF5(args.predictionMapFilename, args.predictionPath)
+    # predictionMaps = vigra.impex.readHDF5(args.predictionMapFilename, args.predictionPath)
+    with h5py.File(args.predictionMapFilename) as f:
+        predictionMaps = f[args.predictionPath].value
+
     ndim = len(predictionMaps.shape) - 2
     print("Found PredictionMaps of size {}, assuming t-axis at position {}, using channel {}".format(
         predictionMaps.shape, 
