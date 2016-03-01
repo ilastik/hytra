@@ -45,6 +45,8 @@ def getConfigAndCommandLineArguments():
     parser.add_option('--max-ts', type='int', dest='maxts', default=-1, help='[default: %default]')
     parser.add_option('--min-size', type='int', dest='minsize', default=0,
                       help='minimal size of objects to be tracked [default: %default]')
+    parser.add_option('--max-size', type='int', dest='maxsize', default=100000,
+                      help='maximal size of objects to be tracked [default: %default]')
     parser.add_option('--dump-traxelstore', type='string', dest='dump_traxelstore', default=None,
                       help='dump traxelstore to file [default: %default]')
     parser.add_option('--load-traxelstore', type='string', dest='load_traxelstore', default=None,
@@ -392,7 +394,7 @@ def getTraxelStore(options, ilp_fn,time_range, shape):
                                                             x_range=None,
                                                             y_range=None,
                                                             z_range=None,
-                                                            size_range=[options.minsize, 10000],
+                                                            size_range=[options.minsize, options.maxsize],
                                                             x_scale=options.x_scale,
                                                             y_scale=options.y_scale,
                                                             z_scale=options.z_scale,
@@ -492,6 +494,7 @@ def loadPyTraxelstore(options,
     ilpOptions.labelImagePath = options.label_img_path
     ilpOptions.rawImagePath = options.raw_path
     ilpOptions.rawImageFilename = options.raw_filename
+    ilpOptions.sizeFilter = [options.minsize, options.maxsize]
     if options.label_image_file is not None:
         ilpOptions.labelImageFilename = options.label_image_file
     else:

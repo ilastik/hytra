@@ -30,6 +30,7 @@ class IlastikProjectOptions:
         self.labelImagePath = '/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]'
         self.rawImageFilename = None
         self.rawImagePath = None
+        self.sizeFilter = None # set to tuple with min,max pixel count
 
 class RandomForestClassifier:
     """
@@ -364,6 +365,11 @@ class Traxelstore:
         for frame, features in self._featuresPerFrame.iteritems():
             for objectId in range(1, features.values()[0].shape[0]):
                 # print("Frame {} Object {}".format(frame, objectId))
+                pixelSize = features['Count'][objectId]
+                if self._options.sizeFilter is not None \
+                    and (pixelSize < self._options.sizeFilter[0] \
+                        or pixelSize > self._options.sizeFilter[1]):
+                    continue 
 
                 # create traxel
                 if usePgmlink:
