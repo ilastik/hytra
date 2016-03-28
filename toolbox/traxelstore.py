@@ -494,8 +494,12 @@ class Traxelstore:
             elif key == 'Polygon':  # vect has always another length for different objects, so center would be relevant
                 continue
             else:
-                res.append((featureDictObjectA[key] - featureDictObjectB[key]).tolist())  # prepare for flattening
-                res2.append((featureDictObjectA[key] * featureDictObjectB[key]).tolist())  # prepare for flattening
+                if not isinstance(featureDictObjectA[key], np.ndarray) or featureDictObjectA[key].size == 1:
+                    res.append(float(featureDictObjectA[key]) - float(featureDictObjectB[key]))  # prepare for flattening
+                    res2.append(float(featureDictObjectA[key]) * float(featureDictObjectB[key]))  # prepare for flattening
+                else:
+                    res.append((featureDictObjectA[key] - featureDictObjectB[key]).tolist())  # prepare for flattening
+                    res2.append((featureDictObjectA[key] * featureDictObjectB[key]).tolist())  # prepare for flattening
 
         x = np.asarray(flatten(res))  # flatten
         x2 = np.asarray(flatten(res2))  # flatten
