@@ -1,21 +1,22 @@
 import sys
+
 sys.path.append('../.')
 sys.path.append('.')
 
 import os
-from empryonic import io
-import json
 from progressbar import ProgressBar
 import vigra
 import divisionfeatures
 import numpy as np
 import h5py
 
+
 class IlastikProjectOptions:
     """
     The Ilastik Project Options configure where in the project HDF5 file the important things can be found.
     Use this when creating a Traxelstore
     """
+
     def __init__(self):
         self.objectCountClassifierFile = None
         self.objectCountClassifierPath = '/CountClassification'
@@ -30,13 +31,15 @@ class IlastikProjectOptions:
         self.labelImagePath = '/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]'
         self.rawImageFilename = None
         self.rawImagePath = None
-        self.sizeFilter = None # set to tuple with min,max pixel count
+        self.sizeFilter = None  # set to tuple with min,max pixel count
+
 
 class RandomForestClassifier:
     """
     A random forest (RF) classifier wraps a list of RFs as used in ilastik,
     and allows to read the RFs trained by ilastik, as well as which features were selected.
     """
+
     def __init__(self, classifierPath, ilpFilename, ilpOptions=IlastikProjectOptions()):
         self._options = ilpOptions
         self._classifierPath = classifierPath
@@ -54,7 +57,8 @@ class RandomForestClassifier:
             else:
                 fullPath = '/'.join([self._classifierPath, self._options.classifierForestsGroupName])
             randomForests = []
-            print("trying to read {} classifiers in {} from {}".format(len(h5file[fullPath].keys()),self._ilpFilename, fullPath))
+            print("trying to read {} classifiers in {} from {}".format(len(h5file[fullPath].keys()), self._ilpFilename,
+                                                                       fullPath))
             for k in h5file[fullPath].keys():
                 if 'Forest' in k:
                     print(str('/'.join([fullPath, k])))
@@ -113,15 +117,17 @@ class RandomForestClassifier:
 
         If features=None but a featureDict is given, the selected features for this random forest are automatically extracted
         """
-        assert(len(self._randomForests) > 0)
+        assert (len(self._randomForests) > 0)
 
         # make sure features are good
         if features is None and featureDict is not None:
             features = self.extractFeatureVector(featureDict)
-        assert(len(features.shape) == 2)
+        assert (len(features.shape) == 2)
         # assert(features.shape[1] == self._randomForests[0].featureCount())
         if not features.shape[1] == self._randomForests[0].featureCount():
-            print("Cannot predict from features of shape {} if {} features are expected".format(features.shape, self._randomForests[0].featureCount()))
+            print("Cannot predict from features of shape {} if {} features are expected".format(features.shape,
+                                                                                                self._randomForests[
+                                                                                                    0].featureCount()))
             print(features)
             raise AssertionError()
 
@@ -132,12 +138,14 @@ class RandomForestClassifier:
 
         return probabilities
 
+
 class Traxel:
     """
     A simple Python variant of the C++ traxel with the same interface of the one of pgmlink so it can act as drop-in replacement.
     """
+
     def __init__(self):
-        self._scale = np.array([1,1,1])
+        self._scale = np.array([1, 1, 1])
         self.Id = None
         self.Timestep = None
 
@@ -146,38 +154,49 @@ class Traxel:
 
     def set_x_scale(self, val):
         self._scale[0] = val
+
     def set_y_scale(self, val):
         self._scale[1] = val
+
     def set_z_scale(self, val):
         self._scale[2] = val
+
     def X(self):
         return self.Features['com'][0]
+
     def Y(self):
         return self.Features['com'][1]
+
     def Z(self):
         try:
             return self.Features['com'][2]
         except:
             return 0.0
+
     def add_feature_array(self, name, length):
         self.Features[name] = np.zeros(length)
+
     def set_feature_value(self, name, index, value):
         assert name in self.Features
         self.Features[name][index] = value
+
     def get_feature_value(self, name, index):
         assert name in self.Features
         return self.Features[name][index]
+
     def print_available_features(self):
         print self.Features.keys()
+
 
 class Traxelstore:
     """
     The traxelstore is a python wrapper around pgmlink's C++ traxelstore,
     but with the functionality to compute all region features and evaluate the division/count/transition classifiers.
     """
+
     def __init__(self, ilpOptions):
-        assert(os.path.exists(ilpOptions.labelImageFilename))
-        assert(os.path.exists(ilpOptions.rawImageFilename))
+        assert (os.path.exists(ilpOptions.labelImageFilename))
+        assert (os.path.exists(ilpOptions.rawImageFilename))
 
         self._options = ilpOptions
         self._countClassifier = None
@@ -185,21 +204,24 @@ class Traxelstore:
         self._transitionClassifier = None
 
         if ilpOptions.objectCountClassifierPath != None and ilpOptions.objectCountClassifierFilename != None:
-            self._countClassifier = RandomForestClassifier(ilpOptions.objectCountClassifierPath, ilpOptions.objectCountClassifierFilename, ilpOptions)
+            self._countClassifier = RandomForestClassifier(ilpOptions.objectCountClassifierPath,
+                                                           ilpOptions.objectCountClassifierFilename, ilpOptions)
         if ilpOptions.divisionClassifierPath != None and ilpOptions.divisionClassifierFilename != None:
-            self._divisionClassifier = RandomForestClassifier(ilpOptions.divisionClassifierPath, ilpOptions.divisionClassifierFilename, ilpOptions)
+            self._divisionClassifier = RandomForestClassifier(ilpOptions.divisionClassifierPath,
+                                                              ilpOptions.divisionClassifierFilename, ilpOptions)
         if ilpOptions.transitionClassifierPath != None and ilpOptions.transitionClassifierFilename != None:
-            self._transitionClassifier = RandomForestClassifier(ilpOptions.transitionClassifierPath, ilpOptions.transitionClassifierFilename, ilpOptions)
+            self._transitionClassifier = RandomForestClassifier(ilpOptions.transitionClassifierPath,
+                                                                ilpOptions.transitionClassifierFilename, ilpOptions)
 
         self.shape, self.timeRange = self._getShapeAndTimeRange()
 
         # set default division feature names
         self._divisionFeatureNames = ['ParentChildrenRatio_Count',
-            'ParentChildrenRatio_Mean',
-            'ChildrenRatio_Count',
-            'ChildrenRatio_Mean',
-            'ParentChildrenAngle_RegionCenter',
-            'ChildrenRatio_SquaredDistances']
+                                      'ParentChildrenRatio_Mean',
+                                      'ChildrenRatio_Count',
+                                      'ChildrenRatio_Mean',
+                                      'ParentChildrenAngle_RegionCenter',
+                                      'ChildrenRatio_SquaredDistances']
 
         # other parameters that one might want to set
         self.x_scale = 1.0
@@ -216,9 +238,10 @@ class Traxelstore:
         """
         Computes all region features for all objects in the given image
         """
-        assert(labelImage.dtype == np.uint32)
-        regionFeatures = vigra.analysis.extractRegionFeatures(rawImage.squeeze().astype('float32'), labelImage.squeeze(), ignoreLabel=0)
-        regionFeatures = dict(regionFeatures.items()) # transform to dict
+        assert (labelImage.dtype == np.uint32)
+        regionFeatures = vigra.analysis.extractRegionFeatures(rawImage.squeeze().astype('float32'),
+                                                              labelImage.squeeze(), ignoreLabel=0)
+        regionFeatures = dict(regionFeatures.items())  # transform to dict
 
         # delete the "Global<Min/Max>" features as they are not nice when iterating over everything
         globalKeysToDelete = [k for k in regionFeatures.keys() if 'Global' in k]
@@ -230,7 +253,8 @@ class Traxelstore:
             return regionFeatures
 
         convexHullFeatures = vigra.analysis.extractConvexHullFeatures(labelImage.squeeze(), ignoreLabel=0)
-        skeletonFeatures = vigra.analysis.extractSkeletonFeatures(labelImage.squeeze()) # , ignoreLabel=0 <- imposed automatically
+        skeletonFeatures = vigra.analysis.extractSkeletonFeatures(
+            labelImage.squeeze())  # , ignoreLabel=0 <- imposed automatically
         return dict(regionFeatures.items() + convexHullFeatures.items() + skeletonFeatures.items())
 
     def computeDivisionFeatures(self, featuresAtT, featuresAtTPlus1, labelImageAtTPlus1):
@@ -275,7 +299,9 @@ class Traxelstore:
         Get the label image(volume) of one time frame
         """
         with h5py.File(self._options.labelImageFilename, 'r') as h5file:
-            labelImage = h5file[self._options.labelImagePath % (timeframe, timeframe+1, self.shape[0], self.shape[1], self.shape[2])][0, ..., 0].squeeze().astype(np.uint32)
+            labelImage = h5file[
+                self._options.labelImagePath % (timeframe, timeframe + 1, self.shape[0], self.shape[1], self.shape[2])][
+                0, ..., 0].squeeze().astype(np.uint32)
             return labelImage
 
     def getRawImageForFrame(self, timeframe):
@@ -302,7 +328,9 @@ class Traxelstore:
         """
         if timeframe + 1 < self.timeRange[1]:
             labelImageAtTPlus1 = self.getLabelImageForFrame(timeframe + 1)
-            featuresPerFrame[timeframe].update(self.computeDivisionFeatures(featuresPerFrame[timeframe], featuresPerFrame[timeframe + 1], labelImageAtTPlus1))
+            featuresPerFrame[timeframe].update(
+                self.computeDivisionFeatures(featuresPerFrame[timeframe], featuresPerFrame[timeframe + 1],
+                                             labelImageAtTPlus1))
 
     def _extractAllFeatures(self):
         """
@@ -353,7 +381,7 @@ class Traxelstore:
                 ts = pgmlink.TraxelStore()
                 fs = pgmlink.FeatureStore()
             else:
-                assert(fs is not None)
+                assert (fs is not None)
 
         print("Extracting features...")
         self._featuresPerFrame = self._extractAllFeatures()
@@ -367,11 +395,11 @@ class Traxelstore:
                 # print("Frame {} Object {}".format(frame, objectId))
                 pixelSize = features['Count'][objectId]
                 if self._options.sizeFilter is not None \
-                    and (pixelSize < self._options.sizeFilter[0] \
-                        or pixelSize > self._options.sizeFilter[1]):
-                    continue 
+                        and (pixelSize < self._options.sizeFilter[0] \
+                                     or pixelSize > self._options.sizeFilter[1]):
+                    continue
 
-                # create traxel
+                    # create traxel
                 if usePgmlink:
                     traxel = pgmlink.Traxel()
                 else:
@@ -382,19 +410,23 @@ class Traxelstore:
                 # add raw features
                 for key, val in features.iteritems():
                     try:
-                        if isinstance(val, list): # polygon feature returns a list!
+                        if isinstance(val, list):  # polygon feature returns a list!
                             featureValues = val[objectId]
                         else:
-                            featureValues = val[objectId,...]
+                            featureValues = val[objectId, ...]
                     except:
-                        print("Could not get feature values of {} for key {} from matrix with shape {}".format(objectId, key, val.shape))
+                        print(
+                        "Could not get feature values of {} for key {} from matrix with shape {}".format(objectId, key,
+                                                                                                         val.shape))
                         sys.exit()
                     try:
                         self._setTraxelFeatureArray(traxel, featureValues, key)
                         if key == 'RegionCenter':
                             self._setTraxelFeatureArray(traxel, featureValues, 'com')
                     except:
-                        print("Could not add feature array {} of shape {} for {}".format(featureValues, featureValues.shape, key))
+                        print(
+                        "Could not add feature array {} of shape {} for {}".format(featureValues, featureValues.shape,
+                                                                                   key))
                         sys.exit()
 
                 # add random forest predictions
@@ -441,45 +473,48 @@ class Traxelstore:
                 traxelFeatureDict[k] = v[objectId, ...]
         return traxelFeatureDict
 
-    def getTransitionFeatureVector(self, featureDictObjectA, featureDictObjectB, selectedFeatures):
+    @staticmethod
+    def getTransitionFeatureVector(featureDictObjectA, featureDictObjectB, selectedFeatures):
         """
         Return component wise difference and product of the selected features as input for the TransitionClassifier
         """
         from compiler.ast import flatten
-        res=[]
-        res2=[]
+        res = []
+        res2 = []
 
         for key in selectedFeatures:
-            if key == "Global<Maximum >" or key=="Global<Minimum >":
+            if key == "Global<Maximum >" or key == "Global<Minimum >":
                 # the global min/max intensity is not interesting
                 continue
             elif key == 'RegionCenter':
-                res.append(np.linalg.norm(featureDictObjectA[key]-featureDictObjectB[key])) #difference of features
-                res2.append(np.linalg.norm(featureDictObjectA[key]*featureDictObjectB[key])) #product of features
-            elif key == 'Histogram': #contains only zeros, so trying to see what the prediction is without it
+                res.append(np.linalg.norm(featureDictObjectA[key] - featureDictObjectB[key]))  # difference of features
+                res2.append(np.linalg.norm(featureDictObjectA[key] * featureDictObjectB[key]))  # product of features
+            elif key == 'Histogram':  # contains only zeros, so trying to see what the prediction is without it
                 continue
-            elif key == 'Polygon': #vect has always another length for different objects, so center would be relevant
+            elif key == 'Polygon':  # vect has always another length for different objects, so center would be relevant
                 continue
             else:
-                res.append((featureDictObjectA[key]-featureDictObjectB[key]).tolist() )  #prepare for flattening
-                res2.append((featureDictObjectA[key]*featureDictObjectB[key]).tolist() )  #prepare for flattening
+                res.append((featureDictObjectA[key] - featureDictObjectB[key]).tolist())  # prepare for flattening
+                res2.append((featureDictObjectA[key] * featureDictObjectB[key]).tolist())  # prepare for flattening
 
-        x= np.asarray(flatten(res)) #flatten
-        x2= np.asarray(flatten(res2)) #flatten
-        assert(np.any(np.isnan(x)) == False)
-        assert(np.any(np.isnan(x2)) == False)
-        assert(np.any(np.isinf(x)) == False)
-        assert(np.any(np.isinf(x2)) == False)
+        x = np.asarray(flatten(res))  # flatten
+        x2 = np.asarray(flatten(res2))  # flatten
+        assert (np.any(np.isnan(x)) == False)
+        assert (np.any(np.isnan(x2)) == False)
+        assert (np.any(np.isinf(x)) == False)
+        assert (np.any(np.isinf(x2)) == False)
 
-        features = np.concatenate((x,x2))
+        features = np.concatenate((x, x2))
         features = np.expand_dims(features, axis=0)
         return features
+
 
 if __name__ == '__main__':
     """
     Builds a traxelstore from a given ilastik project file and the raw data as HDF5 volume
     """
     import argparse
+
     parser = argparse.ArgumentParser(description='Build a traxelstore from a given ilastik project',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--ilastik-project', required=True, type=str, dest='ilpFilename',
@@ -521,6 +556,5 @@ if __name__ == '__main__':
     ilpOptions.rawImageFilename = args.rawFilename
 
     traxelstore = Traxelstore(ilpOptions=ilpOptions)
-    traxelstore.timeRange = (0,2)
+    traxelstore.timeRange = (0, 2)
     ts, fs = traxelstore.fillTraxelStore()
-

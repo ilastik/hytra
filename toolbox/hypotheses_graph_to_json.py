@@ -10,15 +10,12 @@ import optparse
 import time
 import numpy as np
 import h5py
-import itertools
-import vigra
-import copy
 import json
 from progressbar import ProgressBar
 import hypothesesgraph
 
-def getConfigAndCommandLineArguments():
 
+def getConfigAndCommandLineArguments():
     usage = """%prog [options] FILES
     Track cells.
 
@@ -63,13 +60,14 @@ def getConfigAndCommandLineArguments():
     parser.add_option('--json-output', type='string', dest='json_filename', default=None,
                       help='filename where to save the generated JSON file to')
 
-
     consopts = optparse.OptionGroup(parser, "conservation tracking")
     consopts.add_option('--max-number-objects', dest='max_num_objects', type='float', default=2,
                         help='Give maximum number of objects one connected component may consist of [default: %default]')
     consopts.add_option('--max-neighbor-distance', dest='mnd', type='float', default=30, help='[default: %default]')
-    consopts.add_option('--max-nearest-neighbors', dest='max_nearest_neighbors', type='int', default=1, help='[default: %default]')
-    consopts.add_option('--division-threshold', dest='division_threshold', type='float', default=0.1, help='[default: %default]')
+    consopts.add_option('--max-nearest-neighbors', dest='max_nearest_neighbors', type='int', default=1,
+                        help='[default: %default]')
+    consopts.add_option('--division-threshold', dest='division_threshold', type='float', default=0.1,
+                        help='[default: %default]')
     # detection_rf_filename in general parser options
     consopts.add_option('--size-dependent-detection-prob', dest='size_dependent_detection_prob', action='store_true')
     # forbidden_cost in general parser options
@@ -77,12 +75,18 @@ def getConfigAndCommandLineArguments():
     consopts.add_option('--average-obj-size', dest='avg_obj_size', type='float', default=0, help='[default: %default]')
     consopts.add_option('--without-tracklets', dest='without_tracklets', action='store_true')
     consopts.add_option('--with-opt-correct', dest='woptical', action='store_true')
-    consopts.add_option('--det', dest='detection_weight', type='float', default=10.0, help='detection weight [default: %default]')
-    consopts.add_option('--div', dest='division_weight', type='float', default=10.0, help='division weight [default: %default]')
-    consopts.add_option('--dis', dest='disappearance_cost', type='float', default=500.0, help='disappearance cost [default: %default]')
-    consopts.add_option('--app', dest='appearance_cost', type='float', default=500.0, help='appearance cost [default: %default]')
-    consopts.add_option('--tr', dest='transition_weight', type='float', default=10.0, help='transition weight [default: %default]')
-    consopts.add_option('--motionModelWeight', dest='motionModelWeight', type='float', default=0.0, help='motion model weight [default: %default]')
+    consopts.add_option('--det', dest='detection_weight', type='float', default=10.0,
+                        help='detection weight [default: %default]')
+    consopts.add_option('--div', dest='division_weight', type='float', default=10.0,
+                        help='division weight [default: %default]')
+    consopts.add_option('--dis', dest='disappearance_cost', type='float', default=500.0,
+                        help='disappearance cost [default: %default]')
+    consopts.add_option('--app', dest='appearance_cost', type='float', default=500.0,
+                        help='appearance cost [default: %default]')
+    consopts.add_option('--tr', dest='transition_weight', type='float', default=10.0,
+                        help='transition weight [default: %default]')
+    consopts.add_option('--motionModelWeight', dest='motionModelWeight', type='float', default=0.0,
+                        help='motion model weight [default: %default]')
     consopts.add_option('--without-divisions', dest='without_divisions', action='store_true')
     consopts.add_option('--means', dest='means', type='float', default=0.0,
                         help='means for detection [default: %default]')
@@ -114,18 +118,20 @@ def getConfigAndCommandLineArguments():
     consopts.add_option('--labelImgPath', dest='label_img_path', type='str',
                         default='/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]',
                         help='internal hdf5 path to label image [default=%default]')
-    consopts.add_option('--timeout', dest='timeout', type='float', default=1e+75, help='CPLEX timeout in sec. [default: %default]')
-    consopts.add_option('--with-graph-labeling', dest='w_labeling', action='store_true', default=False, 
+    consopts.add_option('--timeout', dest='timeout', type='float', default=1e+75,
+                        help='CPLEX timeout in sec. [default: %default]')
+    consopts.add_option('--with-graph-labeling', dest='w_labeling', action='store_true', default=False,
                         help='load ground truth labeling into hypotheses graph for further evaluation on C++ side,\
                         requires gt-path to point to the groundtruth files')
-    consopts.add_option('--transition-classifier-filename', dest='transition_classifier_filename', type='str', default=None)
+    consopts.add_option('--transition-classifier-filename', dest='transition_classifier_filename', type='str',
+                        default=None)
     consopts.add_option('--transition-classifier-path', dest='transition_classifier_path', type='str', default='/')
 
     parser.add_option_group(consopts)
 
     optcfg, args = parser.parse_args()
 
-    if(optcfg.config != None):
+    if (optcfg.config != None):
         with open(optcfg.config) as f:
             configfilecommands = f.read().splitlines()
         optcfg, args2 = parser.parse_args(configfilecommands)
@@ -136,6 +142,7 @@ def getConfigAndCommandLineArguments():
         sys.exit(1)
 
     return optcfg, args
+
 
 def generate_traxelstore(h5file,
                          options,
@@ -156,7 +163,7 @@ def generate_traxelstore(h5file,
                          max_num_mergers=1,
                          with_optical_correction=False,
                          ext_probs=None
-):
+                         ):
     print "generating traxels"
     print "filling traxelstore"
     import pgmlink as track
@@ -206,7 +213,7 @@ def generate_traxelstore(h5file,
 
     for t in keys_sorted:
         feats_name = options.feats_path % (t, t + 1, 'RegionCenter')
-        #region_centers = np.array(feats[t]['0']['RegionCenter'])
+        # region_centers = np.array(feats[t]['0']['RegionCenter'])
         region_centers = np.array(h5file[feats_name])
 
         feats_name = options.feats_path % (t, t + 1, 'Coord<Minimum>')
@@ -228,7 +235,7 @@ def generate_traxelstore(h5file,
                 region_centers_corr = region_centers_corr[1:, ...]
 
         feats_name = options.feats_path % (t, t + 1, 'Count')
-        #pixel_count = np.array(feats[t]['0']['Count'])
+        # pixel_count = np.array(feats[t]['0']['Count'])
         pixel_count = np.array(h5file[feats_name])
         if pixel_count.size:
             pixel_count = pixel_count[1:, ...]
@@ -300,7 +307,7 @@ def generate_traxelstore(h5file,
                 for i in range(max_num_mergers + 1):
                     traxel.set_feature_value("detProb", i, float(probs[i]))
 
-            detection_probabilities.append([traxel.get_feature_value("detProb", i) for i in range(max_num_mergers+1)])
+            detection_probabilities.append([traxel.get_feature_value("detProb", i) for i in range(max_num_mergers + 1)])
 
             traxel.add_feature_array("count", 1)
             traxel.set_feature_value("count", 0, float(size))
@@ -331,28 +338,28 @@ def getH5Dataset(h5group, ds_name):
 
 def getRegionFeatures(ndim):
     region_features = [
-            ("RegionCenter", ndim),
-            ("Count", 1),
-            ("Variance", 1),
-            ("Sum", 1),
-            ("Mean", 1),
-            ("RegionRadii", ndim),
-            ("Central< PowerSum<2> >", 1),
-            ("Central< PowerSum<3> >", 1),
-            ("Central< PowerSum<4> >", 1),
-            ("Kurtosis", 1),
-            ("Maximum", 1),
-            ("Minimum", 1),
-            ("RegionAxes", ndim**2),
-            ("Skewness", 1),
-            ("Weighted<PowerSum<0> >", 1),
-            ("Coord< Minimum >", ndim),
-            ("Coord< Maximum >", ndim)
+        ("RegionCenter", ndim),
+        ("Count", 1),
+        ("Variance", 1),
+        ("Sum", 1),
+        ("Mean", 1),
+        ("RegionRadii", ndim),
+        ("Central< PowerSum<2> >", 1),
+        ("Central< PowerSum<3> >", 1),
+        ("Central< PowerSum<4> >", 1),
+        ("Kurtosis", 1),
+        ("Maximum", 1),
+        ("Minimum", 1),
+        ("RegionAxes", ndim ** 2),
+        ("Skewness", 1),
+        ("Weighted<PowerSum<0> >", 1),
+        ("Coord< Minimum >", ndim),
+        ("Coord< Maximum >", ndim)
     ]
     return region_features
 
 
-def getTraxelStore(options, ilp_fn,time_range, shape):
+def getTraxelStore(options, ilp_fn, time_range, shape):
     max_traxel_id_at = []
     with h5py.File(ilp_fn, 'r') as h5file:
         ndim = 3
@@ -387,26 +394,27 @@ def getTraxelStore(options, ilp_fn,time_range, shape):
                 ts = new_ts
         else:
             max_num_mer = int(options.max_num_objects)
-            ts, fs, max_traxel_id_at, division_probabilities, detection_probabilities = generate_traxelstore(h5file=h5file,
-                                                            options=options,
-                                                            feature_path=feature_path,
-                                                            time_range=time_range,
-                                                            x_range=None,
-                                                            y_range=None,
-                                                            z_range=None,
-                                                            size_range=[options.minsize, options.maxsize],
-                                                            x_scale=options.x_scale,
-                                                            y_scale=options.y_scale,
-                                                            z_scale=options.z_scale,
-                                                            with_div=with_div,
-                                                            with_local_centers=False,
-                                                            median_object_size=obj_size,
-                                                            max_traxel_id_at=max_traxel_id_at,
-                                                            with_merger_prior=with_merger_prior,
-                                                            max_num_mergers=max_num_mer,
-                                                            with_optical_correction=bool(options.woptical),
-                                                            ext_probs=options.ext_probs
-            )
+            ts, fs, max_traxel_id_at, division_probabilities, detection_probabilities = generate_traxelstore(
+                h5file=h5file,
+                options=options,
+                feature_path=feature_path,
+                time_range=time_range,
+                x_range=None,
+                y_range=None,
+                z_range=None,
+                size_range=[options.minsize, options.maxsize],
+                x_scale=options.x_scale,
+                y_scale=options.y_scale,
+                z_scale=options.z_scale,
+                with_div=with_div,
+                with_local_centers=False,
+                median_object_size=obj_size,
+                max_traxel_id_at=max_traxel_id_at,
+                with_merger_prior=with_merger_prior,
+                max_num_mergers=max_num_mer,
+                with_optical_correction=bool(options.woptical),
+                ext_probs=options.ext_probs
+                )
 
         info = [int(x) for x in ts.bounding_box()]
         t0, t1 = (info[0], info[4])
@@ -432,17 +440,19 @@ def getFovFromOptions(options, shape, t0, t1):
                             options.z_scale * (zshape - 1))
     return fov
 
+
 def getPythonFovFromOptions(options, shape, t0, t1):
     from fieldofview import FieldOfView
     [xshape, yshape, zshape] = shape
 
     fov = FieldOfView(t0, 0, 0, 0, t1, options.x_scale * (xshape - 1), options.y_scale * (yshape - 1),
-                            options.z_scale * (zshape - 1))
+                      options.z_scale * (zshape - 1))
     return fov
+
 
 def initializeConservationTracking(options, shape, t0, t1):
     import pgmlink as track
-    ndim = 2 if shape[-1]==1 else 3
+    ndim = 2 if shape[-1] == 1 else 3
     rf_fn = 'none'
     if options.rf_fn:
         rf_fn = options.rf_fn
@@ -478,12 +488,13 @@ def initializeConservationTracking(options, shape, t0, t1):
         raise InvalidArgumentException("Must be conservation or conservation-dynprog")
     return tracker, fov
 
-def loadPyTraxelstore(options, 
-        ilpFilename, 
-        objectCountClassifierPath=None, 
-        divisionClassifierPath=None, 
-        time_range=None,
-        usePgmlink=True):
+
+def loadPyTraxelstore(options,
+                      ilpFilename,
+                      objectCountClassifierPath=None,
+                      divisionClassifierPath=None,
+                      time_range=None,
+                      usePgmlink=True):
     """
     Set up a python side traxel store: compute all features, but do not evaluate classifiers.
     """
@@ -515,11 +526,12 @@ def loadPyTraxelstore(options,
         pyTraxelstore.timeRange = time_range
     a = pyTraxelstore.fillTraxelStore(usePgmlink=usePgmlink)
     if usePgmlink:
-        t,f = a
+        t, f = a
     else:
         t = None
         f = None
     return pyTraxelstore, t, f
+
 
 def loadTransitionClassifier(transitionClassifierFilename, transitionClassifierPath):
     """
@@ -529,17 +541,21 @@ def loadTransitionClassifier(transitionClassifierFilename, transitionClassifierP
     rf = traxelstore.RandomForestClassifier(transitionClassifierPath, transitionClassifierFilename)
     return rf
 
+
 def negLog(features):
     fa = np.array(features)
     fa[fa < 0.0000000001] = 0.0000000001
     return list(np.log(fa) * -1.0)
 
+
 def getDetectionFeatures(traxel, max_state):
     return hypothesesgraph.getTraxelFeatureVector(traxel, "detProb", max_state)
 
+
 def getDivisionFeatures(traxel):
     prob = traxel.get_feature_value("divProb", 0)
-    return [1.0-prob, prob]
+    return [1.0 - prob, prob]
+
 
 def getTransitionFeaturesDist(traxelA, traxelB, transitionParam, max_state):
     """
@@ -548,7 +564,8 @@ def getTransitionFeaturesDist(traxelA, traxelB, transitionParam, max_state):
     positions = [np.array([t.X(), t.Y(), t.Z()]) for t in [traxelA, traxelB]]
     dist = np.linalg.norm(positions[0] - positions[1])
     prob = np.exp(-dist / transitionParam)
-    return [1.0-prob] + [prob]*(max_state - 1)
+    return [1.0 - prob] + [prob] * (max_state - 1)
+
 
 def getTransitionFeaturesRF(traxelA, traxelB, transitionClassifier, pyTraxelstore, max_state):
     """
@@ -557,10 +574,11 @@ def getTransitionFeaturesRF(traxelA, traxelB, transitionClassifier, pyTraxelstor
     feats = [pyTraxelstore.getTraxelFeatureDict(obj.Timestep, obj.Id) for obj in [traxelA, traxelB]]
     featVec = pyTraxelstore.getTransitionFeatureVector(feats[0], feats[1], transitionClassifier.selectedFeatures)
     probs = transitionClassifier.predictProbabilities(featVec)[0]
-    return [probs[0]] + [probs[1]]*(max_state - 1)
+    return [probs[0]] + [probs[1]] * (max_state - 1)
+
 
 def getBoundaryCostMultiplier(traxel, fov, margin):
-    dist = fov.spatial_distance_to_border(traxel.Timestep,traxel.X(),traxel.Y(),traxel.Z(), False)
+    dist = fov.spatial_distance_to_border(traxel.Timestep, traxel.X(), traxel.Y(), traxel.Z(), False)
     if dist > margin:
         return 1.0
     else:
@@ -569,8 +587,10 @@ def getBoundaryCostMultiplier(traxel, fov, margin):
         else:
             return 1.0
 
+
 def listify(l):
     return [[e] for e in l]
+
 
 def getHypothesesGraphAndIterators(options, shape, t0, t1, ts, pyTraxelstore):
     """
@@ -579,11 +599,11 @@ def getHypothesesGraphAndIterators(options, shape, t0, t1, ts, pyTraxelstore):
     if pyTraxelstore is not None:
         print("Building python hypotheses graph")
         hypotheses_graph = hypothesesgraph.HypothesesGraph()
-        hypotheses_graph.buildFromTraxelstore(pyTraxelstore, 
-            numNearestNeighbors = options.max_nearest_neighbors,
-            maxNeighborDist = options.mnd,
-            withDivisions = not options.without_divisions,
-            divisionThreshold = options.division_threshold)
+        hypotheses_graph.buildFromTraxelstore(pyTraxelstore,
+                                              numNearestNeighbors=options.max_nearest_neighbors,
+                                              maxNeighborDist=options.mnd,
+                                              withDivisions=not options.without_divisions,
+                                              divisionThreshold=options.division_threshold)
 
         # TODO:
         # if not options.without_tracklets:
@@ -610,6 +630,7 @@ def getHypothesesGraphAndIterators(options, shape, t0, t1, ts, pyTraxelstore):
 
     return hypotheses_graph, n_it, a_it, fov
 
+
 def loadTraxelstoreAndTransitionClassifier(options, ilp_fn, time_range, shape):
     """
     Load traxelstore either from ilp or by computing raw features, 
@@ -617,7 +638,7 @@ def loadTraxelstoreAndTransitionClassifier(options, ilp_fn, time_range, shape):
     Also load the transition classifier if raw features were computed and a transitionClassifierFile is given
     """
     transitionClassifier = None
-    
+
     try:
         ts, fs, _, ndim, t0, t1 = getTraxelStore(options, ilp_fn, time_range, shape)
         foundDetectionProbabilities = True
@@ -634,28 +655,33 @@ def loadTraxelstoreAndTransitionClassifier(options, ilp_fn, time_range, shape):
             objectCountClassifierPath = '/' + [t for t in options.obj_count_path.split('/') if len(t) > 0][0]
             if not options.without_divisions:
                 divisionClassifierPath = '/' + [t for t in options.div_prob_path.split('/') if len(t) > 0][0]
-            else:    
+            else:
                 divisionClassifierPath = None
-            pyTraxelstore, ts, fs = loadPyTraxelstore(options, 
-                                        ilp_fn, 
-                                        objectCountClassifierPath=objectCountClassifierPath,
-                                        divisionClassifierPath=divisionClassifierPath,
-                                        time_range=time_range,
-                                        usePgmlink=False)
+            pyTraxelstore, ts, fs = loadPyTraxelstore(options,
+                                                      ilp_fn,
+                                                      objectCountClassifierPath=objectCountClassifierPath,
+                                                      divisionClassifierPath=divisionClassifierPath,
+                                                      time_range=time_range,
+                                                      usePgmlink=False)
             t0, t1 = pyTraxelstore.timeRange
             ndim = pyTraxelstore.getNumDimensions()
             foundDetectionProbabilities = True
 
         if options.transition_classifier_filename != None:
-            transitionClassifier = loadTransitionClassifier(options.transition_classifier_filename, options.transition_classifier_path)
+            transitionClassifier = loadTransitionClassifier(options.transition_classifier_filename,
+                                                            options.transition_classifier_path)
     else:
         pyTraxelstore = None
 
-    assert(foundDetectionProbabilities)
+    assert (foundDetectionProbabilities)
 
     return ts, fs, ndim, t0, t1, pyTraxelstore, transitionClassifier
 
+
 if __name__ == "__main__":
+    """
+    Main loop of script
+    """
     options, args = getConfigAndCommandLineArguments()
 
     # get filenames
@@ -678,7 +704,7 @@ if __name__ == "__main__":
         except:
             pass
 
-    ### Do the tracking
+    # Do the tracking
     start = time.time()
 
     feature_path = options.feats_path
@@ -702,7 +728,9 @@ if __name__ == "__main__":
         shape = h5file['/'.join(options.label_img_path.split('/')[:-1])].values()[0].shape[1:4]
 
     # load traxelstore
-    ts, fs, ndim, t0, t1, pyTraxelstore, transitionClassifier = loadTraxelstoreAndTransitionClassifier(options, ilp_fn, time_range, shape)
+    ts, fs, ndim, t0, t1, pyTraxelstore, transitionClassifier = loadTraxelstoreAndTransitionClassifier(options, ilp_fn,
+                                                                                                       time_range,
+                                                                                                       shape)
 
     # build hypotheses graph
     hypotheses_graph, n_it, a_it, fov = getHypothesesGraphAndIterators(options, shape, t0, t1, ts, pyTraxelstore)
@@ -713,12 +741,13 @@ if __name__ == "__main__":
 
     if pyTraxelstore is None:
         import pgmlink
+
         numElements = pgmlink.countNodes(hypotheses_graph) + pgmlink.countArcs(hypotheses_graph)
     else:
         numElements = hypotheses_graph.countNodes() + hypotheses_graph.countArcs()
 
     progressBar = ProgressBar(stop=numElements)
-    maxNumObjects = int(options.max_num_objects) + 1 # because we need features for state 0 as well!
+    maxNumObjects = int(options.max_num_objects) + 1  # because we need features for state 0 as well!
     margin = float(options.border_width)
 
     # get the map of node -> list(traxel) or just traxel
@@ -729,7 +758,7 @@ if __name__ == "__main__":
 
     # add all detections to JSON
     detections = []
-    for i,n in enumerate(n_it):
+    for i, n in enumerate(n_it):
         detection = {}
         if options.without_tracklets:
             # only one traxel, but make it a list so everything below works the same
@@ -750,9 +779,11 @@ if __name__ == "__main__":
             detFeats += np.array(negLog(getDetectionFeatures(t, maxNumObjects)))
             if previousTraxel is not None:
                 if transitionClassifier is None:
-                    detFeats += np.array(negLog(getTransitionFeaturesDist(previousTraxel, t, options.trans_par, maxNumObjects)))
+                    detFeats += np.array(
+                        negLog(getTransitionFeaturesDist(previousTraxel, t, options.trans_par, maxNumObjects)))
                 else:
-                    detFeats += np.array(negLog(getTransitionFeaturesRF(previousTraxel, t, transitionClassifier, pyTraxelstore, maxNumObjects)))
+                    detFeats += np.array(negLog(
+                        getTransitionFeaturesRF(previousTraxel, t, transitionClassifier, pyTraxelstore, maxNumObjects)))
             previousTraxel = t
 
         detection['features'] = listify(list(detFeats))
@@ -766,16 +797,18 @@ if __name__ == "__main__":
             pass
 
         detection['timestep'] = [traxels[0].Timestep, traxels[-1].Timestep]
-        
+
         if traxels[0].Timestep <= t0:
-            detection['appearanceFeatures'] = listify([0.0]*(maxNumObjects))
+            detection['appearanceFeatures'] = listify([0.0] * (maxNumObjects))
         else:
-            detection['appearanceFeatures'] = listify([0.0] + [getBoundaryCostMultiplier(traxels[0], fov, margin)] * (maxNumObjects-1))
-        
+            detection['appearanceFeatures'] = listify(
+                [0.0] + [getBoundaryCostMultiplier(traxels[0], fov, margin)] * (maxNumObjects - 1))
+
         if traxels[-1].Timestep >= t1:
-            detection['disappearanceFeatures'] = listify([0.0]*(maxNumObjects))
+            detection['disappearanceFeatures'] = listify([0.0] * (maxNumObjects))
         else:
-            detection['disappearanceFeatures'] = listify([0.0] + [getBoundaryCostMultiplier(traxels[-1], fov, margin)] * (maxNumObjects-1))
+            detection['disappearanceFeatures'] = listify(
+                [0.0] + [getBoundaryCostMultiplier(traxels[-1], fov, margin)] * (maxNumObjects - 1))
 
         detections.append(detection)
         progressBar.show()
@@ -788,14 +821,16 @@ if __name__ == "__main__":
             srcTraxel = traxelMap[hypotheses_graph.source(a)]
             destTraxel = traxelMap[hypotheses_graph.target(a)]
         else:
-            srcTraxel = traxelMap[hypotheses_graph.source(a)][-1] # src is last of the traxels in source tracklet
-            destTraxel = traxelMap[hypotheses_graph.target(a)][0] # dest is first of traxels in destination tracklet
+            srcTraxel = traxelMap[hypotheses_graph.source(a)][-1]  # src is last of the traxels in source tracklet
+            destTraxel = traxelMap[hypotheses_graph.target(a)][0]  # dest is first of traxels in destination tracklet
         link['src'] = traxelIdPerTimestepToUniqueIdMap[str(srcTraxel.Timestep)][str(srcTraxel.Id)]
         link['dest'] = traxelIdPerTimestepToUniqueIdMap[str(destTraxel.Timestep)][str(destTraxel.Id)]
         if transitionClassifier is None:
-            link['features'] = listify(negLog(getTransitionFeaturesDist(srcTraxel, destTraxel, options.trans_par, maxNumObjects)))
+            link['features'] = listify(
+                negLog(getTransitionFeaturesDist(srcTraxel, destTraxel, options.trans_par, maxNumObjects)))
         else:
-            link['features'] = listify(negLog(getTransitionFeaturesRF(srcTraxel, destTraxel, transitionClassifier, pyTraxelstore, maxNumObjects)))
+            link['features'] = listify(negLog(
+                getTransitionFeaturesRF(srcTraxel, destTraxel, transitionClassifier, pyTraxelstore, maxNumObjects)))
         links.append(link)
         progressBar.show()
 
@@ -816,4 +851,3 @@ if __name__ == "__main__":
 
     with open(options.json_filename, 'w') as f:
         json.dump(jsonRoot, f, indent=4, separators=(',', ': '))
-
