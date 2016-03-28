@@ -37,7 +37,9 @@ if __name__ == "__main__":
         for seg in segmentationHypotheses:
             newSeg = copy.deepcopy(seg)
             newSeg['id'] = offset + newSeg['id']
+            newSeg['disappTarget'] = i # specify that this should use a different target
             newModel['segmentationHypotheses'].append(newSeg)
+
 
         linkingHypotheses = model['linkingHypotheses']
         for link in linkingHypotheses:
@@ -60,3 +62,7 @@ if __name__ == "__main__":
             
     with open(args.result_filename, 'w') as f:
         json.dump(newModel, f, indent=4, separators=(',', ': '))
+
+
+# python replicate_graph.py --model /Users/chaubold/GoogleDrive/Jobs/IWRHeidelberg/eccv16data/rapoport/graphDistTransitionsConvex.json --output /Users/chaubold/GoogleDrive/Jobs/IWRHeidelberg/eccv16data/rapoport/graphDistTransitionsConvex-2times.json --num 2
+# python replicate_graph.py --model /Users/chaubold/GoogleDrive/Jobs/IWRHeidelberg/eccv16data/drosophila/graphNoTransClassConvex.json --output /Users/chaubold/GoogleDrive/Jobs/IWRHeidelberg/eccv16data/drosophila/graphNoTransClassConvex-2times.json --num 2
