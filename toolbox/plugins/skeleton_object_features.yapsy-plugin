@@ -1,0 +1,9 @@
+[Core]
+Name = Skeleton Object Features
+Module = skeleton_object_features
+
+[Documentation]
+Description = Compute skeleton based region features of 2D segments
+Author = My very own name
+Version = the_version_number_of_the_plugin
+Website = My very own website

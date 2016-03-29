@@ -1,0 +1,9 @@
+[Core]
+Name = Standard Object Features
+Module = standard_object_features
+
+[Documentation]
+Description = Compute standard region features
+Author = My very own name
+Version = the_version_number_of_the_plugin
+Website = My very own website

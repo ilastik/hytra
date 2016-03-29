@@ -1,0 +1,9 @@
+[Core]
+Name = Convex Hull Object Features
+Module = convex_hull_object_features
+
+[Documentation]
+Description = Compute convex hull based region features of 2D segments
+Author = My very own name
+Version = the_version_number_of_the_plugin
+Website = My very own website
