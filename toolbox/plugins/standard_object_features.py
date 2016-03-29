@@ -10,7 +10,7 @@ class StandardObjectFeatures(object_feature_computation_plugin.ObjectFeatureComp
     omittedFeatures = ["Global<Maximum >", "Global<Minimum >", 'Histogram', 'Weighted<RegionCenter>']
 
     def computeFeatures(self, rawImage, labelImage, frameNumber):
-        return vigra.analysis.extractRegionFeatures(rawImage.astype('float32'),
-                                                    labelImage.astype('uint32'),
+        return vigra.analysis.extractRegionFeatures(rawImage.squeeze().astype('float32'),
+                                                    labelImage.squeeze().astype('uint32'),
                                                     ignoreLabel=0)
 
