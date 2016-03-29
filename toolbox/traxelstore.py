@@ -9,6 +9,7 @@ import vigra
 import divisionfeatures
 import numpy as np
 import h5py
+from pluginsystem.plugin_manager import TrackingPluginManager
 
 
 class IlastikProjectOptions:
@@ -199,6 +200,7 @@ class Traxelstore:
         assert (os.path.exists(ilpOptions.rawImageFilename))
 
         self._options = ilpOptions
+        self._pluginManager = TrackingPluginManager()
         self._countClassifier = None
         self._divisionClassifier = None
         self._transitionClassifier = None
@@ -233,29 +235,27 @@ class Traxelstore:
         # this public variable contains all traxels if we're not using pgmlink
         self.TraxelsPerFrame = {}
 
-    @staticmethod
-    def computeRegionFeatures(rawImage, labelImage):
+    def computeRegionFeatures(self, rawImage, labelImage, frameNumber):
         """
         Computes all region features for all objects in the given image
         """
         assert (labelImage.dtype == np.uint32)
-        regionFeatures = vigra.analysis.extractRegionFeatures(rawImage.squeeze().astype('float32'),
-                                                              labelImage.squeeze(), ignoreLabel=0)
-        regionFeatures = dict(regionFeatures.items())  # transform to dict
+
+        moreFeats, ignoreNames = self._pluginManager.applyObjectFeatureComputationPlugins(len(labelImage.shape),
+                                                                                    rawImage,
+                                                                                    labelImage,
+                                                                                    frameNumber)
+        frameFeatureItems = []
+        for f in moreFeats:
+            frameFeatureItems = frameFeatureItems + f.items()
+        frameFeatures = dict(frameFeatureItems)
 
         # delete the "Global<Min/Max>" features as they are not nice when iterating over everything
-        globalKeysToDelete = [k for k in regionFeatures.keys() if 'Global' in k]
-        for k in globalKeysToDelete:
-            del regionFeatures[k]
+        for k in ignoreNames:
+            if k in frameFeatures.keys():
+                del frameFeatures[k]
 
-        # additional features can only be computed for 2D data at the moment, so return pure region features only
-        if len(labelImage.shape) > 2:
-            return regionFeatures
-
-        convexHullFeatures = vigra.analysis.extractConvexHullFeatures(labelImage.squeeze(), ignoreLabel=0)
-        skeletonFeatures = vigra.analysis.extractSkeletonFeatures(
-            labelImage.squeeze())  # , ignoreLabel=0 <- imposed automatically
-        return dict(regionFeatures.items() + convexHullFeatures.items() + skeletonFeatures.items())
+        return frameFeatures
 
     def computeDivisionFeatures(self, featuresAtT, featuresAtTPlus1, labelImageAtTPlus1):
         """
@@ -320,7 +320,7 @@ class Traxelstore:
         rawImage = self.getRawImageForFrame(timeframe)
         labelImage = self.getLabelImageForFrame(timeframe)
 
-        return Traxelstore.computeRegionFeatures(rawImage, labelImage)
+        return self.computeRegionFeatures(rawImage, labelImage, timeframe)
 
     def _extractDivisionFeaturesForFrame(self, timeframe, featuresPerFrame):
         """
