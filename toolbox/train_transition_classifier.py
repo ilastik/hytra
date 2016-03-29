@@ -323,12 +323,12 @@ if __name__ == '__main__':
 
 
     # compute features
-    p = TrackingPluginManager()
+    trackingPluginManager = TrackingPluginManager()
     features = compute_features(rawimage,
                                 read_in_images(initFrame, endFrame, filepath, fileFormatString),
                                 initFrame,
                                 endFrame,
-                                p)
+                                trackingPluginManager)
     logger.info('Done computing features')
 
     selectedFeatures = find_features_without_NaNs(features)
