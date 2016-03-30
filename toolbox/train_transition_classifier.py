@@ -34,41 +34,13 @@ def compute_features(raw_image, labeled_image, n1, n2, pluginManager):
 
         # features = vigra.analysis.extractRegionFeatures(raw_image[..., i, 0].astype('float32'),
         #                                                 labeled_image[i][..., 0], ignoreLabel=0)
-        moreFeats, ignoreNames = pluginManager.applyObjectFeatureComputationPlugins(len(raw_image.shape) - 2,
-                                                raw_image[..., i, 0],
-                                                labeled_image[i][..., 0],
-                                                i)
+        moreFeats, ignoreNames = pluginManager.applyObjectFeatureComputationPlugins(
+            len(raw_image.shape) - 2, raw_image[..., i, 0], labeled_image[i][..., 0], i)
         frameFeatureItems = []
         for f in moreFeats:
             frameFeatureItems = frameFeatureItems + f.items()
         allFeat.append(dict(frameFeatureItems))
     return allFeat
-
-
-# return a feature vector of two objects (f1-f2,f1*f2)
-def getFeatures(f1, f2, o1, o2):
-    res = []
-    res2 = []
-    for key in f1:
-        if key == "Global<Maximum >" or key == "Global<Minimum >":
-            # the global min/max intensity is not interesting
-            continue
-        elif key == 'RegionCenter':
-            res.append(np.linalg.norm(f1[key][o1] - f2[key][o2]))  # difference of features
-            res2.append(np.linalg.norm(f1[key][o1] * f2[key][o2]))  # product of features
-        elif key == 'Histogram':  # contains only zeros, so trying to see what the prediction is without it
-            continue
-        elif key == 'Polygon':  # vect has always another length for different objects, so center would be relevant
-            continue
-        else:
-            res.append((f1[key][o1] - f2[key][o2]).tolist())  # prepare for flattening
-            res2.append((f1[key][o1] * f2[key][o2]).tolist())  # prepare for flattening
-    x = np.asarray(flatten(res))  # flatten
-    x2 = np.asarray(flatten(res2))  # flatten
-    # x= x[~np.isnan(x)]
-    # x2= x2[~np.isnan(x2)] #not getting the nans out YET
-    return np.concatenate((x, x2))
-
 
 # read in 'n2-n1' of labels
 def read_positiveLabels(n1, n2, filepath, fileFormatString='{:05}.h5'):
@@ -91,13 +63,15 @@ def negativeLabels(features, positiveLabels):
         # find k=3 nearest neighbors of each object of frame i-1 in frame i
         neighb = kdt.query(features[i - 1]['RegionCenter'][1:, ...], k=3, return_distance=False)
         for j in range(0, neighb.shape[0]):  # for all objects in frame i-1
-            logger.debug('looking at neighbors of {} at position {}'.format(j + 1, features[i - 1]['RegionCenter'][j + 1, ...]))
+            logger.debug('looking at neighbors of {} at position {}'.format(
+                j + 1, features[i - 1]['RegionCenter'][j + 1, ...]))
             for m in range(0, neighb.shape[1]):  # for all neighbors
                 pair = [j + 1, neighb[j][m] + 1]
                 if pair not in positiveLabels[i - 1].tolist():
                     # add one because we've removed the first element when creating the KD tree
                     frameNegLab.append(pair)
-                    logger.debug("Adding negative example: {} at position {}".format(pair, features[i]['RegionCenter'][neighb[j][m] + 1, ...]))
+                    logger.debug("Adding negative example: {} at position {}".format(
+                        pair, features[i]['RegionCenter'][neighb[j][m] + 1, ...]))
                 else:
                     logger.debug("Discarding negative example {} which is a positive annotation".format(pair))
         neg_lab.append(frameNegLab)
@@ -138,17 +112,16 @@ class TransitionClassifier:
         self.mydata = None
         self.labels = []
         self.selectedFeatures = selectedFeatures
-        self.featureNames = []
         self._numSamples = numSamples
         self._nextIdx = 0
         # TODO: check whether prediction here and in hypotheses graph script are the same!
 
-    def addSample(self, f1, f2, label):
+    def addSample(self, f1, f2, label, pluginManager):
         # if self.labels == []:
         self.labels.append(label)
         # else:
         #    self.labels = np.concatenate((np.array(self.labels),label)) # for adding batches of features
-        features = self.constructSampleFeatureVector(f1, f2)
+        features = self.constructSampleFeatureVector(f1, f2, pluginManager)
 
         if self._numSamples is None:
             # use vstack
@@ -165,50 +138,9 @@ class TransitionClassifier:
             self.mydata[self._nextIdx, :] = features
             self._nextIdx += 1
 
-    def constructSampleFeatureVector(self, f1, f2):
-        res = []
-        res2 = []
-        names = []
-        names2 = []
-        for key in self.selectedFeatures:
-            if key == "Global<Maximum >" or key == "Global<Minimum >":
-                # the global min/max intensity is not interesting
-                continue
-            elif key == 'RegionCenter':
-                res.append(np.linalg.norm(f1[key] - f2[key]))  # difference of features
-                res2.append(np.linalg.norm(f1[key] * f2[key]))  # product of features
-                names.append('distance')
-                names2.append('distance')
-            elif key == 'Histogram':  # contains only zeros, so trying to see what the prediction is without it
-                continue
-            elif key == 'Polygon':  # vect has always another length for different objects, so center would be relevant
-                continue
-            else:
-                if not isinstance(f1[key], np.ndarray):
-                    res.append(float(f1[key]) - float(f2[key]))  # prepare for flattening
-                    res2.append(float(f1[key]) * float(f2[key]))  # prepare for flattening
-                    names.append(key)
-                    names2.append(key)
-                else:
-                    res.append((f1[key] - f2[key]).tolist())  # prepare for flattening
-                    res2.append((f1[key] * f2[key]).tolist())  # prepare for flattening
-                    for _ in range((f1[key] - f2[key]).size):
-                        names.append(key)
-                        names2.append(key)
-        x = np.asarray(flatten(res))  # flatten
-        x2 = np.asarray(flatten(res2))  # flatten
-        assert (np.any(np.isnan(x)) == False)
-        assert (np.any(np.isnan(x2)) == False)
-        assert (np.any(np.isinf(x)) == False)
-        assert (np.any(np.isinf(x2)) == False)
-        features = np.concatenate((x, x2))
-
-        names = ['subtraction-' + n for n in names]
-        names2 = ['multiplication-' + n for n in names2]
-        allNames = names + names2
-        self.featureNames = ['{}:{}'.format(i, n) for i, n in enumerate(allNames)]
-
-        return features
+    def constructSampleFeatureVector(self, f1, f2, pluginManager):
+        featVec = pluginManager.applyTransitionFeatureVectorConstructionPlugins(f1, f2, self.selectedFeatures)
+        return np.array(featVec)
 
     # adding a comfortable function, where one can easily introduce the data
     def add_allData(self, mydata, labels):
@@ -217,9 +149,8 @@ class TransitionClassifier:
 
     def train(self, withFeatureImportance=False):
         logger.info(
-        "Training classifier from {} positive and {} negative labels".format(np.count_nonzero(np.asarray(self.labels)),
-                                                                             len(self.labels) - np.count_nonzero(
-                                                                                 np.asarray(self.labels))))
+        "Training classifier from {} positive and {} negative labels".format(
+            np.count_nonzero(np.asarray(self.labels)), len(self.labels) - np.count_nonzero(np.asarray(self.labels))))
         logger.info("Training classifier from a feature vector of length {}".format(self.mydata.shape))
 
         if withFeatureImportance:
@@ -227,7 +158,7 @@ class TransitionClassifier:
                 self.mydata.astype("float32"),
                 (np.asarray(self.labels)).astype("uint32").reshape(-1, 1))
             logger.debug("RF feature importance: {}".format(featImportance))
-            logger.debug('Feature names: {}'.format(self.featureNames))
+            # logger.debug('Feature names: {}'.format(self.featureNames))
         else:
             oob = self.rf.learnRF(
                 self.mydata.astype("float32"),
@@ -354,13 +285,16 @@ if __name__ == '__main__':
             # positive
             logger.debug("Adding positive sample {} from pos {} to {}".format(i,
                           features[k]['RegionCenter'][i[0]], features[k + 1]['RegionCenter'][i[1]]))
-            TC.addSample(compute_ObjFeatures(features[k], i[0]), compute_ObjFeatures(features[k + 1], i[1]), 1)
-            TC.addSample(compute_ObjFeatures(features[k + 1], i[1]), compute_ObjFeatures(features[k], i[0]), 1)
+            TC.addSample(compute_ObjFeatures(
+                features[k], i[0]), compute_ObjFeatures(features[k + 1], i[1]), 1, trackingPluginManager)
+            TC.addSample(compute_ObjFeatures(
+                features[k + 1], i[1]), compute_ObjFeatures(features[k], i[0]), 1, trackingPluginManager)
         for i in neg_labels[k]:
             # negative
             logger.debug("Adding negative sample {} from pos {} to {}".format(i,
                           features[k]['RegionCenter'][i[0]], features[k + 1]['RegionCenter'][i[1]]))
-            TC.addSample(compute_ObjFeatures(features[k], i[0]), compute_ObjFeatures(features[k + 1], i[1]), 0)
+            TC.addSample(compute_ObjFeatures(
+                features[k], i[0]), compute_ObjFeatures(features[k + 1], i[1]), 0, trackingPluginManager)
     logger.info('Done adding samples to RF. Beginning training...')
     TC.train()
     logger.info('Done training RF')

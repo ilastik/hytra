@@ -1,0 +1,9 @@
+[Core]
+Name = TransitionFeatVec: Multiplication Features
+Module = transition_feature_multiplication
+
+[Documentation]
+Description = Multiply Features of objects A and B for Transition Feature Vector
+Author = My very own name
+Version = the_version_number_of_the_plugin
+Website = My very own website

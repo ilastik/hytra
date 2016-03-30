@@ -1,5 +1,6 @@
 from yapsy.IPlugin import IPlugin
 
+
 class ObjectFeatureComputationPlugin(IPlugin):
     """
     This is the base class for all plugins that can do feature computation based on an image,
