@@ -6,7 +6,7 @@ import divisionfeatures
 import numpy as np
 import h5py
 from pluginsystem.plugin_manager import TrackingPluginManager
-
+import logging
 
 class IlastikProjectOptions:
     """
@@ -54,8 +54,9 @@ class RandomForestClassifier:
             else:
                 fullPath = '/'.join([self._classifierPath, self._options.classifierForestsGroupName])
             randomForests = []
-            print("trying to read {} classifiers in {} from {}".format(len(h5file[fullPath].keys()), self._ilpFilename,
-                                                                       fullPath))
+            logging.getLogger("RandomForestClassifier").info("trying to read {} classifiers in {} from {}".format(
+                len(h5file[fullPath].keys()), self._ilpFilename, fullPath))
+
             for k in h5file[fullPath].keys():
                 if 'Forest' in k:
                     print(str('/'.join([fullPath, k])))
@@ -122,9 +123,9 @@ class RandomForestClassifier:
         assert (len(features.shape) == 2)
         # assert(features.shape[1] == self._randomForests[0].featureCount())
         if not features.shape[1] == self._randomForests[0].featureCount():
-            print("Cannot predict from features of shape {} if {} features are expected".format(features.shape,
-                                                                                                self._randomForests[
-                                                                                                    0].featureCount()))
+            logging.getLogger("RandomForestClassifier").error(
+                "Cannot predict from features of shape {} if {} features are expected".format(features.shape,
+                      self._randomForests[0].featureCount()))
             print(features)
             raise AssertionError()
 
@@ -379,10 +380,10 @@ class Traxelstore:
             else:
                 assert (fs is not None)
 
-        print("Extracting features...")
+        logging.getLogger("Traxelstore").info("Extracting features...")
         self._featuresPerFrame = self._extractAllFeatures()
 
-        print("Creating traxels...")
+        logging.getLogger("Traxelstore").info("Creating traxels...")
         progressBar = ProgressBar(stop=len(self._featuresPerFrame))
         progressBar.show(increase=0)
 
@@ -411,19 +412,19 @@ class Traxelstore:
                         else:
                             featureValues = val[objectId, ...]
                     except:
-                        print(
-                        "Could not get feature values of {} for key {} from matrix with shape {}".format(objectId, key,
-                                                                                                         val.shape))
-                        sys.exit()
+                        logging.getLogger("Traxelstore").error(
+                            "Could not get feature values of {} for key {} from matrix with shape {}".format(
+                                objectId, key, val.shape))
+                        raise AssertionError()
                     try:
                         self._setTraxelFeatureArray(traxel, featureValues, key)
                         if key == 'RegionCenter':
                             self._setTraxelFeatureArray(traxel, featureValues, 'com')
                     except:
-                        print(
-                        "Could not add feature array {} of shape {} for {}".format(featureValues, featureValues.shape,
-                                                                                   key))
-                        sys.exit()
+                        logging.getLogger("Traxelstore").error(
+                            "Could not add feature array {} of shape {} for {}".format(
+                                featureValues, featureValues.shape, key))
+                        raise AssertionError()
 
                 # add random forest predictions
                 if self._countClassifier is not None:

@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 import sys
-
-sys.path.append('.')
-
 import os
 import os.path as path
 import glob
@@ -13,6 +10,8 @@ import h5py
 import json
 from progressbar import ProgressBar
 import hypothesesgraph
+import logging
+
 
 
 def getConfigAndCommandLineArguments():
@@ -164,21 +163,21 @@ def generate_traxelstore(h5file,
                          with_optical_correction=False,
                          ext_probs=None
                          ):
-    print "generating traxels"
-    print "filling traxelstore"
+    logging.info("generating traxels")
+    logging.info("filling traxelstore")
     import pgmlink as track
     ts = track.TraxelStore()
     fs = track.FeatureStore()
     max_traxel_id_at = track.VectorOfInt()
 
-    print "fetching region features and division probabilities"
-    print h5file.filename, feature_path
+    logging.info("fetching region features and division probabilities")
+    logging.debug("{}, {}".format(h5file.filename, feature_path))
 
     detection_probabilities = []
     division_probabilities = []
 
     if with_div:
-        print options.div_prob_path
+        logging.debug(options.div_prob_path)
         divProbs = h5file[options.div_prob_path]
 
     if with_merger_prior:
@@ -240,7 +239,7 @@ def generate_traxelstore(h5file,
         if pixel_count.size:
             pixel_count = pixel_count[1:, ...]
 
-        print "at timestep ", t, region_centers.shape[0], "traxels found"
+        logging.info("at timestep {}, {} traxels found".format(t, region_centers.shape[0]))
         count = 0
         filtered_labels[t] = []
         for idx in range(region_centers.shape[0]):
@@ -315,7 +314,7 @@ def generate_traxelstore(h5file,
                 obj_sizes.append(float(size))
             ts.add(fs, traxel)
 
-        print "at timestep ", t, count, "traxels passed filter"
+        logging.info("at timestep {}, {} traxels passed filter".format(t, count))
         max_traxel_id_at.append(int(region_centers.shape[0]))
         if count == 0:
             empty_frame = True
@@ -324,7 +323,7 @@ def generate_traxelstore(h5file,
 
     if median_object_size is not None:
         median_object_size[0] = np.median(np.array(obj_sizes), overwrite_input=True)
-        print 'median object size = ' + str(median_object_size[0])
+        logging.info('median object size = {}'.format(median_object_size[0]))
 
     return ts, fs, max_traxel_id_at, division_probabilities, detection_probabilities
 
@@ -364,15 +363,15 @@ def getTraxelStore(options, ilp_fn, time_range, shape):
     with h5py.File(ilp_fn, 'r') as h5file:
         ndim = 3
 
-        print '/'.join(options.label_img_path.strip('/').split('/')[:-1])
+        logging.debug('/'.join(options.label_img_path.strip('/').split('/')[:-1]))
 
         if h5file['/'.join(options.label_img_path.strip('/').split('/')[:-1])].values()[0].shape[3] == 1:
             ndim = 2
-        print 'ndim=', ndim
+        logging.debug('ndim={}'.format(ndim))
 
-        print time_range
+        logging.info("Time Range: {}".format(time_range))
         if options.load_traxelstore:
-            print 'loading traxelstore from file'
+            logging.info('loading traxelstore from file')
             import pickle
 
             with open(options.load_traxelstore, 'rb') as ts_in:
@@ -386,7 +385,7 @@ def getTraxelStore(options, ilp_fn, time_range, shape):
             if info[0] != options.mints or (options.maxts != -1 and info[4] != options.maxts - 1):
                 if options.maxts == -1:
                     options.maxts = info[4] + 1
-                print("Warning: Traxelstore has different time range than requested FOV. Trimming traxels...")
+                logging.warning("Traxelstore has different time range than requested FOV. Trimming traxels...")
                 fov = getFovFromOptions(options, shape, t0, t1)
                 fov.set_time_bounds(options.mints, options.maxts - 1)
                 new_ts = track.TraxelStore()
@@ -418,10 +417,10 @@ def getTraxelStore(options, ilp_fn, time_range, shape):
 
         info = [int(x) for x in ts.bounding_box()]
         t0, t1 = (info[0], info[4])
-        print "-> Traxelstore bounding box: " + str(info)
+        logging.info("-> Traxelstore bounding box: " + str(info))
 
         if options.dump_traxelstore:
-            print 'dumping traxelstore to file'
+            logging.info('dumping traxelstore to file')
             import pickle
 
             with open(options.dump_traxelstore, 'wb') as ts_out:
@@ -597,7 +596,7 @@ def getHypothesesGraphAndIterators(options, shape, t0, t1, ts, pyTraxelstore):
     Build the hypotheses graph either using pgmlink, or from the python traxelstore in python
     """
     if pyTraxelstore is not None:
-        print("Building python hypotheses graph")
+        logging.info("Building python hypotheses graph")
         hypotheses_graph = hypothesesgraph.HypothesesGraph()
         hypotheses_graph.buildFromTraxelstore(pyTraxelstore,
                                               numNearestNeighbors=options.max_nearest_neighbors,
@@ -615,7 +614,7 @@ def getHypothesesGraphAndIterators(options, shape, t0, t1, ts, pyTraxelstore):
 
     else:
         import pgmlink as track
-        print("Building pgmlink hypotheses graph")
+        logging.info("Building pgmlink hypotheses graph")
         # initialize tracker to get hypotheses graph
         tracker, fov = initializeConservationTracking(options, shape, t0, t1)
         hypotheses_graph = tracker.buildGraph(ts, options.max_nearest_neighbors)
@@ -645,7 +644,7 @@ def loadTraxelstoreAndTransitionClassifier(options, ilp_fn, time_range, shape):
     except Exception as e:
         print(e)
         foundDetectionProbabilities = False
-        print("WARNING: could not load detection (and/or division) probabilities from ilastik project file")
+        logging.warning("could not load detection (and/or division) probabilities from ilastik project file")
 
     if options.raw_filename != None:
         if foundDetectionProbabilities:
@@ -682,6 +681,7 @@ if __name__ == "__main__":
     """
     Main loop of script
     """
+    logging.basicConfig(level=logging.INFO)
     options, args = getConfigAndCommandLineArguments()
 
     # get filenames
@@ -689,15 +689,14 @@ if __name__ == "__main__":
     fns = []
     if numArgs > 0:
         for arg in args:
-            print arg
+            logging.debug(arg)
             fns.extend(glob.glob(arg))
         fns.sort()
-        print(fns)
+        logging.info(fns)
 
-    print fns
     ilp_fn = fns[0]
 
-    # create output path
+    # create output path if it doesn't exist
     if not path.exists(options.out_dir):
         try:
             os.makedirs(options.out_dir)
