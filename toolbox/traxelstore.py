@@ -1,8 +1,4 @@
 import sys
-
-sys.path.append('../.')
-sys.path.append('.')
-
 import os
 from progressbar import ProgressBar
 import vigra
@@ -473,42 +469,12 @@ class Traxelstore:
                 traxelFeatureDict[k] = v[objectId, ...]
         return traxelFeatureDict
 
-    @staticmethod
-    def getTransitionFeatureVector(featureDictObjectA, featureDictObjectB, selectedFeatures):
+    def getTransitionFeatureVector(self, featureDictObjectA, featureDictObjectB, selectedFeatures):
         """
         Return component wise difference and product of the selected features as input for the TransitionClassifier
         """
-        from compiler.ast import flatten
-        res = []
-        res2 = []
-
-        for key in selectedFeatures:
-            if key == "Global<Maximum >" or key == "Global<Minimum >":
-                # the global min/max intensity is not interesting
-                continue
-            elif key == 'RegionCenter':
-                res.append(np.linalg.norm(featureDictObjectA[key] - featureDictObjectB[key]))  # difference of features
-                res2.append(np.linalg.norm(featureDictObjectA[key] * featureDictObjectB[key]))  # product of features
-            elif key == 'Histogram':  # contains only zeros, so trying to see what the prediction is without it
-                continue
-            elif key == 'Polygon':  # vect has always another length for different objects, so center would be relevant
-                continue
-            else:
-                if not isinstance(featureDictObjectA[key], np.ndarray) or featureDictObjectA[key].size == 1:
-                    res.append(float(featureDictObjectA[key]) - float(featureDictObjectB[key]))  # prepare for flattening
-                    res2.append(float(featureDictObjectA[key]) * float(featureDictObjectB[key]))  # prepare for flattening
-                else:
-                    res.append((featureDictObjectA[key] - featureDictObjectB[key]).tolist())  # prepare for flattening
-                    res2.append((featureDictObjectA[key] * featureDictObjectB[key]).tolist())  # prepare for flattening
-
-        x = np.asarray(flatten(res))  # flatten
-        x2 = np.asarray(flatten(res2))  # flatten
-        assert (np.any(np.isnan(x)) == False)
-        assert (np.any(np.isnan(x2)) == False)
-        assert (np.any(np.isinf(x)) == False)
-        assert (np.any(np.isinf(x2)) == False)
-
-        features = np.concatenate((x, x2))
+        features = np.array(self._pluginManager.applyTransitionFeatureVectorConstructionPlugins(
+            featureDictObjectA, featureDictObjectB, selectedFeatures))
         features = np.expand_dims(features, axis=0)
         return features
 
