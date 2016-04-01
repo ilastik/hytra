@@ -22,6 +22,18 @@ def match(fn_pair):
     return assoc
 
 
+def getIdsAndValidity(h5file):
+    try:
+        ids = np.sort(h5file['objects/meta/id'].value)            
+        valid = h5file['objects/meta/valid'].value
+    except:
+        print("Warning: could not load ids and validity from hdf5 file. Reconstructing from segmentation...")
+        labelImage = h5file['segmentation/labels'].value
+        ids = np.unique(labelImage)
+        ids = ids[ids > 0]
+        valid = np.ones(ids.shape)
+    return ids, valid
+
 def construct_associations(base_fns, cont_fns, timesteps, verbose=False):
     assocs = []
     for t in range(timesteps):
@@ -29,13 +41,11 @@ def construct_associations(base_fns, cont_fns, timesteps, verbose=False):
         cont_fn = cont_fns[t]
         assert(int(os.path.splitext(os.path.basename(base_fn))[0]) == int(os.path.splitext(os.path.basename(cont_fn))[0]))
         with h5py.File(base_fn, 'r') as f:
-            base_ids = np.sort(f['objects/meta/id'].value)            
-            base_valid = f['objects/meta/valid'].value
+            base_ids, base_valid = getIdsAndValidity(f)
             # base_detection = f['objects/meta/detection'].value
 
         with h5py.File(cont_fn, 'r') as f:
-            cont_ids = np.sort(f['objects/meta/id'].value)
-            cont_valid = f['objects/meta/valid'].value
+            cont_ids, cont_valid = getIdsAndValidity(f)
             # cont_detection = f['objects/meta/detection'].value
 
         if verbose:

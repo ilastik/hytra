@@ -163,6 +163,11 @@ def generate_traxelstore(h5file,
                          with_optical_correction=False,
                          ext_probs=None
                          ):
+    """
+    Legacy way of creating the "traxelstore", that can handle the old drosophila and rapoport
+    ilastik project files and load the stored probabilities.
+    """
+
     logging.info("generating traxels")
     logging.info("filling traxelstore")
     import pgmlink as track
