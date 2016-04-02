@@ -25,7 +25,7 @@ class TrackingPluginManager():
 
         self._yapsyPluginManager.collectPlugins()
 
-    def applyObjectFeatureComputationPlugins(self, ndims, rawImage, labelImage, frameNumber):
+    def applyObjectFeatureComputationPlugins(self, ndims, rawImage, labelImage, frameNumber, rawFilename):
         """
         computes the features of all plugins and returns a list of dictionaries, as well as a list of
         feature names that should be ignored
@@ -35,7 +35,7 @@ class TrackingPluginManager():
         for pluginInfo in self._yapsyPluginManager.getPluginsOfCategory("ObjectFeatureComputation"):
             p = pluginInfo.plugin_object
             if ndims in p.worksForDimensions:
-                f = p.computeFeatures(rawImage, labelImage, frameNumber)
+                f = p.computeFeatures(rawImage, labelImage, frameNumber, rawFilename)
                 features.append(f)
                 featureNamesToIgnore.extend(p.omittedFeatures)
         return features, featureNamesToIgnore

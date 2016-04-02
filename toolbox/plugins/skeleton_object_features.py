@@ -9,5 +9,5 @@ class SkeletonObjectFeatures(object_feature_computation_plugin.ObjectFeatureComp
     worksForDimensions = [2]
     omittedFeatures = ['Polygon']
 
-    def computeFeatures(self, rawImage, labelImage, frameNumber):
+    def computeFeatures(self, rawImage, labelImage, frameNumber, rawFilename):
         return vigra.analysis.extractSkeletonFeatures(labelImage.squeeze().astype(np.uint32))

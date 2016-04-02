@@ -241,7 +241,8 @@ class Traxelstore:
         moreFeats, ignoreNames = self._pluginManager.applyObjectFeatureComputationPlugins(len(labelImage.shape),
                                                                                     rawImage,
                                                                                     labelImage,
-                                                                                    frameNumber)
+                                                                                    frameNumber,
+                                                                                    self._options.rawImageFilename)
         frameFeatureItems = []
         for f in moreFeats:
             frameFeatureItems = frameFeatureItems + f.items()

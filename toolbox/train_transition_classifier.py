@@ -23,7 +23,7 @@ def read_in_images(n1, n2, filepath, fileFormatString='{:05}.h5'):
 
 
 # compute features from input data and return them
-def compute_features(raw_image, labeled_image, n1, n2, pluginManager):
+def compute_features(raw_image, labeled_image, n1, n2, pluginManager, filepath):
     # perhaps there is an elegant way to get into the RegionFeatureAccumulator.
     # For now, the new feature are a separate vector
     allFeat = []
@@ -35,7 +35,7 @@ def compute_features(raw_image, labeled_image, n1, n2, pluginManager):
         # features = vigra.analysis.extractRegionFeatures(raw_image[..., i, 0].astype('float32'),
         #                                                 labeled_image[i][..., 0], ignoreLabel=0)
         moreFeats, ignoreNames = pluginManager.applyObjectFeatureComputationPlugins(
-            len(raw_image.shape) - 2, raw_image[..., i, 0], labeled_image[i][..., 0], i)
+            len(raw_image.shape) - 2, raw_image[..., i, 0], labeled_image[i][..., 0], i, filepath)
         frameFeatureItems = []
         for f in moreFeats:
             frameFeatureItems = frameFeatureItems + f.items()
@@ -259,7 +259,8 @@ if __name__ == '__main__':
                                 read_in_images(initFrame, endFrame, filepath, fileFormatString),
                                 initFrame,
                                 endFrame,
-                                trackingPluginManager)
+                                trackingPluginManager,
+                                filepath)
     logger.info('Done computing features')
 
     selectedFeatures = find_features_without_NaNs(features)

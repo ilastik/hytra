@@ -26,7 +26,7 @@ class ObjectFeatureComputationPlugin(IPlugin):
         """
         pass
 
-    def computeFeatures(self, rawImage, labelImage, frameNumber):
+    def computeFeatures(self, rawImage, labelImage, frameNumber, rawFilename):
         """
         Compute new features based on the raw and labelimage, for the given frame number.
         Should return a dict that has each computed feature as key, and as value a list

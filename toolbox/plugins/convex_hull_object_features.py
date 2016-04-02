@@ -9,7 +9,7 @@ class ConvexHullObjectFeatures(object_feature_computation_plugin.ObjectFeatureCo
     worksForDimensions = [2]
     omittedFeatures = ['Polygon', 'Defect Center', 'Center', 'Input Center']
 
-    def computeFeatures(self, rawImage, labelImage, frameNumber):
+    def computeFeatures(self, rawImage, labelImage, frameNumber, rawFilename):
         return vigra.analysis.extractConvexHullFeatures(labelImage.squeeze().astype(np.uint32),
                                                         ignoreLabel=0)
 
