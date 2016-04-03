@@ -192,6 +192,9 @@ class Traxel:
     def print_available_features(self):
         print self.Features.keys()
 
+    def __repr__(self):
+        return "Traxel(Timestep={},Id={})".format(self.Timestep, self.Id)
+
 
 class Traxelstore:
     """

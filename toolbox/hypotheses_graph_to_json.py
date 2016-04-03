@@ -808,7 +808,7 @@ if __name__ == "__main__":
             detection['appearanceFeatures'] = listify(
                 [0.0] + [getBoundaryCostMultiplier(traxels[0], fov, margin)] * (maxNumObjects - 1))
 
-        if traxels[-1].Timestep >= t1:
+        if traxels[-1].Timestep >= t1 - 1:
             detection['disappearanceFeatures'] = listify([0.0] * (maxNumObjects))
         else:
             detection['disappearanceFeatures'] = listify(
@@ -844,7 +844,7 @@ if __name__ == "__main__":
     settings['allowPartialMergerAppearance'] = False
     settings['requireSeparateChildrenOfDivision'] = True
     settings['optimizerEpGap'] = 0.01
-    settings['optimizerVerbose'] = False
+    settings['optimizerVerbose'] = True
     settings['optimizerNumThreads'] = 1
 
     jsonRoot['traxelToUniqueId'] = traxelIdPerTimestepToUniqueIdMap

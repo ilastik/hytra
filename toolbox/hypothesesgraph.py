@@ -73,6 +73,8 @@ class HypothesesGraph:
         in the kdtree less than maxNeighborDist away of the traxel.
         """
         kdtree, objectIdList = kdtreeObjectPair
+        if len(objectIdList) <= numNeighbors:
+            return objectIdList
         distances, neighbors = kdtree.query(self._extractCenter(traxel), k=numNeighbors, return_distance=True)
         return [objectIdList[index] for distance, index in zip(distances[0], neighbors[0]) if
                 distance < maxNeighborDist]
@@ -92,7 +94,7 @@ class HypothesesGraph:
                 try:
                     return getTraxelFeatureVector(traxel, 'RegionCenter')
                 except:
-                    raise InvalidArgumentException('given traxel (t={},id={}) does not have \
+                    raise ValueError('given traxel (t={},id={}) does not have \
                         "com" or "RegionCenter"'.format(traxel.Timestep, traxel.Id))
 
     def _traxelMightDivide(self, traxel, divisionThreshold):
