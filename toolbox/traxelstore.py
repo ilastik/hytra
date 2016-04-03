@@ -395,6 +395,14 @@ class Traxelstore:
         progressBar.show(increase=0)
 
         for frame, features in self._featuresPerFrame.iteritems():
+            # predict random forests
+            if self._countClassifier is not None:
+                objectCountProbabilities = self._countClassifier.predictProbabilities(features=None, featureDict=features)
+
+            if self._divisionClassifier is not None:
+                divisionProbabilities = self._divisionClassifier.predictProbabilities(features=None, featureDict=features)
+
+            # create traxels for all objects
             for objectId in range(1, features.values()[0].shape[0]):
                 # print("Frame {} Object {}".format(frame, objectId))
                 pixelSize = features['Count'][objectId]
@@ -435,12 +443,10 @@ class Traxelstore:
 
                 # add random forest predictions
                 if self._countClassifier is not None:
-                    probs = self._countClassifier.predictProbabilities(features=None, featureDict=features)
-                    self._setTraxelFeatureArray(traxel, probs, self.detectionProbabilityFeatureName)
+                    self._setTraxelFeatureArray(traxel, objectCountProbabilities[objectId, :], self.detectionProbabilityFeatureName)
 
                 if self._divisionClassifier is not None:
-                    probs = self._divisionClassifier.predictProbabilities(features=None, featureDict=features)
-                    self._setTraxelFeatureArray(traxel, probs, self.divisionProbabilityFeatureName)
+                    self._setTraxelFeatureArray(traxel, divisionProbabilities[objectId, :], self.divisionProbabilityFeatureName)
 
                 # set other parameters
                 traxel.set_x_scale(self.x_scale)
