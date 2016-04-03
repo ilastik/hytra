@@ -7,6 +7,7 @@ import numpy as np
 import h5py
 from pluginsystem.plugin_manager import TrackingPluginManager
 import logging
+import time
 
 class IlastikProjectOptions:
     """
@@ -324,17 +325,20 @@ class Traxelstore:
         rawImage = self.getRawImageForFrame(timeframe)
         labelImage = self.getLabelImageForFrame(timeframe)
 
-        return self.computeRegionFeatures(rawImage, labelImage, timeframe)
+        return timeframe, self.computeRegionFeatures(rawImage, labelImage, timeframe)
 
     def _extractDivisionFeaturesForFrame(self, timeframe, featuresPerFrame):
         """
         extract Division Features for one frame, and store them in the given featuresPerFrame dict
         """
+        feats = {}
         if timeframe + 1 < self.timeRange[1]:
             labelImageAtTPlus1 = self.getLabelImageForFrame(timeframe + 1)
-            featuresPerFrame[timeframe].update(
-                self.computeDivisionFeatures(featuresPerFrame[timeframe], featuresPerFrame[timeframe + 1],
-                                             labelImageAtTPlus1))
+            feats = self.computeDivisionFeatures(featuresPerFrame[timeframe],
+                                                 featuresPerFrame[timeframe + 1],
+                                                 labelImageAtTPlus1)
+
+        return timeframe, feats
 
     def _extractAllFeatures(self):
         """
@@ -347,17 +351,48 @@ class Traxelstore:
         progressBar = ProgressBar(stop=numSteps)
         progressBar.show(increase=0)
 
+        t0 = time.clock()
+
+        # # parallelization experiments, but as vigra RF cannot be pickled one can only use the ThreadPool, which doesn't help.
+        # import concurrent.futures
+        # featuresPerFrame = {}
+        # with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+        #     # 1st pass for region features
+        #     jobs = []
+        #     for frame in range(self.timeRange[0], self.timeRange[1]):
+        #         jobs.append(executor.submit(Traxelstore._extractFeaturesForFrame, self, frame))
+        #
+        #     for job in concurrent.futures.as_completed(jobs):
+        #         progressBar.show()
+        #         frame, feats = job.result()
+        #         featuresPerFrame[frame] = feats
+        #
+        #     # 2nd pass for division features
+        #     if self._divisionClassifier is not None:
+        #         jobs = []
+        #         for frame in range(self.timeRange[0], self.timeRange[1]):
+        #             jobs.append(executor.submit(Traxelstore._extractDivisionFeaturesForFrame,
+        #                                         self, frame, featuresPerFrame))
+        #
+        #         for job in concurrent.futures.as_completed(jobs):
+        #             progressBar.show()
+        #             frame, feats = job.result()
+        #             featuresPerFrame[frame].update(feats)
+
         # 1st pass for region features
         featuresPerFrame = {}
         for frame in range(self.timeRange[0], self.timeRange[1]):
             progressBar.show()
-            featuresPerFrame[frame] = self._extractFeaturesForFrame(frame)
+            featuresPerFrame[frame] = self._extractFeaturesForFrame(frame)[1]
 
         # 2nd pass for division features
         if self._divisionClassifier is not None:
             for frame in range(self.timeRange[0], self.timeRange[1]):
                 progressBar.show()
-                self._extractDivisionFeaturesForFrame(frame, featuresPerFrame)
+                featuresPerFrame[frame].update(self._extractDivisionFeaturesForFrame(frame, featuresPerFrame)[1])
+
+        t1 = time.clock()
+        logging.getLogger("Traxelstore").info("Feature computation took {} secs".format(t1 - t0))
 
         return featuresPerFrame
 
