@@ -104,7 +104,13 @@ class RandomForestClassifier:
             if featureVectors is None:
                 featureVectors = vec
             else:
-                featureVectors = np.hstack([featureVectors, vec])
+                if len(vec.shape) == 3:
+                    for row in range(vec.shape[2]):
+                        featureVectors = np.hstack([featureVectors, vec[..., row]])
+                elif len(vec.shape) > 3:
+                    raise ValueError("Cannot deal with features of more than two dimensions yet")
+                else:
+                    featureVectors = np.hstack([featureVectors, vec])
 
         return featureVectors
 
