@@ -16,9 +16,7 @@ class LocalImageLoader(image_provider_plugin.ImageProviderPlugin):
         PathInResource provides the internal image path 
         Return numpy array of image data at timeframe.
         """
-        print "opening ",Resource
         with h5py.File(Resource, 'r') as rawH5:
-            print "PathInResource",timeframe
             rawImage = rawH5[PathInResource][timeframe, ...]
             return rawImage
 

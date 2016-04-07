@@ -26,7 +26,7 @@ class TrackingPluginManager():
             logging.getLogger('yapsy').setLevel(logging.DEBUG)
 
         self._yapsyPluginManager.collectPlugins()
-        self.chosen_data_provider = "LocalImageLoader" # TODO: lazy selection, set default to None
+        self.chosen_data_provider = "LocalImageLoader"
 
     def applyObjectFeatureComputationPlugins(self, ndims, rawImage, labelImage, frameNumber, rawFilename):
         """

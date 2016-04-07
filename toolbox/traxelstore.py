@@ -203,8 +203,6 @@ class Traxelstore:
     """
 
     def __init__(self, ilpOptions):
-        assert (os.path.exists(ilpOptions.labelImageFilename))
-        assert (os.path.exists(ilpOptions.rawImageFilename))
 
         self._options = ilpOptions
         self._pluginManager = TrackingPluginManager()
@@ -544,6 +542,9 @@ if __name__ == '__main__':
     parser.add_argument('--label-image-path', type=str, dest='labelImagePath',
                         help='Path inside ilastik project file to the label image',
                         default='/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]')
+    parser.add_argument('--label-image', type=str, dest='labelImageFilename',
+                        help='Path to Label image. If empty ilp filename will be used',
+                        default='')
     parser.add_argument('--object-count-classifier-path', type=str, dest='objectCountClassifierPath',
                         help='Path inside ilastik project file to the object count classifier',
                         default='/CountClassification')
@@ -570,7 +571,12 @@ if __name__ == '__main__':
     ilpOptions.randomForestZeroPaddingWidth = args.rfZeroPadding
     ilpOptions.labelImagePath = args.labelImagePath
     ilpOptions.rawImagePath = args.rawPath
-    ilpOptions.labelImageFilename = args.ilpFilename
+
+    if(not args.labelImageFilename):
+        ilpOptions.labelImageFilename = args.ilpFilename
+    else:
+        ilpOptions.labelImageFilename = args.labelImageFilename
+        
     ilpOptions.objectCountClassifierFilename = args.ilpFilename
     ilpOptions.divisionClassifierFilename = args.ilpFilename
     ilpOptions.rawImageFilename = args.rawFilename
