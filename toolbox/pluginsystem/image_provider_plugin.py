@@ -24,7 +24,6 @@ class ImageProviderPlugin(IPlugin):
         Loads image data from location.
         Return one numpy array.
         """
-
         raise NotImplementedError()
         return []
 
@@ -35,9 +34,16 @@ class ImageProviderPlugin(IPlugin):
         raise NotImplementedError()
         return []
 
-    def _getShapeAndTimeRange(self):
+    def getImageShape(self, Resource, PathInResource):
         """
         extract the shape from the labelimage
+        """
+        raise NotImplementedError()
+        return []
+
+    def getTimeRange(self, Resource, PathInResource):
+        """
+        extract the time range by counting labelimages
         """
         raise NotImplementedError()
         return []
