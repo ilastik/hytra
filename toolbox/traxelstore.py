@@ -215,6 +215,7 @@ class Traxelstore:
         if ilpOptions.objectCountClassifierPath != None and ilpOptions.objectCountClassifierFilename != None:
             self._countClassifier = RandomForestClassifier(ilpOptions.objectCountClassifierPath,
                                                            ilpOptions.objectCountClassifierFilename, ilpOptions)
+        print ilpOptions.divisionClassifierPath
         if ilpOptions.divisionClassifierPath != None and ilpOptions.divisionClassifierFilename != None:
             self._divisionClassifier = RandomForestClassifier(ilpOptions.divisionClassifierPath,
                                                               ilpOptions.divisionClassifierFilename, ilpOptions)
@@ -297,28 +298,23 @@ class Traxelstore:
         """
         extract the shape from the labelimage
         """
-        with h5py.File(self._options.labelImageFilename, 'r') as h5file:
-            shape = h5file['/'.join(self._options.labelImagePath.split('/')[:-1])].values()[0].shape[1:4]
-            maxTime = len(h5file['/'.join(self._options.labelImagePath.split('/')[:-1])].keys())
-            return shape, (0, maxTime)
+        shape = self._pluginManager.getImageProvider().getImageShape(self._options.labelImageFilename, self._options.labelImagePath)
+        timerange = self._pluginManager.getImageProvider().getTimeRange(self._options.labelImageFilename, self._options.labelImagePath)
+        return shape,timerange
 
     def getLabelImageForFrame(self, timeframe):
         """
         Get the label image(volume) of one time frame
         """
-        with h5py.File(self._options.labelImageFilename, 'r') as h5file:
-            labelImage = h5file[
-                self._options.labelImagePath % (timeframe, timeframe + 1, self.shape[0], self.shape[1], self.shape[2])][
-                0, ..., 0].squeeze().astype(np.uint32)
-            return labelImage
+        rawImage = self._pluginManager.getImageProvider().getLabelImageForFrame(self._options.labelImageFilename, self._options.labelImagePath, timeframe)
+        return rawImage
 
     def getRawImageForFrame(self, timeframe):
         """
         Get the raw image(volume) of one time frame
         """
-        with h5py.File(self._options.rawImageFilename, 'r') as rawH5:
-            rawImage = rawH5[self._options.rawImagePath][timeframe, ...]
-            return rawImage
+        rawImage = self._pluginManager.getImageProvider().getImageDataAtTimeFrame(self._options.rawImageFilename, self._options.rawImagePath, timeframe)
+        return rawImage
 
     def _extractFeaturesForFrame(self, timeframe):
         """
@@ -564,6 +560,8 @@ if __name__ == '__main__':
 
     ilpOptions = IlastikProjectOptions()
 
+    logging.basicConfig(level=logging.INFO)
+
     ilpOptions.objectCountClassifierPath = args.objectCountClassifierPath
     if args.withoutDivisions:
         ilpOptions.divisionClassifierPath = None
@@ -579,4 +577,4 @@ if __name__ == '__main__':
 
     traxelstore = Traxelstore(ilpOptions=ilpOptions)
     traxelstore.timeRange = (0, 2)
-    ts, fs = traxelstore.fillTraxelStore()
+    traxelstore.fillTraxelStore(usePgmlink=False)

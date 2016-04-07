@@ -1,0 +1,9 @@
+[Core]
+Name = LocalImageLoader
+Module = local_image_loader
+
+[Documentation]
+Description = Read images from local files
+Author = The other one
+Version = the_version_number_of_the_plugin
+Website = My very own website

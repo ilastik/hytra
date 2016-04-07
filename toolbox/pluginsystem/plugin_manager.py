@@ -2,6 +2,7 @@ from yapsy.PluginManager import PluginManager
 import logging
 from object_feature_computation_plugin import ObjectFeatureComputationPlugin
 from transition_feature_vector_construction_plugin import TransitionFeatureVectorConstructionPlugin
+from image_provider_plugin import ImageProviderPlugin
 
 class TrackingPluginManager():
     """
@@ -18,12 +19,14 @@ class TrackingPluginManager():
         # kinds of plugins you have defined
         self._yapsyPluginManager.setCategoriesFilter({
             "ObjectFeatureComputation": ObjectFeatureComputationPlugin,
-            "TransitionFeatureVectorConstruction": TransitionFeatureVectorConstructionPlugin
+            "TransitionFeatureVectorConstruction": TransitionFeatureVectorConstructionPlugin,
+            "ImageProvider": ImageProviderPlugin
         })
         if verbose:
             logging.getLogger('yapsy').setLevel(logging.DEBUG)
 
         self._yapsyPluginManager.collectPlugins()
+        self.chosen_data_provider = "LocalImageLoader" # TODO: lazy selection, set default to None
 
     def applyObjectFeatureComputationPlugins(self, ndims, rawImage, labelImage, frameNumber, rawFilename):
         """
@@ -63,4 +66,6 @@ class TrackingPluginManager():
             featureNames.extend(f)
         return featureNames
 
-
+    def getImageProvider(self):
+    	PrividerDict = dict((pluginInfo.name, pluginInfo.plugin_object) for pluginInfo in self._yapsyPluginManager.getPluginsOfCategory("ImageProvider"))
+    	return PrividerDict[self.chosen_data_provider]
