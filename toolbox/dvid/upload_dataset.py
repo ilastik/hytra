@@ -55,9 +55,14 @@ if __name__ == '__main__':
                         help='Number of digits per forest index inside the ClassifierForests HDF5 group')
     parser.add_argument('--time-range', type=int, nargs=2, dest='timeRange',
                         help='Set time range to upload (inclusive!)')
+    parser.add_argument('--verbose', type=bool, dest='verbose', default=False,
+                        help='Set time range to upload (inclusive!)')
 
     args = parser.parse_args()
-    logging.basicConfig(level=logging.DEBUG)
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
 
     # initialize plugin manager
     plugin_manager = TrackingPluginManager(verbose=False)
