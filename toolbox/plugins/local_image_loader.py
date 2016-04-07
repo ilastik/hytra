@@ -1,7 +1,7 @@
 from pluginsystem import image_provider_plugin
 import numpy as np
 import h5py
-
+import logging
 
 class LocalImageLoader(image_provider_plugin.ImageProviderPlugin):
     """
@@ -16,7 +16,9 @@ class LocalImageLoader(image_provider_plugin.ImageProviderPlugin):
         PathInResource provides the internal image path 
         Return numpy array of image data at timeframe.
         """
+        logging.getLogger("LocalImageLoader").debug("opening {}".format(Resource))
         with h5py.File(Resource, 'r') as rawH5:
+            logging.getLogger("LocalImageLoader").debug("PathInResource {}".format(timeframe))
             rawImage = rawH5[PathInResource][timeframe, ...]
             return rawImage
 
@@ -31,9 +33,9 @@ class LocalImageLoader(image_provider_plugin.ImageProviderPlugin):
             self.getImageShape(Resource, PathInResource)
 
         with h5py.File(Resource, 'r') as h5file:
-            labelImage = h5file[
-                PathInResource % (timeframe, timeframe + 1, self.shape[0], self.shape[1], self.shape[2])][
-                0, ..., 0].squeeze().astype(np.uint32)
+            internalPath = PathInResource % (timeframe, timeframe + 1, self.shape[0], self.shape[1], self.shape[2])
+            logging.getLogger("LocalImageLoader").debug("Opening label image at {}".format(internalPath))
+            labelImage = h5file[internalPath][0, ..., 0].squeeze().astype(np.uint32)
             return labelImage
 
     def getImageShape(self, Resource, PathInResource):
