@@ -26,11 +26,13 @@ def dataToBlock(data, dtype=np.uint8, block_size=32):
 
 if __name__ == '__main__':
     """
-    Upload raw data and segmentation of a dataset to dvid
+    Upload raw data and segmentation of a dataset to dvid.
+
+    Example: python dvid/upload_dataset.py --dvid-address 104.196.46.138:80 --label-image /Users/chaubold/hci/data/animal-tracking/FlyBowlTracking/FlyBowlTracking.ilp --raw /Users/chaubold/hci/data/animal-tracking/FlyBowlTracking/FlyBowlMovie.h5 --raw-path data --dataset-name flybowl-test-2016-04-07 --time-range 0 10
     """
     import argparse
 
-    parser = argparse.ArgumentParser(description='Build a traxelstore from a given ilastik project',
+    parser = argparse.ArgumentParser(description='Upload raw data and segmentation to dvid',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--dataset-name', required=True, type=str, dest='datasetName',
                         help='Datset name that will be seen in the DVID web interface')
@@ -56,7 +58,7 @@ if __name__ == '__main__':
     parser.add_argument('--time-range', type=int, nargs=2, dest='timeRange',
                         help='Set time range to upload (inclusive!)')
     parser.add_argument('--verbose', type=bool, dest='verbose', default=False,
-                        help='Set time range to upload (inclusive!)')
+                        help='verbose logs')
 
     args = parser.parse_args()
     if args.verbose:
@@ -100,3 +102,5 @@ if __name__ == '__main__':
         node_service.put_gray3D(raw_name, dataToBlock(raw_image, dtype=np.uint8), (0,0,0))
         node_service.create_labelblk(seg_name)
         node_service.put_labels3D(seg_name, dataToBlock(label_image, dtype=np.uint64), (0,0,0))
+
+    # TODO: upload classifier
