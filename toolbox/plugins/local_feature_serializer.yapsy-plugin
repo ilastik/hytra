@@ -1,0 +1,9 @@
+[Core]
+Name = LocalFeatureSerializer
+Module = local_feature_serializer
+
+[Documentation]
+Description = Save features locally
+Author = The other one
+Version = the_version_number_of_the_plugin
+Website = My very own website

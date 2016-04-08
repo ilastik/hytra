@@ -3,16 +3,6 @@ import numpy as np
 import json_tricks as json
 from libdvid import DVIDNodeService, DVIDServerService
 
-    # raw_frame = node_service.get_gray3D("raw", (1,1024,1024), (frame,0,0))
-    # seg_frame = node_service.get_labels3D("seg", (1,1024, 1024), (frame,0,0))
-    # labels_frame = vigra.analysis.labelImageWithBackground(seg_frame[0,:,:].astype(np.uint32))
-
-
-    #     node_service = DVIDNodeService(server_address, uuid)
-    #     raw_frame = node_service.get_gray3D("raw", (1,1024,1024), (frame,0,0))
-    #     seg_frame = node_service.get_labels3D("seg", (1,1024, 1024), (frame,0,0))
-    #     labels_frame = vigra.analysis.labelImageWithBackground(seg_frame[0,:,:].astype(np.uint32))
-
 class DvidImageLoader(image_provider_plugin.ImageProviderPlugin):
     """
     Computes the subtraction of features in the feature vector
@@ -65,10 +55,6 @@ class DvidImageLoader(image_provider_plugin.ImageProviderPlugin):
         PathInResource provides the internal image path 
         Return list with image dimensions
         """
-        # with h5py.File(Resource, 'r') as h5file:
-        #     shape = h5file['/'.join(PathInResource.split('/')[:-1])].values()[0].shape[1:4]
-        #     self.shape = shape
-        #     return shape
 
         node_service = DVIDNodeService(Resource, PathInResource)
         config = json.loads(node_service.get("config", "imageInfo"))

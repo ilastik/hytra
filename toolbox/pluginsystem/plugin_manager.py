@@ -3,6 +3,7 @@ import logging
 from object_feature_computation_plugin import ObjectFeatureComputationPlugin
 from transition_feature_vector_construction_plugin import TransitionFeatureVectorConstructionPlugin
 from image_provider_plugin import ImageProviderPlugin
+from feature_serializer_plugin import FeatureSerializerPlugin
 
 class TrackingPluginManager():
     """
@@ -20,13 +21,15 @@ class TrackingPluginManager():
         self._yapsyPluginManager.setCategoriesFilter({
             "ObjectFeatureComputation": ObjectFeatureComputationPlugin,
             "TransitionFeatureVectorConstruction": TransitionFeatureVectorConstructionPlugin,
-            "ImageProvider": ImageProviderPlugin
+            "ImageProvider": ImageProviderPlugin,
+            "FeatureSerializer": FeatureSerializerPlugin
         })
         if verbose:
             logging.getLogger('yapsy').setLevel(logging.DEBUG)
 
         self._yapsyPluginManager.collectPlugins()
         self.chosen_data_provider = "LocalImageLoader"
+        self.chosen_feature_serializer = "LocalFeatureSerializer"
 
     def applyObjectFeatureComputationPlugins(self, ndims, rawImage, labelImage, frameNumber, rawFilename):
         """
@@ -67,8 +70,20 @@ class TrackingPluginManager():
         return featureNames
 
     def setImageProvider(self, ImageProviderName):
+        ''' set the used image provier plugin name '''
     	self.chosen_data_provider = ImageProviderName
 
     def getImageProvider(self):
+        ''' get an instance of the selected image provider plugin '''
     	PrividerDict = dict((pluginInfo.name, pluginInfo.plugin_object) for pluginInfo in self._yapsyPluginManager.getPluginsOfCategory("ImageProvider"))
     	return PrividerDict[self.chosen_data_provider]
+
+    def setFeatureSerializer(self, featureSerializerName):
+        ''' set the used feature serializer plugin name '''
+        self.chosen_feature_serializer = featureSerializerName
+
+    def getFeatureSerializer(self):
+        ''' get an instance of the selected feature serializer plugin '''
+        PrividerDict = dict((pluginInfo.name, pluginInfo.plugin_object) for pluginInfo in self._yapsyPluginManager.getPluginsOfCategory("FeatureSerializer"))
+        return PrividerDict[self.chosen_feature_serializer]
+

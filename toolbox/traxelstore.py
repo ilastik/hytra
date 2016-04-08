@@ -29,6 +29,8 @@ class IlastikProjectOptions:
         self.labelImagePath = '/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]'
         self.rawImageFilename = None
         self.rawImagePath = None
+        self.imageProviderName = 'LocalImageLoader'
+        self.featureSerializerName = 'LocalFeatureSerializer'
         self.sizeFilter = None  # set to tuple with min,max pixel count
 
 
@@ -206,7 +208,8 @@ class Traxelstore:
 
         self._options = ilpOptions
         self._pluginManager = TrackingPluginManager()
-        self._pluginManager.setImageProvider(ilpOptions.image_provider_name)
+        self._pluginManager.setImageProvider(ilpOptions.imageProviderName)
+        self._pluginManager.setFeatureSerializer(ilpOptions.featureSerializerName)
 
         self._countClassifier = None
         self._divisionClassifier = None
@@ -352,43 +355,25 @@ class Traxelstore:
 
         t0 = time.clock()
 
-        # # parallelization experiments, but as vigra RF cannot be pickled one can only use the ThreadPool, which doesn't help.
-        # import concurrent.futures
-        # featuresPerFrame = {}
-        # with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-        #     # 1st pass for region features
-        #     jobs = []
-        #     for frame in range(self.timeRange[0], self.timeRange[1]):
-        #         jobs.append(executor.submit(Traxelstore._extractFeaturesForFrame, self, frame))
-        #
-        #     for job in concurrent.futures.as_completed(jobs):
-        #         progressBar.show()
-        #         frame, feats = job.result()
-        #         featuresPerFrame[frame] = feats
-        #
-        #     # 2nd pass for division features
-        #     if self._divisionClassifier is not None:
-        #         jobs = []
-        #         for frame in range(self.timeRange[0], self.timeRange[1]):
-        #             jobs.append(executor.submit(Traxelstore._extractDivisionFeaturesForFrame,
-        #                                         self, frame, featuresPerFrame))
-        #
-        #         for job in concurrent.futures.as_completed(jobs):
-        #             progressBar.show()
-        #             frame, feats = job.result()
-        #             featuresPerFrame[frame].update(feats)
+        # configure feature serializer
+        featuresPerFrame = {}
+        featureSerializer = self._pluginManager.getFeatureSerializer()
+        featureSerializer.server_address = self._options.labelImageFilename
+        featureSerializer.uuid = self._options.labelImagePath
+        featureSerializer.features_per_frame = featuresPerFrame
 
         # 1st pass for region features
-        featuresPerFrame = {}
         for frame in range(self.timeRange[0], self.timeRange[1]):
             progressBar.show()
-            featuresPerFrame[frame] = self._extractFeaturesForFrame(frame)[1]
+            featureSerializer.storeFeaturesForFrame(self._extractFeaturesForFrame(frame)[1], frame)
 
         # 2nd pass for division features
         if self._divisionClassifier is not None:
             for frame in range(self.timeRange[0], self.timeRange[1]):
                 progressBar.show()
-                featuresPerFrame[frame].update(self._extractDivisionFeaturesForFrame(frame, featuresPerFrame)[1])
+                oldFeatures = featureSerializer.loadFeaturesForFrame(timeframe)
+                oldFeatures.update(self._extractDivisionFeaturesForFrame(frame, featuresPerFrame))
+                featureSerializer.storeFeaturesForFrame(oldFeatures, frame)
 
         t1 = time.clock()
         logging.getLogger("Traxelstore").info("Feature computation took {} secs".format(t1 - t0))
@@ -560,6 +545,7 @@ if __name__ == '__main__':
                         help='Number of digits per forest index inside the ClassifierForests HDF5 group')
 
     parser.add_argument('--image-provider', type=str, dest='image_provider_name', default="LocalImageLoader")
+    parser.add_argument('--feature-serializer', type=str, dest='feature_serializer_name', default='LocalFeatureSerializer')
 
     args = parser.parse_args()
 
@@ -576,7 +562,8 @@ if __name__ == '__main__':
     ilpOptions.labelImagePath = args.labelImagePath
     ilpOptions.rawImagePath = args.rawPath
 
-    ilpOptions.image_provider_name = args.image_provider_name
+    ilpOptions.imageProviderName = args.image_provider_name
+    ilpOptions.featureSerializerName = args.feature_serializer_name
 
     if(not args.labelImageFilename):
         ilpOptions.labelImageFilename = args.ilpFilename
