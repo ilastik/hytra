@@ -66,6 +66,9 @@ class TrackingPluginManager():
             featureNames.extend(f)
         return featureNames
 
+    def setImageProvider(self, ImageProviderName):
+    	self.chosen_data_provider = ImageProviderName
+
     def getImageProvider(self):
     	PrividerDict = dict((pluginInfo.name, pluginInfo.plugin_object) for pluginInfo in self._yapsyPluginManager.getPluginsOfCategory("ImageProvider"))
     	return PrividerDict[self.chosen_data_provider]

@@ -206,6 +206,8 @@ class Traxelstore:
 
         self._options = ilpOptions
         self._pluginManager = TrackingPluginManager()
+        self._pluginManager.setImageProvider(ilpOptions.image_provider_name)
+
         self._countClassifier = None
         self._divisionClassifier = None
         self._transitionClassifier = None
@@ -557,6 +559,8 @@ if __name__ == '__main__':
     parser.add_argument('--rf-zero-padding', type=int, dest='rfZeroPadding', default=4,
                         help='Number of digits per forest index inside the ClassifierForests HDF5 group')
 
+    parser.add_argument('--image-provider', type=str, dest='image_provider_name', default="LocalImageLoader")
+
     args = parser.parse_args()
 
     ilpOptions = IlastikProjectOptions()
@@ -572,11 +576,13 @@ if __name__ == '__main__':
     ilpOptions.labelImagePath = args.labelImagePath
     ilpOptions.rawImagePath = args.rawPath
 
+    ilpOptions.image_provider_name = args.image_provider_name
+
     if(not args.labelImageFilename):
         ilpOptions.labelImageFilename = args.ilpFilename
     else:
         ilpOptions.labelImageFilename = args.labelImageFilename
-        
+
     ilpOptions.objectCountClassifierFilename = args.ilpFilename
     ilpOptions.divisionClassifierFilename = args.ilpFilename
     ilpOptions.rawImageFilename = args.rawFilename

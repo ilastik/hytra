@@ -56,6 +56,8 @@ def getConfigAndCommandLineArguments():
     parser.add_option('--label-image-file', type='string', dest='label_image_file', default=None,
                       help='if a label image separate to the one in the ILP should be used, set it here')
 
+    parser.add_option('--image-provider', type='string', dest='image_provider_name', default="LocalImageLoader")
+    
     parser.add_option('--json-output', type='string', dest='json_filename', default=None,
                       help='filename where to save the generated JSON file to')
 
