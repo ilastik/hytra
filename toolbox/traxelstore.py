@@ -197,6 +197,34 @@ class Traxel:
     def __repr__(self):
         return "Traxel(Timestep={},Id={})".format(self.Timestep, self.Id)
 
+def computeRegionFeaturesOnCloud(frame,rawImageFilename,rawImagePath,labelImageFilename,labelImagePath):
+    # import pluginsystem
+
+    from pluginsystem.plugin_manager import TrackingPluginManager
+    pluginManager = TrackingPluginManager(pluginPaths=['/home/carstenhaubold/embryonic/toolbox/plugins'], verbose=True)
+    pluginManager.setImageProvider("DvidImageLoader")
+    pluginManager.setFeatureSerializer("DvidFeatureSerializer")
+
+    rawImage = pluginManager.getImageProvider().getImageDataAtTimeFrame(rawImageFilename, rawImagePath, frame)
+    labelImage =  pluginManager.getImageProvider().getLabelImageForFrame(labelImageFilename, labelImagePath, frame)
+    
+    featureSerializer = pluginManager.getFeatureSerializer()
+    featureSerializer.server_address = labelImageFilename
+    featureSerializer.uuid = labelImagePath
+    moreFeats, ignoreNames = pluginManager.applyObjectFeatureComputationPlugins(2,rawImage,labelImage,frame,rawImageFilename)
+
+    frameFeatureItems = []
+    for f in moreFeats:
+        frameFeatureItems = frameFeatureItems + f.items()
+    frameFeatures = dict(frameFeatureItems)
+
+    # delete the "Global<Min/Max>" features as they are not nice when iterating over everything
+    for k in ignoreNames:
+        if k in frameFeatures.keys():
+            del frameFeatures[k]
+
+    featureSerializer.storeFeaturesForFrame(frameFeatures, frame)
+    
 
 class Traxelstore:
     """
@@ -350,35 +378,65 @@ class Traxelstore:
         numSteps = self.timeRange[1] - self.timeRange[0]
         if self._divisionClassifier is not None:
             numSteps *= 2
-        progressBar = ProgressBar(stop=numSteps)
-        progressBar.show(increase=0)
+        # progressBar = ProgressBar(stop=numSteps)
+        # progressBar.show(increase=0)
 
         t0 = time.clock()
 
-        # configure feature serializer
-        featuresPerFrame = {}
-        featureSerializer = self._pluginManager.getFeatureSerializer()
-        featureSerializer.server_address = self._options.labelImageFilename
-        featureSerializer.uuid = self._options.labelImagePath
-        featureSerializer.features_per_frame = featuresPerFrame
+        dispy_node_ips = ["104.197.178.206","104.196.46.138"]
 
-        # 1st pass for region features
-        for frame in range(self.timeRange[0], self.timeRange[1]):
-            progressBar.show()
-            featureSerializer.storeFeaturesForFrame(self._extractFeaturesForFrame(frame)[1], frame)
+        if(len(dispy_node_ips) == 0):
 
-        # 2nd pass for division features
-        if self._divisionClassifier is not None:
+            configure feature serializer
+            featuresPerFrame = {}
+            featureSerializer = self._pluginManager.getFeatureSerializer()
+            featureSerializer.server_address = self._options.labelImageFilename
+            featureSerializer.uuid = self._options.labelImagePath
+            featureSerializer.features_per_frame = featuresPerFrame
+
+            1st pass for region features
             for frame in range(self.timeRange[0], self.timeRange[1]):
                 progressBar.show()
-                oldFeatures = featureSerializer.loadFeaturesForFrame(timeframe)
-                oldFeatures.update(self._extractDivisionFeaturesForFrame(frame, featuresPerFrame))
-                featureSerializer.storeFeaturesForFrame(oldFeatures, frame)
+                featureSerializer.storeFeaturesForFrame(self._extractFeaturesForFrame(frame)[1], frame)
 
+            # 2nd pass for division features
+            if self._divisionClassifier is not None:
+                for frame in range(self.timeRange[0], self.timeRange[1]):
+                    progressBar.show()
+                    oldFeatures = featureSerializer.loadFeaturesForFrame(timeframe)
+                    oldFeatures.update(self._extractDivisionFeaturesForFrame(frame, featuresPerFrame))
+                    featureSerializer.storeFeaturesForFrame(oldFeatures, frame)
+        else:
+
+            import logging
+            import random, dispy
+            cluster = dispy.JobCluster(computeRegionFeaturesOnGCloud,nodes=dispy_node_ips,loglevel=logging.DEBUG, depends=[self._pluginManager],secret="teamtracking")
+
+            jobs = []
+            for frame in range(self.timeRange[0], self.timeRange[1]):
+                job = cluster.submit(frame,self._options.rawImageFilename,self._options.rawImagePath,self._options.labelImageFilename,self._options.labelImagePath)
+                job.id = frame
+                jobs.append(job)
+
+            for job in jobs:
+                job() # wait for job to finish
+                print job.exception
+                print job.stdout
+                print job.stderr
+                print job.id
+
+#         # 2nd pass for division features
+#         if self._divisionClassifier is not None:
+#             for frame in range(self.timeRange[0], self.timeRange[1]):
+#                 progressBar.show()
+#                 featuresPerFrame[frame].update(self._extractDivisionFeaturesForFrame(frame, featuresPerFrame)[1])
+        
         t1 = time.clock()
         logging.getLogger("Traxelstore").info("Feature computation took {} secs".format(t1 - t0))
+        print "done"
+        exit()
 
-        return featuresPerFrame
+        # return featuresPerFrame
 
     def _setTraxelFeatureArray(self, traxel, featureArray, name):
         featureArray = featureArray.flatten()
@@ -575,5 +633,5 @@ if __name__ == '__main__':
     ilpOptions.rawImageFilename = args.rawFilename
 
     traxelstore = Traxelstore(ilpOptions=ilpOptions)
-    traxelstore.timeRange = (0, 2)
+    traxelstore.timeRange = (0, 3)
     traxelstore.fillTraxelStore(usePgmlink=False)
