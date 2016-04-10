@@ -11,6 +11,9 @@ class TrackingPluginManager():
     """
     def __init__(self, pluginPaths=['plugins'], verbose=False):
         """
+        Create the plugin manager that looks inside the specified `pluginPaths`,
+        and if `verbose=True` then the [yapsy](http://yapsy.sourceforge.net/) plugin backend will also show errors
+        that occurred while trying to import plugins (useful for debugging).
         """
         # Build the manager
         self._yapsyPluginManager = PluginManager()

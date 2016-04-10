@@ -9,146 +9,12 @@ from pluginsystem.plugin_manager import TrackingPluginManager
 import logging
 import time
 
-class IlastikProjectOptions:
-    """
-    The Ilastik Project Options configure where in the project HDF5 file the important things can be found.
-    Use this when creating a Traxelstore
-    """
-
-    def __init__(self):
-        self.objectCountClassifierFile = None
-        self.objectCountClassifierPath = '/CountClassification'
-        self.divisionClassifierFile = None
-        self.divisionClassifierPath = '/DivisionDetection'
-        self.transitionClassifierFile = None
-        self.transitionClassifierPath = None
-        self.selectedFeaturesGroupName = 'SelectedFeatures'
-        self.classifierForestsGroupName = 'ClassifierForests'
-        self.randomForestZeroPaddingWidth = 4
-        self.labelImageFilename = None
-        self.labelImagePath = '/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]'
-        self.rawImageFilename = None
-        self.rawImagePath = None
-        self.imageProviderName = 'LocalImageLoader'
-        self.featureSerializerName = 'LocalFeatureSerializer'
-        self.sizeFilter = None  # set to tuple with min,max pixel count
-
-
-class RandomForestClassifier:
-    """
-    A random forest (RF) classifier wraps a list of RFs as used in ilastik,
-    and allows to read the RFs trained by ilastik, as well as which features were selected.
-    """
-
-    def __init__(self, classifierPath, ilpFilename, ilpOptions=IlastikProjectOptions()):
-        self._options = ilpOptions
-        self._classifierPath = classifierPath
-        self._ilpFilename = ilpFilename
-        self._randomForests = self._readRandomForests()
-        self.selectedFeatures = self._readSelectedFeatures()
-
-    def _readRandomForests(self):
-        """
-        Read in a list of random forests at a given location in the hdf5 file
-        """
-        with h5py.File(self._ilpFilename, 'r') as h5file:
-            if self._classifierPath == '/':
-                fullPath = '/' + self._options.classifierForestsGroupName
-            else:
-                fullPath = '/'.join([self._classifierPath, self._options.classifierForestsGroupName])
-            randomForests = []
-            logging.getLogger("RandomForestClassifier").info("trying to read {} classifiers in {} from {}".format(
-                len(h5file[fullPath].keys()), self._ilpFilename, fullPath))
-
-            for k in h5file[fullPath].keys():
-                if 'Forest' in k:
-                    print(str('/'.join([fullPath, k])))
-                    rf = vigra.learning.RandomForest(str(self._ilpFilename), str('/'.join([fullPath, k])))
-                    randomForests.append(rf)
-            return randomForests
-
-    def _readSelectedFeatures(self):
-        """
-        Read which features were selected when training this RF
-        """
-        with h5py.File(self._ilpFilename, 'r') as h5file:
-            if self._classifierPath == '/':
-                fullPath = '/' + self._options.selectedFeaturesGroupName
-            else:
-                fullPath = '/'.join([self._classifierPath, self._options.selectedFeaturesGroupName])
-            featureNameList = []
-
-            for feature_group_name in h5file[fullPath].keys():
-                feature_group = h5file[fullPath][feature_group_name]
-                for feature in feature_group.keys():
-                    # # discard squared distances feature
-                    # if feature == 'ChildrenRatio_SquaredDistances':
-                    #     continue
-
-                    # if feature == 'Coord<Principal<Kurtosis>>':
-                    #     feature = 'Coord<Principal<Kurtosis> >'
-                    # elif feature == 'Coord<Principal<Skewness>>':
-                    #     feature = 'Coord<Principal<Skewness> >'
-
-                    featureNameList.append(feature)
-            return featureNameList
-
-    def extractFeatureVector(self, featureDict):
-        """
-        Extract the vector(s) of required features from the given feature dictionary,
-        by concatenating the columns of the selected features into a matrix of new features, one row per object
-        """
-        featureVectors = None
-        for f in self.selectedFeatures:
-            assert f in featureDict
-            vec = featureDict[f]
-            if len(vec.shape) == 1:
-                vec = np.expand_dims(vec, axis=1)
-            if featureVectors is None:
-                featureVectors = vec
-            else:
-                if len(vec.shape) == 3:
-                    for row in range(vec.shape[2]):
-                        featureVectors = np.hstack([featureVectors, vec[..., row]])
-                elif len(vec.shape) > 3:
-                    raise ValueError("Cannot deal with features of more than two dimensions yet")
-                else:
-                    featureVectors = np.hstack([featureVectors, vec])
-
-        return featureVectors
-
-    def predictProbabilities(self, features, featureDict=None):
-        """
-        Given a matrix of features, where each row represents one object and each column is a specific feature,
-        this method predicts the probabilities for all classes that this RF knows.
-
-        If features=None but a featureDict is given, the selected features for this random forest are automatically extracted
-        """
-        assert (len(self._randomForests) > 0)
-
-        # make sure features are good
-        if features is None and featureDict is not None:
-            features = self.extractFeatureVector(featureDict)
-        assert (len(features.shape) == 2)
-        # assert(features.shape[1] == self._randomForests[0].featureCount())
-        if not features.shape[1] == self._randomForests[0].featureCount():
-            logging.getLogger("RandomForestClassifier").error(
-                "Cannot predict from features of shape {} if {} features are expected".format(features.shape,
-                      self._randomForests[0].featureCount()))
-            print(features)
-            raise AssertionError()
-
-        # predict by summing the probabilities of all the given random forests (not in parallel - not optimized for speed)
-        probabilities = np.zeros((features.shape[0], self._randomForests[0].labelCount()))
-        for rf in self._randomForests:
-            probabilities += rf.predictProbabilities(features.astype('float32'))
-
-        return probabilities
-
 
 class Traxel:
     """
     A simple Python variant of the C++ traxel with the same interface of the one of pgmlink so it can act as drop-in replacement.
+
+    A `Traxel` is a detection with unique label `Id` at a certain `Timestep`, with position (`X`,`Y`,`Z`) and `Features`
     """
 
     def __init__(self):
@@ -198,7 +64,11 @@ class Traxel:
         return "Traxel(Timestep={},Id={})".format(self.Timestep, self.Id)
 
 def computeRegionFeaturesOnCloud(frame,rawImageFilename,rawImagePath,labelImageFilename,labelImagePath):
-    # import pluginsystem
+    '''
+    Allow to use dispy to schedule feature computation to nodes running a dispynode.
+
+    **TODO:** make this more flexible!
+    '''
 
     from pluginsystem.plugin_manager import TrackingPluginManager
     pluginManager = TrackingPluginManager(pluginPaths=['/home/carstenhaubold/embryonic/toolbox/plugins'], verbose=True)
@@ -271,8 +141,8 @@ class Traxelstore:
         self.divisionProbabilityFeatureName = 'divProb'
         self.detectionProbabilityFeatureName = 'detProb'
 
-        # this public variable contains all traxels if we're not using pgmlink
         self.TraxelsPerFrame = {}
+        ''' this public variable contains all traxels if we're not using pgmlink '''
 
     def computeRegionFeatures(self, rawImage, labelImage, frameNumber):
         """
@@ -370,9 +240,13 @@ class Traxelstore:
 
         return timeframe, feats
 
-    def _extractAllFeatures(self):
+    def _extractAllFeatures(self, dispy_node_ips=[]):
         """
-        extract the features of all frames
+        Extract the features of all frames. If a list of IP addresses is given e.g. 
+        as `dispy_node_ips = ["104.197.178.206","104.196.46.138"]`, then the computation will be 
+        distributed across these nodes.
+
+        **TODO:** fix division feature computation for distributed mode
         """
         # configure progress bar
         numSteps = self.timeRange[1] - self.timeRange[0]
@@ -383,18 +257,16 @@ class Traxelstore:
 
         t0 = time.clock()
 
-        dispy_node_ips = ["104.197.178.206","104.196.46.138"]
-
         if(len(dispy_node_ips) == 0):
 
-            configure feature serializer
+            # configure feature serializer
             featuresPerFrame = {}
             featureSerializer = self._pluginManager.getFeatureSerializer()
             featureSerializer.server_address = self._options.labelImageFilename
             featureSerializer.uuid = self._options.labelImagePath
             featureSerializer.features_per_frame = featuresPerFrame
 
-            1st pass for region features
+            # 1st pass for region features
             for frame in range(self.timeRange[0], self.timeRange[1]):
                 progressBar.show()
                 featureSerializer.storeFeaturesForFrame(self._extractFeaturesForFrame(frame)[1], frame)
@@ -410,11 +282,19 @@ class Traxelstore:
 
             import logging
             import random, dispy
-            cluster = dispy.JobCluster(computeRegionFeaturesOnGCloud,nodes=dispy_node_ips,loglevel=logging.DEBUG, depends=[self._pluginManager],secret="teamtracking")
+            cluster = dispy.JobCluster(computeRegionFeaturesOnGCloud,
+                                        nodes=dispy_node_ips,
+                                        loglevel=logging.DEBUG,
+                                        depends=[self._pluginManager],
+                                        secret="teamtracking")
 
             jobs = []
             for frame in range(self.timeRange[0], self.timeRange[1]):
-                job = cluster.submit(frame,self._options.rawImageFilename,self._options.rawImagePath,self._options.labelImageFilename,self._options.labelImagePath)
+                job = cluster.submit(frame,
+                                    self._options.rawImageFilename,
+                                    self._options.rawImagePath,
+                                    self._options.labelImageFilename,
+                                    self._options.labelImagePath)
                 job.id = frame
                 jobs.append(job)
 
@@ -439,6 +319,7 @@ class Traxelstore:
         # return featuresPerFrame
 
     def _setTraxelFeatureArray(self, traxel, featureArray, name):
+        ''' store the specified `featureArray` in a `traxel`'s feature dictionary under the specified key=`name` '''
         featureArray = featureArray.flatten()
         traxel.add_feature_array(name, len(featureArray))
         for i, v in enumerate(featureArray):
