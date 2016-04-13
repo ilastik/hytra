@@ -8,6 +8,8 @@ import h5py
 from pluginsystem.plugin_manager import TrackingPluginManager
 import logging
 import time
+from random_forest_classifier import RandomForestClassifier
+from ilastik_project_options import IlastikProjectOptions
 
 
 class Traxel:
@@ -252,12 +254,12 @@ class Traxelstore:
         numSteps = self.timeRange[1] - self.timeRange[0]
         if self._divisionClassifier is not None:
             numSteps *= 2
-        # progressBar = ProgressBar(stop=numSteps)
-        # progressBar.show(increase=0)
 
         t0 = time.clock()
 
         if(len(dispy_node_ips) == 0):
+            progressBar = ProgressBar(stop=numSteps)
+            progressBar.show(increase=0)
 
             # configure feature serializer
             featuresPerFrame = {}
@@ -311,12 +313,11 @@ class Traxelstore:
 #                 progressBar.show()
 #                 featuresPerFrame[frame].update(self._extractDivisionFeaturesForFrame(frame, featuresPerFrame)[1])
         
+        import logging
         t1 = time.clock()
         logging.getLogger("Traxelstore").info("Feature computation took {} secs".format(t1 - t0))
-        print "done"
-        exit()
-
-        # return featuresPerFrame
+        
+        return featuresPerFrame
 
     def _setTraxelFeatureArray(self, traxel, featureArray, name):
         ''' store the specified `featureArray` in a `traxel`'s feature dictionary under the specified key=`name` '''

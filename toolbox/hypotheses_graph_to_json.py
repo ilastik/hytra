@@ -505,7 +505,8 @@ def loadPyTraxelstore(options,
     Set up a python side traxel store: compute all features, but do not evaluate classifiers.
     """
     import traxelstore
-    ilpOptions = traxelstore.IlastikProjectOptions()
+    from ilastik_project_options import IlastikProjectOptions
+    ilpOptions = IlastikProjectOptions()
     ilpOptions.objectCountClassifierPath = objectCountClassifierPath
     ilpOptions.divisionClassifierPath = divisionClassifierPath
     ilpOptions.labelImagePath = options.label_img_path
