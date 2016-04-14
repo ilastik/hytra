@@ -14,10 +14,11 @@ from ilastik_project_options import IlastikProjectOptions
 
 class Traxel:
     """
-    A simple Python variant of the C++ traxel with the same interface of the one of pgmlink so it can act as drop-in replacement.
+    A simple Python variant of the C++ traxel with the same interface 
+    of the one of pgmlink so it can act as drop-in replacement.
 
-    A `Traxel` is a detection with unique label `Id` at a certain `Timestep`, with position (`X`,`Y`,`Z`) and `Features`
-    """
+    A `Traxel` is a detection with unique label `Id` at a certain `Timestep`,  with position
+    (`X`,`Y`,`Z`) and `Features` """
 
     def __init__(self):
         self._scale = np.array([1, 1, 1])
@@ -65,43 +66,82 @@ class Traxel:
     def __repr__(self):
         return "Traxel(Timestep={},Id={})".format(self.Timestep, self.Id)
 
-def computeRegionFeaturesOnCloud(frame,rawImageFilename,rawImagePath,labelImageFilename,labelImagePath):
+
+def computeRegionFeaturesOnCloud(frame,
+                                rawImageFilename,
+                                rawImagePath,
+                                labelImageFilename,
+                                labelImagePath,
+                                featuresPerFrame = None,
+                                imageProviderPluginName='LocalImageLoader',
+                                featureSerializerPluginName='LocalFeatureSerializer'):
     '''
     Allow to use dispy to schedule feature computation to nodes running a dispynode.
+
+    **Parameters**
+
+    * `frame`: the frame number
+    * `rawImageFilename`: the base filename of the raw image volume, or a dvid server address
+    * `rawImagePath`: path inside the raw image HDF5 file, or DVID dataset UUID
+    * `labelImageFilename`: the base filename of the label image volume, or a dvid server address
+    * `labelImagePath`: path inside the label image HDF5 file, or DVID dataset UUID
 
     **TODO:** make this more flexible!
     '''
 
+    # set up plugin manager
     from pluginsystem.plugin_manager import TrackingPluginManager
-    pluginManager = TrackingPluginManager(pluginPaths=['/home/carstenhaubold/embryonic/toolbox/plugins'], verbose=True)
-    pluginManager.setImageProvider("DvidImageLoader")
-    pluginManager.setFeatureSerializer("DvidFeatureSerializer")
+    pluginManager = TrackingPluginManager(
+        pluginPaths=['/home/carstenhaubold/embryonic/toolbox/plugins'], verbose=True)
+    pluginManager.setImageProvider(imageProviderPluginName)
+    pluginManager.setFeatureSerializer(featureSerializerPluginName)
 
-    rawImage = pluginManager.getImageProvider().getImageDataAtTimeFrame(rawImageFilename, rawImagePath, frame)
-    labelImage =  pluginManager.getImageProvider().getLabelImageForFrame(labelImageFilename, labelImagePath, frame)
-    
-    featureSerializer = pluginManager.getFeatureSerializer()
-    featureSerializer.server_address = labelImageFilename
-    featureSerializer.uuid = labelImagePath
-    moreFeats, ignoreNames = pluginManager.applyObjectFeatureComputationPlugins(2,rawImage,labelImage,frame,rawImageFilename)
+    # load raw and label image (depending on chosen plugin this works via DVID or locally)
+    rawImage = pluginManager.getImageProvider().getImageDataAtTimeFrame(
+        rawImageFilename, rawImagePath, frame)
+    labelImage =  pluginManager.getImageProvider().getLabelImageForFrame(
+        labelImageFilename, labelImagePath, frame)
 
+    # compute features
+    moreFeats, ignoreNames = pluginManager.applyObjectFeatureComputationPlugins(
+        2, rawImage, labelImage, frame, rawImageFilename)
+
+    # combine into one dictionary
+    # WARNING: if there are multiple features with the same name, they will be overwritten!
     frameFeatureItems = []
     for f in moreFeats:
         frameFeatureItems = frameFeatureItems + f.items()
     frameFeatures = dict(frameFeatureItems)
 
-    # delete the "Global<Min/Max>" features as they are not nice when iterating over everything
+    # delete all ignored features
     for k in ignoreNames:
         if k in frameFeatures.keys():
             del frameFeatures[k]
 
-    featureSerializer.storeFeaturesForFrame(frameFeatures, frame)
+    # return or save features
+    if featuresPerFrame is None and featureSerializerPluginName is 'LocalFeatureSerializer':
+        # simply return resulting dict
+        return frameFeatures, frame
+    else:
+        # set up feature serializer (local or DVID for now)
+        featureSerializer = pluginManager.getFeatureSerializer()
+
+        # server address and uuid are only used by the DVID serializer
+        featureSerializer.server_address = labelImageFilename
+        featureSerializer.uuid = labelImagePath
+
+        # feature dictionary used by local serializer
+        featureSerializer.features_per_frame = featuresPerFrame
+
+        # store
+        featureSerializer.storeFeaturesForFrame(frameFeatures, frame)
     
 
 class Traxelstore:
     """
     The traxelstore is a python wrapper around pgmlink's C++ traxelstore,
-    but with the functionality to compute all region features and evaluate the division/count/transition classifiers.
+    but with the functionality to compute all region features 
+    and evaluate the division/count/transition classifiers.
     """
 
     def __init__(self, ilpOptions):
@@ -201,22 +241,26 @@ class Traxelstore:
         """
         extract the shape from the labelimage
         """
-        shape = self._pluginManager.getImageProvider().getImageShape(self._options.labelImageFilename, self._options.labelImagePath)
-        timerange = self._pluginManager.getImageProvider().getTimeRange(self._options.labelImageFilename, self._options.labelImagePath)
+        shape = self._pluginManager.getImageProvider().getImageShape(
+            self._options.labelImageFilename, self._options.labelImagePath)
+        timerange = self._pluginManager.getImageProvider().getTimeRange(
+            self._options.labelImageFilename, self._options.labelImagePath)
         return shape,timerange
 
     def getLabelImageForFrame(self, timeframe):
         """
         Get the label image(volume) of one time frame
         """
-        rawImage = self._pluginManager.getImageProvider().getLabelImageForFrame(self._options.labelImageFilename, self._options.labelImagePath, timeframe)
+        rawImage = self._pluginManager.getImageProvider().getLabelImageForFrame(
+            self._options.labelImageFilename, self._options.labelImagePath, timeframe)
         return rawImage
 
     def getRawImageForFrame(self, timeframe):
         """
         Get the raw image(volume) of one time frame
         """
-        rawImage = self._pluginManager.getImageProvider().getImageDataAtTimeFrame(self._options.rawImageFilename, self._options.rawImagePath, timeframe)
+        rawImage = self._pluginManager.getImageProvider().getImageDataAtTimeFrame(
+            self._options.rawImageFilename, self._options.rawImagePath, timeframe)
         return rawImage
 
     def _extractFeaturesForFrame(self, timeframe):
@@ -242,10 +286,10 @@ class Traxelstore:
 
         return timeframe, feats
 
-    def _extractAllFeatures(self, dispy_node_ips=[]):
+    def _extractAllFeatures(self, dispyNodeIps=[]):
         """
         Extract the features of all frames. If a list of IP addresses is given e.g. 
-        as `dispy_node_ips = ["104.197.178.206","104.196.46.138"]`, then the computation will be 
+        as `dispyNodeIps = ["104.197.178.206","104.196.46.138"]`, then the computation will be 
         distributed across these nodes.
 
         **TODO:** fix division feature computation for distributed mode
@@ -257,7 +301,7 @@ class Traxelstore:
 
         t0 = time.clock()
 
-        if(len(dispy_node_ips) == 0):
+        if(len(dispyNodeIps) == 0):
             progressBar = ProgressBar(stop=numSteps)
             progressBar.show(increase=0)
 
@@ -285,7 +329,7 @@ class Traxelstore:
             import logging
             import random, dispy
             cluster = dispy.JobCluster(computeRegionFeaturesOnGCloud,
-                                        nodes=dispy_node_ips,
+                                        nodes=dispyNodeIps,
                                         loglevel=logging.DEBUG,
                                         depends=[self._pluginManager],
                                         secret="teamtracking")
@@ -307,11 +351,12 @@ class Traxelstore:
                 print job.stderr
                 print job.id
 
-#         # 2nd pass for division features
-#         if self._divisionClassifier is not None:
-#             for frame in range(self.timeRange[0], self.timeRange[1]):
-#                 progressBar.show()
-#                 featuresPerFrame[frame].update(self._extractDivisionFeaturesForFrame(frame, featuresPerFrame)[1])
+            logging.getLogger('Traxelstore').warning('Using dispy we cannot compute division features yet!')
+            # # 2nd pass for division features
+            # if self._divisionClassifier is not None:
+            #     for frame in range(self.timeRange[0], self.timeRange[1]):
+            #         progressBar.show()
+            #         featuresPerFrame[frame].update(self._extractDivisionFeaturesForFrame(frame, featuresPerFrame)[1])
         
         import logging
         t1 = time.clock()
@@ -326,7 +371,7 @@ class Traxelstore:
         for i, v in enumerate(featureArray):
             traxel.set_feature_value(name, i, float(v))
 
-    def fillTraxelStore(self, usePgmlink=True, ts=None, fs=None):
+    def fillTraxelStore(self, usePgmlink=True, ts=None, fs=None, dispyNodeIps=[]):
         """
         Compute all the features and predict object count as well as division probabilities.
         Store the resulting information (and all other features) in the given pgmlink::TraxelStore,
@@ -347,7 +392,7 @@ class Traxelstore:
                 assert (fs is not None)
 
         logging.getLogger("Traxelstore").info("Extracting features...")
-        self._featuresPerFrame = self._extractAllFeatures()
+        self._featuresPerFrame = self._extractAllFeatures(dispyNodeIps=dispyNodeIps)
 
         logging.getLogger("Traxelstore").info("Creating traxels...")
         progressBar = ProgressBar(stop=len(self._featuresPerFrame))
@@ -356,10 +401,12 @@ class Traxelstore:
         for frame, features in self._featuresPerFrame.iteritems():
             # predict random forests
             if self._countClassifier is not None:
-                objectCountProbabilities = self._countClassifier.predictProbabilities(features=None, featureDict=features)
+                objectCountProbabilities = self._countClassifier.predictProbabilities(
+                    features=None, featureDict=features)
 
             if self._divisionClassifier is not None:
-                divisionProbabilities = self._divisionClassifier.predictProbabilities(features=None, featureDict=features)
+                divisionProbabilities = self._divisionClassifier.predictProbabilities(
+                    features=None, featureDict=features)
 
             # create traxels for all objects
             for objectId in range(1, features.values()[0].shape[0]):
@@ -402,10 +449,12 @@ class Traxelstore:
 
                 # add random forest predictions
                 if self._countClassifier is not None:
-                    self._setTraxelFeatureArray(traxel, objectCountProbabilities[objectId, :], self.detectionProbabilityFeatureName)
+                    self._setTraxelFeatureArray(
+                        traxel, objectCountProbabilities[objectId, :], self.detectionProbabilityFeatureName)
 
                 if self._divisionClassifier is not None:
-                    self._setTraxelFeatureArray(traxel, divisionProbabilities[objectId, :], self.divisionProbabilityFeatureName)
+                    self._setTraxelFeatureArray(
+                        traxel, divisionProbabilities[objectId, :], self.divisionProbabilityFeatureName)
 
                 # set other parameters
                 traxel.set_x_scale(self.x_scale)
@@ -485,7 +534,8 @@ if __name__ == '__main__':
                         help='Number of digits per forest index inside the ClassifierForests HDF5 group')
 
     parser.add_argument('--image-provider', type=str, dest='image_provider_name', default="LocalImageLoader")
-    parser.add_argument('--feature-serializer', type=str, dest='feature_serializer_name', default='LocalFeatureSerializer')
+    parser.add_argument('--feature-serializer', type=str, dest='feature_serializer_name', 
+                        default='LocalFeatureSerializer')
 
     args = parser.parse_args()
 
