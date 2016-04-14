@@ -72,11 +72,13 @@ def computeRegionFeaturesOnCloud(frame,
                                 rawImagePath,
                                 labelImageFilename,
                                 labelImagePath,
+                                pluginPaths=['plugins'],
                                 featuresPerFrame = None,
                                 imageProviderPluginName='LocalImageLoader',
                                 featureSerializerPluginName='LocalFeatureSerializer'):
     '''
-    Allow to use dispy to schedule feature computation to nodes running a dispynode.
+    Allow to use dispy to schedule feature computation to nodes running a dispynode,
+    or to use multiprocessing.
 
     **Parameters**
 
@@ -85,14 +87,15 @@ def computeRegionFeaturesOnCloud(frame,
     * `rawImagePath`: path inside the raw image HDF5 file, or DVID dataset UUID
     * `labelImageFilename`: the base filename of the label image volume, or a dvid server address
     * `labelImagePath`: path inside the label image HDF5 file, or DVID dataset UUID
+    * `pluginPaths`: where all yapsy plugins are stored (should be absolute for DVID)
 
-    **TODO:** make this more flexible!
+    **returns** the feature dictionary for this frame if `featureSerializerPluginName == 'LocalFeatureSerializer'`
+    and `featuresPerFrame == None`.
     '''
 
     # set up plugin manager
     from pluginsystem.plugin_manager import TrackingPluginManager
-    pluginManager = TrackingPluginManager(
-        pluginPaths=['/home/carstenhaubold/embryonic/toolbox/plugins'], verbose=True)
+    pluginManager = TrackingPluginManager(pluginPaths=pluginPaths, verbose=False)
     pluginManager.setImageProvider(imageProviderPluginName)
     pluginManager.setFeatureSerializer(featureSerializerPluginName)
 
@@ -121,7 +124,7 @@ def computeRegionFeaturesOnCloud(frame,
     # return or save features
     if featuresPerFrame is None and featureSerializerPluginName is 'LocalFeatureSerializer':
         # simply return resulting dict
-        return frameFeatures, frame
+        return frame, frameFeatures
     else:
         # set up feature serializer (local or DVID for now)
         featureSerializer = pluginManager.getFeatureSerializer()
@@ -135,6 +138,37 @@ def computeRegionFeaturesOnCloud(frame,
 
         # store
         featureSerializer.storeFeaturesForFrame(frameFeatures, frame)
+
+def computeDivisionFeaturesOnCloud(frameT,
+                                featuresAtT,
+                                featuresAtTPlus1,
+                                imageProviderPlugin,
+                                numDimensions,
+                                divisionFeatureNames):
+    '''
+    Allow to compute division features using multiprocessing
+
+    **Parameters**
+
+    * `frameT`: the frame number
+    * `featuresAtT`: the feature dict of the current frame
+    * `featuresAtTPlus1`: feature dict of next frame
+    * `imageProviderPlugin`: plugin for feature loading
+    * `numDimensions`: number of dimensions of the dataset
+    * `divisionFeatureNames`: list of feature names for the `toolbox.divisionfeatures.FeatureManager`
+
+    **returns** a tuple of `frameT` and the dictionary of the newly computed division 
+    features for `frameT`
+    '''
+
+    # get the label image of the next frame
+    labelImageAtTPlus1 =  imageProviderPlugin.getLabelImageForFrame(labelImageFilename, labelImagePath, frameT + 1)
+
+    # compute features
+    fm = divisionfeatures.FeatureManager(ndim=numDimensions)
+    feats = fm.computeFeatures_at(featuresAtT, featuresAtTPlus1, labelImageAtTPlus1, divisionFeatureNames)
+
+    return frameT, feats
     
 
 class Traxelstore:
@@ -266,7 +300,8 @@ class Traxelstore:
     def _extractFeaturesForFrame(self, timeframe):
         """
         extract the features of one frame, return a dictionary of features,
-        where each feature vector contains N entries per object (where N is the dimensionality of the feature)
+        where each feature vector contains N entries per object 
+        (where N is the dimensionality of the feature)
         """
         rawImage = self.getRawImageForFrame(timeframe)
         labelImage = self.getLabelImageForFrame(timeframe)
@@ -288,47 +323,77 @@ class Traxelstore:
 
     def _extractAllFeatures(self, dispyNodeIps=[]):
         """
-        Extract the features of all frames. If a list of IP addresses is given e.g. 
-        as `dispyNodeIps = ["104.197.178.206","104.196.46.138"]`, then the computation will be 
-        distributed across these nodes.
+        Extract the features of all frames. 
+
+        If a list of IP addresses is given e.g. as `dispyNodeIps = ["104.197.178.206","104.196.46.138"]`, 
+        then the computation will be distributed across these nodes.
+
+        If `dispyNodeIps` is an empty list, then the feature extraction will be parallelized via
+        multiprocessing.
 
         **TODO:** fix division feature computation for distributed mode
         """
+        import logging
         # configure progress bar
         numSteps = self.timeRange[1] - self.timeRange[0]
         if self._divisionClassifier is not None:
             numSteps *= 2
 
-        t0 = time.clock()
+        t0 = time.time()
 
         if(len(dispyNodeIps) == 0):
+            logging.getLogger('Traxelstore').info('Parallelizing feature extraction via multiprocessing on all cores!')
+            # no dispy node IDs given, parallelize object feature computation via processes
+            featuresPerFrame = {}
             progressBar = ProgressBar(stop=numSteps)
             progressBar.show(increase=0)
+            
+            # use ProcessPoolExecutor, which instanciates as many processes as there CPU cores by default
+            import concurrent.futures
+            with concurrent.futures.ProcessPoolExecutor() as executor:
+                # 1st pass for region features
+                jobs = []
 
-            # configure feature serializer
-            featuresPerFrame = {}
-            featureSerializer = self._pluginManager.getFeatureSerializer()
-            featureSerializer.server_address = self._options.labelImageFilename
-            featureSerializer.uuid = self._options.labelImagePath
-            featureSerializer.features_per_frame = featuresPerFrame
-
-            # 1st pass for region features
-            for frame in range(self.timeRange[0], self.timeRange[1]):
-                progressBar.show()
-                featureSerializer.storeFeaturesForFrame(self._extractFeaturesForFrame(frame)[1], frame)
-
-            # 2nd pass for division features
-            if self._divisionClassifier is not None:
                 for frame in range(self.timeRange[0], self.timeRange[1]):
+                    jobs.append(executor.submit(computeRegionFeaturesOnCloud,
+                        frame,
+                        self._options.rawImageFilename, 
+                        self._options.rawImagePath,
+                        self._options.labelImageFilename,
+                        self._options.labelImagePath
+                    ))
+                for job in concurrent.futures.as_completed(jobs):
                     progressBar.show()
-                    oldFeatures = featureSerializer.loadFeaturesForFrame(timeframe)
-                    oldFeatures.update(self._extractDivisionFeaturesForFrame(frame, featuresPerFrame))
-                    featureSerializer.storeFeaturesForFrame(oldFeatures, frame)
+                    frame, feats = job.result()
+                    featuresPerFrame[frame] = feats
+            
+                # 2nd pass for division features
+                if self._divisionClassifier is not None:
+                    jobs = []
+                    for frame in range(self.timeRange[0], self.timeRange[1] - 1):
+                        jobs.append(executor.submit(computeDivisionFeaturesOnCloud,
+                            frame,
+                            featuresPerFrame[frame],
+                            featuresPerFrame[frame + 1],
+                            self._pluginManager.getImageProvider(),
+                            self.getNumDimensions(),
+                            self._divisionFeatureNames
+                        ))
+
+                    for job in concurrent.futures.as_completed(jobs):
+                        progressBar.show()
+                        frame, feats = job.result()
+                        featuresPerFrame[frame].update(feats)
+        
+            # # serialize features??
+            # for frame in range(self.timeRange[0], self.timeRange[1]):
+            #     featureSerializer.storeFeaturesForFrame(featuresPerFrame[frame], frame)
         else:
 
             import logging
+            logging.getLogger('Traxelstore').warning('Parallelization with dispy is WORK IN PROGRESS!')
             import random, dispy
-            cluster = dispy.JobCluster(computeRegionFeaturesOnGCloud,
+            cluster = dispy.JobCluster(computeRegionFeaturesOnCloud,
                                         nodes=dispyNodeIps,
                                         loglevel=logging.DEBUG,
                                         depends=[self._pluginManager],
@@ -340,7 +405,8 @@ class Traxelstore:
                                     self._options.rawImageFilename,
                                     self._options.rawImagePath,
                                     self._options.labelImageFilename,
-                                    self._options.labelImagePath)
+                                    self._options.labelImagePath,
+                                    pluginPaths=['/home/carstenhaubold/embryonic/plugins'])
                 job.id = frame
                 jobs.append(job)
 
@@ -358,8 +424,7 @@ class Traxelstore:
             #         progressBar.show()
             #         featuresPerFrame[frame].update(self._extractDivisionFeaturesForFrame(frame, featuresPerFrame)[1])
         
-        import logging
-        t1 = time.clock()
+        t1 = time.time()
         logging.getLogger("Traxelstore").info("Feature computation took {} secs".format(t1 - t0))
         
         return featuresPerFrame

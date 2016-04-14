@@ -29,6 +29,8 @@ class TrackingPluginManager():
         })
         if verbose:
             logging.getLogger('yapsy').setLevel(logging.DEBUG)
+        else:
+            logging.getLogger('yapsy').setLevel(logging.CRITICAL)
 
         self._yapsyPluginManager.collectPlugins()
         self.chosen_data_provider = "LocalImageLoader"
