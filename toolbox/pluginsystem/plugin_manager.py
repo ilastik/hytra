@@ -4,6 +4,8 @@ from object_feature_computation_plugin import ObjectFeatureComputationPlugin
 from transition_feature_vector_construction_plugin import TransitionFeatureVectorConstructionPlugin
 from image_provider_plugin import ImageProviderPlugin
 from feature_serializer_plugin import FeatureSerializerPlugin
+from merger_resolver_plugin import MergerResolverPlugin
+
 
 class TrackingPluginManager():
     """
@@ -11,9 +13,9 @@ class TrackingPluginManager():
     """
     def __init__(self, pluginPaths=['plugins'], verbose=False):
         """
-        Create the plugin manager that looks inside the specified `pluginPaths`,
-        and if `verbose=True` then the [yapsy](http://yapsy.sourceforge.net/) plugin backend will also show errors
-        that occurred while trying to import plugins (useful for debugging).
+        Create the plugin manager that looks inside the specified `pluginPaths` (recursively),
+        and if `verbose=True` then the [yapsy](http://yapsy.sourceforge.net/) plugin backend 
+        will also show errors that occurred while trying to import plugins (useful for debugging).
         """
         # Build the manager
         self._yapsyPluginManager = PluginManager()
@@ -25,7 +27,8 @@ class TrackingPluginManager():
             "ObjectFeatureComputation": ObjectFeatureComputationPlugin,
             "TransitionFeatureVectorConstruction": TransitionFeatureVectorConstructionPlugin,
             "ImageProvider": ImageProviderPlugin,
-            "FeatureSerializer": FeatureSerializerPlugin
+            "FeatureSerializer": FeatureSerializerPlugin,
+            "MergerResolver": MergerResolverPlugin,
         })
         if verbose:
             logging.getLogger('yapsy').setLevel(logging.DEBUG)
@@ -35,6 +38,23 @@ class TrackingPluginManager():
         self._yapsyPluginManager.collectPlugins()
         self.chosen_data_provider = "LocalImageLoader"
         self.chosen_feature_serializer = "LocalFeatureSerializer"
+        self.chosen_merger_resolver = 'GMM'
+
+    def _applyToAllPluginsOfCategory(self, func, category):
+        ''' helper function to apply `func` to all plugins of the given `category` and hide all yapsy stuff '''
+        for pluginInfo in self._yapsyPluginManager.getPluginsOfCategory(category):
+            p = pluginInfo.plugin_object
+            func(p)
+
+    def _getPluginOfCategory(self, name, category):
+        ''' 
+        helper function to access a certain plugin by `name` from a `category`. 
+        
+        **returns** the plugin or throws a `KeyError` 
+        '''
+        pluginDict = dict((pluginInfo.name, pluginInfo.plugin_object) 
+            for pluginInfo in self._yapsyPluginManager.getPluginsOfCategory(category))
+        return pluginDict[name]
 
     def applyObjectFeatureComputationPlugins(self, ndims, rawImage, labelImage, frameNumber, rawFilename):
         """
@@ -43,12 +63,15 @@ class TrackingPluginManager():
         """
         features = []
         featureNamesToIgnore = []
-        for pluginInfo in self._yapsyPluginManager.getPluginsOfCategory("ObjectFeatureComputation"):
-            p = pluginInfo.plugin_object
-            if ndims in p.worksForDimensions:
-                f = p.computeFeatures(rawImage, labelImage, frameNumber, rawFilename)
+        
+        def computeFeatures(plugin):
+            if ndims in plugin.worksForDimensions:
+                f = plugin.computeFeatures(rawImage, labelImage, frameNumber, rawFilename)
                 features.append(f)
-                featureNamesToIgnore.extend(p.omittedFeatures)
+                featureNamesToIgnore.extend(plugin.omittedFeatures)
+        
+        self._applyToAllPluginsOfCategory(computeFeatures, "ObjectFeatureComputation")
+
         return features, featureNamesToIgnore
 
     def applyTransitionFeatureVectorConstructionPlugins(self, featureDictObjectA, featureDictObjectB, selectedFeatures):
@@ -57,10 +80,12 @@ class TrackingPluginManager():
         features of the two objects participating in the transition.
         """
         featureVector = []
-        for pluginInfo in self._yapsyPluginManager.getPluginsOfCategory("TransitionFeatureVectorConstruction"):
-            p = pluginInfo.plugin_object
-            f = p.constructFeatureVector(featureDictObjectA, featureDictObjectB, selectedFeatures)
+        def appendFeatures(plugin):
+            f = plugin.constructFeatureVector(featureDictObjectA, featureDictObjectB, selectedFeatures)
             featureVector.extend(f)
+
+        self._applyToAllPluginsOfCategory(appendFeatures, "TransitionFeatureVectorConstruction")
+
         return featureVector
 
     def getTransitionFeatureNames(self, featureDictObjectA, featureDictObjectB, selectedFeatures):
@@ -68,20 +93,21 @@ class TrackingPluginManager():
         returns a verbal description of each feature in the transition feature vector
         """
         featureNames = []
-        for pluginInfo in self._yapsyPluginManager.getPluginsOfCategory("TransitionFeatureVectorConstruction"):
-            p = pluginInfo.plugin_object
-            f = p.getFeatureNames(featureDictObjectA, featureDictObjectB, selectedFeatures)
+        def collectFeatureNames(plugin):
+            f = plugin.getFeatureNames(featureDictObjectA, featureDictObjectB, selectedFeatures)
             featureNames.extend(f)
+            
+        self._applyToAllPluginsOfCategory(collectFeatureNames, "TransitionFeatureVectorConstruction")
+        
         return featureNames
 
-    def setImageProvider(self, ImageProviderName):
+    def setImageProvider(self, imageProviderName):
         ''' set the used image provier plugin name '''
-    	self.chosen_data_provider = ImageProviderName
+    	self.chosen_data_provider = imageProviderName
 
     def getImageProvider(self):
         ''' get an instance of the selected image provider plugin '''
-    	PrividerDict = dict((pluginInfo.name, pluginInfo.plugin_object) for pluginInfo in self._yapsyPluginManager.getPluginsOfCategory("ImageProvider"))
-    	return PrividerDict[self.chosen_data_provider]
+        return self._getPluginOfCategory(self.chosen_data_provider, "ImageProvider")
 
     def setFeatureSerializer(self, featureSerializerName):
         ''' set the used feature serializer plugin name '''
@@ -89,6 +115,13 @@ class TrackingPluginManager():
 
     def getFeatureSerializer(self):
         ''' get an instance of the selected feature serializer plugin '''
-        PrividerDict = dict((pluginInfo.name, pluginInfo.plugin_object) for pluginInfo in self._yapsyPluginManager.getPluginsOfCategory("FeatureSerializer"))
-        return PrividerDict[self.chosen_feature_serializer]
+        return self._getPluginOfCategory(self.chosen_feature_serializer, "FeatureSerializer")
+
+    def setMergerResolver(self, mergerResolverName):
+        ''' set the used merger resolver plugin name '''
+        self.chosen_merger_resolver = mergerResolverName
+
+    def getMergerResolver(self):
+        ''' get an instance of the selected merger resolver plugin '''
+        return self._getPluginOfCategory(self.chosen_merger_resolver, "MergerResolver")
 
