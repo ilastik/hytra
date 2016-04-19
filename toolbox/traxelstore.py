@@ -143,6 +143,8 @@ def computeDivisionFeaturesOnCloud(frameT,
                                 featuresAtT,
                                 featuresAtTPlus1,
                                 imageProviderPlugin,
+                                labelImagePath,
+                                labelImageFilename,
                                 numDimensions,
                                 divisionFeatureNames):
     '''
@@ -376,6 +378,8 @@ class Traxelstore:
                             featuresPerFrame[frame],
                             featuresPerFrame[frame + 1],
                             self._pluginManager.getImageProvider(),
+                            self._options.labelImageFilename,
+                            self._options.labelImagePath,
                             self.getNumDimensions(),
                             self._divisionFeatureNames
                         ))
