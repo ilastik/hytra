@@ -242,11 +242,9 @@ if __name__ == '__main__':
     endFrame = args.endFrame
     fileFormatString = '{' + ':0{}'.format(args.filename_zero_padding) + '}.h5'
 
-    rawimage = vigra.impex.readHDF5(rawimage_filename, args.rawimage_h5_path)
-    try:
-        print(rawimage.axistags)
-    except:
-        pass
+    with h5py.File(rawimage_filename, 'r') as h5raw:
+        rawimage = h5raw[args.rawimage_h5_path].value
+
     # transform such that the order is the following: X,Y,(Z),T, C
     if args.time_axis_index != -1:
         rawimage = np.rollaxis(rawimage, args.time_axis_index, -1)
