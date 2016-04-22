@@ -143,8 +143,8 @@ def computeDivisionFeaturesOnCloud(frameT,
                                 featuresAtT,
                                 featuresAtTPlus1,
                                 imageProviderPlugin,
-                                labelImagePath,
                                 labelImageFilename,
+                                labelImagePath,
                                 numDimensions,
                                 divisionFeatureNames):
     '''
@@ -162,9 +162,9 @@ def computeDivisionFeaturesOnCloud(frameT,
     **returns** a tuple of `frameT` and the dictionary of the newly computed division 
     features for `frameT`
     '''
-
     # get the label image of the next frame
-    labelImageAtTPlus1 =  imageProviderPlugin.getLabelImageForFrame(labelImageFilename, labelImagePath, frameT + 1)
+    if frameT + 1 < imageProviderPlugin.getTimeRange(labelImageFilename, labelImagePath):
+        labelImageAtTPlus1 =  imageProviderPlugin.getLabelImageForFrame(labelImageFilename, labelImagePath, frameT + 1)
 
     # compute features
     fm = divisionfeatures.FeatureManager(ndim=numDimensions)
