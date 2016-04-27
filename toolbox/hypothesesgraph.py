@@ -41,7 +41,9 @@ class NodeMap:
 class HypothesesGraph:
     """
     Replacement for pgmlink's hypotheses graph, 
-    with a similar API so it can be used as drop-in replacement
+    with a similar API so it can be used as drop-in replacement.
+
+    Internally it uses [networkx](http://networkx.github.io/) to construct the graph.
     """
 
     def __init__(self):

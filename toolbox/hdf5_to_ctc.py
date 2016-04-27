@@ -60,6 +60,10 @@ def save_tracks(tracks, num_frames, options):
 
 
 def remap_label_image(label_image, mapping):
+    """ 
+    given a label image and a mapping, creates and 
+    returns a new label image with remapped object pixel values 
+    """
     remapped_label_image = np.zeros(label_image.shape, dtype=label_image.dtype)
     for dest, src in mapping.iteritems():
         remapped_label_image[label_image == dest] = src
