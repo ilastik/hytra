@@ -54,10 +54,10 @@ class RandomForestClassifier:
             for feature_group_name in h5file[fullPath].keys():
                 feature_group = h5file[fullPath][feature_group_name]
                 for feature in feature_group.keys():
-                    # # discard squared distances feature
-                    # if feature == 'ChildrenRatio_SquaredDistances':
-                    #     continue
-
+                    # discard squared distances feature
+                    if feature == 'ChildrenRatio_SquaredDistances':
+                        continue
+                        
                     # if feature == 'Coord<Principal<Kurtosis>>':
                     #     feature = 'Coord<Principal<Kurtosis> >'
                     # elif feature == 'Coord<Principal<Skewness>>':
@@ -73,7 +73,8 @@ class RandomForestClassifier:
         """
         featureVectors = None
         for f in self.selectedFeatures:
-            assert f in featureDict
+            if f not in featureDict:
+                raise AssertionError("Feature '{}' not present in object features!".format(f))
             vec = featureDict[f]
             if len(vec.shape) == 1:
                 vec = np.expand_dims(vec, axis=1)
