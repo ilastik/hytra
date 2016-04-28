@@ -248,6 +248,9 @@ if __name__ == '__main__':
     # transform such that the order is the following: X,Y,(Z),T, C
     if args.time_axis_index != -1:
         rawimage = np.rollaxis(rawimage, args.time_axis_index, -1)
+        # in order to fix shape mismatch between rawimage.shape == (495, 534)
+        # and labelimage.shape == (534, 495)
+        rawimage = np.swapaxes(rawimage, 0, 1)
     logger.info('Done loading raw data')
 
 
