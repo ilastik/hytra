@@ -60,6 +60,10 @@ def save_tracks(tracks, num_frames, options):
 
 
 def remap_label_image(label_image, mapping):
+    """ 
+    given a label image and a mapping, creates and 
+    returns a new label image with remapped object pixel values 
+    """
     remapped_label_image = np.zeros(label_image.shape, dtype=label_image.dtype)
     for dest, src in mapping.iteritems():
         remapped_label_image[label_image == dest] = src
@@ -85,7 +89,11 @@ def convert_label_volume(options):
 
     moves = get_frame_dataset(1, "Moves", options)
     splits = get_frame_dataset(1, "Splits", options)
-    referenced_labels = set(moves[:, 0]) | set(splits[:, 0]) # set union
+    # splits could be empty
+    if len(splits) == 0:
+        referenced_labels = set(moves[:,0])
+    else:
+        referenced_labels = set(moves[:, 0]) | set(splits[:, 0]) # set union
     for l in referenced_labels:
         if l == 0 or not l in label_image_indices:
             continue

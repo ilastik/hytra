@@ -473,7 +473,7 @@ class Traxelstore:
                 objectCountProbabilities = self._countClassifier.predictProbabilities(
                     features=None, featureDict=features)
 
-            if self._divisionClassifier is not None:
+            if self._divisionClassifier is not None and frame + 1 < self.timeRange[1]:
                 divisionProbabilities = self._divisionClassifier.predictProbabilities(
                     features=None, featureDict=features)
 
@@ -486,7 +486,7 @@ class Traxelstore:
                                      or pixelSize > self._options.sizeFilter[1]):
                     continue
 
-                    # create traxel
+                # create traxel
                 if usePgmlink:
                     traxel = pgmlink.Traxel()
                 else:
@@ -521,7 +521,7 @@ class Traxelstore:
                     self._setTraxelFeatureArray(
                         traxel, objectCountProbabilities[objectId, :], self.detectionProbabilityFeatureName)
 
-                if self._divisionClassifier is not None:
+                if self._divisionClassifier is not None and frame + 1 < self.timeRange[1]:
                     self._setTraxelFeatureArray(
                         traxel, divisionProbabilities[objectId, :], self.divisionProbabilityFeatureName)
 

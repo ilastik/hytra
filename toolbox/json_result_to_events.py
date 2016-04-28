@@ -1,9 +1,3 @@
-import sys
-
-sys.path.append('../.')
-sys.path.append('.')
-
-from empryonic import io
 import commentjson as json
 import os
 import argparse
@@ -35,7 +29,7 @@ def writeEvents(timestep, activeLinks, activeDivisions, mergers, detections, fn,
             # find shape of dataset
             shape = src_file['/'.join(labelImagePath.split('/')[:-1])].values()[0].shape[1:4]
 
-            with io.LineageH5(fn, 'w') as dest_file:
+            with h5py.File(fn, 'w') as dest_file:
                 # write meta fields and copy segmentation from project
                 li_name = labelImagePath % (timestep, timestep + 1, shape[0], shape[1], shape[2])
                 label_img = np.array(src_file[li_name][0, ..., 0]).squeeze()
