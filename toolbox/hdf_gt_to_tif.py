@@ -50,7 +50,7 @@ def convert_label_volume(options):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Transform the input hdf5 file to single tif')
+    parser = argparse.ArgumentParser(description='Transform the input hdf5 file to single tifs. During this process ONLY the segmentation result (and not the tracking) is concidered.')
 
     # file paths
     parser.add_argument('--output-dir', type=str, dest='output_dir', required=True,
@@ -61,7 +61,6 @@ if __name__ == "__main__":
                         help='Path inside the HDF5 file(s) to the label image')
     parser.add_argument('--filename-zero-pad-length', type=int, dest='filename_zero_padding', default='3')
     parser.add_argument('--h5group-zero-pad-length', type=int, dest='h5group_zero_padding', default='4')
-
     # parse command line
     args = parser.parse_args()
 
