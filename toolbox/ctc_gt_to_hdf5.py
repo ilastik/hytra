@@ -138,13 +138,6 @@ def create_label_volume(options):
     # store object ids per frame and generate mappings
     objects_per_frame = []
     mapping_per_frame = {}
-    for frame in range(label_volume.shape[2]):
-        label_image = label_volume[..., frame, 0]
-        objects = np.unique(label_image)
-        mapping_per_frame[frame] = find_label_image_remapping(label_image)
-        objects_per_frame.append(set(objects))
-        if not options.single_frames:
-            ids.create_dataset(format(frame, "04"), data=objects, dtype='u2')
 
     # handle frame zero
     if not options.single_frames:
@@ -159,6 +152,14 @@ def create_label_volume(options):
         out_h5 = h5py.File(options.output_file + format(frame, "04") + '.h5', 'w')
         tracking_frame = out_h5.create_group('tracking')
     save_label_image_for_frame(options, label_volume, out_h5, 0, mapping_per_frame)
+
+    for frame in range(label_volume.shape[2]):
+        label_image = label_volume[..., frame, 0]
+        objects = np.unique(label_image)
+        mapping_per_frame[frame] = find_label_image_remapping(label_image)
+        objects_per_frame.append(set(objects))
+        if not options.single_frames:
+            ids.create_dataset(format(frame, "04"), data=objects, dtype='u2')
 
     # handle all further frames
     for frame in range(1, label_volume.shape[2]):
