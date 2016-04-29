@@ -19,6 +19,7 @@ def read_in_images(n1, n2, filepath, fileFormatString='{:05}.h5'):
     for i in range(n1, n2):
         gt_labelimage_filename.append(os.path.join(str(filepath), fileFormatString.format(i)))
     gt_labelimage = [vigra.impex.readHDF5(gt_labelimage_filename[i], 'segmentation/labels') for i in range(0, n2 - n1)]
+    logger.info("Found segmentation of shape {}".format(gt_labelimage[0].shape))
     return gt_labelimage
 
 
@@ -50,33 +51,58 @@ def read_positiveLabels(n1, n2, filepath, fileFormatString='{:05}.h5'):
     gt_labelimage = [vigra.impex.readHDF5(f, 'tracking/Moves') for f in gt_labels_filename]
     return gt_labelimage
 
+def getValidRegionCentersAndTheirIDs(featureDict, 
+                                     countFeatureName='Count', 
+                                     regionCenterName='RegionCenter'):
+    """
+    From the feature dictionary of a certain frame, 
+    find all objects with pixel count > 0, and return their
+    region centers and ids.
+    """
+    validObjectMask = featureDict[countFeatureName] > 0
+    validObjectMask[0] = False
+    
+    regionCenters = featureDict[regionCenterName][validObjectMask, :]
+    objectIds = list(np.where(validObjectMask)[0])
+    return regionCenters, objectIds
 
-# compute negative labels by nearest neighbor
 def negativeLabels(features, positiveLabels):
+    """
+    Compute negative labels by finding 3 nearest neighbors in the next frame, and
+    filtering out those pairings that are part of the positiveLabels.
+
+    **Returns** a list of lists of pairs of indices, where there are as many inner lists
+    as there are pairs of consecutive frames ordered by time, 
+    e.g. for frame pairs (0,1), (1,2), ... (n-1,n).
+    Each pair in such a list then contains an index into the earlier frame of the pair, 
+    and one index into the later frame.
+    """
     numFrames = len(features)
     neg_lab = []
     for i in range(1, numFrames):  # for all frames but the first
         logger.debug("Frame {}\n".format(i))
         frameNegLab = []
         # build kdtree for frame i
-        kdt = KDTree(features[i]['RegionCenter'][1:, ...], metric='euclidean')
+        centersAtI, objectIdsAtI = getValidRegionCentersAndTheirIDs(features[i])
+        kdt = KDTree(centersAtI, metric='euclidean')
         # find k=3 nearest neighbors of each object of frame i-1 in frame i
-        neighb = kdt.query(features[i - 1]['RegionCenter'][1:, ...], k=3, return_distance=False)
-        for j in range(0, neighb.shape[0]):  # for all objects in frame i-1
+        centersAtIMinusOne, objectIdsAtIMinusOne = getValidRegionCentersAndTheirIDs(features[i - 1])
+        neighb = kdt.query(centersAtIMinusOne, k=3, return_distance=False)
+        for j in range(0, neighb.shape[0]):  # for all valid objects in frame i-1
             logger.debug('looking at neighbors of {} at position {}'.format(
-                j + 1, features[i - 1]['RegionCenter'][j + 1, ...]))
+                objectIdsAtIMinusOne[j], features[i - 1]['RegionCenter'][objectIdsAtIMinusOne[j], ...]))
             for m in range(0, neighb.shape[1]):  # for all neighbors
-                pair = [j + 1, neighb[j][m] + 1]
+                pair = [objectIdsAtIMinusOne[j], objectIdsAtI[neighb[j][m]]]
                 if pair not in positiveLabels[i - 1].tolist():
                     # add one because we've removed the first element when creating the KD tree
                     frameNegLab.append(pair)
                     logger.debug("Adding negative example: {} at position {}".format(
-                        pair, features[i]['RegionCenter'][neighb[j][m] + 1, ...]))
+                        pair, features[i]['RegionCenter'][objectIdsAtI[neighb[j][m]], ...]))
                 else:
                     logger.debug("Discarding negative example {} which is a positive annotation".format(pair))
         neg_lab.append(frameNegLab)
-    return neg_lab
 
+    return neg_lab
 
 def find_features_without_NaNs(features):
     """
@@ -98,7 +124,6 @@ def find_features_without_NaNs(features):
 
     selectedFeatures.sort()
     return selectedFeatures
-
 
 class TransitionClassifier:
     def __init__(self, selectedFeatures, numSamples=None):
@@ -226,7 +251,7 @@ if __name__ == '__main__':
                         help="Number of digits each file name should be long")
     parser.add_argument("--time-axis-index", dest='time_axis_index', default=2, type=int,
                         help="Zero-based index of the time axis in your raw data. E.g. if it has shape (x,t,y,c) "
-                             "this value is 1. Set to -1 to disable any changes")
+                             "this value is 1. Set to -1 to disable any changes. Expected axis order is x,y,(z),t,c")
     parser.add_argument("--verbose", dest='verbose', action='store_true', default=False)
 
     args = parser.parse_args()
@@ -248,11 +273,12 @@ if __name__ == '__main__':
     # transform such that the order is the following: X,Y,(Z),T, C
     if args.time_axis_index != -1:
         rawimage = np.rollaxis(rawimage, args.time_axis_index, -1)
+
         # in order to fix shape mismatch between rawimage.shape == (495, 534)
         # and labelimage.shape == (534, 495)
-        rawimage = np.swapaxes(rawimage, 0, 1)
-    logger.info('Done loading raw data')
-
+        # rawimage = np.swapaxes(rawimage, 0, 1)
+    
+    logger.info('Done loading raw data of shape {}'.format(rawimage.shape))
 
     # compute features
     trackingPluginManager = TrackingPluginManager()
