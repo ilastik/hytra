@@ -76,16 +76,6 @@ def getConfigAndCommandLineArguments():
     consopts.add_option('--average-obj-size', dest='avg_obj_size', type='float', default=0, help='[default: %default]')
     consopts.add_option('--without-tracklets', dest='without_tracklets', action='store_true')
     consopts.add_option('--with-opt-correct', dest='woptical', action='store_true')
-    consopts.add_option('--det', dest='detection_weight', type='float', default=10.0,
-                        help='detection weight [default: %default]')
-    consopts.add_option('--div', dest='division_weight', type='float', default=10.0,
-                        help='division weight [default: %default]')
-    consopts.add_option('--dis', dest='disappearance_cost', type='float', default=500.0,
-                        help='disappearance cost [default: %default]')
-    consopts.add_option('--app', dest='appearance_cost', type='float', default=500.0,
-                        help='appearance cost [default: %default]')
-    consopts.add_option('--tr', dest='transition_weight', type='float', default=10.0,
-                        help='transition weight [default: %default]')
     consopts.add_option('--motionModelWeight', dest='motionModelWeight', type='float', default=0.0,
                         help='motion model weight [default: %default]')
     consopts.add_option('--without-divisions', dest='without_divisions', action='store_true')
@@ -119,14 +109,15 @@ def getConfigAndCommandLineArguments():
     consopts.add_option('--labelImgPath', dest='label_img_path', type='str',
                         default='/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]',
                         help='internal hdf5 path to label image [default=%default]')
-    consopts.add_option('--timeout', dest='timeout', type='float', default=1e+75,
-                        help='CPLEX timeout in sec. [default: %default]')
     consopts.add_option('--with-graph-labeling', dest='w_labeling', action='store_true', default=False,
                         help='load ground truth labeling into hypotheses graph for further evaluation on C++ side,\
                         requires gt-path to point to the groundtruth files')
     consopts.add_option('--transition-classifier-filename', dest='transition_classifier_filename', type='str',
                         default=None)
     consopts.add_option('--transition-classifier-path', dest='transition_classifier_path', type='str', default='/')
+    consopts.add_option('--disable-multiprocessing', dest='disableMultiprocessing', action='store_true',
+                        help='Do not use multiprocessing to speed up computation',
+                        default=False)
 
     parser.add_option_group(consopts)
 
@@ -528,7 +519,7 @@ def loadPyTraxelstore(options,
     else:
         ilpOptions.divisionClassifierFilename = ilpFilename
 
-    pyTraxelstore = traxelstore.Traxelstore(ilpOptions)
+    pyTraxelstore = traxelstore.Traxelstore(ilpOptions, useMultiprocessing=not options.disableMultiprocessing)
     if time_range is not None:
         pyTraxelstore.timeRange = time_range
     a = pyTraxelstore.fillTraxelStore(usePgmlink=usePgmlink)
