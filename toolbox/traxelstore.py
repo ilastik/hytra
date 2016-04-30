@@ -8,6 +8,7 @@ import h5py
 from pluginsystem.plugin_manager import TrackingPluginManager
 import logging
 import time
+import concurrent.futures
 from random_forest_classifier import RandomForestClassifier
 from ilastik_project_options import IlastikProjectOptions
 
@@ -173,6 +174,34 @@ def computeDivisionFeaturesOnCloud(frameT,
     return frameT, feats
     
 
+class DummyExecutor:
+    """
+    Class that mimics the API of concurrent.futures.ProcessPoolExecutor and 
+    concurrent.futures.ThreadPoolExecutor, so that the methods can be called locally
+    without threading or processing as well.
+    """
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def __enter__(self):
+        ''' implementing enter and exit methods allows to use the `with` statement '''
+        return self
+
+    def __exit__(self, *args):
+        ''' Returning false means exceptions are propagated as always '''
+        return False
+
+    def submit(self, func, *args, **kwargs):
+        # create a concurrent.futures.Future to store result
+        f = concurrent.futures.Future()
+        f.set_running_or_notify_cancel()
+
+        # run func
+        result = func(*args, **kwargs)
+        f.set_result(result)
+
+        return f
+
 class Traxelstore:
     """
     The traxelstore is a python wrapper around pgmlink's C++ traxelstore,
@@ -180,10 +209,10 @@ class Traxelstore:
     and evaluate the division/count/transition classifiers.
     """
 
-    def __init__(self, ilpOptions):
-
+    def __init__(self, ilpOptions, useMultiprocessing=True, verbose=False):
+        self._useMultiprocessing = useMultiprocessing
         self._options = ilpOptions
-        self._pluginManager = TrackingPluginManager()
+        self._pluginManager = TrackingPluginManager(verbose=verbose)
         self._pluginManager.setImageProvider(ilpOptions.imageProviderName)
         self._pluginManager.setFeatureSerializer(ilpOptions.featureSerializerName)
 
@@ -328,7 +357,8 @@ class Traxelstore:
         Extract the features of all frames. 
 
         If a list of IP addresses is given e.g. as `dispyNodeIps = ["104.197.178.206","104.196.46.138"]`, 
-        then the computation will be distributed across these nodes.
+        then the computation will be distributed across these nodes. Otherwise, multiprocessing will
+        be used if `self._useMultiprocessing=True`, which it is by default.
 
         If `dispyNodeIps` is an empty list, then the feature extraction will be parallelized via
         multiprocessing.
@@ -344,15 +374,21 @@ class Traxelstore:
         t0 = time.time()
 
         if(len(dispyNodeIps) == 0):
-            logging.getLogger('Traxelstore').info('Parallelizing feature extraction via multiprocessing on all cores!')
             # no dispy node IDs given, parallelize object feature computation via processes
+            
+            if self._useMultiprocessing:
+                # use ProcessPoolExecutor, which instanciates as many processes as there CPU cores by default
+                ExecutorType = concurrent.futures.ProcessPoolExecutor
+                logging.getLogger('Traxelstore').info('Parallelizing feature extraction via multiprocessing on all cores!')
+            else:
+                ExecutorType = DummyExecutor
+                logging.getLogger('Traxelstore').info('Running feature extraction on single core!')
+                
             featuresPerFrame = {}
             progressBar = ProgressBar(stop=numSteps)
             progressBar.show(increase=0)
             
-            # use ProcessPoolExecutor, which instanciates as many processes as there CPU cores by default
-            import concurrent.futures
-            with concurrent.futures.ProcessPoolExecutor() as executor:
+            with ExecutorType() as executor:
                 # 1st pass for region features
                 jobs = []
 
@@ -605,6 +641,9 @@ if __name__ == '__main__':
     parser.add_argument('--image-provider', type=str, dest='image_provider_name', default="LocalImageLoader")
     parser.add_argument('--feature-serializer', type=str, dest='feature_serializer_name', 
                         default='LocalFeatureSerializer')
+    parser.add_argument('--disable-multiprocessing', dest='disableMultiprocessing', action='store_true',
+                        help='Do not use multiprocessing to speed up computation',
+                        default=False)
 
     args = parser.parse_args()
 
@@ -633,6 +672,6 @@ if __name__ == '__main__':
     ilpOptions.divisionClassifierFilename = args.ilpFilename
     ilpOptions.rawImageFilename = args.rawFilename
 
-    traxelstore = Traxelstore(ilpOptions=ilpOptions)
+    traxelstore = Traxelstore(ilpOptions=ilpOptions, useMultiprocessing=not args.disableMultiprocessing)
     traxelstore.timeRange = (0, 3)
     traxelstore.fillTraxelStore(usePgmlink=False)
