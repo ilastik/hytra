@@ -3,7 +3,7 @@ import sys
 import os
 import os.path as path
 import glob
-import optparse
+import configargparse
 import time
 import numpy as np
 import h5py
@@ -12,128 +12,102 @@ from progressbar import ProgressBar
 import hypothesesgraph
 import logging
 
-
-
 def getConfigAndCommandLineArguments():
-    usage = """%prog [options] FILES
-    Track cells.
-
-    Before processing, input files are copied to OUT_DIR. Groups, that will not be modified are not
-    copied but linked to the original files to improve execution speed and storage requirements.
-    """
-
-    parser = optparse.OptionParser(usage=usage)
-    parser.add_option('--config-file', type='string', dest='config', default=None,
-                      help='path to config file')
-    parser.add_option('--method', type='str', default='conservation',
-                      help='conservation or conservation-dynprog [default: %default]')
-    parser.add_option('-o', '--output-dir', type='str', dest='out_dir', default='tracked', help='[default: %default]')
-    parser.add_option('--x-scale', type='float', dest='x_scale', default=1., help='[default: %default]')
-    parser.add_option('--y-scale', type='float', dest='y_scale', default=1., help='[default: %default]')
-    parser.add_option('--z-scale', type='float', dest='z_scale', default=1., help='[default: %default]')
-    parser.add_option('--comment', type='str', dest='comment', default='none',
-                      help='some comment to log [default: %default]')
-    parser.add_option('--random-forest', type='string', dest='rf_fn', default=None,
+    parser = configargparse.ArgumentParser(description=""" 
+        Given raw data, segmentation, and trained classifiers,
+        this script creates a hypotheses graph to be used with the tracking tools. """,
+        formatter_class=configargparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('-c', '--my-config', is_config_file=True, help='config file path')
+    parser.add_argument('--method', type=str, default='conservation',
+                      help='conservation or conservation-dynprog')
+    parser.add_argument('--x-scale', type=float, dest='x_scale', default=1.)
+    parser.add_argument('--y-scale', type=float, dest='y_scale', default=1.)
+    parser.add_argument('--z-scale', type=float, dest='z_scale', default=1.)
+    parser.add_argument('--random-forest', type=str, dest='rf_fn', default=None,
                       help='use cellness prediction instead of indicator function for (mis-)detection energy')
-    parser.add_option('-f', '--forbidden_cost', type='float', dest='forbidden_cost', default=0,
-                      help='forbidden cost [default: %default]')
-    parser.add_option('--min-ts', type='int', dest='mints', default=0, help='[default: %default]')
-    parser.add_option('--max-ts', type='int', dest='maxts', default=-1, help='[default: %default]')
-    parser.add_option('--min-size', type='int', dest='minsize', default=0,
-                      help='minimal size of objects to be tracked [default: %default]')
-    parser.add_option('--max-size', type='int', dest='maxsize', default=100000,
-                      help='maximal size of objects to be tracked [default: %default]')
-    parser.add_option('--dump-traxelstore', type='string', dest='dump_traxelstore', default=None,
-                      help='dump traxelstore to file [default: %default]')
-    parser.add_option('--load-traxelstore', type='string', dest='load_traxelstore', default=None,
-                      help='load traxelstore from file [default: %default]')
-    parser.add_option('--raw-data-file', type='string', dest='raw_filename', default=None,
+    parser.add_argument('-f', '--forbidden_cost', type=float, dest='forbidden_cost', default=0,
+                      help='forbidden cost')
+    parser.add_argument('--min-ts', type=int, dest='mints', default=0)
+    parser.add_argument('--max-ts', type=int, dest='maxts', default=-1)
+    parser.add_argument('--min-size', type=int, dest='minsize', default=0,
+                      help='minimal size of objects to be tracked')
+    parser.add_argument('--max-size', type=int, dest='maxsize', default=100000,
+                      help='maximal size of objects to be tracked')
+    parser.add_argument('--dump-traxelstore', type=str, dest='dump_traxelstore', default=None,
+                      help='dump traxelstore to file')
+    parser.add_argument('--load-traxelstore', type=str, dest='load_traxelstore', default=None,
+                      help='load traxelstore from file')
+    parser.add_argument('--raw-data-file', type=str, dest='raw_filename', default=None,
                       help='filename to the raw h5 file')
-    parser.add_option('--raw-data-path', type='string', dest='raw_path', default='volume/data',
+    parser.add_argument('--raw-data-path', type=str, dest='raw_path', default='volume/data',
                       help='Path inside the raw h5 file to the data')
-    parser.add_option('--dump-hypotheses-graph', type='string', dest='hypotheses_graph_filename', default=None,
+    parser.add_argument('--dump-hypotheses-graph', type=str, dest='hypotheses_graph_filename', default=None,
                       help='save hypotheses graph so it can be loaded later')
-    parser.add_option('--label-image-file', type='string', dest='label_image_file', default=None,
+    parser.add_argument('--label-image-file', type=str, dest='label_image_file', default=None,
                       help='if a label image separate to the one in the ILP should be used, set it here')
 
-    parser.add_option('--image-provider', type='string', dest='image_provider_name', default="LocalImageLoader")
+    parser.add_argument('--image-provider', type=str, dest='image_provider_name', default="LocalImageLoader")
     
-    parser.add_option('--json-output', type='string', dest='json_filename', default=None,
+    parser.add_argument('--json-output', type=str, required=True, dest='json_filename', default=None,
                       help='filename where to save the generated JSON file to')
 
-    consopts = optparse.OptionGroup(parser, "conservation tracking")
-    consopts.add_option('--max-number-objects', dest='max_num_objects', type='float', default=2,
-                        help='Give maximum number of objects one connected component may consist of [default: %default]')
-    consopts.add_option('--max-neighbor-distance', dest='mnd', type='float', default=30, help='[default: %default]')
-    consopts.add_option('--max-nearest-neighbors', dest='max_nearest_neighbors', type='int', default=1,
-                        help='[default: %default]')
-    consopts.add_option('--division-threshold', dest='division_threshold', type='float', default=0.1,
-                        help='[default: %default]')
+    parser.add_argument('--max-number-objects', dest='max_num_objects', type=float, default=2,
+                        help='Give maximum number of objects one connected component may consist of')
+    parser.add_argument('--max-neighbor-distance', dest='mnd', type=float, default=30)
+    parser.add_argument('--max-nearest-neighbors', dest='max_nearest_neighbors', type=int, default=1)
+    parser.add_argument('--division-threshold', dest='division_threshold', type=float, default=0.1)
     # detection_rf_filename in general parser options
-    consopts.add_option('--size-dependent-detection-prob', dest='size_dependent_detection_prob', action='store_true')
+    parser.add_argument('--size-dependent-detection-prob', dest='size_dependent_detection_prob', action='store_true')
     # forbidden_cost in general parser options
     # ep_gap in general parser options
-    consopts.add_option('--average-obj-size', dest='avg_obj_size', type='float', default=0, help='[default: %default]')
-    consopts.add_option('--without-tracklets', dest='without_tracklets', action='store_true')
-    consopts.add_option('--with-opt-correct', dest='woptical', action='store_true')
-    consopts.add_option('--motionModelWeight', dest='motionModelWeight', type='float', default=0.0,
-                        help='motion model weight [default: %default]')
-    consopts.add_option('--without-divisions', dest='without_divisions', action='store_true')
-    consopts.add_option('--means', dest='means', type='float', default=0.0,
-                        help='means for detection [default: %default]')
-    consopts.add_option('--sigma', dest='sigma', type='float', default=0.0,
-                        help='sigma for detection [default: %default]')
-    consopts.add_option('--with-merger-resolution', dest='with_merger_resolution', action='store_true', default=False)
-    consopts.add_option('--without-constraints', dest='woconstr', action='store_true', default=False)
-    consopts.add_option('--trans-par', dest='trans_par', type='float', default=5.0,
-                        help='alpha for the transition prior [default: %default]')
-    consopts.add_option('--border-width', dest='border_width', type='float', default=0.0,
-                        help='absolute border margin in which the appearance/disappearance costs are linearly decreased [default: %default]')
-    consopts.add_option('--ext-probs', dest='ext_probs', type='string', default=None,
-                        help='provide a path to hdf5 files containing detection probabilities [default:%default]')
-    consopts.add_option('--objCountPath', dest='obj_count_path', type='string',
+    parser.add_argument('--average-obj-size', dest='avg_obj_size', type=float, default=0)
+    parser.add_argument('--without-tracklets', dest='without_tracklets', action='store_true')
+    parser.add_argument('--with-opt-correct', dest='woptical', action='store_true')
+    parser.add_argument('--motionModelWeight', dest='motionModelWeight', type=float, default=0.0,
+                        help='motion model weight')
+    parser.add_argument('--without-divisions', dest='without_divisions', action='store_true')
+    parser.add_argument('--means', dest='means', type=float, default=0.0,
+                        help='means for detection')
+    parser.add_argument('--sigma', dest='sigma', type=float, default=0.0,
+                        help='sigma for detection')
+    parser.add_argument('--with-merger-resolution', dest='with_merger_resolution', action='store_true', default=False)
+    parser.add_argument('--without-constraints', dest='woconstr', action='store_true', default=False)
+    parser.add_argument('--trans-par', dest='trans_par', type=float, default=5.0,
+                        help='alpha for the transition prior')
+    parser.add_argument('--border-width', dest='border_width', type=float, default=0.0,
+                        help='absolute border margin in which the appearance/disappearance costs are linearly decreased')
+    parser.add_argument('--ext-probs', dest='ext_probs', type=str, default=None,
+                        help='provide a path to hdf5 files containing detection probabilities')
+    parser.add_argument('--objCountPath', dest='obj_count_path', type=str,
                         default='/CountClassification/Probabilities/0/',
-                        help='internal hdf5 path to object count probabilities [default=%default]')
-    consopts.add_option('--objCountFile', dest='obj_count_file', type='string', default=None,
-                        help='Filename of the HDF file containing the object count classifier. If None, will be taken from ILP [default=%default]')
-    consopts.add_option('--divPath', dest='div_prob_path', type='string', default='/DivisionDetection/Probabilities/0/',
-                        help='internal hdf5 path to division probabilities [default=%default]')
-    consopts.add_option('--divFile', dest='div_file', type='string', default=None,
-                        help='Filename of the HDF file containing the division classifier. If None, will be taken from ILP [default=%default]')
-    consopts.add_option('--featsPath', dest='feats_path', type='string',
+                        help='internal hdf5 path to object count probabilities')
+    parser.add_argument('--objCountFile', dest='obj_count_file', type=str, default=None,
+                        help='Filename of the HDF file containing the object count classifier. If None, will be taken from ILP')
+    parser.add_argument('--divPath', dest='div_prob_path', type=str, default='/DivisionDetection/Probabilities/0/',
+                        help='internal hdf5 path to division probabilities')
+    parser.add_argument('--divFile', dest='div_file', type=str, default=None,
+                        help='Filename of the HDF file containing the division classifier. If None, will be taken from ILP')
+    parser.add_argument('--featsPath', dest='feats_path', type=str,
                         default='/TrackingFeatureExtraction/RegionFeaturesVigra/0000/[[%d], [%d]]/Default features/%s',
-                        help='internal hdf5 path to object features [default=%default]')
-    consopts.add_option('--translationPath', dest='trans_vector_path', type='str',
+                        help='internal hdf5 path to object features')
+    parser.add_argument('--translationPath', dest='trans_vector_path', type=str,
                         default='OpticalTranslation/TranslationVectors/0/data',
-                        help='internal hdf5 path to translation vectors [default=%default]')
-    consopts.add_option('--labelImgPath', dest='label_img_path', type='str',
+                        help='internal hdf5 path to translation vectors')
+    parser.add_argument('--labelImgPath', dest='label_img_path', type=str,
                         default='/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]',
-                        help='internal hdf5 path to label image [default=%default]')
-    consopts.add_option('--with-graph-labeling', dest='w_labeling', action='store_true', default=False,
-                        help='load ground truth labeling into hypotheses graph for further evaluation on C++ side,\
-                        requires gt-path to point to the groundtruth files')
-    consopts.add_option('--transition-classifier-filename', dest='transition_classifier_filename', type='str',
+                        help='internal hdf5 path to label image')
+    parser.add_argument('--transition-classifier-filename', dest='transition_classifier_filename', type=str,
                         default=None)
-    consopts.add_option('--transition-classifier-path', dest='transition_classifier_path', type='str', default='/')
-    consopts.add_option('--disable-multiprocessing', dest='disableMultiprocessing', action='store_true',
+    parser.add_argument('--transition-classifier-path', dest='transition_classifier_path', type=str, default='/')
+    parser.add_argument('--disable-multiprocessing', dest='disableMultiprocessing', action='store_true',
                         help='Do not use multiprocessing to speed up computation',
                         default=False)
+    parser.add_argument('--verbose', dest='verbose', action='store_true',
+                        help='Turn on verbose logging', default=False)
 
-    parser.add_option_group(consopts)
+    options, unknown = parser.parse_known_args()
 
-    optcfg, args = parser.parse_args()
-
-    if (optcfg.config != None):
-        with open(optcfg.config) as f:
-            configfilecommands = f.read().splitlines()
-        optcfg, args2 = parser.parse_args(configfilecommands)
-
-    numArgs = len(args)
-    if numArgs == 0 or optcfg.json_filename == None:
-        parser.print_help()
-        sys.exit(1)
-
-    return optcfg, args
+    return options, unknown
 
 
 def generate_traxelstore(h5file,
@@ -680,27 +654,14 @@ if __name__ == "__main__":
     """
     Main loop of script
     """
-    logging.basicConfig(level=logging.INFO)
-    options, args = getConfigAndCommandLineArguments()
+    options, unknown = getConfigAndCommandLineArguments()
+    if options.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
 
-    # get filenames
-    numArgs = len(args)
-    fns = []
-    if numArgs > 0:
-        for arg in args:
-            logging.debug(arg)
-            fns.extend(glob.glob(arg))
-        fns.sort()
-        logging.info(fns)
-
-    ilp_fn = fns[0]
-
-    # create output path if it doesn't exist
-    if not path.exists(options.out_dir):
-        try:
-            os.makedirs(options.out_dir)
-        except:
-            pass
+    logging.debug("Ignoring unknown parameters: {}".format(unknown))
+    ilp_fn = options.label_image_file
 
     # Do the tracking
     start = time.time()
