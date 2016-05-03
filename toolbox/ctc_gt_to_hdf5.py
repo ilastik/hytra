@@ -139,6 +139,10 @@ def create_label_volume(options):
     objects_per_frame = []
     mapping_per_frame = {}
 
+    for frame in range(label_volume.shape[2]):
+        label_image = label_volume[..., frame, 0]
+        mapping_per_frame[frame] = find_label_image_remapping(label_image)
+
     # handle frame zero
     if not options.single_frames:
         # one holistic volume file
@@ -156,7 +160,6 @@ def create_label_volume(options):
     for frame in range(label_volume.shape[2]):
         label_image = label_volume[..., frame, 0]
         objects = np.unique(label_image)
-        mapping_per_frame[frame] = find_label_image_remapping(label_image)
         objects_per_frame.append(set(objects))
         if not options.single_frames:
             ids.create_dataset(format(frame, "04"), data=objects, dtype='u2')
