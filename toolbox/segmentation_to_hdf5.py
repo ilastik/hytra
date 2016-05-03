@@ -1,7 +1,9 @@
 import numpy as np
 import h5py
 import vigra
-import argparse
+import configargparse as argparse
+import logging
+from compiler.ast import flatten
 
 def segmentation_to_hdf5(options):
     """
@@ -13,7 +15,7 @@ def segmentation_to_hdf5(options):
         data = vigra.impex.readImage(options.tif_input_files[timeframe], dtype='UINT16') # sure UINT32?
         
         if timeframe == 0:
-            print("Found image of shape {}".format(data.shape))
+            logging.info("Found image of shape {}".format(data.shape))
         
         # put dimension in front for the time step
         data = np.expand_dims(data, axis=0)
@@ -22,10 +24,11 @@ def segmentation_to_hdf5(options):
         data = np.swapaxes(data, 1, 2)
 
         if timeframe == 0:
-            print("Changed into shape {}".format(data.shape))
+            logging.info("Changed into shape {}".format(data.shape))
 
         internalPath = options.hdf5ImagePath % (timeframe, timeframe + 1, data.shape[1], data.shape[2], data.shape[3])
         out_h5.create_dataset(internalPath, data=data, dtype='u2', compression='gzip')
+    logging.info("Saved {} timeframes".format(timeframe))
 
 
 if __name__ == '__main__':
@@ -33,16 +36,29 @@ if __name__ == '__main__':
     Convert the segmentation tif format to HDF5 volume
     """
 
-    parser = argparse.ArgumentParser(description='Convert segmentation tif files to hdf5')
-    parser.add_argument('--tif-input-files', required=True, type=str, nargs='+', dest='tif_input_files',
-                        help='Filename of the tif file containing the segmentation data')
-    parser.add_argument('--hdf5Path', required=True, type=str, dest='hdf5Path',
-                        help='name and path to the hdf5 volume')
-    parser.add_argument('--hdf5-image-path', type=str, dest='hdf5ImagePath',
+    parser = argparse.ArgumentParser(
+        description='Convert segmentation tif files to hdf5',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('-c', '--config', is_config_file=True, help='config file path')
+
+    parser.add_argument('--ctc-segmentation-input-tifs', required=True, type=str, nargs='+', action='append', dest='tif_input_files',
+                        help='Filename of the all tif files containing the segmentation data, sorted in the right order')
+    parser.add_argument('--label-image-file', required=True, type=str, dest='hdf5Path',
+                        help='filename of where the segmentation HDF5 file will be created')
+    parser.add_argument('--label-image-path', type=str, dest='hdf5ImagePath',
                         help='Path inside ilastik project file to the label image',
                         default='/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]')
+    parser.add_argument("--verbose", dest='verbose', action='store_true', default=False)
 
     # parse command line
-    args = parser.parse_args()
+    options, unknown = parser.parse_known_args()
+    options.tif_input_files = flatten(options.tif_input_files)
 
-    segmentation_to_hdf5(args)
+    if options.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
+
+    logging.debug("Ignoring unknown parameters: {}".format(unknown))
+
+    segmentation_to_hdf5(options)

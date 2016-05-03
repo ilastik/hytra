@@ -231,21 +231,22 @@ class TransitionClassifier:
 
 
 if __name__ == '__main__':
-    import argparse
+    import configargparse as argparse
 
     parser = argparse.ArgumentParser(description="trainRF",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("filepath",
+    parser.add_argument('-c', '--config', is_config_file=True, help='config file path')
+    parser.add_argument("--groundtruth", dest='filepath', type=str,
                         help="read ground truth from this folder", metavar="FILE")
-    parser.add_argument("rawimage_filename",
+    parser.add_argument("--raw-data-file", dest='rawimage_filename', type=str,
                         help="filepath+name of the raw image", metavar="FILE")
-    parser.add_argument("--rawimage-h5-path", dest='rawimage_h5_path', type=str,
+    parser.add_argument("--raw-data-path", dest='rawimage_h5_path', type=str,
                         help="Path inside the rawimage HDF5 file", default='volume/data')
-    parser.add_argument("initFrame", default=0, type=int,
+    parser.add_argument("--init-frame", default=0, type=int, dest='initFrame',
                         help="where to begin reading the frames")
-    parser.add_argument("endFrame", default=0, type=int,
+    parser.add_argument("--end-frame", default=0, type=int, dest='endFrame',
                         help="where to end frames")
-    parser.add_argument("outputFilename",
+    parser.add_argument("--transition-classifier-file", dest='outputFilename', type=str,
                         help="save RF into file", metavar="FILE")
     parser.add_argument("--filename-zero-padding", dest='filename_zero_padding', default=5, type=int,
                         help="Number of digits each file name should be long")
@@ -254,13 +255,15 @@ if __name__ == '__main__':
                              "this value is 1. Set to -1 to disable any changes. Expected axis order is x,y,(z),t,c")
     parser.add_argument("--verbose", dest='verbose', action='store_true', default=False)
 
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
+
     logging.basicConfig(level=logging.INFO)
     if args.verbose:
         logger.setLevel(logging.DEBUG)
     else:
         logger.setLevel(logging.INFO)
 
+    logging.debug("Ignoring unknown parameters: {}".format(unknown))
     filepath = args.filepath
     rawimage_filename = args.rawimage_filename
     initFrame = args.initFrame
