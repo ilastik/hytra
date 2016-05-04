@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-import argparse
+import configargparse as argparse
 import os
-
+import logging
 import numpy as np
 import h5py
 import vigra
@@ -29,7 +29,7 @@ def find_splits(filename, start_frame):
 
                 split_events[timestep][parent].append(idx)
 
-    print("Found splits: {}".format(num_splits))
+    logging.info("Found number of splits: {}".format(num_splits))
     return split_events
 
 def remap_label_image(label_image, mapping):
@@ -123,7 +123,7 @@ def save_label_image_for_frame(options, label_volume, out_h5, frame, mapping_per
 def create_label_volume(options):
     # read image
     label_volume = vigra.impex.readVolume(options.input_tif)
-    print("Found dataset of size {}".format(label_volume.shape))
+    logging.info("Found dataset of size {}".format(label_volume.shape))
 
     split_events = find_splits(options.input_track, options.start_frame)
 
@@ -193,17 +193,17 @@ def create_label_volume(options):
                 value = [v for v in value if v in objects_per_frame[frame]]
 
                 if key not in objects_per_frame[frame - 1]:
-                    print("Parent {} of split is not in previous frame {}. Ignored".format(key, frame - 1))
+                    logging.warning("Parent {} of split is not in previous frame {}. Ignored".format(key, frame - 1))
                     continue
 
                 if len(value) > 1:
                     if len(value) > 2:
-                        print("Cutting off children of {} in timestep {}".format(key, frame))
+                        logging.warning("Cutting off children of {} in timestep {}".format(key, frame))
                     # cut off divisions into more than 2
                     splits.append([key] + value[0:2])
                 elif len(value) == 1:
                     # store as move
-                    print("Store move ({},{}) instead of split into one in timestep {}".format(key, value[0], frame))
+                    logging.warning("Store move ({},{}) instead of split into one in timestep {}".format(key, value[0], frame))
                     moves.append((key, value[0]))
 
             if len(splits) > 0:
@@ -219,23 +219,34 @@ def create_label_volume(options):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Convert Cell Tracking Challenge Ground Truth to our HDF5 event format')
+    parser = argparse.ArgumentParser(
+        description='Convert Cell Tracking Challenge Ground Truth to our HDF5 event format',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    parser.add_argument('-c', '--config', is_config_file=True, help='config file path')
 
     # file paths
-    parser.add_argument('--input-tif', type=str, dest='input_tif', required=True,
+    parser.add_argument('--ctc-track-input-tif', type=str, dest='input_tif', required=True,
                         help='First tif file of Cell Tracking Challenge data: man_track00.tif')
-    parser.add_argument('--input-track', type=str, dest='input_track', required=True,
+    parser.add_argument('--ctc-track-input-txt', type=str, dest='input_track', required=True,
                         help='Path to Cell Tracking Challenge manual tracking file: man_track.txt')
-    parser.add_argument('--output-file', type=str, dest='output_file', required=True,
-                        help='Filename for the resulting HDF5 file.')
+    parser.add_argument('--groundtruth', type=str, dest='output_file', required=True,
+                        help='Filename for the resulting HDF5 file/folder.')
     parser.add_argument('--start-frame', type=int, dest='start_frame', default=0,
                         help='First frame number (usually 0, but e.g. their rapoport starts at 150')
-    parser.add_argument('--single-frames', action='store_true', dest='single_frames',
+    parser.add_argument('--ctc-to-gt-single-frames', action='store_true', dest='single_frames',
                         help='output single frame h5 files instead of one volume. Filename is appended with numbers.')
-    parser.add_argument('--index-remapping', action='store_true', dest='index_remapping',
+    parser.add_argument('--ctc-to-gt-index-remapping', action='store_true', dest='index_remapping',
                         help='Remap indices so that the objects in each frame have continuous ascending indices.')
+    parser.add_argument("--verbose", dest='verbose', action='store_true', default=False)
 
     # parse command line
-    args = parser.parse_args()
+    options, unknown = parser.parse_known_args()
 
-    create_label_volume(args)
+    if options.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
+    logging.debug("Ignoring unknown parameters: {}".format(unknown))
+
+    create_label_volume(options)

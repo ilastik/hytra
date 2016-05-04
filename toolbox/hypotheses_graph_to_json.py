@@ -17,7 +17,7 @@ def getConfigAndCommandLineArguments():
         Given raw data, segmentation, and trained classifiers,
         this script creates a hypotheses graph to be used with the tracking tools. """,
         formatter_class=configargparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-c', '--my-config', is_config_file=True, help='config file path')
+    parser.add_argument('-c', '--config', is_config_file=True, help='config file path')
     parser.add_argument('--method', type=str, default='conservation',
                       help='conservation or conservation-dynprog')
     parser.add_argument('--x-scale', type=float, dest='x_scale', default=1.)
@@ -45,10 +45,13 @@ def getConfigAndCommandLineArguments():
                       help='save hypotheses graph so it can be loaded later')
     parser.add_argument('--label-image-file', type=str, dest='label_image_file', default=None,
                       help='if a label image separate to the one in the ILP should be used, set it here')
+    parser.add_argument('--label-image-path', dest='label_img_path', type=str,
+                        default='/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]',
+                        help='internal hdf5 path to label image')
 
     parser.add_argument('--image-provider', type=str, dest='image_provider_name', default="LocalImageLoader")
     
-    parser.add_argument('--json-output', type=str, required=True, dest='json_filename', default=None,
+    parser.add_argument('--graph-json-file', type=str, required=True, dest='json_filename', default=None,
                       help='filename where to save the generated JSON file to')
 
     parser.add_argument('--max-number-objects', dest='max_num_objects', type=float, default=2,
@@ -63,7 +66,7 @@ def getConfigAndCommandLineArguments():
     parser.add_argument('--average-obj-size', dest='avg_obj_size', type=float, default=0)
     parser.add_argument('--without-tracklets', dest='without_tracklets', action='store_true')
     parser.add_argument('--with-opt-correct', dest='woptical', action='store_true')
-    parser.add_argument('--motionModelWeight', dest='motionModelWeight', type=float, default=0.0,
+    parser.add_argument('--motion-model-weight', dest='motionModelWeight', type=float, default=0.0,
                         help='motion model weight')
     parser.add_argument('--without-divisions', dest='without_divisions', action='store_true')
     parser.add_argument('--means', dest='means', type=float, default=0.0,
@@ -78,25 +81,19 @@ def getConfigAndCommandLineArguments():
                         help='absolute border margin in which the appearance/disappearance costs are linearly decreased')
     parser.add_argument('--ext-probs', dest='ext_probs', type=str, default=None,
                         help='provide a path to hdf5 files containing detection probabilities')
-    parser.add_argument('--objCountPath', dest='obj_count_path', type=str,
+    parser.add_argument('--object-count-classifier-path', dest='obj_count_path', type=str,
                         default='/CountClassification/Probabilities/0/',
                         help='internal hdf5 path to object count probabilities')
-    parser.add_argument('--objCountFile', dest='obj_count_file', type=str, default=None,
+    parser.add_argument('--object-count-classifier-file', dest='obj_count_file', type=str, default=None,
                         help='Filename of the HDF file containing the object count classifier. If None, will be taken from ILP')
-    parser.add_argument('--divPath', dest='div_prob_path', type=str, default='/DivisionDetection/Probabilities/0/',
+    parser.add_argument('--division-classifier-path', dest='div_prob_path', type=str, default='/DivisionDetection/Probabilities/0/',
                         help='internal hdf5 path to division probabilities')
-    parser.add_argument('--divFile', dest='div_file', type=str, default=None,
+    parser.add_argument('--division-classifier-file', dest='div_file', type=str, default=None,
                         help='Filename of the HDF file containing the division classifier. If None, will be taken from ILP')
     parser.add_argument('--featsPath', dest='feats_path', type=str,
                         default='/TrackingFeatureExtraction/RegionFeaturesVigra/0000/[[%d], [%d]]/Default features/%s',
                         help='internal hdf5 path to object features')
-    parser.add_argument('--translationPath', dest='trans_vector_path', type=str,
-                        default='OpticalTranslation/TranslationVectors/0/data',
-                        help='internal hdf5 path to translation vectors')
-    parser.add_argument('--labelImgPath', dest='label_img_path', type=str,
-                        default='/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]',
-                        help='internal hdf5 path to label image')
-    parser.add_argument('--transition-classifier-filename', dest='transition_classifier_filename', type=str,
+    parser.add_argument('--transition-classifier-file', dest='transition_classifier_filename', type=str,
                         default=None)
     parser.add_argument('--transition-classifier-path', dest='transition_classifier_path', type=str, default='/')
     parser.add_argument('--disable-multiprocessing', dest='disableMultiprocessing', action='store_true',

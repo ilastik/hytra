@@ -1,4 +1,5 @@
-import argparse
+import configargparse as argparse
+import logging
 import h5py
 import vigra
 from vigra import numpy as np
@@ -64,18 +65,20 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Perform the segmentation as in ilastik for a new predicition map,'
                                                 + 'using the same settings as stored in the given ilastik project',
                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--model', required=True, type=str, dest='modelFilename',
+    parser.add_argument('-c', '--config', is_config_file=True, help='config file path')
+
+    parser.add_argument('--graph-json-file', required=True, type=str, dest='modelFilename',
                         help='Filename of the JSON graph model')
-    parser.add_argument('--result', required=True, type=str, dest='resultFilename',
+    parser.add_argument('--result-json-file', required=True, type=str, dest='resultFilename',
                         help='Filename of the JSON result file')
     parser.add_argument('--label-image-file', required=True, type=str, dest='labelImageFilename',
                         help='Filename of the HDF5/ILP file containing the segmentation')
     parser.add_argument('--label-image-path', type=str, dest='labelImagePath',
                         help='Path inside result file to the label image',
                         default='/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]')
-    parser.add_argument('--out', type=str, dest='out', required=True, help='Filename of the resulting HDF5 with relabeled objects')
+    parser.add_argument('--label-image-out', type=str, dest='out', required=True, help='Filename of the resulting HDF5 with relabeled objects')
     
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     # get the dataset shape per frame:
     shape = getShape(args.labelImageFilename, args.labelImagePath)
