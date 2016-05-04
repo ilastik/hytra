@@ -1,36 +1,37 @@
 import commentjson as json
+import logging
 import os
-import argparse
+import configargparse as argparse
 import numpy as np
 import h5py
 import networkx as nx
 from pluginsystem.plugin_manager import TrackingPluginManager
-import logging
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Given a hypotheses json graph and a result.json, this script'
                         + ' resolves all mergers by updating the segmentation and inserting the appropriate '
                         + 'nodes and links.',
                         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--model', required=True, type=str, dest='model_filename',
+    parser.add_argument('-c', '--config', is_config_file=True, help='config file path', dest='config_file', required=True)
+
+    parser.add_argument('--graph-json-file', required=True, type=str, dest='model_filename',
                         help='Filename of the json model description')
-    parser.add_argument('--result', required=True, type=str, dest='result_filename',
+    parser.add_argument('--result-json-file', required=True, type=str, dest='result_filename',
                         help='Filename of the json file containing results')
-    parser.add_argument('--labelImage', required=True, type=str, dest='label_image_filename',
+    parser.add_argument('--label-image-filename', required=True, type=str, dest='label_image_filename',
                         help='Filename of the original ilasitk tracking project')
-    parser.add_argument('--labelImagePath', dest='label_image_path', type=str,
+    parser.add_argument('--label-image-path', dest='label_image_path', type=str,
                         default='/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]',
                         help='internal hdf5 path to label image')
-    parser.add_argument('--outModel', type=str, dest='out_model_filename', default='.', 
+    parser.add_argument('--outModel', type=str, dest='out_model_filename', required=True, 
                         help='Filename of the json model containing the hypotheses graph including new nodes')
-    # parser.add_argument('--outModel', type=str, dest='out_model_filename', required=True, 
-    #                     help='Filename where to store the json model containing the new hypotheses graph')
     parser.add_argument('--outLabelImage', type=str, dest='out_label_image', required=True, 
                         help='Filename where to store the label image with updated segmentation')
     parser.add_argument('--outResult', type=str, dest='out_result', required=True, 
                         help='Filename where to store the new result')
     
-    args = parser.parse_args()
+    args, _ = parser.parse_known_args()
+    logging.basicConfig(level=logging.INFO)
 
     logging.basicConfig(level=logging.DEBUG)
 
