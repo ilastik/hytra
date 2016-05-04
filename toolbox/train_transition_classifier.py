@@ -1,10 +1,11 @@
 from compiler.ast import flatten
 import os
+import logging
+import glob
 import vigra
 from vigra import numpy as np
 import h5py
 from sklearn.neighbors import KDTree
-import logging
 from pluginsystem.plugin_manager import TrackingPluginManager
 
 logger = logging.getLogger('TransitionClassifier')
@@ -12,13 +13,9 @@ logger.setLevel(logging.DEBUG)
 
 np.seterr(all='raise')
 
-
 # read in 'n2-n1' of images
-def read_in_images(n1, n2, filepath, fileFormatString='{:05}.h5'):
-    gt_labelimage_filename = []
-    for i in range(n1, n2):
-        gt_labelimage_filename.append(os.path.join(str(filepath), fileFormatString.format(i)))
-    gt_labelimage = [vigra.impex.readHDF5(gt_labelimage_filename[i], 'segmentation/labels') for i in range(0, n2 - n1)]
+def read_in_images(n1, n2, files):
+    gt_labelimage = [vigra.impex.readHDF5(f, 'segmentation/labels') for f in files[n1:n2]]
     logger.info("Found segmentation of shape {}".format(gt_labelimage[0].shape))
     return gt_labelimage
 
@@ -44,12 +41,9 @@ def compute_features(raw_image, labeled_image, n1, n2, pluginManager, filepath):
     return allFeat
 
 # read in 'n2-n1' of labels
-def read_positiveLabels(n1, n2, filepath, fileFormatString='{:05}.h5'):
-    gt_labels_filename = []
-    for i in range(n1 + 1, n2):  # the first one contains no moves data
-        gt_labels_filename.append(os.path.join(str(filepath), fileFormatString.format(i)))
-    gt_labelimage = [vigra.impex.readHDF5(f, 'tracking/Moves') for f in gt_labels_filename]
-    return gt_labelimage
+def read_positiveLabels(n1, n2, files):
+    gt_moves = [vigra.impex.readHDF5(f, 'tracking/Moves') for f in files[n1+1:n2]]
+    return gt_moves
 
 def getValidRegionCentersAndTheirIDs(featureDict, 
                                      countFeatureName='Count', 
@@ -244,12 +238,12 @@ if __name__ == '__main__':
                         help="Path inside the rawimage HDF5 file", default='volume/data')
     parser.add_argument("--init-frame", default=0, type=int, dest='initFrame',
                         help="where to begin reading the frames")
-    parser.add_argument("--end-frame", default=0, type=int, dest='endFrame',
+    parser.add_argument("--end-frame", default=-1, type=int, dest='endFrame',
                         help="where to end frames")
     parser.add_argument("--transition-classifier-file", dest='outputFilename', type=str,
                         help="save RF into file", metavar="FILE")
-    parser.add_argument("--filename-zero-padding", dest='filename_zero_padding', default=5, type=int,
-                        help="Number of digits each file name should be long")
+    parser.add_argument("--filepattern", dest='filepattern', type=str, default='0*.h5',
+                        help="File pattern of the ground truth files")
     parser.add_argument("--time-axis-index", dest='time_axis_index', default=2, type=int,
                         help="Zero-based index of the time axis in your raw data. E.g. if it has shape (x,t,y,c) "
                              "this value is 1. Set to -1 to disable any changes. Expected axis order is x,y,(z),t,c")
@@ -264,12 +258,9 @@ if __name__ == '__main__':
         logger.setLevel(logging.INFO)
 
     logging.debug("Ignoring unknown parameters: {}".format(unknown))
-    filepath = args.filepath
+    
+    # read raw image
     rawimage_filename = args.rawimage_filename
-    initFrame = args.initFrame
-    endFrame = args.endFrame
-    fileFormatString = '{' + ':0{}'.format(args.filename_zero_padding) + '}.h5'
-
     with h5py.File(rawimage_filename, 'r') as h5raw:
         rawimage = h5raw[args.rawimage_h5_path].value
 
@@ -283,10 +274,19 @@ if __name__ == '__main__':
     
     logger.info('Done loading raw data of shape {}'.format(rawimage.shape))
 
+    # find ground truth files
+    filepath = args.filepath
+    files = glob.glob(os.path.join(filepath, args.filepattern))
+    files.sort()
+    initFrame = args.initFrame
+    endFrame = args.endFrame
+    if endFrame < 0:
+        endFrame += len(files)
+    
     # compute features
     trackingPluginManager = TrackingPluginManager()
     features = compute_features(rawimage,
-                                read_in_images(initFrame, endFrame, filepath, fileFormatString),
+                                read_in_images(initFrame, endFrame, files),
                                 initFrame,
                                 endFrame,
                                 trackingPluginManager,
@@ -294,7 +294,7 @@ if __name__ == '__main__':
     logger.info('Done computing features')
 
     selectedFeatures = find_features_without_NaNs(features)
-    pos_labels = read_positiveLabels(initFrame, endFrame, filepath, fileFormatString)
+    pos_labels = read_positiveLabels(initFrame, endFrame, files)
     neg_labels = negativeLabels(features, pos_labels)
     numSamples = 2 * sum([len(l) for l in pos_labels]) + sum([len(l) for l in neg_labels])
     logger.info('Done extracting {} samples'.format(numSamples))
