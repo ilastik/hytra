@@ -44,6 +44,7 @@ def save_frame_to_tif(timestep, label_image, options):
         filename = options.output_dir + '/man_track' + format(timestep, "0{}".format(options.filename_zero_padding)) + '.tif'
     else:
         filename = options.output_dir + '/mask' + format(timestep, "0{}".format(options.filename_zero_padding)) + '.tif'
+    label_image = np.swapaxes(label_image, 0, 1)
     vigra.impex.writeImage(label_image.astype('uint16'), filename)
 
 
