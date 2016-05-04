@@ -138,7 +138,6 @@ def create_label_volume(options):
         elif os.path.isdir(options.output_file):
             import shutil
             shutil.rmtree(options.output_file)
-            print "create folder ",options.output_file
             os.mkdir(options.output_file)
 
     # store object ids per frame and generate mappings
