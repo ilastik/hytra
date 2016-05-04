@@ -29,7 +29,8 @@ def segmentation_to_hdf5(options):
 
         internalPath = options.hdf5ImagePath % (timeframe, timeframe + 1, data.shape[1], data.shape[2], data.shape[3])
         out_h5.create_dataset(internalPath, data=data, dtype='u2', compression='gzip')
-        logging.info("Saved {} timeframes".format(timeframe))
+        time = timeframe
+    logging.info("Saved {} timeframes".format(time))
 
 if __name__ == '__main__':
     """
