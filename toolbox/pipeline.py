@@ -41,7 +41,7 @@ def run_pipeline(options):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description='Convert Cell Tracking Challenge raw data to a HDF5 stack',
+        description='Cell Tracking Pipeline',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-c', '--config', is_config_file=True, help='config file path', dest='config_file', required=True)
     
