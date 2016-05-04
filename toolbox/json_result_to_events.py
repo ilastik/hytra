@@ -1,6 +1,7 @@
 import commentjson as json
 import os
-import argparse
+import logging
+import configargparse as argparse
 import numpy as np
 import h5py
 from multiprocessing import Pool
@@ -13,7 +14,7 @@ def writeEvents(timestep, activeLinks, activeDivisions, mergers, detections, fn,
     mer = []
     mul = []
     
-    print "-- Writing results to " + fn
+    logging.debug("-- Writing results to {}".format(fn))
     try:
         # TODO: find appearances/disappearances?
 
@@ -69,31 +70,40 @@ def writeEvents(timestep, activeLinks, activeDivisions, mergers, detections, fn,
                     ds = tg.create_dataset("MultiFrameMoves", data=mul, dtype=np.int32)
                     ds.attrs["Format"] = "from (given by timestep), to (current file), timestep"
 
-        print "-> results successfully written"
+        logging.debug("-> results successfully written")
     except Exception as e:
-        print("ERROR while writing events: {}".format(str(e)))
+        logging.warning("ERROR while writing events: {}".format(str(e)))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Take a json file containing a result to a set of HDF5 events files',
                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--model', required=True, type=str, dest='model_filename',
+    parser.add_argument('-c', '--config', is_config_file=True, help='config file path')
+
+    parser.add_argument('--graph-json-file', required=True, type=str, dest='model_filename',
                         help='Filename of the json model description')
-    parser.add_argument('--result', required=True, type=str, dest='result_filename',
+    parser.add_argument('--result-json-file', required=True, type=str, dest='result_filename',
                         help='Filename of the json file containing results')
-    parser.add_argument('--ilp', required=True, type=str, dest='ilp_filename',
-                        help='Filename of the original ilasitk tracking project')
-    parser.add_argument('--labelImagePath', dest='label_img_path', type=str,
+    parser.add_argument('--label-image-file', required=True, type=str, dest='ilp_filename',
+                        help='Filename of the ilastik-style segmentation HDF5 file')
+    parser.add_argument('--label-image-path', dest='label_img_path', type=str,
                         default='/ObjectExtraction/LabelImage/0/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]',
                         help='internal hdf5 path to label image')
-    parser.add_argument('--out', type=str, dest='out_dir', default='.', help='Output directory for HDF5 files')
+    parser.add_argument('--h5-event-out-dir', type=str, dest='out_dir', default='.', help='Output directory for HDF5 files')
+    parser.add_argument("--verbose", dest='verbose', action='store_true', default=False)
     
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     with open(args.model_filename, 'r') as f:
         model = json.load(f)
 
     with open(args.result_filename, 'r') as f:
         result = json.load(f)
+
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
+    logging.debug("Ignoring unknown parameters: {}".format(unknown))
 
     # create reverse mapping from json uuid to (timestep,ID)
     traxelIdPerTimestepToUniqueIdMap = model['traxelToUniqueId']

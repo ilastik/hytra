@@ -51,7 +51,7 @@ def getConfigAndCommandLineArguments():
 
     parser.add_argument('--image-provider', type=str, dest='image_provider_name', default="LocalImageLoader")
     
-    parser.add_argument('--json-output', type=str, required=True, dest='json_filename', default=None,
+    parser.add_argument('--graph-json-file', type=str, required=True, dest='json_filename', default=None,
                       help='filename where to save the generated JSON file to')
 
     parser.add_argument('--max-number-objects', dest='max_num_objects', type=float, default=2,
