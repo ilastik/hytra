@@ -5,6 +5,7 @@ import numpy as np
 import h5py
 import networkx as nx
 from pluginsystem.plugin_manager import TrackingPluginManager
+import logging
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Given a hypotheses json graph and a result.json, this script'
@@ -18,18 +19,20 @@ if __name__ == "__main__":
     parser.add_argument('--labelImage', required=True, type=str, dest='label_image_filename',
                         help='Filename of the original ilasitk tracking project')
     parser.add_argument('--labelImagePath', dest='label_image_path', type=str,
-                        default='/ObjectExtraction/LabelImage/0/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]',
+                        default='/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]',
                         help='internal hdf5 path to label image')
     parser.add_argument('--outModel', type=str, dest='out_model_filename', default='.', 
                         help='Filename of the json model containing the hypotheses graph including new nodes')
-    parser.add_argument('--outModel', type=str, dest='out_model_filename', required=True, 
-                        help='Filename where to store the json model containing the new hypotheses graph')
+    # parser.add_argument('--outModel', type=str, dest='out_model_filename', required=True, 
+    #                     help='Filename where to store the json model containing the new hypotheses graph')
     parser.add_argument('--outLabelImage', type=str, dest='out_label_image', required=True, 
                         help='Filename where to store the label image with updated segmentation')
     parser.add_argument('--outResult', type=str, dest='out_result', required=True, 
                         help='Filename where to store the new result')
     
     args = parser.parse_args()
+
+    logging.basicConfig(level=logging.DEBUG)
 
     with open(args.model_filename, 'r') as f:
         model = json.load(f)
@@ -81,7 +84,7 @@ if __name__ == "__main__":
 
     # filter links: at least one of the two incident nodes must be a merger 
     # for it to be added to the merger resolving graph
-    mergerLinks = [for t in timesteps for a, b in linksPerTimestep[t] if a in mergersPerTimestep[str(int(t)-1)] or b in mergersPerTimestep[t]]
+    mergerLinks = [(t,(a, b)) for t in timesteps for a, b in linksPerTimestep[t] if a in mergersPerTimestep[str(int(t)-1)] or b in mergersPerTimestep[t]]
 
     # divisionsPerTimestep = { "<timestep>": {<parentIdx>: [<childIdx>, <childIdx>], ...}, "<timestep>": {...}, ... }
     if withDivisions:
@@ -96,7 +99,7 @@ if __name__ == "__main__":
                     assert(len(children) == 2)
                     divisionsPerTimestep[t][div_idx] = children
     else:
-        divisionsPerTimestep = dict([(t,{}}) for t in timesteps])
+        divisionsPerTimestep = dict([(t,{}) for t in timesteps])
 
     # set up a networkx graph consisting of mergers (not resolved yet!) and their direct neighbors
     unresolvedGraph = nx.DiGraph()
@@ -118,12 +121,11 @@ if __name__ == "__main__":
         unresolvedGraph.add_node(node, division=division, count=count)
 
     # add nodes
-    for t in timesteps:
-        for link in mergerLinks[t]:
-            for n in [source(t, link), target(t, link)]:
-                if not unresolvedGraph.has_node(n):
-                    addNode(n)
-            unresolvedGraph.add_edge(source(t, link), target(t,link))
+    for t,link in mergerLinks:
+        for n in [source(t, link), target(t, link)]:
+            if not unresolvedGraph.has_node(n):
+                addNode(n)
+        unresolvedGraph.add_edge(source(t, link), target(t,link))
 
     # now we split up the division nodes if they have two outgoing links
     resolvedGraph = unresolvedGraph.copy()
@@ -151,6 +153,7 @@ if __name__ == "__main__":
     # update segmentation of mergers from first timeframe to last and create new nodes:
     for t in timesteps:
         # use image provider plugin to load labelimage
+        print args.label_image_filename, args.label_image_path, int(t)
         labelImage = imageProvider.getLabelImageForFrame(
             args.label_image_filename, args.label_image_path, int(t))
         nextObjectId = labelImage.max() + 1
