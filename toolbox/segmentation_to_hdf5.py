@@ -3,7 +3,8 @@ import h5py
 import vigra
 import configargparse as argparse
 import logging
-from compiler.ast import flatten
+import glob
+import os
 
 def segmentation_to_hdf5(options):
     """
@@ -30,7 +31,6 @@ def segmentation_to_hdf5(options):
         out_h5.create_dataset(internalPath, data=data, dtype='u2', compression='gzip')
     logging.info("Saved {} timeframes".format(timeframe))
 
-
 if __name__ == '__main__':
     """
     Convert the segmentation tif format to HDF5 volume
@@ -41,8 +41,8 @@ if __name__ == '__main__':
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-c', '--config', is_config_file=True, help='config file path')
 
-    parser.add_argument('--ctc-segmentation-input-tifs', required=True, type=str, nargs='+', action='append', dest='tif_input_files',
-                        help='Filename of the all tif files containing the segmentation data, sorted in the right order')
+    parser.add_argument('--ctc-segmentation-input-tif-pattern', required=True, type=str, dest='tif_input_file_pattern',
+                        help='Filename pattern of the all tif files containing the segmentation data')
     parser.add_argument('--label-image-file', required=True, type=str, dest='hdf5Path',
                         help='filename of where the segmentation HDF5 file will be created')
     parser.add_argument('--label-image-path', type=str, dest='hdf5ImagePath',
@@ -52,7 +52,9 @@ if __name__ == '__main__':
 
     # parse command line
     options, unknown = parser.parse_known_args()
-    options.tif_input_files = flatten(options.tif_input_files)
+
+    options.tif_input_files = glob.glob(options.tif_input_file_pattern)
+    options.tif_input_files.sort()
 
     if options.verbose:
         logging.basicConfig(level=logging.DEBUG)
