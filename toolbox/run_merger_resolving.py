@@ -208,6 +208,8 @@ if __name__ == "__main__":
                         resolvedGraph.add_edge(e[0], newNode)
 
                 resolvedGraph.remove_node(node)
+                unresolvedGraph.node[node]['newIds'] = range(nextObjectId, nextObjectId + count)
+                nextObjectId += count
 
             # each unresolved node stores its fitted shape(s) to be used 
             # as initialization in the next frame, this way division duplicates 
