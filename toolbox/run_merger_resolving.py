@@ -23,6 +23,10 @@ if __name__ == "__main__":
     parser.add_argument('--label-image-path', dest='label_image_path', type=str,
                         default='/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]',
                         help='internal hdf5 path to label image')
+    parser.add_argument('--raw-data-file', type=str, dest='raw_filename', default=None,
+                      help='filename to the raw h5 file')
+    parser.add_argument('--raw-data-path', type=str, dest='raw_path', default='volume/data',
+                      help='Path inside the raw h5 file to the data')
     parser.add_argument('--outModel', type=str, dest='out_model_filename', required=True, 
                         help='Filename of the json model containing the hypotheses graph including new nodes')
     parser.add_argument('--outLabelImage', type=str, dest='out_label_image', required=True, 
@@ -102,6 +106,7 @@ if __name__ == "__main__":
     else:
         divisionsPerTimestep = dict([(t,{}) for t in timesteps])
 
+    # ------------------------------------------------------------
     # set up a networkx graph consisting of mergers (not resolved yet!) and their direct neighbors
     unresolvedGraph = nx.DiGraph()
 
@@ -151,15 +156,25 @@ if __name__ == "__main__":
     imageProvider = pluginManager.getImageProvider()
     mergerResolver = pluginManager.getMergerResolver()
 
+    # store all raw and label images of the frames we need for merger resolving:
+    labelImages = {}
+    rawImages = {}
+
+    # ------------------------------------------------------------
     # update segmentation of mergers from first timeframe to last and create new nodes:
-    for t in timesteps:
+    intTimesteps = [int(t) for t in timesteps]
+    intTimesteps.sort()
+
+    for intT in intTimesteps:
+        t = str(intT)
         # use image provider plugin to load labelimage
         print args.label_image_filename, args.label_image_path, int(t)
         labelImage = imageProvider.getLabelImageForFrame(
             args.label_image_filename, args.label_image_path, int(t))
+        labelImages[t] = labelImage
         nextObjectId = labelImage.max() + 1
 
-        for idx, count in detectionsPerTimestep[t]:
+        for idx in detectionsPerTimestep[t]:
             node = (t, idx)
             if node not in resolvedGraph:
                 continue
@@ -167,6 +182,7 @@ if __name__ == "__main__":
             count = 1
             if idx in mergersPerTimestep[t]:
                 count = mergersPerTimestep[t][idx]
+            print("Looking at node {} in timestep {} with count {}".format(idx, t, count))
             
             # collect initializations from incoming
             initializations = []
@@ -198,14 +214,79 @@ if __name__ == "__main__":
             # and de-merged nodes in the resolved graph do not need to store a fit as well
             unresolvedGraph.node[node]['fits'] = fittedObjects
 
-    # TODO: compute new edge costs!
-    
-    # run min-cost max flow
-    # fuse results
+    # import matplotlib.pyplot as plt
+    # nx.draw_networkx(resolvedGraph)
+    # plt.savefig("/Users/chaubold/test.pdf")
 
+    # ------------------------------------------------------------
+    # compute new object features and edge costs!
+    print("Loading raw data")
+    for t in labelImages.keys():
+        rawImages[t] = imageProvider.getImageDataAtTimeFrame(
+            args.raw_filename, args.raw_path, int(t))
 
+    print("Computing object features")
+    objectFeatures = {}
+    imageShape = pluginManager.getImageProvider().getImageShape(args.label_image_filename, args.label_image_path)
+    print("Found image of shape", imageShape)
+    ndims = len(np.array(imageShape).squeeze()) - 1 # get rid of axes with length 1, and minus time axis
+    print("Data has dimensionality ", ndims)
+    for node in resolvedGraph.nodes_iter():
+        t, idx = node
+        # mask out this object only and compute features
+        mask = labelImages[t].copy()
+        mask[mask != idx] = 0
+        mask[mask == idx] = 1
+        
+        # compute features, transform to one dict for frame
+        frameFeatureDicts, ignoreNames = pluginManager.applyObjectFeatureComputationPlugins(
+            ndims, rawImages[t], labelImages[t], int(t), args.raw_filename)
+        frameFeatureItems = []
+        for f in frameFeatureDicts:
+            frameFeatureItems = frameFeatureItems + f.items()
+        frameFeatures = dict(frameFeatureItems)
 
+        # extract all features for this one object
+        objectFeatureDict = {}
+        for k, v in frameFeatures.iteritems():
+            if k in ignoreNames:
+                continue
+            elif 'Polygon' in k:
+                objectFeatureDict[k] = v[1]
+            else:
+                objectFeatureDict[k] = v[1, ...]
+        objectFeatures[node] = objectFeatureDict
 
+    print("Updating edge energy")
+    for edge in resolvedGraph.edges_iter():
+        featuresAtSrc = objectFeatures[edge[0]]
+        featuresAtDest = objectFeatures[edge[1]]
+        # pluginManager.applyTransitionFeatureVectorConstructionPlugins(
+        #     featuresAtSrc, featuresAtDest, selectedFeatures)
+        # TODO: predict or use distance
+        transitionEnergy = 0.5
+        resolvedGraph.edge[edge[0]][edge[1]]['energy'] = transitionEnergy
+        resolvedGraph.edge[edge[0]][edge[1]]['capacity'] = 1
 
+    # ------------------------------------------------------------
+    # run min-cost max-flow to find merger assignments
+    print("Running min-cost max-flow to find resolved merger assignments")
+    # add source and sink
+    resolvedGraph.add_node('source')
+    resolvedGraph.add_node('sink')
 
-    
+    # connect nodes without incoming arcs to source, without outgoing to sink
+    for node in resolvedGraph.nodes(): # cannot use iterator here as the graph changes in the loop!
+        if len(resolvedGraph.in_edges(node)) == 0:
+            resolvedGraph.add_edge('source', node, energy=0, capacity=1)
+        elif len(resolvedGraph.out_edges(node)) == 0:
+            resolvedGraph.add_edge(node, 'sink', energy=0, capacity=1)
+
+    # find min-cost max-flow
+    flowDict = nx.max_flow_min_cost(resolvedGraph, 'source', 'sink', capacity='capacity', weight='energy')
+    mcmfAmount = sum(flowDict['source'][e[1]] for e in resolvedGraph.out_edges('source'))
+    print("MinCostMaxFlow found flow: ", mcmfAmount)
+
+    # ------------------------------------------------------------
+    # TODO: fuse results back into original solution
+
