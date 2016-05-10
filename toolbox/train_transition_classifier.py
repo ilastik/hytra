@@ -336,8 +336,6 @@ if __name__ == '__main__':
                     features[k], i[0]), compute_ObjFeatures(features[k + 1], i[1]), 0, trackingPluginManager)
         mlabels =TC.labels
     logger.info('Done adding samples to RF. Beginning training...')
-    print TC.mydata.shape
-    print len(TC.labels)
     TC.train()
     logger.info('Done training RF')
 
