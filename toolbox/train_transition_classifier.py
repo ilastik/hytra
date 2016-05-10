@@ -230,10 +230,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="trainRF",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-c', '--config', is_config_file=True, help='config file path')
-    parser.add_argument("--groundtruth", dest='filepath', type=str,
-                        help="read ground truth from this folder", metavar="FILE")
-    parser.add_argument("--raw-data-file", dest='rawimage_filename', type=str,
-                        help="filepath+name of the raw image", metavar="FILE")
+    parser.add_argument("--groundtruth", dest='filepath', type=str, nargs='+',
+                        help="read ground truth from this folder. Can be also a list of paths, to train from more datasets.", metavar="FILE")
+    parser.add_argument("--raw-data-file", dest='rawimage_filename', type=str, nargs='+',
+                        help="filepath+name of the raw image. Can be a list of paths, to train from more datasets.", metavar="FILE")
     parser.add_argument("--raw-data-path", dest='rawimage_h5_path', type=str,
                         help="Path inside the rawimage HDF5 file", default='volume/data')
     parser.add_argument("--init-frame", default=0, type=int, dest='initFrame',
@@ -242,8 +242,8 @@ if __name__ == '__main__':
                         help="where to end frames")
     parser.add_argument("--transition-classifier-file", dest='outputFilename', type=str,
                         help="save RF into file", metavar="FILE")
-    parser.add_argument("--filepattern", dest='filepattern', type=str, default='0*.h5',
-                        help="File pattern of the ground truth files")
+    parser.add_argument("--filepattern", dest='filepattern', type=str, nargs='+', default='0*.h5',
+                        help="File pattern of the ground truth files. Can be also a list of paths, to train from more datasets.")
     parser.add_argument("--time-axis-index", dest='time_axis_index', default=2, type=int,
                         help="Zero-based index of the time axis in your raw data. E.g. if it has shape (x,t,y,c) "
                              "this value is 1. Set to -1 to disable any changes. Expected axis order is x,y,(z),t,c")
@@ -259,74 +259,85 @@ if __name__ == '__main__':
 
     logging.debug("Ignoring unknown parameters: {}".format(unknown))
     
+    assert len(args.rawimage_filename) == len(args.filepattern) == len(args.filepath)
     # read raw image
-    rawimage_filename = args.rawimage_filename
-    with h5py.File(rawimage_filename, 'r') as h5raw:
-        rawimage = h5raw[args.rawimage_h5_path].value
+    numSamples = 0
+    mlabels = None
+    for dataset in range(len(args.rawimage_filename)):
+        rawimage_filename = args.rawimage_filename[dataset]
+        with h5py.File(rawimage_filename, 'r') as h5raw:
+            rawimage = h5raw[args.rawimage_h5_path].value
 
-    # transform such that the order is the following: X,Y,(Z),T, C
-    if args.time_axis_index != -1:
-        rawimage = np.rollaxis(rawimage, args.time_axis_index, -1)
+        # transform such that the order is the following: X,Y,(Z),T, C
+        if args.time_axis_index != -1:
+            rawimage = np.rollaxis(rawimage, args.time_axis_index, -1)
 
-        # in order to fix shape mismatch between rawimage.shape == (495, 534)
-        # and labelimage.shape == (534, 495)
-        # rawimage = np.swapaxes(rawimage, 0, 1)
+            # in order to fix shape mismatch between rawimage.shape == (495, 534)
+            # and labelimage.shape == (534, 495)
+            # rawimage = np.swapaxes(rawimage, 0, 1)
     
-    logger.info('Done loading raw data of shape {}'.format(rawimage.shape))
+        logger.info('Done loading raw data from dataset{} of shape {}'.format(dataset, rawimage.shape))
 
-    # find ground truth files
-    filepath = args.filepath
-    files = glob.glob(os.path.join(filepath, args.filepattern))
-    files.sort()
-    initFrame = args.initFrame
-    endFrame = args.endFrame
-    if endFrame < 0:
-        endFrame += len(files)
+        # find ground truth files
+        # filepath is now a list of filepaths'
+        filepath = args.filepath[dataset]
+        # filepattern is now a list of filepatterns
+        files = glob.glob(os.path.join(args.filepattern[dataset]))
+        files.sort()
+        initFrame = args.initFrame
+        endFrame = args.endFrame
+        if endFrame < 0:
+            endFrame += len(files)
     
-    # compute features
-    trackingPluginManager = TrackingPluginManager()
-    features = compute_features(rawimage,
-                                read_in_images(initFrame, endFrame, files),
-                                initFrame,
-                                endFrame,
-                                trackingPluginManager,
-                                filepath)
-    logger.info('Done computing features')
+        # compute features
+        trackingPluginManager = TrackingPluginManager()
+        features = compute_features(rawimage,
+                                        read_in_images(initFrame, endFrame, files),
+                                        initFrame,
+                                        endFrame,
+                                        trackingPluginManager,
+                                        filepath)
+        logger.info('Done computing features from dataset{}'.format(dataset))
 
-    selectedFeatures = find_features_without_NaNs(features)
-    pos_labels = read_positiveLabels(initFrame, endFrame, files)
-    neg_labels = negativeLabels(features, pos_labels)
-    numSamples = 2 * sum([len(l) for l in pos_labels]) + sum([len(l) for l in neg_labels])
-    logger.info('Done extracting {} samples'.format(numSamples))
-    TC = TransitionClassifier(selectedFeatures, numSamples)
+        selectedFeatures = find_features_without_NaNs(features)
+        pos_labels = read_positiveLabels(initFrame, endFrame, files)
+        neg_labels = negativeLabels(features, pos_labels)
+        numSamples += 2 * sum([len(l) for l in pos_labels]) + sum([len(l) for l in neg_labels])
+        logger.info('Done extracting {} samples'.format(numSamples))
+        TC = TransitionClassifier(selectedFeatures, numSamples)
+        if dataset>0:
+            TC.labels = mlabels # restore labels overwritten by constructor
 
-    # compute featuresA for each object A from the feature matrix from Vigra
-    def compute_ObjFeatures(features, obj):
-        dict = {}
-        for key in features:
-            if key == "Global<Maximum >" or key == "Global<Minimum >":  # this ones have only one element
-                dict[key] = features[key]
-            else:
-                dict[key] = features[key][obj]
-        return dict
+        # compute featuresA for each object A from the feature matrix from Vigra
+        def compute_ObjFeatures(features, obj):
+            dict = {}
+            for key in features:
+                if key == "Global<Maximum >" or key == "Global<Minimum >":  # this ones have only one element
+                    dict[key] = features[key]
+                else:
+                    dict[key] = features[key][obj]
+            return dict
 
 
-    for k in range(0, len(features) - 1):
-        for i in pos_labels[k]:
-            # positive
-            logger.debug("Adding positive sample {} from pos {} to {}".format(i,
-                          features[k]['RegionCenter'][i[0]], features[k + 1]['RegionCenter'][i[1]]))
-            TC.addSample(compute_ObjFeatures(
-                features[k], i[0]), compute_ObjFeatures(features[k + 1], i[1]), 1, trackingPluginManager)
-            TC.addSample(compute_ObjFeatures(
-                features[k + 1], i[1]), compute_ObjFeatures(features[k], i[0]), 1, trackingPluginManager)
-        for i in neg_labels[k]:
-            # negative
-            logger.debug("Adding negative sample {} from pos {} to {}".format(i,
-                          features[k]['RegionCenter'][i[0]], features[k + 1]['RegionCenter'][i[1]]))
-            TC.addSample(compute_ObjFeatures(
-                features[k], i[0]), compute_ObjFeatures(features[k + 1], i[1]), 0, trackingPluginManager)
+        for k in range(0, len(features) - 1):
+            for i in pos_labels[k]:
+                # positive
+                logger.debug("Adding positive sample {} from pos {} to {}".format(i,
+                              features[k]['RegionCenter'][i[0]], features[k + 1]['RegionCenter'][i[1]]))
+                TC.addSample(compute_ObjFeatures(
+                    features[k], i[0]), compute_ObjFeatures(features[k + 1], i[1]), 1, trackingPluginManager)
+                TC.addSample(compute_ObjFeatures(
+                    features[k + 1], i[1]), compute_ObjFeatures(features[k], i[0]), 1, trackingPluginManager)
+            for i in neg_labels[k]:
+                # negative
+                logger.debug("Adding negative sample {} from pos {} to {}".format(i,
+                              features[k]['RegionCenter'][i[0]], features[k + 1]['RegionCenter'][i[1]]))
+                TC.addSample(compute_ObjFeatures(
+                    features[k], i[0]), compute_ObjFeatures(features[k + 1], i[1]), 0, trackingPluginManager)
+        mlabels =TC.labels
     logger.info('Done adding samples to RF. Beginning training...')
+    print TC.mydata.shape
+    print len(TC.labels)
     TC.train()
     logger.info('Done training RF')
 

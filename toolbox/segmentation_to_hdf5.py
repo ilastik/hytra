@@ -53,7 +53,6 @@ if __name__ == '__main__':
 
     # parse command line
     options, unknown = parser.parse_known_args()
-
     options.tif_input_files = glob.glob(options.tif_input_file_pattern)
     options.tif_input_files.sort()
 
