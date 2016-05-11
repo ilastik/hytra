@@ -242,7 +242,7 @@ if __name__ == '__main__':
                         help="where to end frames")
     parser.add_argument("--transition-classifier-file", dest='outputFilename', type=str,
                         help="save RF into file", metavar="FILE")
-    parser.add_argument("--filepattern", dest='filepattern', type=str, nargs='+', default='0*.h5',
+    parser.add_argument("--filepattern", dest='filepattern', type=str, nargs='+', default=['0*.h5'],
                         help="File pattern of the ground truth files. Can be also a list of paths, to train from more datasets.")
     parser.add_argument("--time-axis-index", dest='time_axis_index', default=2, type=int,
                         help="Zero-based index of the time axis in your raw data. E.g. if it has shape (x,t,y,c) "
@@ -276,13 +276,13 @@ if __name__ == '__main__':
             # and labelimage.shape == (534, 495)
             # rawimage = np.swapaxes(rawimage, 0, 1)
     
-        logger.info('Done loading raw data from dataset{} of shape {}'.format(dataset, rawimage.shape))
+        logger.info('Done loading raw data from dataset {} of shape {}'.format(dataset, rawimage.shape))
 
         # find ground truth files
         # filepath is now a list of filepaths'
         filepath = args.filepath[dataset]
         # filepattern is now a list of filepatterns
-        files = glob.glob(os.path.join(args.filepattern[dataset]))
+        files = glob.glob(os.path.join(filepath, args.filepattern[dataset]))
         files.sort()
         initFrame = args.initFrame
         endFrame = args.endFrame
@@ -297,7 +297,7 @@ if __name__ == '__main__':
                                         endFrame,
                                         trackingPluginManager,
                                         filepath)
-        logger.info('Done computing features from dataset{}'.format(dataset))
+        logger.info('Done computing features from dataset {}'.format(dataset))
 
         selectedFeatures = find_features_without_NaNs(features)
         pos_labels = read_positiveLabels(initFrame, endFrame, files)
