@@ -12,7 +12,6 @@ if __name__ == '__main__':
             datasetDir /Users/chaubold/hci/projects/cell_tracking_challenge_15/Fluo-N2DH-SIM  \
             sequence 01  \
             ilp /Users/chaubold/hci/projects/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/tracking-2015-02-27.ilp  \
-            numFrames 55  \
             trackingExecutable /Users/chaubold/opt/miniconda/envs/virginie/src/multiHypoTracking/build/bin/track
         ''',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
