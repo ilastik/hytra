@@ -260,9 +260,11 @@ if __name__ == '__main__':
     logging.debug("Ignoring unknown parameters: {}".format(unknown))
     
     assert len(args.rawimage_filename) == len(args.filepattern) == len(args.filepath)
+    
     # read raw image
     numSamples = 0
     mlabels = None
+
     for dataset in range(len(args.rawimage_filename)):
         rawimage_filename = args.rawimage_filename[dataset]
         with h5py.File(rawimage_filename, 'r') as h5raw:
@@ -296,7 +298,7 @@ if __name__ == '__main__':
                                         initFrame,
                                         endFrame,
                                         trackingPluginManager,
-                                        filepath)
+                                        rawimage_filename)
         logger.info('Done computing features from dataset {}'.format(dataset))
 
         selectedFeatures = find_features_without_NaNs(features)
@@ -335,6 +337,7 @@ if __name__ == '__main__':
                 TC.addSample(compute_ObjFeatures(
                     features[k], i[0]), compute_ObjFeatures(features[k + 1], i[1]), 0, trackingPluginManager)
         mlabels =TC.labels
+
     logger.info('Done adding samples to RF. Beginning training...')
     TC.train()
     logger.info('Done training RF')
