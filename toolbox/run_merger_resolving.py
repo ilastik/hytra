@@ -6,6 +6,7 @@ import numpy as np
 import h5py
 import networkx as nx
 from pluginsystem.plugin_manager import TrackingPluginManager
+import traxelstore
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Given a hypotheses json graph and a result.json, this script'
@@ -27,12 +28,17 @@ if __name__ == "__main__":
                       help='filename to the raw h5 file')
     parser.add_argument('--raw-data-path', type=str, dest='raw_path', default='volume/data',
                       help='Path inside the raw h5 file to the data')
+    parser.add_argument('--transition-classifier-file', dest='transition_classifier_filename', type=str,
+                        default=None)
+    parser.add_argument('--transition-classifier-path', dest='transition_classifier_path', type=str, default='/')
     parser.add_argument('--outModel', type=str, dest='out_model_filename', required=True, 
                         help='Filename of the json model containing the hypotheses graph including new nodes')
     parser.add_argument('--outLabelImage', type=str, dest='out_label_image', required=True, 
                         help='Filename where to store the label image with updated segmentation')
     parser.add_argument('--outResult', type=str, dest='out_result', required=True, 
                         help='Filename where to store the new result')
+    parser.add_argument('--trans-par', dest='trans_par', type=float, default=5.0,
+                        help='alpha for the transition prior')
     
     args, _ = parser.parse_known_args()
     logging.basicConfig(level=logging.INFO)
@@ -111,19 +117,19 @@ if __name__ == "__main__":
     unresolvedGraph = nx.DiGraph()
 
     def source(timestep, link):
-        return str(int(timestep) - 1), link[0]
+        return int(timestep) - 1, link[0]
 
     def target(timestep, link):
-        return timestep, link[1]
+        return int(timestep), link[1]
 
     def addNode(node):
         ''' add a node to the unresolved graph and fill in the properties `division` and `count` '''
-        timestep, idx = node
-        division = idx in divisionsPerTimestep[timestep]
+        intT, idx = node
+        division = idx in divisionsPerTimestep[str(intT)]
         count = 1
-        if idx in mergersPerTimestep[timestep]:
+        if idx in mergersPerTimestep[str(intT)]:
             assert(not division)
-            count = mergersPerTimestep[timestep][idx]
+            count = mergersPerTimestep[str(intT)][idx]
         unresolvedGraph.add_node(node, division=division, count=count)
 
     # add nodes
@@ -175,7 +181,7 @@ if __name__ == "__main__":
         nextObjectId = labelImage.max() + 1
 
         for idx in detectionsPerTimestep[t]:
-            node = (t, idx)
+            node = (intT, idx)
             if node not in resolvedGraph:
                 continue
 
@@ -199,7 +205,7 @@ if __name__ == "__main__":
             # split up node if count > 1, duplicate incoming and outgoing arcs
             if count > 1:
                 for idx, fit in zip(range(nextObjectId, nextObjectId + count), fittedObjects):
-                    newNode = (t, idx)
+                    newNode = (intT, idx)
                     resolvedGraph.add_node(newNode, division=False, count=1, origin=node)
                     
                     for e in unresolvedGraph.out_edges(node):
@@ -234,15 +240,15 @@ if __name__ == "__main__":
     ndims = len(np.array(imageShape).squeeze()) - 1 # get rid of axes with length 1, and minus time axis
     print("Data has dimensionality ", ndims)
     for node in resolvedGraph.nodes_iter():
-        t, idx = node
+        intT, idx = node
         # mask out this object only and compute features
-        mask = labelImages[t].copy()
+        mask = labelImages[str(intT)].copy()
         mask[mask != idx] = 0
         mask[mask == idx] = 1
         
         # compute features, transform to one dict for frame
         frameFeatureDicts, ignoreNames = pluginManager.applyObjectFeatureComputationPlugins(
-            ndims, rawImages[t], labelImages[t], int(t), args.raw_filename)
+            ndims, rawImages[str(intT)], labelImages[str(intT)], intT, args.raw_filename)
         frameFeatureItems = []
         for f in frameFeatureDicts:
             frameFeatureItems = frameFeatureItems + f.items()
@@ -260,34 +266,75 @@ if __name__ == "__main__":
         objectFeatures[node] = objectFeatureDict
 
     print("Updating edge energy")
-    for edge in resolvedGraph.edges_iter():
-        featuresAtSrc = objectFeatures[edge[0]]
-        featuresAtDest = objectFeatures[edge[1]]
-        # pluginManager.applyTransitionFeatureVectorConstructionPlugins(
-        #     featuresAtSrc, featuresAtDest, selectedFeatures)
-        # TODO: predict or use distance
-        transitionEnergy = 0.5
-        resolvedGraph.edge[edge[0]][edge[1]]['energy'] = transitionEnergy
-        resolvedGraph.edge[edge[0]][edge[1]]['capacity'] = 1
+    if args.transition_classifier_filename is not None:
+        print("\tLoading transition classifier")
+        transitionClassifier = traxelstore.RandomForestClassifier(
+            args.transition_classifier_path, args.transition_classifier_filename)
+    else:
+        print("\tUsing distance based transition energies")
+        transitionClassifier = None
+
+    def negLog(features):
+        fa = np.array(features)
+        fa[fa < 0.0000000001] = 0.0000000001
+        return list(np.log(fa) * -1.0)
+
+    def listify(l):
+        return [[e] for e in l]
 
     # ------------------------------------------------------------
     # run min-cost max-flow to find merger assignments
     print("Running min-cost max-flow to find resolved merger assignments")
-    # add source and sink
-    resolvedGraph.add_node('source')
-    resolvedGraph.add_node('sink')
 
-    # connect nodes without incoming arcs to source, without outgoing to sink
-    for node in resolvedGraph.nodes(): # cannot use iterator here as the graph changes in the loop!
-        if len(resolvedGraph.in_edges(node)) == 0:
-            resolvedGraph.add_edge('source', node, energy=0, capacity=1)
-        elif len(resolvedGraph.out_edges(node)) == 0:
-            resolvedGraph.add_edge(node, 'sink', energy=0, capacity=1)
+    # transform to our graph format:
+    segmentationHypotheses = []
+    mapIdToNode = {}
+    nextId = 0
+    
+    for node in resolvedGraph.nodes_iter():
+        o = {}
+        o['id'] = nextId
+        resolvedGraph.node[node]['id'] = nextId
+        mapIdToNode[nextId] = node
+        nextId += 1
+        o['features'] = [[0], [1]]
+        segmentationHypotheses.append(o)
 
-    # find min-cost max-flow
-    flowDict = nx.max_flow_min_cost(resolvedGraph, 'source', 'sink', capacity='capacity', weight='energy')
-    mcmfAmount = sum(flowDict['source'][e[1]] for e in resolvedGraph.out_edges('source'))
-    print("MinCostMaxFlow found flow: ", mcmfAmount)
+    linkingHypotheses = []
+    for edge in resolvedGraph.edges_iter():
+        e = {}
+        e['src'] = resolvedGraph.node[edge[0]]['id']
+        e['dest'] = resolvedGraph.node[edge[1]]['id']
+
+        featuresAtSrc = objectFeatures[edge[0]]
+        featuresAtDest = objectFeatures[edge[1]]
+
+        if transitionClassifier is not None:
+            featVec = pluginManager.applyTransitionFeatureVectorConstructionPlugins(
+                featuresAtSrc, featuresAtDest, transitionClassifier.selectedFeatures)
+            featVec = np.expand_dims(np.array(featVec), axis=0)
+            probs = transitionClassifier.predictProbabilities(featVec)[0]
+        else:
+            dist = np.linalg.norm(featuresAtDest['RegionCenter'] - featuresAtSrc['RegionCenter'])
+            prob = np.exp(-dist / args.trans_par)
+            probs = [1.0 - prob, prob]
+
+        e['features'] = listify(negLog(probs))
+        linkingHypotheses.append(e)
+
+    trackingGraph = {}
+    trackingGraph['segmentationHypotheses'] = segmentationHypotheses
+    trackingGraph['linkingHypotheses'] = linkingHypotheses
+    trackingGraph['exclusions'] = []
+
+    settings = {}
+    settings['statesShareWeights'] = True
+    trackingGraph['settings'] = settings
+
+    # track
+    import dpct
+    weights = {"weights": [1, 1]} # we only have detection and linking features, thus only 2 weights
+    result = dpct.trackMaxFlow(trackingGraph, weights)
 
     # ------------------------------------------------------------
     # TODO: fuse results back into original solution
