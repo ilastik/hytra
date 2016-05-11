@@ -180,12 +180,6 @@ def create_label_volume(options):
         # add the found splits as both, mitosis and split events
         if frame in split_events.keys():
             splits_in_frame = split_events[frame]
-            mitosis = splits_in_frame.keys()
-            if len(mitosis) > 0:
-                mitosis = np.array(mitosis)
-                if options.index_remapping:
-                    mitosis = remap_events(mitosis, mapping_per_frame[frame - 1])
-                tracking_frame.create_dataset("Mitosis", data=mitosis, dtype='u2')
 
             # make sure all splits have the same dimension
             splits = []
@@ -211,6 +205,8 @@ def create_label_volume(options):
                 if options.index_remapping:
                     splits = remap_events(splits, mapping_per_frame[frame - 1], mapping_per_frame[frame])
                 tracking_frame.create_dataset("Splits", data=splits, dtype='u2')
+                mitosis = [splits[i][0] for i in range(splits.shape[0])]
+                tracking_frame.create_dataset("Mitosis", data=np.array(mitosis), dtype='u2')
 
         if len(moves) > 0:
             if options.index_remapping:
