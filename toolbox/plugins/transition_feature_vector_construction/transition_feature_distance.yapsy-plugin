@@ -1,0 +1,9 @@
+[Core]
+Name = TransitionFeatVec: Distance
+Module = transition_feature_distance
+
+[Documentation]
+Description = Compute Distance of objects A and B for Transition Feature Vector
+Author = My very own name
+Version = the_version_number_of_the_plugin
+Website = My very own website
