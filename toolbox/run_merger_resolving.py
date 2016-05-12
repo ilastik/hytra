@@ -4,6 +4,7 @@ import os
 import configargparse as argparse
 import numpy as np
 import h5py
+import itertools
 import networkx as nx
 from pluginsystem.plugin_manager import TrackingPluginManager
 import traxelstore
@@ -16,11 +17,11 @@ if __name__ == "__main__":
     parser.add_argument('-c', '--config', is_config_file=True, help='config file path', dest='config_file', required=True)
 
     parser.add_argument('--graph-json-file', required=True, type=str, dest='model_filename',
-                        help='Filename of the json model description')
+                        help='IN Filename of the json model description')
     parser.add_argument('--result-json-file', required=True, type=str, dest='result_filename',
-                        help='Filename of the json file containing results')
+                        help='IN Filename of the json file containing results')
     parser.add_argument('--label-image-filename', required=True, type=str, dest='label_image_filename',
-                        help='Filename of the original ilasitk tracking project')
+                        help='IN Filename of the original ilasitk tracking project')
     parser.add_argument('--label-image-path', dest='label_image_path', type=str,
                         default='/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]',
                         help='internal hdf5 path to label image')
@@ -31,11 +32,11 @@ if __name__ == "__main__":
     parser.add_argument('--transition-classifier-file', dest='transition_classifier_filename', type=str,
                         default=None)
     parser.add_argument('--transition-classifier-path', dest='transition_classifier_path', type=str, default='/')
-    parser.add_argument('--outModel', type=str, dest='out_model_filename', required=True, 
+    parser.add_argument('--out-model', type=str, dest='out_model_filename', required=True, 
                         help='Filename of the json model containing the hypotheses graph including new nodes')
-    parser.add_argument('--outLabelImage', type=str, dest='out_label_image', required=True, 
+    parser.add_argument('--out-label-image', type=str, dest='out_label_image', required=True, 
                         help='Filename where to store the label image with updated segmentation')
-    parser.add_argument('--outResult', type=str, dest='out_result', required=True, 
+    parser.add_argument('--out-result', type=str, dest='out_result', required=True, 
                         help='Filename where to store the new result')
     parser.add_argument('--trans-par', dest='trans_par', type=float, default=5.0,
                         help='alpha for the transition prior')
@@ -274,13 +275,6 @@ if __name__ == "__main__":
         print("\tUsing distance based transition energies")
         transitionClassifier = None
 
-    def negLog(features):
-        fa = np.array(features)
-        fa[fa < 0.0000000001] = 0.0000000001
-        return list(np.log(fa) * -1.0)
-
-    def listify(l):
-        return [[e] for e in l]
 
     # ------------------------------------------------------------
     # run min-cost max-flow to find merger assignments
@@ -299,6 +293,14 @@ if __name__ == "__main__":
         nextId += 1
         o['features'] = [[0], [1]]
         segmentationHypotheses.append(o)
+
+    def negLog(features):
+        fa = np.array(features)
+        fa[fa < 0.0000000001] = 0.0000000001
+        return list(np.log(fa) * -1.0)
+
+    def listify(l):
+        return [[e] for e in l]
 
     linkingHypotheses = []
     for edge in resolvedGraph.edges_iter():
@@ -338,4 +340,54 @@ if __name__ == "__main__":
 
     # ------------------------------------------------------------
     # TODO: fuse results back into original solution
+
+    # 1.) replace merger nodes in JSON graph by their replacements -> new JSON graph
+    #     update UUID to traxel map.
+    #     a) how do we deal with the smaller number of states? 
+    #        Does it matter as we're done with tracking anyway..?
+
+    # remove merger detections
+    def mergerNodeFilter(jsonNode):
+        uuid = int(jsonNode['id'])
+        traxels = uuidToTraxelMap[uuid]
+        return not any(t[1] in mergersPerTimestep[str(t[0])] for t in traxels)
+
+    model['segmentationHypotheses'] = filter(mergerNodeFilter, model['segmentationHypotheses'])
+
+    # remove merger links
+    def mergerLinkFilter(jsonLink):
+        srcUuid = int(jsonLink['src'])
+        destUuid = int(jsonLink['dest'])
+        srcTraxels = uuidToTraxelMap[srcUuid]
+        destTraxels = uuidToTraxelMap[destUuid]
+        return not any((str(destT[0]), (srcT[1], destT[1])) in mergerLinks for srcT, destT in itertools.product(srcTraxels, destTraxels))
+
+    model['linkingHypotheses'] = filter(mergerLinkFilter, model['linkingHypotheses'])
+
+    # insert new nodes
+    nextUuid = max(uuidToTraxelMap.keys()) + 1
+    for node in unresolvedGraph.nodes_iter():
+        if unresolvedGraph.node[node]['count'] > 1:
+            newIds = unresolvedGraph.node[node]['newIds']
+            del traxelIdPerTimestepToUniqueIdMap[str(node[0])][str(node[1])]
+            for newId in newIds:
+                newDetection = {}
+                newDetection['id'] = nextUuid
+                newDetection['timestep'] = [node[0], node[0]]
+                model['segmentationHypotheses'].append(newDetection)
+                traxelIdPerTimestepToUniqueIdMap[str(node[0])][str(newId)] = nextUuid
+                nextUuid += 1
+
+    # insert new links
+
+    # update UUID to traxel map
+
+    with open(args.out_model_filename, 'w') as f:
+        json.dump(model, f, indent=4, separators=(',', ': '))
+
+    # 
+    # 2.) new result = union(old result, resolved mergers) - old mergers
+    # 
+    # 3.) export refined segmentation
+
 
