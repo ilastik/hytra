@@ -38,7 +38,7 @@ class TrackingPluginManager():
         self._yapsyPluginManager.collectPlugins()
         self.chosen_data_provider = "LocalImageLoader"
         self.chosen_feature_serializer = "LocalFeatureSerializer"
-        self.chosen_merger_resolver = 'GMM'
+        self.chosen_merger_resolver = 'GMMMergerResolver'
 
     def _applyToAllPluginsOfCategory(self, func, category):
         ''' helper function to apply `func` to all plugins of the given `category` and hide all yapsy stuff '''
