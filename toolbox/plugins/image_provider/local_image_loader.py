@@ -61,3 +61,16 @@ class LocalImageLoader(image_provider_plugin.ImageProviderPlugin):
         with h5py.File(Resource, 'r') as h5file:
             maxTime = len(h5file['/'.join(PathInResource.split('/')[:-1])].keys())
             return (0,maxTime)
+
+    def exportLabelImage(self, labelimage, timeframe, Resource, PathInResource):
+        """
+        export labelimage of timeframe
+        """
+        with h5py.File(Resource, 'r+') as h5file:
+        	internalPath = PathInResource % (timeframe, timeframe + 1, self.shape[0], self.shape[1], self.shape[2])
+        	if(len(labelimage.shape) == 3):
+	        	h5file.create_dataset(internalPath, data=labelimage[np.newaxis,:,:,:,np.newaxis], dtype='u2', compression='gzip')
+        	elif(len(labelimage.shape) == 2):
+	        	h5file.create_dataset(internalPath, data=labelimage[np.newaxis,:,:,np.newaxis,np.newaxis], dtype='u2', compression='gzip')
+	        else:
+	        	raise NotImplementedError()

@@ -389,5 +389,6 @@ if __name__ == "__main__":
     # 2.) new result = union(old result, resolved mergers) - old mergers
     # 
     # 3.) export refined segmentation
-
-
+    h5py.File(args.out_label_image, 'w').close()
+    for t in timesteps:
+        imageProvider.exportLabelImage(labelImages[t], int(t), args.out_label_image, args.label_image_path)
