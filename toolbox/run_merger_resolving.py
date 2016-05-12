@@ -286,14 +286,12 @@ if __name__ == "__main__":
 
     # transform to our graph format:
     segmentationHypotheses = []
-    mapIdToNode = {}
     nextId = 0
     
     for node in resolvedGraph.nodes_iter():
         o = {}
         o['id'] = nextId
         resolvedGraph.node[node]['id'] = nextId
-        mapIdToNode[nextId] = node
         nextId += 1
         o['features'] = [[0], [1]]
         segmentationHypotheses.append(o)
@@ -340,10 +338,14 @@ if __name__ == "__main__":
     # track
     import dpct
     weights = {"weights": [1, 1]} # we only have detection and linking features, thus only 2 weights
-    result = dpct.trackMaxFlow(trackingGraph, weights)
+    mergerResult = dpct.trackMaxFlow(trackingGraph, weights)
+
+    # transform results to dictionaries that can be indexed by id or (src,dest)
+    nodeFlowMap = dict([(int(d['id']), int(d['value'])) for d in mergerResult['detectionResults']])
+    arcFlowMap = dict([((int(l['src']), int(l['dest'])), int(l['value'])) for l in mergerResult['linkingResults']])
 
     # ------------------------------------------------------------
-    # TODO: fuse results back into original solution
+    # fuse results into a new solution
 
     # 1.) replace merger nodes in JSON graph by their replacements -> new JSON graph
     #     update UUID to traxel map.
@@ -389,11 +391,42 @@ if __name__ == "__main__":
         newLink['dest'] = traxelIdPerTimestepToUniqueIdMap[str(edge[1][0])][str(edge[1][1])]
         model['linkingHypotheses'].append(newLink)
 
+    # save
     with open(args.out_model_filename, 'w') as f:
         json.dump(model, f, indent=4, separators=(',', ': '))
 
     # 
     # 2.) new result = union(old result, resolved mergers) - old mergers
+
+    # filter merger edges
+    result['detectionResults'] = filter(mergerNodeFilter, result['detectionResults'])
+    result['linkingResults'] = filter(mergerLinkFilter, result['linkingResults'])
+
+    # add new nodes
+    for node in unresolvedGraph.nodes_iter():
+        if unresolvedGraph.node[node]['count'] > 1:
+            newIds = unresolvedGraph.node[node]['newIds']
+            for newId in newIds:
+                uuid = traxelIdPerTimestepToUniqueIdMap[str(node[0])][str(newId)]
+                resolvedNode = (node[0], newId)
+                resolvedResultId = resolvedGraph.node[resolvedNode]['id']
+                newDetection = { 'id': uuid, 'value': nodeFlowMap[resolvedResultId] }
+                result['detectionResults'].append(newDetection)
+
+    # add new links
+    for edge in resolvedGraph.edges_iter():
+        newLink = {}
+        newLink['src'] = traxelIdPerTimestepToUniqueIdMap[str(edge[0][0])][str(edge[0][1])]
+        newLink['dest'] = traxelIdPerTimestepToUniqueIdMap[str(edge[1][0])][str(edge[1][1])]
+        srcId = resolvedGraph.node[edge[0]]['id']
+        destId = resolvedGraph.node[edge[1]]['id']
+        newLink['value'] = arcFlowMap[(srcId, destId)]
+        result['linkingResults'].append(newLink)
+
+    # save
+    with open(args.out_result, 'w') as f:
+        json.dump(result, f, indent=4, separators=(',', ': '))
+
     # 
     # 3.) export refined segmentation
     h5py.File(args.out_label_image, 'w').close()
