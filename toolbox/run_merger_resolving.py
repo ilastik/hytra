@@ -294,6 +294,10 @@ if __name__ == "__main__":
         resolvedGraph.node[node]['id'] = nextId
         nextId += 1
         o['features'] = [[0], [1]]
+        if len(resolvedGraph.in_edges(node)) == 0:
+            o['appearanceFeatures'] = [[0], [0]]
+        if len(resolvedGraph.out_edges(node)) == 0:
+            o['disappearanceFeatures'] = [[0], [0]]
         segmentationHypotheses.append(o)
 
     def negLog(features):
@@ -337,7 +341,7 @@ if __name__ == "__main__":
 
     # track
     import dpct
-    weights = {"weights": [1, 1]} # we only have detection and linking features, thus only 2 weights
+    weights = {"weights": [1, 1, 1, 1]}
     mergerResult = dpct.trackMaxFlow(trackingGraph, weights)
 
     # transform results to dictionaries that can be indexed by id or (src,dest)
