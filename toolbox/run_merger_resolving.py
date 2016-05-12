@@ -212,7 +212,11 @@ if __name__ == "__main__":
                     for e in unresolvedGraph.out_edges(node):
                         resolvedGraph.add_edge(newNode, e[1])
                     for e in unresolvedGraph.in_edges(node):
-                        resolvedGraph.add_edge(e[0], newNode)
+                        if 'newIds' in unresolvedGraph.node[e[0]]:
+                            for newId in unresolvedGraph.node[e[0]]['newIds']:
+                                resolvedGraph.add_edge((e[0][0], newId), newNode)
+                        else:
+                            resolvedGraph.add_edge(e[0], newNode)
 
                 resolvedGraph.remove_node(node)
                 unresolvedGraph.node[node]['newIds'] = range(nextObjectId, nextObjectId + count)
@@ -364,7 +368,7 @@ if __name__ == "__main__":
 
     model['linkingHypotheses'] = filter(mergerLinkFilter, model['linkingHypotheses'])
 
-    # insert new nodes
+    # insert new nodes and update UUID to traxel map
     nextUuid = max(uuidToTraxelMap.keys()) + 1
     for node in unresolvedGraph.nodes_iter():
         if unresolvedGraph.node[node]['count'] > 1:
@@ -379,8 +383,11 @@ if __name__ == "__main__":
                 nextUuid += 1
 
     # insert new links
-
-    # update UUID to traxel map
+    for edge in resolvedGraph.edges_iter():
+        newLink = {}
+        newLink['src'] = traxelIdPerTimestepToUniqueIdMap[str(edge[0][0])][str(edge[0][1])]
+        newLink['dest'] = traxelIdPerTimestepToUniqueIdMap[str(edge[1][0])][str(edge[1][1])]
+        model['linkingHypotheses'].append(newLink)
 
     with open(args.out_model_filename, 'w') as f:
         json.dump(model, f, indent=4, separators=(',', ': '))
