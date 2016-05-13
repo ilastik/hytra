@@ -6,6 +6,7 @@ import time
 import glob
 import os
 import logging
+from skimage.external import tifffile
 
 def get_num_frames(options):
     if len(options.input_files) == 1:
@@ -45,7 +46,12 @@ def save_frame_to_tif(timestep, label_image, options):
     else:
         filename = options.output_dir + '/mask' + format(timestep, "0{}".format(options.filename_zero_padding)) + '.tif'
     label_image = np.swapaxes(label_image, 0, 1)
-    vigra.impex.writeImage(label_image.astype('uint16'), filename)
+    if len(label_image.shape) == 2: # 2d
+        vigra.impex.writeImage(label_image.astype('uint16'), filename)
+    else: # 3D
+        label_image = np.transpose(label_image, axes=[2, 0, 1])
+        tifffile.imsave(filename, label_image.astype('uint16'))
+
 
 
 def save_tracks(tracks, num_frames, options):
