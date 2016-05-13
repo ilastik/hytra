@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 import sys
-import os
 import os.path as path
-import glob
 import configargparse
 import time
 import numpy as np
@@ -65,7 +63,6 @@ def getConfigAndCommandLineArguments():
     # ep_gap in general parser options
     parser.add_argument('--average-obj-size', dest='avg_obj_size', type=float, default=0)
     parser.add_argument('--without-tracklets', dest='without_tracklets', action='store_true')
-    parser.add_argument('--with-opt-correct', dest='woptical', action='store_true')
     parser.add_argument('--motion-model-weight', dest='motionModelWeight', type=float, default=0.0,
                         help='motion model weight')
     parser.add_argument('--without-divisions', dest='without_divisions', action='store_true')
@@ -119,12 +116,10 @@ def generate_traxelstore(h5file,
                          y_scale=1.0,
                          z_scale=1.0,
                          with_div=True,
-                         with_local_centers=False,
                          median_object_size=None,
                          max_traxel_id_at=None,
                          with_merger_prior=True,
                          max_num_mergers=1,
-                         with_optical_correction=False,
                          ext_probs=None
                          ):
     """
@@ -134,12 +129,21 @@ def generate_traxelstore(h5file,
 
     logging.info("generating traxels")
     logging.info("filling traxelstore")
-    import pgmlink as track
-    ts = track.TraxelStore()
-    fs = track.FeatureStore()
-    max_traxel_id_at = track.VectorOfInt()
+    try:
+        import pgmlink as track
+        ts = track.TraxelStore()
+        fs = track.FeatureStore()
+        max_traxel_id_at = track.VectorOfInt()
+        withPgmlink = True
+    except:
+        import traxelstore as track
+        withPgmlink = False
+        ts, fs = None, None
+        max_traxel_id_at = []
 
     logging.info("fetching region features and division probabilities")
+    logging.debug("region features path: {}".format(options.obj_count_path))
+    logging.debug("division features path: {}".format(options.div_prob_path))
     logging.debug("{}, {}".format(h5file.filename, feature_path))
 
     detection_probabilities = []
@@ -151,9 +155,6 @@ def generate_traxelstore(h5file,
 
     if with_merger_prior:
         detProbs = h5file[options.obj_count_path]
-
-    if with_local_centers:
-        localCenters = None  # self.RegionLocalCenters(time_range).wait()
 
     if x_range is None:
         x_range = [0, sys.maxint]
@@ -174,6 +175,16 @@ def generate_traxelstore(h5file,
     else:
         time_range = (0, shape_t)
 
+    # use this as Traxelstore dummy if we're not using pgmlink
+    if not withPgmlink:
+        class TSDummy:
+            traxels = []
+            def bounding_box(self):
+                return [time_range[0], 0,0,0, time_range[1], 1,1,1]
+            def add(self, fs, traxel):
+                self.traxels.append(traxel)
+        ts = TSDummy()
+
     filtered_labels = {}
     obj_sizes = []
     total_count = 0
@@ -193,14 +204,6 @@ def generate_traxelstore(h5file,
             region_centers = region_centers[1:, ...]
             lower = lower[1:, ...]
             upper = upper[1:, ...]
-        if with_optical_correction:
-            try:
-                feats_name = options.feats_path % (t, t + 1, 'RegionCenter_corr')
-                region_centers_corr = np.array(h5file[feats_name])
-            except:
-                raise Exception, 'cannot consider optical correction since it has not been computed'
-            if region_centers_corr.size:
-                region_centers_corr = region_centers_corr[1:, ...]
 
         feats_name = options.feats_path % (t, t + 1, 'Count')
         # pixel_count = np.array(feats[t]['0']['Count'])
@@ -229,7 +232,8 @@ def generate_traxelstore(h5file,
             else:
                 count += 1
             traxel = track.Traxel()
-            traxel.set_feature_store(fs)
+            if withPgmlink:
+                traxel.set_feature_store(fs)
             traxel.set_x_scale(x_scale)
             traxel.set_y_scale(y_scale)
             traxel.set_z_scale(z_scale)
@@ -240,13 +244,6 @@ def generate_traxelstore(h5file,
             for i, v in enumerate([x, y, z]):
                 traxel.set_feature_value('com', i, float(v))
 
-            if with_optical_correction:
-                traxel.add_feature_array("com_corrected", 3)
-                for i, v in enumerate(region_centers_corr[idx]):
-                    traxel.set_feature_value("com_corrected", i, float(v))
-                if len(region_centers_corr[idx]) == 2:
-                    traxel.set_feature_value("com_corrected", 2, 0.)
-
             if with_div:
                 traxel.add_feature_array("divProb", 1)
                 prob = 0.0
@@ -255,16 +252,6 @@ def generate_traxelstore(h5file,
                 # idx+1 because region_centers and pixel_count start from 1, divProbs starts from 0
                 traxel.set_feature_value("divProb", 0, prob)
                 division_probabilities.append(prob)
-
-            if with_local_centers:
-                raise Exception, "not yet implemented"
-                traxel.add_feature_array("localCentersX", len(localCenters[t][idx + 1]))
-                traxel.add_feature_array("localCentersY", len(localCenters[t][idx + 1]))
-                traxel.add_feature_array("localCentersZ", len(localCenters[t][idx + 1]))
-                for i, v in enumerate(localCenters[t][idx + 1]):
-                    traxel.set_feature_value("localCentersX", i, float(v[0]))
-                    traxel.set_feature_value("localCentersY", i, float(v[1]))
-                    traxel.set_feature_value("localCentersZ", i, float(v[2]))
 
             if with_merger_prior and ext_probs is None:
                 traxel.add_feature_array("detProb", max_num_mergers + 1)
@@ -281,6 +268,7 @@ def generate_traxelstore(h5file,
             traxel.set_feature_value("count", 0, float(size))
             if median_object_size is not None:
                 obj_sizes.append(float(size))
+
             ts.add(fs, traxel)
 
         logging.info("at timestep {}, {} traxels passed filter".format(t, count))
@@ -375,12 +363,10 @@ def getTraxelStore(options, ilp_fn, time_range, shape):
                 y_scale=options.y_scale,
                 z_scale=options.z_scale,
                 with_div=with_div,
-                with_local_centers=False,
                 median_object_size=obj_size,
                 max_traxel_id_at=max_traxel_id_at,
                 with_merger_prior=with_merger_prior,
                 max_num_mergers=max_num_mer,
-                with_optical_correction=bool(options.woptical),
                 ext_probs=options.ext_probs
                 )
 
@@ -453,7 +439,7 @@ def initializeConservationTracking(options, shape, t0, t1):
                                      "none",
                                      track.ConsTrackingSolverType.DynProgSolver)
     else:
-        raise InvalidArgumentException("Must be conservation or conservation-dynprog")
+        raise ValueError("Must be conservation or conservation-dynprog")
     return tracker, fov
 
 
@@ -462,15 +448,14 @@ def loadPyTraxelstore(options,
                       objectCountClassifierPath=None,
                       divisionClassifierPath=None,
                       time_range=None,
-                      usePgmlink=True):
+                      usePgmlink=True,
+                      featuresOnly=False):
     """
     Set up a python side traxel store: compute all features, but do not evaluate classifiers.
     """
     import traxelstore
     from ilastik_project_options import IlastikProjectOptions
     ilpOptions = IlastikProjectOptions()
-    ilpOptions.objectCountClassifierPath = objectCountClassifierPath
-    ilpOptions.divisionClassifierPath = divisionClassifierPath
     ilpOptions.labelImagePath = options.label_img_path
     ilpOptions.rawImagePath = options.raw_path
     ilpOptions.rawImageFilename = options.raw_filename
@@ -480,19 +465,26 @@ def loadPyTraxelstore(options,
     else:
         ilpOptions.labelImageFilename = ilpFilename
 
-    if options.obj_count_file != None:
-        ilpOptions.objectCountClassifierFilename = options.obj_count_file
+    if featuresOnly:
+        ilpOptions.objectCountClassifierFilename = None
+        ilpOptions.divisionClassifierFilename = None
     else:
-        ilpOptions.objectCountClassifierFilename = ilpFilename
+        ilpOptions.objectCountClassifierPath = objectCountClassifierPath
+        ilpOptions.divisionClassifierPath = divisionClassifierPath
+        if options.obj_count_file != None:
+            ilpOptions.objectCountClassifierFilename = options.obj_count_file
+        else:
+            ilpOptions.objectCountClassifierFilename = ilpFilename
 
-    if options.div_file != None:
-        ilpOptions.divisionClassifierFilename = options.div_file
-    else:
-        ilpOptions.divisionClassifierFilename = ilpFilename
+        if options.div_file != None:
+            ilpOptions.divisionClassifierFilename = options.div_file
+        else:
+            ilpOptions.divisionClassifierFilename = ilpFilename
 
     pyTraxelstore = traxelstore.Traxelstore(ilpOptions, useMultiprocessing=not options.disableMultiprocessing)
     if time_range is not None:
         pyTraxelstore.timeRange = time_range
+
     a = pyTraxelstore.fillTraxelStore(usePgmlink=usePgmlink)
     if usePgmlink:
         t, f = a
@@ -599,6 +591,13 @@ def getHypothesesGraphAndIterators(options, shape, t0, t1, ts, pyTraxelstore):
 
     return hypotheses_graph, n_it, a_it, fov
 
+def insertProbsIntoPyTraxelstore(options, pyTraxelstore, ts):
+    for traxel in ts.traxels:
+        features = ['detProb']
+        if not options.without_divisions:
+            features.append('divProb')
+        for featName in features:
+            pyTraxelstore.TraxelsPerFrame[traxel.Timestep][traxel.Id].Features[featName] = traxel.Features[featName]
 
 def loadTraxelstoreAndTransitionClassifier(options, ilp_fn, time_range, shape):
     """
@@ -607,18 +606,19 @@ def loadTraxelstoreAndTransitionClassifier(options, ilp_fn, time_range, shape):
     Also load the transition classifier if raw features were computed and a transitionClassifierFile is given
     """
     transitionClassifier = None
-
     try:
         ts, fs, _, ndim, t0, t1 = getTraxelStore(options, ilp_fn, time_range, shape)
+        time_range = t0, t1
         foundDetectionProbabilities = True
     except Exception as e:
-        print(e)
+        print("{}: {}".format(type(e), e))
         foundDetectionProbabilities = False
         logging.warning("could not load detection (and/or division) probabilities from ilastik project file")
 
     if options.raw_filename != None:
         if foundDetectionProbabilities:
-            pyTraxelstore, _, _ = loadPyTraxelstore(options, ilp_fn, time_range, usePgmlink=False)
+            pyTraxelstore, _, _ = loadPyTraxelstore(options, ilp_fn, time_range=time_range, usePgmlink=False, featuresOnly=True)
+            insertProbsIntoPyTraxelstore(options, slepyTraxelstore, ts)
         else:
             # warning: assuming that the classifiers are top-level groups in HDF5
             objectCountClassifierPath = '/' + [t for t in options.obj_count_path.split('/') if len(t) > 0][0]
@@ -642,7 +642,7 @@ def loadTraxelstoreAndTransitionClassifier(options, ilp_fn, time_range, shape):
     else:
         pyTraxelstore = None
 
-    assert (foundDetectionProbabilities)
+    assert(foundDetectionProbabilities)
 
     return ts, fs, ndim, t0, t1, pyTraxelstore, transitionClassifier
 
