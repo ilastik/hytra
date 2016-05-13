@@ -5,6 +5,7 @@ import configargparse as argparse
 import logging
 import glob
 import os
+from skimage.external import tifffile
 
 def segmentation_to_hdf5(options):
     """
@@ -13,7 +14,12 @@ def segmentation_to_hdf5(options):
     """
     out_h5 = h5py.File(options.hdf5Path, 'w')
     for timeframe in range(len(options.tif_input_files)):
-        data = vigra.impex.readImage(options.tif_input_files[timeframe], dtype='UINT16') # sure UINT32?
+        # data = vigra.impex.readImage(options.tif_input_files[timeframe], dtype='UINT16') # sure UINT32?
+        data = tifffile.imread(options.tif_input_files[timeframe])
+        if len(data.shape) == 2: # 2D
+            data = np.expand_dims(np.transpose(data, axes=[1,0]), axis=3)
+        else:
+            data = np.expand_dims(np.transpose(data, axes=[1,2,0]), axis=4)
         
         if timeframe == 0:
             logging.info("Found image of shape {}".format(data.shape))

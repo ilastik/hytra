@@ -1,9 +1,17 @@
 import vigra
 import configargparse as argparse
 import logging
+from vigra import numpy as np
+from skimage.external import tifffile
+import glob
 
 def convert_to_volume(options):
-    data = vigra.impex.readVolume(options.input_file)
+    # data = vigra.impex.readVolume('/export/home/lparcala/Fluo-N2DH-SIM/01/t000.tif')
+    data = tifffile.imread(options.input_file)
+    if len(data.shape) == 3: # 2D
+        data = np.expand_dims(data, axis=3)
+    else:
+        data = np.expand_dims(np.transpose(data, axes=[0, 3, 2, 1]), axis=4)
     print("Saving h5 volume of shape {}".format(data.shape))
     vigra.writeHDF5(data, options.output_file, options.output_path)
 
@@ -14,7 +22,7 @@ if __name__ == "__main__":
     parser.add_argument('-c', '--config', is_config_file=True, help='config file path')
 
     # file paths
-    parser.add_argument('--ctc-raw-input-tif', type=str, dest='input_file', required=True,
+    parser.add_argument('--ctc-raw-input-tif', type=str, dest='tif_input_file_pattern', required=True,
                         help='Filename of the first image of the tiff stack')
     parser.add_argument('--raw-data-file', type=str, dest='output_file', required=True,
                         help='Filename for the resulting HDF5 file.')
@@ -24,6 +32,9 @@ if __name__ == "__main__":
 
     # parse command line
     options, unknown = parser.parse_known_args()
+    options.input_file = glob.glob(options.tif_input_file_pattern)
+    options.input_file.sort()
+
 
     if options.verbose:
         logging.basicConfig(level=logging.DEBUG)

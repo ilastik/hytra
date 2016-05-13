@@ -5,7 +5,8 @@ import logging
 import numpy as np
 import h5py
 import vigra
-
+from skimage.external import tifffile
+import glob
 
 def find_splits(filename, start_frame):
     # store split events indexed by timestep, then parent
@@ -101,13 +102,16 @@ def save_label_image_for_frame(options, label_volume, out_h5, frame, mapping_per
     """
     if options.single_frames:
         out_label_volume = label_volume[..., frame, :]
-        out_label_volume = np.transpose(out_label_volume, axes=[1, 0, 2])
-
+        if len(out_label_volume.shape) == 3: # 2D
+            out_label_volume = np.transpose(out_label_volume, axes=[1, 0, 2])
+        else: # 3D dataset
+            out_label_volume = np.transpose(out_label_volume, axes=[2, 1, 3, 0])
         if options.index_remapping and mapping_per_frame is not None:
             out_label_volume = remap_label_image(out_label_volume, mapping_per_frame[frame])
 
         out_h5.create_dataset("segmentation/labels", data=out_label_volume, dtype='u2', compression='gzip')
     else:
+        raise NotImplementedError
         out_label_volume = np.transpose(label_volume, axes=[2, 1, 0, 3])
         
         if options.index_remapping and mapping_per_frame is not None:
@@ -122,7 +126,15 @@ def save_label_image_for_frame(options, label_volume, out_h5, frame, mapping_per
 
 def create_label_volume(options):
     # read image
-    label_volume = vigra.impex.readVolume(options.input_tif)
+    # label_volume = vigra.impex.readVolume('/export/home/lparcala/Fluo-N2DH-SIM/01_GT/TRA/man_track000.tif')
+    label_volume = tifffile.imread(options.input_tif)
+
+    if len(label_volume.shape) == 3: # 2D
+        label_volume = np.expand_dims(np.transpose(label_volume, axes=[2, 1, 0]), axis=3)
+        timeaxis = label_volume.shape[2]
+    else:
+        label_volume = np.expand_dims(np.transpose(label_volume, axes=[3, 2, 1, 0]), axis=4)
+        timeaxis = label_volume.shape[3]
     logging.info("Found dataset of size {}".format(label_volume.shape))
 
     split_events = find_splits(options.input_track, options.start_frame)
@@ -144,7 +156,7 @@ def create_label_volume(options):
     objects_per_frame = []
     mapping_per_frame = {}
 
-    for frame in range(label_volume.shape[2]):
+    for frame in range(timeaxis):
         label_image = label_volume[..., frame, 0]
         mapping_per_frame[frame] = find_label_image_remapping(label_image)
 
@@ -162,7 +174,7 @@ def create_label_volume(options):
         tracking_frame = out_h5.create_group('tracking')
     save_label_image_for_frame(options, label_volume, out_h5, 0, mapping_per_frame)
 
-    for frame in range(label_volume.shape[2]):
+    for frame in range(timeaxis):
         label_image = label_volume[..., frame, 0]
         objects = np.unique(label_image)
         objects_per_frame.append(set(objects))
@@ -170,7 +182,7 @@ def create_label_volume(options):
             ids.create_dataset(format(frame, "04"), data=objects, dtype='u2')
 
     # handle all further frames
-    for frame in range(1, label_volume.shape[2]):
+    for frame in range(1, timeaxis):
         if options.single_frames:
             out_h5 = h5py.File(options.output_file + format(frame, "04") + '.h5', 'w')
             tracking_frame = out_h5.create_group('tracking')
@@ -227,8 +239,8 @@ if __name__ == "__main__":
     parser.add_argument('-c', '--config', is_config_file=True, help='config file path')
 
     # file paths
-    parser.add_argument('--ctc-track-input-tif', type=str, dest='input_tif', required=True,
-                        help='First tif file of Cell Tracking Challenge data: man_track00.tif')
+    parser.add_argument('--ctc-track-input-tif', type=str, dest='tif_input_file_pattern', required=True,
+                        help='File pattern of Cell Tracking Challenge data: man_track*.tif')
     parser.add_argument('--ctc-track-input-txt', type=str, dest='input_track', required=True,
                         help='Path to Cell Tracking Challenge manual tracking file: man_track.txt')
     parser.add_argument('--groundtruth', type=str, dest='output_file', required=True,
@@ -243,6 +255,8 @@ if __name__ == "__main__":
 
     # parse command line
     options, unknown = parser.parse_known_args()
+    options.input_tif = glob.glob(options.tif_input_file_pattern)
+    options.input_tif.sort()
 
     if options.verbose:
         logging.basicConfig(level=logging.DEBUG)
