@@ -94,9 +94,15 @@ def convert_label_volume(options):
     splits = get_frame_dataset(1, "Splits", options)
     # splits could be empty
     if len(splits) == 0:
-        referenced_labels = set(moves[:,0])
+        if len(moves) == 0:
+            referenced_labels = set([])
+        else:
+            referenced_labels = set(moves[:, 0])
+    elif len(moves) == 0:
+        referenced_labels = set(splits[:, 0])
     else:
         referenced_labels = set(moves[:, 0]) | set(splits[:, 0]) # set union
+
     for l in referenced_labels:
         if l == 0 or not l in label_image_indices:
             continue
