@@ -14,7 +14,7 @@ doxygenconfig*
 randomforest_test.cpp
 tracking/
 .idea
-
+tests/mergerResolvingTestDataset/*
 
 # Compiled source #
 ###################

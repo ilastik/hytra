@@ -127,13 +127,18 @@ def create_label_volume(options):
 
     split_events = find_splits(options.input_track, options.start_frame)
 
-    # as h5py somehow appends the old file instead of overwriting, do it manually
-    if os.path.exists(options.output_file) and os.path.isfile(options.output_file):
-        os.remove(options.output_file)
-    elif os.path.exists(options.output_file) and os.path.isdir(options.output_file):
-        import shutil
-        shutil.rmtree(options.output_file)
+
+    if not os.path.exists(options.output_file):
+        #create new folder for gt files
         os.mkdir(options.output_file)
+    else:
+        # as h5py somehow appends the old file instead of overwriting, do it manually
+        if os.path.isfile(options.output_file):
+            os.remove(options.output_file)
+        elif os.path.isdir(options.output_file):
+            import shutil
+            shutil.rmtree(options.output_file)
+            os.mkdir(options.output_file)
 
     # store object ids per frame and generate mappings
     objects_per_frame = []

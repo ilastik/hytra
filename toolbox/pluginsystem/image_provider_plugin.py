@@ -47,3 +47,10 @@ class ImageProviderPlugin(IPlugin):
         """
         raise NotImplementedError()
         return []
+
+    def exportLabelImage(self, labelimage, timeframe, Resource, PathInResource):
+        """
+        export labelimage of timeframe
+        """
+        raise NotImplementedError()
+        return []
