@@ -618,7 +618,7 @@ def loadTraxelstoreAndTransitionClassifier(options, ilp_fn, time_range, shape):
     if options.raw_filename != None:
         if foundDetectionProbabilities:
             pyTraxelstore, _, _ = loadPyTraxelstore(options, ilp_fn, time_range=time_range, usePgmlink=False, featuresOnly=True)
-            insertProbsIntoPyTraxelstore(options, slepyTraxelstore, ts)
+            insertProbsIntoPyTraxelstore(options, pyTraxelstore, ts)
         else:
             # warning: assuming that the classifiers are top-level groups in HDF5
             objectCountClassifierPath = '/' + [t for t in options.obj_count_path.split('/') if len(t) > 0][0]
