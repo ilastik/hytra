@@ -108,7 +108,7 @@ def computeRegionFeaturesOnCloud(frame,
 
     # compute features
     moreFeats, ignoreNames = pluginManager.applyObjectFeatureComputationPlugins(
-        2, rawImage, labelImage, frame, rawImageFilename)
+        len(labelImage.shape), rawImage, labelImage, frame, rawImageFilename)
 
     # combine into one dictionary
     # WARNING: if there are multiple features with the same name, they will be overwritten!
