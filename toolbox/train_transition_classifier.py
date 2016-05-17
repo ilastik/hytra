@@ -32,8 +32,12 @@ def compute_features(raw_image, labeled_image, n1, n2, pluginManager, filepath):
 
         # features = vigra.analysis.extractRegionFeatures(raw_image[..., i, 0].astype('float32'),
         #                                                 labeled_image[i][..., 0], ignoreLabel=0)
+        # adapt to this weird format of the 3D labeled image (60,487,1,518) on 3D Fluo-SIM
+        if raw_image[..., i, 0].shape != labeled_image[i][..., 0].shape: 
+            labeled_image[i] = np.transpose(labeled_image[i], axes=[3,1,0,2])
+
         moreFeats, ignoreNames = pluginManager.applyObjectFeatureComputationPlugins(
-            len(raw_image.shape) - 2, raw_image[..., i, 0], labeled_image[i][..., 0], i, filepath)
+            len(raw_image.shape)-2, raw_image[..., i, 0], labeled_image[i][..., 0], i, filepath)
         frameFeatureItems = []
         for f in moreFeats:
             frameFeatureItems = frameFeatureItems + f.items()
