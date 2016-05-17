@@ -129,22 +129,22 @@ def convert_label_volume(options):
         logging.debug("Processing frame {} of shape {}".format(frame, label_image.shape))
         mapping = {}
 
-        # find the continued tracks
         moves = get_frame_dataset(frame, "Moves", options)
+        splits = get_frame_dataset(frame, "Splits", options)
+        
+        # find the continued tracks
         for src, dest in moves:
             if src == 0 or dest == 0 or not src in old_label_image_indices or not dest in label_image_indices:
                 continue
             # see whether this was a track continuation or the first leg of a new track
             if src in old_mapping.keys():
                 mapping[dest] = old_mapping[src]
-            else:
+            elif src not in list(splits[:,0]):
                 mapping[dest] = new_track_id
                 tracks[new_track_id] = [0, frame]
                 new_track_id += 1
 
         # find all divisions
-        splits = get_frame_dataset(frame, "Splits", options)
-
         for s in range(splits.shape[0]):
             # end parent track
             parent = splits[s, 0]
@@ -215,7 +215,7 @@ if __name__ == "__main__":
     else:
         logging.basicConfig(level=logging.INFO)
     logging.debug("Ignoring unknown parameters: {}".format(unknown))
-    
+
     # find all files matching the pattern
     args.input_files = glob.glob(args.input_file_pattern)
     args.input_files.sort()
