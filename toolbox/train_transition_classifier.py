@@ -295,8 +295,6 @@ if __name__ == '__main__':
         if endFrame < 0:
             endFrame += len(files)
     
-        logger.info('Found {} ground truth files, using range from {} to {}'.format(len(files), initFrame, endFrame))
-
         # compute features
         trackingPluginManager = TrackingPluginManager()
         features = compute_features(rawimage,
