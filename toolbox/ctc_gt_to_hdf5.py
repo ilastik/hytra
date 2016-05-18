@@ -112,29 +112,27 @@ def save_label_image_for_frame(options, label_volume, out_h5, frame, mapping_per
         out_h5.create_dataset("segmentation/labels", data=out_label_volume, dtype='u2', compression='gzip')
     else:
         raise NotImplementedError
-        out_label_volume = np.transpose(label_volume, axes=[2, 1, 0, 3])
-        
-        if options.index_remapping and mapping_per_frame is not None:
-            # remap every frame in the volume individually
-            for frame in range(label_volume.shape[2]):
-                remapped_frame = remap_label_image(out_label_volume[..., frame, 0], mapping_per_frame[frame])
-                out_label_volume[..., frame, 0] = remapped_frame
 
-        out_h5.create_dataset("label_image", data=out_label_volume, dtype='u2', compression='gzip')
-        out_label_volume = (out_label_volume.swapaxes(1, 2))[..., np.newaxis]
-        out_h5.create_dataset("label_image_T", data=out_label_volume, dtype='u2', compression='gzip')
+def read_frame(filename):
+    label_volume = tifffile.imread(filename)
+    if len(label_volume.shape) == 2: # 2D
+        label_volume = np.expand_dims(np.transpose(label_volume, axes=[1, 0]), axis=-1)
+    else:
+        label_volume = np.expand_dims(np.transpose(label_volume, axes=[2, 1, 0]), axis=-1)
+    return label_volume
 
 def create_label_volume(options):
     # read image
     # label_volume = vigra.impex.readVolume('/export/home/lparcala/Fluo-N2DH-SIM/01_GT/TRA/man_track000.tif')
-    label_volume = tifffile.imread(options.input_tif)
 
-    if len(label_volume.shape) == 3: # 2D
-        label_volume = np.expand_dims(np.transpose(label_volume, axes=[2, 1, 0]), axis=3)
-        timeaxis = label_volume.shape[2]
-    else:
-        label_volume = np.expand_dims(np.transpose(label_volume, axes=[3, 2, 1, 0]), axis=4)
-        timeaxis = label_volume.shape[3]
+    label_volume = read_frame(options.input_tif[0])
+
+    for frame_tif in options.input_tif[1:]:
+        frame_label_volume = read_frame(frame_tif)
+        label_volume = np.concatenate([label_volume, frame_label_volume], axis=-1)
+
+    label_volume = np.expand_dims(label_volume, axis=-1)
+    timeaxis = label_volume.shape[-2]
     logging.info("Found dataset of size {}".format(label_volume.shape))
 
     split_events = find_splits(options.input_track, options.start_frame)
@@ -265,3 +263,4 @@ if __name__ == "__main__":
     logging.debug("Ignoring unknown parameters: {}".format(unknown))
 
     create_label_volume(options)
+    logging.info("Done converting CTC groundtruth to HDF5")
