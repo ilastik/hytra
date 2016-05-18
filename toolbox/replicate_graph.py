@@ -7,7 +7,7 @@ import copy
 
 sys.path.append('../.')
 sys.path.append('.')
-from progressbar import ProgressBar
+from core.progressbar import ProgressBar
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Replicate nodes, links, divisions and exclusion sets N times, ' \

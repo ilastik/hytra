@@ -10,7 +10,7 @@ import argparse
 import numpy as np
 import h5py
 from multiprocessing import Pool
-from progressbar import ProgressBar
+from core.progressbar import ProgressBar
 
 def get_num_frames(options):
     if len(options.input_files) == 1:
