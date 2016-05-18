@@ -73,10 +73,12 @@ def computeRegionFeaturesOnCloud(frame,
                                 rawImagePath,
                                 labelImageFilename,
                                 labelImagePath,
+                                turnOffFeatures,
                                 pluginPaths=['plugins'],
                                 featuresPerFrame = None,
                                 imageProviderPluginName='LocalImageLoader',
-                                featureSerializerPluginName='LocalFeatureSerializer'):
+                                featureSerializerPluginName='LocalFeatureSerializer'
+                                ):
     '''
     Allow to use dispy to schedule feature computation to nodes running a dispynode,
     or to use multiprocessing.
@@ -96,7 +98,7 @@ def computeRegionFeaturesOnCloud(frame,
 
     # set up plugin manager
     from pluginsystem.plugin_manager import TrackingPluginManager
-    pluginManager = TrackingPluginManager(pluginPaths=pluginPaths, verbose=False)
+    pluginManager = TrackingPluginManager(pluginPaths=pluginPaths, turnOffFeatures=turnOffFeatures, verbose=False)
     pluginManager.setImageProvider(imageProviderPluginName)
     pluginManager.setFeatureSerializer(featureSerializerPluginName)
 
@@ -209,10 +211,10 @@ class Traxelstore:
     and evaluate the division/count/transition classifiers.
     """
 
-    def __init__(self, ilpOptions, useMultiprocessing=True, verbose=False):
+    def __init__(self, ilpOptions, turnOffFeatures=[], useMultiprocessing=True, verbose=False):
         self._useMultiprocessing = useMultiprocessing
         self._options = ilpOptions
-        self._pluginManager = TrackingPluginManager(verbose=verbose)
+        self._pluginManager = TrackingPluginManager(turnOffFeatures=turnOffFeatures, verbose=verbose)
         self._pluginManager.setImageProvider(ilpOptions.imageProviderName)
         self._pluginManager.setFeatureSerializer(ilpOptions.featureSerializerName)
 
@@ -352,7 +354,7 @@ class Traxelstore:
 
         return timeframe, feats
 
-    def _extractAllFeatures(self, dispyNodeIps=[]):
+    def _extractAllFeatures(self, dispyNodeIps=[], turnOffFeatures=[]):
         """
         Extract the features of all frames. 
 
@@ -391,14 +393,14 @@ class Traxelstore:
             with ExecutorType() as executor:
                 # 1st pass for region features
                 jobs = []
-
                 for frame in range(self.timeRange[0], self.timeRange[1]):
                     jobs.append(executor.submit(computeRegionFeaturesOnCloud,
                         frame,
                         self._options.rawImageFilename, 
                         self._options.rawImagePath,
                         self._options.labelImageFilename,
-                        self._options.labelImagePath
+                        self._options.labelImagePath,
+                        turnOffFeatures
                     ))
                 for job in concurrent.futures.as_completed(jobs):
                     progressBar.show()
@@ -476,7 +478,7 @@ class Traxelstore:
         for i, v in enumerate(featureArray):
             traxel.set_feature_value(name, i, float(v))
 
-    def fillTraxelStore(self, usePgmlink=True, ts=None, fs=None, dispyNodeIps=[]):
+    def fillTraxelStore(self, usePgmlink=True, ts=None, fs=None, dispyNodeIps=[], turnOffFeatures=[]):
         """
         Compute all the features and predict object count as well as division probabilities.
         Store the resulting information (and all other features) in the given pgmlink::TraxelStore,
@@ -497,7 +499,7 @@ class Traxelstore:
                 assert (fs is not None)
 
         logging.getLogger("Traxelstore").info("Extracting features...")
-        self._featuresPerFrame = self._extractAllFeatures(dispyNodeIps=dispyNodeIps)
+        self._featuresPerFrame = self._extractAllFeatures(dispyNodeIps=dispyNodeIps, turnOffFeatures=turnOffFeatures)
 
         logging.getLogger("Traxelstore").info("Creating traxels...")
         progressBar = ProgressBar(stop=len(self._featuresPerFrame))

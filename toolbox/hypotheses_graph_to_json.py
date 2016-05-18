@@ -96,6 +96,7 @@ def getConfigAndCommandLineArguments():
     parser.add_argument('--disable-multiprocessing', dest='disableMultiprocessing', action='store_true',
                         help='Do not use multiprocessing to speed up computation',
                         default=False)
+    parser.add_argument('--turn-off-features', dest='turnOffFeatures', type=str, nargs='+', default=[])
     parser.add_argument('--verbose', dest='verbose', action='store_true',
                         help='Turn on verbose logging', default=False)
 
@@ -345,7 +346,7 @@ def getTraxelStore(options, ilp_fn, time_range, shape):
                 logging.warning("Traxelstore has different time range than requested FOV. Trimming traxels...")
                 fov = getFovFromOptions(options, shape, t0, t1)
                 fov.set_time_bounds(options.mints, options.maxts - 1)
-                new_ts = track.TraxelStore()
+                new_ts = track.TraxelStore(turnOffFeatures=options.turnOffFeatures)
                 ts.filter_by_fov(new_ts, fov)
                 ts = new_ts
         else:
@@ -481,11 +482,11 @@ def loadPyTraxelstore(options,
         else:
             ilpOptions.divisionClassifierFilename = ilpFilename
 
-    pyTraxelstore = traxelstore.Traxelstore(ilpOptions, useMultiprocessing=not options.disableMultiprocessing)
+    pyTraxelstore = traxelstore.Traxelstore(ilpOptions, turnOffFeatures=options.turnOffFeatures, useMultiprocessing=not options.disableMultiprocessing)
     if time_range is not None:
         pyTraxelstore.timeRange = time_range
 
-    a = pyTraxelstore.fillTraxelStore(usePgmlink=usePgmlink)
+    a = pyTraxelstore.fillTraxelStore(usePgmlink=usePgmlink, turnOffFeatures=options.turnOffFeatures)
     if usePgmlink:
         t, f = a
     else:

@@ -1,4 +1,5 @@
 from yapsy.PluginManager import PluginManager
+from yapsy.FilteredPluginManager import FilteredPluginManager
 import logging
 from object_feature_computation_plugin import ObjectFeatureComputationPlugin
 from transition_feature_vector_construction_plugin import TransitionFeatureVectorConstructionPlugin
@@ -6,12 +7,11 @@ from image_provider_plugin import ImageProviderPlugin
 from feature_serializer_plugin import FeatureSerializerPlugin
 from merger_resolver_plugin import MergerResolverPlugin
 
-
 class TrackingPluginManager():
     """
     Our plugin manager that handles the types of plugins known in this pipeline
     """
-    def __init__(self, pluginPaths=['plugins'], verbose=False):
+    def __init__(self, pluginPaths=['plugins'], turnOffFeatures=[], verbose=False):
         """
         Create the plugin manager that looks inside the specified `pluginPaths` (recursively),
         and if `verbose=True` then the [yapsy](http://yapsy.sourceforge.net/) plugin backend 
@@ -19,6 +19,9 @@ class TrackingPluginManager():
         """
         # Build the manager
         self._yapsyPluginManager = PluginManager()
+        self._yapsyPluginManager = FilteredPluginManager(self._yapsyPluginManager)
+        self._yapsyPluginManager.isPluginOk = lambda x: x.name not in turnOffFeatures
+
         # Tell it the default place(s) where to find plugins
         self._yapsyPluginManager.setPluginPlaces(pluginPaths)
         # Define the various categories corresponding to the different
@@ -69,9 +72,7 @@ class TrackingPluginManager():
                 f = plugin.computeFeatures(rawImage, labelImage, frameNumber, rawFilename)
                 features.append(f)
                 featureNamesToIgnore.extend(plugin.omittedFeatures)
-        
         self._applyToAllPluginsOfCategory(computeFeatures, "ObjectFeatureComputation")
-
         return features, featureNamesToIgnore
 
     def applyTransitionFeatureVectorConstructionPlugins(self, featureDictObjectA, featureDictObjectB, selectedFeatures):
