@@ -139,7 +139,7 @@ def convert_label_volume(options):
             # see whether this was a track continuation or the first leg of a new track
             if src in old_mapping.keys():
                 mapping[dest] = old_mapping[src]
-            elif src not in list(splits[:,0]):
+            elif len(splits)==0 or src not in list(splits[:,0]):
                 mapping[dest] = new_track_id
                 tracks[new_track_id] = [0, frame]
                 new_track_id += 1
