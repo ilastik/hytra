@@ -5,6 +5,7 @@ import configargparse as argparse
 import numpy as np
 import h5py
 from multiprocessing import Pool
+import core.jsongraph
 
 def writeEvents(timestep, activeLinks, activeDivisions, mergers, detections, fn, labelImagePath, ilpFilename):
     dis = []
@@ -98,6 +99,9 @@ if __name__ == "__main__":
 
     with open(args.result_filename, 'r') as f:
         result = json.load(f)
+        assert(result['detectionResults'] is not None)
+        assert(result['linkingResults'] is not None)
+        withDivisions = result['divisionResults'] is not None
 
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
@@ -105,39 +109,10 @@ if __name__ == "__main__":
         logging.basicConfig(level=logging.INFO)
     logging.debug("Ignoring unknown parameters: {}".format(unknown))
 
-    # create reverse mapping from json uuid to (timestep,ID)
-    traxelIdPerTimestepToUniqueIdMap = model['traxelToUniqueId']
+    traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = core.jsongraph.getMappingsBetweenUUIDsAndTraxels(model)
     timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
-    uuidToTraxelMap = {}
-    for t in timesteps:
-        for i in traxelIdPerTimestepToUniqueIdMap[t].keys():
-            uuid = traxelIdPerTimestepToUniqueIdMap[t][i]
-            if uuid not in uuidToTraxelMap:
-                uuidToTraxelMap[uuid] = []
-            uuidToTraxelMap[uuid].append((int(t), int(i)))
 
-    # sort the list of traxels per UUID by their timesteps
-    for v in uuidToTraxelMap.values():
-        v.sort(key=lambda timestepIdTuple: timestepIdTuple[0])
-
-    assert(result['detectionResults'] is not None)
-    assert(result['linkingResults'] is not None)
-    withDivisions = result['divisionResults'] is not None
-
-    # load results and map indices
-    mergers = [timestepIdTuple + (entry['value'],) for entry in result['detectionResults'] if entry['value'] > 1 for timestepIdTuple in uuidToTraxelMap[int(entry['id'])]]
-    detections = [timestepIdTuple for entry in result['detectionResults'] if entry['value'] > 0 for timestepIdTuple in uuidToTraxelMap[int(entry['id'])]]
-    if withDivisions:
-        divisions = [uuidToTraxelMap[int(entry['id'])][-1] for entry in result['divisionResults'] if entry['value'] == True]
-    links = [(uuidToTraxelMap[int(entry['src'])][-1], uuidToTraxelMap[int(entry['dest'])][0]) for entry in result['linkingResults'] if entry['value'] > 0]
-
-    # add all internal links of tracklets
-    for v in uuidToTraxelMap.values():
-        prev = None
-        for timestepIdTuple in v:
-            if prev is not None:
-                links.append((prev, timestepIdTuple))
-            prev = timestepIdTuple
+    mergers, detections, links, divisions = core.jsongraph.getMergersDetectionsLinksDivisions(result, uuidToTraxelMap)
 
     # group by timestep for event creation
     mergersPerTimestep = dict([(t, [(idx, count) for timestep, idx, count in mergers if timestep == int(t)]) for t in timesteps])

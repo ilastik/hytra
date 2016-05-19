@@ -7,116 +7,13 @@ import h5py
 import itertools
 import networkx as nx
 from pluginsystem.plugin_manager import TrackingPluginManager
-import traxelstore
+import core.traxelstore as traxelstore
+import core.jsongraph
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Given a hypotheses json graph and a result.json, this script'
-                        + ' resolves all mergers by updating the segmentation and inserting the appropriate '
-                        + 'nodes and links.',
-                        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-c', '--config', is_config_file=True, help='config file path', dest='config_file', required=True)
+def createUnresolvedGraph(divisionsPerTimestep, mergersPerTimestep, mergerLinks):
+    """ set up a networkx graph consisting of mergers (not resolved yet!) and their direct neighbors """
 
-    parser.add_argument('--graph-json-file', required=True, type=str, dest='model_filename',
-                        help='IN Filename of the json model description')
-    parser.add_argument('--result-json-file', required=True, type=str, dest='result_filename',
-                        help='IN Filename of the json file containing results')
-    parser.add_argument('--label-image-filename', required=True, type=str, dest='label_image_filename',
-                        help='IN Filename of the original ilasitk tracking project')
-    parser.add_argument('--label-image-path', dest='label_image_path', type=str,
-                        default='/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]',
-                        help='internal hdf5 path to label image')
-    parser.add_argument('--raw-data-file', type=str, dest='raw_filename', default=None,
-                      help='filename to the raw h5 file')
-    parser.add_argument('--raw-data-path', type=str, dest='raw_path', default='volume/data',
-                      help='Path inside the raw h5 file to the data')
-    parser.add_argument('--transition-classifier-file', dest='transition_classifier_filename', type=str,
-                        default=None)
-    parser.add_argument('--transition-classifier-path', dest='transition_classifier_path', type=str, default='/')
-    parser.add_argument('--out-model', type=str, dest='out_model_filename', required=True, 
-                        help='Filename of the json model containing the hypotheses graph including new nodes')
-    parser.add_argument('--out-label-image', type=str, dest='out_label_image', required=True, 
-                        help='Filename where to store the label image with updated segmentation')
-    parser.add_argument('--out-result', type=str, dest='out_result', required=True, 
-                        help='Filename where to store the new result')
-    parser.add_argument('--trans-par', dest='trans_par', type=float, default=5.0,
-                        help='alpha for the transition prior')
-    
-    args, _ = parser.parse_known_args()
-    logging.basicConfig(level=logging.INFO)
-
-    logging.basicConfig(level=logging.DEBUG)
-
-    with open(args.model_filename, 'r') as f:
-        model = json.load(f)
-
-    with open(args.result_filename, 'r') as f:
-        result = json.load(f)
-
-    # create reverse mapping from json uuid to (timestep,ID)
-    traxelIdPerTimestepToUniqueIdMap = model['traxelToUniqueId']
-    timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
-    uuidToTraxelMap = {}
-    for t in timesteps:
-        for i in traxelIdPerTimestepToUniqueIdMap[t].keys():
-            uuid = traxelIdPerTimestepToUniqueIdMap[t][i]
-            if uuid not in uuidToTraxelMap:
-                uuidToTraxelMap[uuid] = []
-            uuidToTraxelMap[uuid].append((int(t), int(i)))
-
-    # sort the list of traxels per UUID by their timesteps
-    for v in uuidToTraxelMap.values():
-        v.sort(key=lambda timestepIdTuple: timestepIdTuple[0])
-
-    assert(result['detectionResults'] is not None)
-    assert(result['linkingResults'] is not None)
-    withDivisions = result['divisionResults'] is not None
-
-    # load results and map indices
-    mergers = [timestepIdTuple + (entry['value'],) for entry in result['detectionResults'] if entry['value'] > 1 for timestepIdTuple in uuidToTraxelMap[int(entry['id'])]]
-    detections = [timestepIdTuple for entry in result['detectionResults'] if entry['value'] > 0 for timestepIdTuple in uuidToTraxelMap[int(entry['id'])]]
-    if withDivisions:
-        divisions = [uuidToTraxelMap[int(entry['id'])][-1] for entry in result['divisionResults'] if entry['value'] == True]
-    links = [(uuidToTraxelMap[int(entry['src'])][-1], uuidToTraxelMap[int(entry['dest'])][0]) for entry in result['linkingResults'] if entry['value'] > 0]
-
-    # add all internal links of tracklets
-    for v in uuidToTraxelMap.values():
-        prev = None
-        for timestepIdTuple in v:
-            if prev is not None:
-                links.append((prev, timestepIdTuple))
-            prev = timestepIdTuple
-
-    # group by timestep for graph creation
-    # mergersPerTimestep = { "<timestep>": {<idx>: <count>, <idx>: <count>, ...}, "<timestep>": {...}, ... }
-    mergersPerTimestep = dict([(t, dict([(idx, count) for timestep, idx, count in mergers if timestep == int(t)])) for t in timesteps])
-    # detectionsPerTimestep = { "<timestep>": [<idx>, <idx>, ...], "<timestep>": [...], ...}
-    detectionsPerTimestep = dict([(t, [idx for timestep, idx in detections if timestep == int(t)]) for t in timesteps])
-    # linksPerTimestep = { "<timestep>": [(<idxA> (at previous timestep), <idxB> (at timestep)), (<idxA>, <idxB>), ...], ...}
-    linksPerTimestep = dict([(t, [(a[1], b[1]) for a, b in links if b[0] == int(t)]) for t in timesteps])
-
-    # filter links: at least one of the two incident nodes must be a merger 
-    # for it to be added to the merger resolving graph
-    mergerLinks = [(t,(a, b)) for t in timesteps for a, b in linksPerTimestep[t] if a in mergersPerTimestep[str(int(t)-1)] or b in mergersPerTimestep[t]]
-
-    # divisionsPerTimestep = { "<timestep>": {<parentIdx>: [<childIdx>, <childIdx>], ...}, "<timestep>": {...}, ... }
-    if withDivisions:
-        # find children of divisions by looking for the active links
-        divisionsPerTimestep = {}
-        for t in timesteps:
-            divisionsPerTimestep[t] = {}
-            for div_timestep, div_idx in divisions:
-                if div_timestep == int(t) - 1:
-                    # we have an active division of the mother cell "div_idx" in the previous frame
-                    children = [b for a,b in linksPerTimestep[t] if a == div_idx]
-                    assert(len(children) == 2)
-                    divisionsPerTimestep[t][div_idx] = children
-    else:
-        divisionsPerTimestep = dict([(t,{}) for t in timesteps])
-
-    # ------------------------------------------------------------
-    # set up a networkx graph consisting of mergers (not resolved yet!) and their direct neighbors
     unresolvedGraph = nx.DiGraph()
-
     def source(timestep, link):
         return int(timestep) - 1, link[0]
 
@@ -126,7 +23,10 @@ if __name__ == "__main__":
     def addNode(node):
         ''' add a node to the unresolved graph and fill in the properties `division` and `count` '''
         intT, idx = node
-        division = idx in divisionsPerTimestep[str(intT)]
+        if divisionsPerTimestep is not None:
+            division = idx in divisionsPerTimestep[str(intT)]
+        else:
+            division = False
         count = 1
         if idx in mergersPerTimestep[str(intT)]:
             assert(not division)
@@ -134,13 +34,19 @@ if __name__ == "__main__":
         unresolvedGraph.add_node(node, division=division, count=count)
 
     # add nodes
-    for t,link in mergerLinks:
+    for t, link in mergerLinks:
         for n in [source(t, link), target(t, link)]:
             if not unresolvedGraph.has_node(n):
                 addNode(n)
         unresolvedGraph.add_edge(source(t, link), target(t,link))
 
-    # now we split up the division nodes if they have two outgoing links
+    return unresolvedGraph
+
+def prepareResolvedGraph(unresolvedGraph): 
+    """ 
+    split up the division nodes if they have two outgoing links 
+    and add the duplicates to the resolved graph 
+    """
     resolvedGraph = unresolvedGraph.copy()
     numDivisionNodes = 0
     for n in unresolvedGraph:
@@ -158,24 +64,25 @@ if __name__ == "__main__":
             resolvedGraph.node[duplicate]['origin'] = n
             resolvedGraph.node[n]['duplicate'] = duplicate
 
-    pluginManager = TrackingPluginManager(verbose=True)
-    pluginManager.setImageProvider('LocalImageLoader')
+    return resolvedGraph
+
+def refineMergerSegmentations(resolvedGraph, 
+                                unresolvedGraph, 
+                                timesteps, 
+                                pluginManager, 
+                                labelImageFilename, 
+                                labelImagePath):
+    ''' update segmentation of mergers from first timeframe to last and create new nodes: '''
+
     imageProvider = pluginManager.getImageProvider()
     mergerResolver = pluginManager.getMergerResolver()
 
-    # store all raw and label images of the frames we need for merger resolving:
-    labelImages = {}
-    rawImages = {}
-
-    # ------------------------------------------------------------
-    # update segmentation of mergers from first timeframe to last and create new nodes:
     intTimesteps = [int(t) for t in timesteps]
     intTimesteps.sort()
 
     for intT in intTimesteps:
         t = str(intT)
         # use image provider plugin to load labelimage
-        print args.label_image_filename, args.label_image_path, int(t)
         labelImage = imageProvider.getLabelImageForFrame(
             args.label_image_filename, args.label_image_path, int(t))
         labelImages[t] = labelImage
@@ -231,11 +138,87 @@ if __name__ == "__main__":
     # nx.draw_networkx(resolvedGraph)
     # plt.savefig("/Users/chaubold/test.pdf")
 
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Given a hypotheses json graph and a result.json, this script'
+                        + ' resolves all mergers by updating the segmentation and inserting the appropriate '
+                        + 'nodes and links.',
+                        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('-c', '--config', is_config_file=True, help='config file path', dest='config_file', required=True)
+
+    parser.add_argument('--graph-json-file', required=True, type=str, dest='model_filename',
+                        help='IN Filename of the json model description')
+    parser.add_argument('--result-json-file', required=True, type=str, dest='result_filename',
+                        help='IN Filename of the json file containing results')
+    parser.add_argument('--label-image-filename', required=True, type=str, dest='label_image_filename',
+                        help='IN Filename of the original ilasitk tracking project')
+    parser.add_argument('--label-image-path', dest='label_image_path', type=str,
+                        default='/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]',
+                        help='internal hdf5 path to label image')
+    parser.add_argument('--raw-data-file', type=str, dest='raw_filename', default=None,
+                      help='filename to the raw h5 file')
+    parser.add_argument('--raw-data-path', type=str, dest='raw_path', default='volume/data',
+                      help='Path inside the raw h5 file to the data')
+    parser.add_argument('--transition-classifier-file', dest='transition_classifier_filename', type=str,
+                        default=None)
+    parser.add_argument('--transition-classifier-path', dest='transition_classifier_path', type=str, default='/')
+    parser.add_argument('--out-model', type=str, dest='out_model_filename', required=True, 
+                        help='Filename of the json model containing the hypotheses graph including new nodes')
+    parser.add_argument('--out-label-image', type=str, dest='out_label_image', required=True, 
+                        help='Filename where to store the label image with updated segmentation')
+    parser.add_argument('--out-result', type=str, dest='out_result', required=True, 
+                        help='Filename where to store the new result')
+    parser.add_argument('--trans-par', dest='trans_par', type=float, default=5.0,
+                        help='alpha for the transition prior')
+    
+    args, _ = parser.parse_known_args()
+    logging.basicConfig(level=logging.INFO)
+
+    logging.basicConfig(level=logging.DEBUG)
+
+    with open(args.model_filename, 'r') as f:
+        model = json.load(f)
+
+    with open(args.result_filename, 'r') as f:
+        result = json.load(f)
+        assert(result['detectionResults'] is not None)
+        assert(result['linkingResults'] is not None)
+        withDivisions = result['divisionResults'] is not None
+
+    traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = core.jsongraph.getMappingsBetweenUUIDsAndTraxels(model)
+    timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
+    mergers, detections, links, divisions = core.jsongraph.getMergersDetectionsLinksDivisions(result, uuidToTraxelMap, withDivisions)
+
+    mergersPerTimestep = core.jsongraph.getMergersPerTimestep(mergers, timesteps)
+    linksPerTimestep = core.jsongraph.getLinksPerTimestep(links, timesteps)
+    detectionsPerTimestep = core.jsongraph.getDetectionsPerTimestep(detections, timesteps)
+    divisionsPerTimestep = core.jsongraph.getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps, withDivisions)
+    mergerLinks = core.jsongraph.getMergerLinks(linksPerTimestep, mergersPerTimestep, timesteps)
+
+    # ------------------------------------------------------------
+    
+    pluginManager = TrackingPluginManager(verbose=True)
+    pluginManager.setImageProvider('LocalImageLoader')
+
+    # store all raw and label images of the frames we need for merger resolving:
+    labelImages = {}
+    rawImages = {}
+
+    # ------------------------------------------------------------
+    
+    unresolvedGraph = createUnresolvedGraph(divisionsPerTimestep, mergersPerTimestep, mergerLinks)
+    resolvedGraph = prepareResolvedGraph(unresolvedGraph)
+    refineMergerSegmentations(resolvedGraph, 
+                                unresolvedGraph, 
+                                timesteps, 
+                                pluginManager, 
+                                args.label_image_filename, 
+                                args.label_image_path)
+
     # ------------------------------------------------------------
     # compute new object features and edge costs!
     print("Loading raw data")
     for t in labelImages.keys():
-        rawImages[t] = imageProvider.getImageDataAtTimeFrame(
+        rawImages[t] = pluginManager.getImageProvider().getImageDataAtTimeFrame(
             args.raw_filename, args.raw_path, int(t))
 
     print("Computing object features")
@@ -396,9 +379,8 @@ if __name__ == "__main__":
         model['linkingHypotheses'].append(newLink)
 
     # save
-    with open(args.out_model_filename, 'w') as f:
-        json.dump(model, f, indent=4, separators=(',', ': '))
-
+    core.jsongraph.writeToFormattedJSON(args.out_model_filename, model)
+    
     # 
     # 2.) new result = union(old result, resolved mergers) - old mergers
 
@@ -428,11 +410,10 @@ if __name__ == "__main__":
         result['linkingResults'].append(newLink)
 
     # save
-    with open(args.out_result, 'w') as f:
-        json.dump(result, f, indent=4, separators=(',', ': '))
+    core.jsongraph.writeToFormattedJSON(args.out_result, result)
 
     # 
     # 3.) export refined segmentation
     h5py.File(args.out_label_image, 'w').close()
     for t in timesteps:
-        imageProvider.exportLabelImage(labelImages[t], int(t), args.out_label_image, args.label_image_path)
+        pluginManager.getImageProvider().exportLabelImage(labelImages[t], int(t), args.out_label_image, args.label_image_path)
