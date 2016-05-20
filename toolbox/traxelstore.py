@@ -108,6 +108,10 @@ def computeRegionFeaturesOnCloud(frame,
     labelImage =  pluginManager.getImageProvider().getLabelImageForFrame(
         labelImageFilename, labelImagePath, frame)
 
+    # untwist axes, if just x and y are messed up
+    if rawImage.shape[0] == labelImage.shape[1] and rawImage.shape[1] == labelImage.shape[0]:
+        labelImage = np.transpose(labelImage, axes=[1,0])
+
     # compute features
     moreFeats, ignoreNames = pluginManager.applyObjectFeatureComputationPlugins(
         len(labelImage.shape), rawImage, labelImage, frame, rawImageFilename)
@@ -165,6 +169,7 @@ def computeDivisionFeaturesOnCloud(frameT,
     **returns** a tuple of `frameT` and the dictionary of the newly computed division 
     features for `frameT`
     '''
+
     # get the label image of the next frame
     if frameT + 1 < imageProviderPlugin.getTimeRange(labelImageFilename, labelImagePath):
         labelImageAtTPlus1 =  imageProviderPlugin.getLabelImageForFrame(labelImageFilename, labelImagePath, frameT + 1)
