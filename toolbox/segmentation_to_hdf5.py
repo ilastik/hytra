@@ -6,6 +6,7 @@ import logging
 import glob
 import os
 from skimage.external import tifffile
+import util.axesconversion
 
 def segmentation_to_hdf5(options):
     """
@@ -14,21 +15,12 @@ def segmentation_to_hdf5(options):
     """
     out_h5 = h5py.File(options.hdf5Path, 'w')
     for timeframe in range(len(options.tif_input_files)):
-        # data = vigra.impex.readImage(options.tif_input_files[timeframe], dtype='UINT16') # sure UINT32?
         data = tifffile.imread(options.tif_input_files[timeframe])
-        if len(data.shape) == 2: # 2D
-            data = np.expand_dims(np.transpose(data, axes=[1,0]), axis=3)
-        else:
-            data = np.expand_dims(np.transpose(data, axes=[1,2,0]), axis=4)
         
         if timeframe == 0:
             logging.info("Found image of shape {}".format(data.shape))
         
-        # put dimension in front for the time step
-        data = np.expand_dims(data, axis=0)
-        while len(data.shape) < 5:
-            data = np.expand_dims(data, axis=-1)
-        data = np.swapaxes(data, 1, 2)
+        data = util.axesconversion.adjustOrder(data, options.tif_input_axes, 'txyzc')
 
         if timeframe == 0:
             logging.info("Changed into shape {}".format(data.shape))
@@ -50,6 +42,8 @@ if __name__ == '__main__':
 
     parser.add_argument('--ctc-segmentation-input-tif-pattern', required=True, type=str, dest='tif_input_file_pattern',
                         help='Filename pattern of the all tif files containing the segmentation data')
+    parser.add_argument('--ctc-segmentation-input-axes', type=str, dest='tif_input_axes', default='xy',
+                        help='Axes string defining a single images input shape')
     parser.add_argument('--label-image-file', required=True, type=str, dest='hdf5Path',
                         help='filename of where the segmentation HDF5 file will be created')
     parser.add_argument('--label-image-path', type=str, dest='hdf5ImagePath',

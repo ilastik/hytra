@@ -7,6 +7,7 @@ import h5py
 import vigra
 from skimage.external import tifffile
 import glob
+import util.axesconversion
 
 def find_splits(filename, start_frame):
     # store split events indexed by timestep, then parent
@@ -102,10 +103,6 @@ def save_label_image_for_frame(options, label_volume, out_h5, frame, mapping_per
     """
     if options.single_frames:
         out_label_volume = label_volume[..., frame, :]
-        if len(out_label_volume.shape) == 3: # 2D
-            out_label_volume = np.transpose(out_label_volume, axes=[1, 0, 2])
-        else: # 3D dataset
-            out_label_volume = np.transpose(out_label_volume, axes=[2, 1, 3, 0])
         if options.index_remapping and mapping_per_frame is not None:
             out_label_volume = remap_label_image(out_label_volume, mapping_per_frame[frame])
 
@@ -128,17 +125,11 @@ def create_label_volume(options):
     # read image
     # label_volume = vigra.impex.readVolume('/export/home/lparcala/Fluo-N2DH-SIM/01_GT/TRA/man_track000.tif')
     label_volume = tifffile.imread(options.input_tif)
-
-    if len(label_volume.shape) == 3: # 2D
-        label_volume = np.expand_dims(np.transpose(label_volume, axes=[2, 1, 0]), axis=3)
-        timeaxis = label_volume.shape[2]
-    else:
-        label_volume = np.expand_dims(np.transpose(label_volume, axes=[3, 2, 1, 0]), axis=4)
-        timeaxis = label_volume.shape[3]
     logging.info("Found dataset of size {}".format(label_volume.shape))
+    label_volume = util.axesconversion.adjustOrder(label_volume, options.tif_input_axes, 'xyztc')
+    timeaxis = label_volume.shape[3]
 
     split_events = find_splits(options.input_track, options.start_frame)
-
 
     if not os.path.exists(options.output_file):
         #create new folder for gt files
@@ -241,6 +232,8 @@ if __name__ == "__main__":
     # file paths
     parser.add_argument('--ctc-track-input-tif', type=str, dest='tif_input_file_pattern', required=True,
                         help='File pattern of Cell Tracking Challenge data: man_track*.tif')
+    parser.add_argument('--ctc-track-input-axes', type=str, dest='tif_input_axes', default='txy',
+                        help='Axes string defining the input shape. Separate tiff files are stacked along the first axes.')
     parser.add_argument('--ctc-track-input-txt', type=str, dest='input_track', required=True,
                         help='Path to Cell Tracking Challenge manual tracking file: man_track.txt')
     parser.add_argument('--groundtruth', type=str, dest='output_file', required=True,
