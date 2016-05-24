@@ -6,8 +6,8 @@ import time
 import numpy as np
 import h5py
 import json
-from progressbar import ProgressBar
-import hypothesesgraph
+from core.progressbar import ProgressBar
+import core.hypothesesgraph as hypothesesgraph
 import logging
 
 def getConfigAndCommandLineArguments():
@@ -137,7 +137,7 @@ def generate_traxelstore(h5file,
         max_traxel_id_at = track.VectorOfInt()
         withPgmlink = True
     except:
-        import traxelstore as track
+        import core.traxelstore as track
         withPgmlink = False
         ts, fs = None, None
         max_traxel_id_at = []
@@ -397,7 +397,7 @@ def getFovFromOptions(options, shape, t0, t1):
 
 
 def getPythonFovFromOptions(options, shape, t0, t1):
-    from fieldofview import FieldOfView
+    from core.fieldofview import FieldOfView
     [xshape, yshape, zshape] = shape
 
     fov = FieldOfView(t0, 0, 0, 0, t1, options.x_scale * (xshape - 1), options.y_scale * (yshape - 1),
@@ -454,7 +454,7 @@ def loadPyTraxelstore(options,
     """
     Set up a python side traxel store: compute all features, but do not evaluate classifiers.
     """
-    import traxelstore
+    import core.traxelstore as traxelstore
     from ilastik_project_options import IlastikProjectOptions
     ilpOptions = IlastikProjectOptions()
     ilpOptions.labelImagePath = options.label_img_path
@@ -499,7 +499,7 @@ def loadTransitionClassifier(transitionClassifierFilename, transitionClassifierP
     """
     Load a transition classifier random forest from a HDF5 file
     """
-    import traxelstore
+    import core.traxelstore as traxelstore
     rf = traxelstore.RandomForestClassifier(transitionClassifierPath, transitionClassifierFilename)
     return rf
 

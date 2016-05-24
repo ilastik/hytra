@@ -6,7 +6,7 @@ import numpy as np
 
 sys.path.append('../.')
 sys.path.append('.')
-from progressbar import ProgressBar
+from core.progressbar import ProgressBar
 
 def listify(l):
     return [[e] for e in l]

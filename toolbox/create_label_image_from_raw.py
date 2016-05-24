@@ -4,7 +4,7 @@ import vigra
 from vigra import numpy as np
 import sys
 sys.path.append('.')
-from progressbar import ProgressBar
+from core.progressbar import ProgressBar
 
 def filter_labels(a, min_size, max_size=None):
     """

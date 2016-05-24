@@ -122,3 +122,27 @@ doc/network_flow.rst
 doc/stack_to_h5.rst
 doc/structsvm.rst
 doc/trackingfeatures.rst
+
+# added by GitSavvy
+/toolbox/tests/mergerResolvingTestDataset/config.ini
+
+# added by GitSavvy
+/toolbox/tests/mergerResolvingTestDataset/ctc_RES/
+
+# added by GitSavvy
+/toolbox/tests/mergerResolvingTestDataset/events/
+
+# added by GitSavvy
+/toolbox/tests/mergerResolvingTestDataset/graph.json
+
+# added by GitSavvy
+/toolbox/tests/mergerResolvingTestDataset/resolved-result.json
+
+# added by GitSavvy
+/toolbox/tests/mergerResolvingTestDataset/resolved-segmentation.h5
+
+# added by GitSavvy
+/toolbox/tests/mergerResolvingTestDataset/resolvedgraph.json
+
+# added by GitSavvy
+/toolbox/tests/mergerResolvingTestDataset/result.json

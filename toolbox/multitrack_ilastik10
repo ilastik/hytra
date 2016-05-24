@@ -18,7 +18,7 @@ import vigra
 import copy
 import pgmlink as track
 from trackingfeatures import extract_features_and_compute_score, get_feature_vector
-from progressbar import ProgressBar
+from core.progressbar import ProgressBar
 from empryonic import io
 from multiprocessing import Pool
 
