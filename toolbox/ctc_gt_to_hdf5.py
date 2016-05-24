@@ -62,12 +62,12 @@ def remap_events(events, mappingA, mappingB=None):
     new_events = np.zeros_like(events)
     # set up a lambda function to manage the mapping, then use numpy's vectorize to allow it to
     # be applied to every individual element in the vector.
-    new_events[:,0] = np.apply_along_axis(np.vectorize(lambda x: mappingA[x]), 0, events[:,0])
+    new_events[:, 0] = np.apply_along_axis(np.vectorize(lambda x: mappingA[x]), 0, events[:, 0])
 
     if events.shape[1] > 1:
         if mappingB is None:
             raise AssertionError("Need two sets of mappings for division and move events!")
-        new_events[:,1:] = np.apply_along_axis(np.vectorize(lambda x: mappingB[x]), 0, events[:,1:])
+        new_events[:, 1:] = np.apply_along_axis(np.vectorize(lambda x: mappingB[x]), 0, events[:, 1:])
     
     return new_events
 
