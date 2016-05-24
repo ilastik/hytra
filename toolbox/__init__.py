@@ -25,8 +25,3 @@ The traxelstore and some of the scripts use the `toolbox.pluginsystem` and
 [`yapsy`](http://yapsy.sourceforge.net/) to make the pipeline easy to extend.
 
 '''
-
-from traxelstore import Traxel, Traxelstore
-from random_forest_classifier import RandomForestClassifier
-from ilastik_project_options import IlastikProjectOptions
-from hypothesesgraph import NodeMap, HypothesesGraph
