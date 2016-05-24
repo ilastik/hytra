@@ -73,6 +73,7 @@ def getLinksPerTimestep(links, timesteps):
     return linksPerTimestep
 
 def getMergerLinks(linksPerTimestep, mergersPerTimestep, timesteps):
+    """ returns merger links as triplets [("timestep", (sourceIdAtTMinus1, destIdAtT)), (), ...]"""
     # filter links: at least one of the two incident nodes must be a merger 
     # for it to be added to the merger resolving graph
     mergerLinks = [(t,(a, b)) for t in timesteps for a, b in linksPerTimestep[t] if a in mergersPerTimestep[str(int(t)-1)] or b in mergersPerTimestep[t]]
