@@ -6,7 +6,7 @@ import vigra
 from vigra import numpy as np
 import h5py
 from sklearn.neighbors import KDTree
-from pluginsystem.plugin_manager import TrackingPluginManager
+from toolbox.pluginsystem.plugin_manager import TrackingPluginManager
 
 logger = logging.getLogger('TransitionClassifier')
 logger.setLevel(logging.DEBUG)
@@ -296,7 +296,7 @@ if __name__ == '__main__':
             endFrame += len(files)
     
         # compute features
-        trackingPluginManager = TrackingPluginManager()
+        trackingPluginManager = TrackingPluginManager(verbose=args.verbose)
         features = compute_features(rawimage,
                                         read_in_images(initFrame, endFrame, files),
                                         initFrame,

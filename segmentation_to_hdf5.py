@@ -1,12 +1,9 @@
-import numpy as np
 import h5py
-import vigra
 import configargparse as argparse
 import logging
 import glob
-import os
 from skimage.external import tifffile
-import util.axesconversion
+import toolbox.util.axesconversion
 
 def segmentation_to_hdf5(options):
     """
@@ -20,7 +17,7 @@ def segmentation_to_hdf5(options):
         if timeframe == 0:
             logging.info("Found image of shape {}".format(data.shape))
         
-        data = util.axesconversion.adjustOrder(data, options.tif_input_axes, 'txyzc')
+        data = toolbox.util.axesconversion.adjustOrder(data, options.tif_input_axes, 'txyzc')
 
         if timeframe == 0:
             logging.info("Changed into shape {}".format(data.shape))

@@ -2,12 +2,12 @@ import vigra
 import configargparse as argparse
 import logging
 from skimage.external import tifffile
-import util.axesconversion
+import toolbox.util.axesconversion
 import glob
 
 def convert_to_volume(options):
     data = tifffile.imread(options.input_file)
-    reshapedData = util.axesconversion.adjustOrder(data, options.tif_input_axes)
+    reshapedData = toolbox.util.axesconversion.adjustOrder(data, options.tif_input_axes)
 
     print("Saving h5 volume of shape {}".format(data.shape))
     vigra.writeHDF5(reshapedData, options.output_file, options.output_path)

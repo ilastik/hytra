@@ -37,4 +37,4 @@ dependencies:
 ## Customize test commands
 test:
   override:
-    - cd /home/ubuntu/embryonic/toolbox; nosetests
+    - nosetests tests

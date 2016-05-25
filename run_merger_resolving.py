@@ -6,9 +6,9 @@ import numpy as np
 import h5py
 import itertools
 import networkx as nx
-from pluginsystem.plugin_manager import TrackingPluginManager
-import core.traxelstore as traxelstore
-import core.jsongraph
+from toolbox.pluginsystem.plugin_manager import TrackingPluginManager
+import toolbox.core.traxelstore as traxelstore
+import toolbox.core.jsongraph
 
 def createUnresolvedGraph(divisionsPerTimestep, mergersPerTimestep, mergerLinks):
     """ 
@@ -329,7 +329,7 @@ def exportRefinedHypothesesGraph(outFilename,
         model['linkingHypotheses'].append(newLink)
 
     # save
-    core.jsongraph.writeToFormattedJSON(outFilename, model)
+    toolbox.core.jsongraph.writeToFormattedJSON(outFilename, model)
 
 def exportRefinedSolution(outFilename, 
                         result,
@@ -382,7 +382,7 @@ def exportRefinedSolution(outFilename,
         result['linkingResults'].append(newLink)
 
     # save
-    core.jsongraph.writeToFormattedJSON(outFilename, result)
+    toolbox.core.jsongraph.writeToFormattedJSON(outFilename, result)
 
 
 def resolveMergers(options):
@@ -407,15 +407,15 @@ def resolveMergers(options):
         assert(result['linkingResults'] is not None)
         withDivisions = result['divisionResults'] is not None
 
-    traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = core.jsongraph.getMappingsBetweenUUIDsAndTraxels(model)
+    traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = toolbox.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(model)
     timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
-    mergers, detections, links, divisions = core.jsongraph.getMergersDetectionsLinksDivisions(result, uuidToTraxelMap, withDivisions)
+    mergers, detections, links, divisions = toolbox.core.jsongraph.getMergersDetectionsLinksDivisions(result, uuidToTraxelMap, withDivisions)
 
-    mergersPerTimestep = core.jsongraph.getMergersPerTimestep(mergers, timesteps)
-    linksPerTimestep = core.jsongraph.getLinksPerTimestep(links, timesteps)
-    detectionsPerTimestep = core.jsongraph.getDetectionsPerTimestep(detections, timesteps)
-    divisionsPerTimestep = core.jsongraph.getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps, withDivisions)
-    mergerLinks = core.jsongraph.getMergerLinks(linksPerTimestep, mergersPerTimestep, timesteps)
+    mergersPerTimestep = toolbox.core.jsongraph.getMergersPerTimestep(mergers, timesteps)
+    linksPerTimestep = toolbox.core.jsongraph.getLinksPerTimestep(links, timesteps)
+    detectionsPerTimestep = toolbox.core.jsongraph.getDetectionsPerTimestep(detections, timesteps)
+    divisionsPerTimestep = toolbox.core.jsongraph.getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps, withDivisions)
+    mergerLinks = toolbox.core.jsongraph.getMergerLinks(linksPerTimestep, mergersPerTimestep, timesteps)
 
     # ------------------------------------------------------------
     

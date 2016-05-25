@@ -5,7 +5,7 @@ import configargparse as argparse
 import numpy as np
 import h5py
 from multiprocessing import Pool
-import core.jsongraph
+import toolbox.core.jsongraph
 
 def writeEvents(timestep, activeLinks, activeDivisions, mergers, detections, fn, labelImagePath, ilpFilename):
     dis = []

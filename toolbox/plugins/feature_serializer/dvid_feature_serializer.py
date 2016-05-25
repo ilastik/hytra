@@ -1,4 +1,4 @@
-from pluginsystem import feature_serializer_plugin
+from toolbox.pluginsystem import feature_serializer_plugin
 import numpy as np
 import json_tricks as json
 from libdvid import DVIDNodeService, DVIDServerService

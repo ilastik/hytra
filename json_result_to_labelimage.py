@@ -7,7 +7,7 @@ import sys
 import os
 import json
 sys.path.append('.')
-from core.progressbar import ProgressBar
+from toolbox.core.progressbar import ProgressBar
 
 def get_uuid_to_traxel_map(traxelIdPerTimestepToUniqueIdMap):
     timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]

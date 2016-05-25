@@ -1,4 +1,4 @@
-from pluginsystem import image_provider_plugin
+from toolbox.pluginsystem import image_provider_plugin
 import numpy as np
 import h5py
 import logging

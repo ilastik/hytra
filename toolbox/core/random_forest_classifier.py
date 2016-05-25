@@ -1,11 +1,9 @@
-import sys
-import os
 import vigra
 import numpy as np
 import h5py
-from pluginsystem.plugin_manager import TrackingPluginManager
 import logging
-from ilastik_project_options import IlastikProjectOptions
+from toolbox.pluginsystem.plugin_manager import TrackingPluginManager
+from toolbox.core.ilastik_project_options import IlastikProjectOptions
 
 class RandomForestClassifier:
     """

@@ -4,10 +4,9 @@ import os
 import logging
 import numpy as np
 import h5py
-import vigra
 from skimage.external import tifffile
 import glob
-import util.axesconversion
+import toolbox.util.axesconversion
 
 def find_splits(filename, start_frame):
     # store split events indexed by timestep, then parent
@@ -126,7 +125,7 @@ def create_label_volume(options):
     # label_volume = vigra.impex.readVolume('/export/home/lparcala/Fluo-N2DH-SIM/01_GT/TRA/man_track000.tif')
     label_volume = tifffile.imread(options.input_tif)
     logging.info("Found dataset of size {}".format(label_volume.shape))
-    label_volume = util.axesconversion.adjustOrder(label_volume, options.tif_input_axes, 'xyztc')
+    label_volume = toolbox.util.axesconversion.adjustOrder(label_volume, options.tif_input_axes, 'xyztc')
     timeaxis = label_volume.shape[3]
 
     split_events = find_splits(options.input_track, options.start_frame)

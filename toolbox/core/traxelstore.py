@@ -1,25 +1,25 @@
-import sys
-import os
-from toolbox.core.progressbar import ProgressBar
 import vigra
-import toolbox.core.divisionfeatures
 import numpy as np
 import h5py
-from toolbox.pluginsystem.plugin_manager import TrackingPluginManager
 import logging
 import time
 import concurrent.futures
-from toolbox.random_forest_classifier import RandomForestClassifier
-from toolbox.ilastik_project_options import IlastikProjectOptions
+
+import toolbox.core.divisionfeatures
+from toolbox.core.progressbar import ProgressBar
+from toolbox.pluginsystem.plugin_manager import TrackingPluginManager
+from toolbox.core.random_forest_classifier import RandomForestClassifier
+from toolbox.core.ilastik_project_options import IlastikProjectOptions
 
 
-class Traxel:
+class Traxel(object):
     """
     A simple Python variant of the C++ traxel with the same interface 
     of the one of pgmlink so it can act as drop-in replacement.
 
     A `Traxel` is a detection with unique label `Id` at a certain `Timestep`,  with position
-    (`X`,`Y`,`Z`) and `Features` """
+    (`X`,`Y`,`Z`) and `Features`
+    """
 
     def __init__(self):
         self._scale = np.array([1, 1, 1])
@@ -69,15 +69,15 @@ class Traxel:
 
 
 def computeRegionFeaturesOnCloud(frame,
-                                rawImageFilename,
-                                rawImagePath,
-                                labelImageFilename,
-                                labelImagePath,
-                                turnOffFeatures,
-                                pluginPaths=['plugins'],
-                                featuresPerFrame = None,
-                                imageProviderPluginName='LocalImageLoader',
-                                featureSerializerPluginName='LocalFeatureSerializer'
+                                 rawImageFilename,
+                                 rawImagePath,
+                                 labelImageFilename,
+                                 labelImagePath,
+                                 turnOffFeatures,
+                                 pluginPaths=['toolbox/plugins'],
+                                 featuresPerFrame = None,
+                                 imageProviderPluginName='LocalImageLoader',
+                                 featureSerializerPluginName='LocalFeatureSerializer'
                                 ):
     '''
     Allow to use dispy to schedule feature computation to nodes running a dispynode,
@@ -97,7 +97,7 @@ def computeRegionFeaturesOnCloud(frame,
     '''
 
     # set up plugin manager
-    from pluginsystem.plugin_manager import TrackingPluginManager
+    from toolbox.pluginsystem.plugin_manager import TrackingPluginManager
     pluginManager = TrackingPluginManager(pluginPaths=pluginPaths, turnOffFeatures=turnOffFeatures, verbose=False)
     pluginManager.setImageProvider(imageProviderPluginName)
     pluginManager.setFeatureSerializer(featureSerializerPluginName)
@@ -105,12 +105,12 @@ def computeRegionFeaturesOnCloud(frame,
     # load raw and label image (depending on chosen plugin this works via DVID or locally)
     rawImage = pluginManager.getImageProvider().getImageDataAtTimeFrame(
         rawImageFilename, rawImagePath, frame)
-    labelImage =  pluginManager.getImageProvider().getLabelImageForFrame(
+    labelImage = pluginManager.getImageProvider().getLabelImageForFrame(
         labelImageFilename, labelImagePath, frame)
 
     # untwist axes, if just x and y are messed up
     if rawImage.shape[0] == labelImage.shape[1] and rawImage.shape[1] == labelImage.shape[0]:
-        labelImage = np.transpose(labelImage, axes=[1,0])
+        labelImage = np.transpose(labelImage, axes=[1, 0])
 
     # compute features
     moreFeats, ignoreNames = pluginManager.applyObjectFeatureComputationPlugins(
@@ -147,13 +147,13 @@ def computeRegionFeaturesOnCloud(frame,
         featureSerializer.storeFeaturesForFrame(frameFeatures, frame)
 
 def computeDivisionFeaturesOnCloud(frameT,
-                                featuresAtT,
-                                featuresAtTPlus1,
-                                imageProviderPlugin,
-                                labelImageFilename,
-                                labelImagePath,
-                                numDimensions,
-                                divisionFeatureNames):
+                                   featuresAtT,
+                                   featuresAtTPlus1,
+                                   imageProviderPlugin,
+                                   labelImageFilename,
+                                   labelImagePath,
+                                   numDimensions,
+                                   divisionFeatureNames):
     '''
     Allow to compute division features using multiprocessing
 
@@ -172,21 +172,22 @@ def computeDivisionFeaturesOnCloud(frameT,
 
     # get the label image of the next frame
     if frameT + 1 < imageProviderPlugin.getTimeRange(labelImageFilename, labelImagePath):
-        labelImageAtTPlus1 =  imageProviderPlugin.getLabelImageForFrame(labelImageFilename, labelImagePath, frameT + 1)
+        labelImageAtTPlus1 = imageProviderPlugin.getLabelImageForFrame(labelImageFilename, labelImagePath, frameT + 1)
 
     # compute features
-    fm = divisionfeatures.FeatureManager(ndim=numDimensions)
+    fm = toolbox.core.divisionfeatures.FeatureManager(ndim=numDimensions)
     feats = fm.computeFeatures_at(featuresAtT, featuresAtTPlus1, labelImageAtTPlus1, divisionFeatureNames)
 
     return frameT, feats
-    
 
-class DummyExecutor:
+
+class DummyExecutor(object):
     """
     Class that mimics the API of concurrent.futures.ProcessPoolExecutor and 
     concurrent.futures.ThreadPoolExecutor, so that the methods can be called locally
     without threading or processing as well.
     """
+
     def __init__(self, *args, **kwargs):
         pass
 
@@ -209,7 +210,7 @@ class DummyExecutor:
 
         return f
 
-class Traxelstore:
+class Traxelstore(object):
     """
     The traxelstore is a python wrapper around pgmlink's C++ traxelstore,
     but with the functionality to compute all region features 
@@ -265,10 +266,10 @@ class Traxelstore:
         assert (labelImage.dtype == np.uint32)
 
         moreFeats, ignoreNames = self._pluginManager.applyObjectFeatureComputationPlugins(len(labelImage.shape),
-                                                                                    rawImage,
-                                                                                    labelImage,
-                                                                                    frameNumber,
-                                                                                    self._options.rawImageFilename)
+                                                                                          rawImage,
+                                                                                          labelImage,
+                                                                                          frameNumber,
+                                                                                          self._options.rawImageFilename)
         frameFeatureItems = []
         for f in moreFeats:
             frameFeatureItems = frameFeatureItems + f.items()
@@ -285,7 +286,7 @@ class Traxelstore:
         """
         Computes the division features for all objects in the images
         """
-        fm = divisionfeatures.FeatureManager(ndim=self.getNumDimensions())
+        fm = toolbox.core.divisionfeatures.FeatureManager(ndim=self.getNumDimensions())
         return fm.computeFeatures_at(featuresAtT, featuresAtTPlus1, labelImageAtTPlus1, self._divisionFeatureNames)
 
     def setDivisionFeatures(self, divisionFeatures):
@@ -317,7 +318,7 @@ class Traxelstore:
             self._options.labelImageFilename, self._options.labelImagePath)
         timerange = self._pluginManager.getImageProvider().getTimeRange(
             self._options.labelImageFilename, self._options.labelImagePath)
-        return shape,timerange
+        return shape, timerange
 
     def getLabelImageForFrame(self, timeframe):
         """
@@ -382,7 +383,7 @@ class Traxelstore:
 
         if(len(dispyNodeIps) == 0):
             # no dispy node IDs given, parallelize object feature computation via processes
-            
+
             if self._useMultiprocessing:
                 # use ProcessPoolExecutor, which instanciates as many processes as there CPU cores by default
                 ExecutorType = concurrent.futures.ProcessPoolExecutor
@@ -390,28 +391,28 @@ class Traxelstore:
             else:
                 ExecutorType = DummyExecutor
                 logging.getLogger('Traxelstore').info('Running feature extraction on single core!')
-                
+
             featuresPerFrame = {}
             progressBar = ProgressBar(stop=numSteps)
             progressBar.show(increase=0)
-            
+
             with ExecutorType() as executor:
                 # 1st pass for region features
                 jobs = []
                 for frame in range(self.timeRange[0], self.timeRange[1]):
                     jobs.append(executor.submit(computeRegionFeaturesOnCloud,
-                        frame,
-                        self._options.rawImageFilename, 
-                        self._options.rawImagePath,
-                        self._options.labelImageFilename,
-                        self._options.labelImagePath,
-                        turnOffFeatures
+                                                frame,
+                                                self._options.rawImageFilename, 
+                                                self._options.rawImagePath,
+                                                self._options.labelImageFilename,
+                                                self._options.labelImagePath,
+                                                turnOffFeatures
                     ))
                 for job in concurrent.futures.as_completed(jobs):
                     progressBar.show()
                     frame, feats = job.result()
                     featuresPerFrame[frame] = feats
-            
+
                 # 2nd pass for division features
                 if self._divisionClassifier is not None:
                     jobs = []
@@ -431,7 +432,7 @@ class Traxelstore:
                         progressBar.show()
                         frame, feats = job.result()
                         featuresPerFrame[frame].update(feats)
-        
+
             # # serialize features??
             # for frame in range(self.timeRange[0], self.timeRange[1]):
             #     featureSerializer.storeFeaturesForFrame(featuresPerFrame[frame], frame)
@@ -439,7 +440,8 @@ class Traxelstore:
 
             import logging
             logging.getLogger('Traxelstore').warning('Parallelization with dispy is WORK IN PROGRESS!')
-            import random, dispy
+            import random
+            import dispy
             cluster = dispy.JobCluster(computeRegionFeaturesOnCloud,
                                         nodes=dispyNodeIps,
                                         loglevel=logging.DEBUG,
