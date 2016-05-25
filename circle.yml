@@ -1,14 +1,11 @@
 ## Customize the test machine
 machine:
-  python:
-    version: 2.7
-  # Add some environment variables
   environment:
     CONDA_ROOT: /home/ubuntu/miniconda
     TEST_ENV_NAME: test-env
     TEST_ENV_PREFIX: /home/ubuntu/miniconda/envs/test-env
     PATH: ${TEST_ENV_PREFIX}/bin:${CONDA_ROOT}/bin:${PATH}
-
+  
 ## Customize dependencies
 dependencies:
   cache_directories:
@@ -38,5 +35,4 @@ dependencies:
 ## Customize test commands
 test:
   override:
-    - nosetests:
-      pwd: toolbox
+    - cd /home/ubuntu/embryonic/toolbox; nosetests
