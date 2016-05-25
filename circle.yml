@@ -31,14 +31,12 @@ dependencies:
           conda install -y -n ${TEST_ENV_NAME} -c ilastik ilastik-everything-but-tracking;
       fi
 
-    - >
-      pip install configargparse
-      conda install yapsy -c ilastik
-      conda install dpct -c chaubold
+    - pip install configargparse
+    - conda install yapsy -c ilastik
+    - conda install dpct -c chaubold
     
 ## Customize test commands
 test:
   override:
     - nosetests:
-      pwd: 
-        toolbox
+      pwd: toolbox
