@@ -1,7 +1,7 @@
 from skimage.external import tifffile
 
 def hack(input_tif):
-	"""
+    """
     This method allows to bypass the strange faulty behaviour of
     skimage.external.tifffile.imread() when it gets a list of paths or
     a glob pattern. This function extracts the image names and the path.
