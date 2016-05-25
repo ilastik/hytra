@@ -29,8 +29,8 @@ dependencies:
       fi
 
     - pip install configargparse
-    - conda -y install yapsy -c ilastik
-    - conda -y install dpct -c chaubold
+    - conda install -y yapsy -c ilastik
+    - conda install -y dpct -c chaubold
     
 ## Customize test commands
 test:
