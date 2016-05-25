@@ -1,0 +1,44 @@
+## Customize the test machine
+machine:
+  python:
+    version: 2.7
+  # Add some environment variables
+  environment:
+    CONDA_ROOT: /home/ubuntu/miniconda
+    TEST_ENV_NAME: test-env
+    TEST_ENV_PREFIX: /home/ubuntu/miniconda/envs/test-env
+    PATH: ${TEST_ENV_PREFIX}/bin:${CONDA_ROOT}/bin:${PATH}
+
+## Customize dependencies
+dependencies:
+  cache_directories:
+    - /home/ubuntu/miniconda
+
+  override:
+    # Download/install conda (if not already cached)
+    - >
+      if [[ ! -d ${CONDA_ROOT} ]]; then
+          echo "Installing Miniconda...";
+          wget --quiet https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh &&
+          bash Miniconda-latest-Linux-x86_64.sh -b -p ${CONDA_ROOT};
+      else
+          echo "Using cached Miniconda install";
+      fi
+    - >
+      if [ ! -d ${TEST_ENV_PREFIX} ]; then
+          conda create -y -n ${TEST_ENV_NAME} -c ilastik ilastik-everything-but-tracking ilastik-meta;
+      else
+          conda install -y -n ${TEST_ENV_NAME} -c ilastik ilastik-everything-but-tracking;
+      fi
+
+    - >
+      pip install configargparse
+      conda install yapsy -c ilastik
+      conda install dpct -c chaubold
+    
+## Customize test commands
+test:
+  override:
+    - nosetests:
+      pwd: 
+        toolbox
