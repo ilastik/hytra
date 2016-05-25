@@ -109,10 +109,10 @@ if __name__ == "__main__":
         logging.basicConfig(level=logging.INFO)
     logging.debug("Ignoring unknown parameters: {}".format(unknown))
 
-    traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = core.jsongraph.getMappingsBetweenUUIDsAndTraxels(model)
+    traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = toolbox.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(model)
     timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
 
-    mergers, detections, links, divisions = core.jsongraph.getMergersDetectionsLinksDivisions(result, uuidToTraxelMap, withDivisions)
+    mergers, detections, links, divisions = toolbox.core.jsongraph.getMergersDetectionsLinksDivisions(result, uuidToTraxelMap, withDivisions)
 
     # group by timestep for event creation
     mergersPerTimestep = dict([(t, [(idx, count) for timestep, idx, count in mergers if timestep == int(t)]) for t in timesteps])
