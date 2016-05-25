@@ -5,6 +5,7 @@ machine:
     TEST_ENV_NAME: test-env
     TEST_ENV_PREFIX: /home/ubuntu/miniconda/envs/test-env
     PATH: ${TEST_ENV_PREFIX}/bin:${CONDA_ROOT}/bin:${PATH}
+    PYTHONPATH: ${TEST_ENV_PREFIX}/lib/python2.7/site-packages/
   
 ## Customize dependencies
 dependencies:
@@ -29,6 +30,7 @@ dependencies:
       fi
 
     - pip install configargparse
+    - pip install commentjson
     - conda install -y yapsy -c ilastik
     - conda install -y dpct -c chaubold
     

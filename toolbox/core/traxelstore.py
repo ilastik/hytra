@@ -1,16 +1,16 @@
 import sys
 import os
-from progressbar import ProgressBar
+from toolbox.core.progressbar import ProgressBar
 import vigra
-import divisionfeatures
+import toolbox.core.divisionfeatures
 import numpy as np
 import h5py
-from pluginsystem.plugin_manager import TrackingPluginManager
+from toolbox.pluginsystem.plugin_manager import TrackingPluginManager
 import logging
 import time
 import concurrent.futures
-from random_forest_classifier import RandomForestClassifier
-from ilastik_project_options import IlastikProjectOptions
+from toolbox.random_forest_classifier import RandomForestClassifier
+from toolbox.ilastik_project_options import IlastikProjectOptions
 
 
 class Traxel:
