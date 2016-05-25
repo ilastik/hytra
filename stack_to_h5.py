@@ -4,9 +4,14 @@ import logging
 from skimage.external import tifffile
 import toolbox.util.axesconversion
 import glob
+from toolbox.util.skimage_tifffile_hack import hack
+import os
 
 def convert_to_volume(options):
-    data = tifffile.imread(options.input_file)
+    # data = tifffile.imread(options.input_file)
+    path, files = hack(options.input_file)
+    os.chdir(path)
+    data = tifffile.imread(files)
     reshapedData = toolbox.util.axesconversion.adjustOrder(data, options.tif_input_axes)
 
     print("Saving h5 volume of shape {}".format(data.shape))
