@@ -411,98 +411,113 @@ def resolveMergers(options):
     timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
     mergers, detections, links, divisions = toolbox.core.jsongraph.getMergersDetectionsLinksDivisions(result, uuidToTraxelMap, withDivisions)
 
-    mergersPerTimestep = toolbox.core.jsongraph.getMergersPerTimestep(mergers, timesteps)
-    linksPerTimestep = toolbox.core.jsongraph.getLinksPerTimestep(links, timesteps)
-    detectionsPerTimestep = toolbox.core.jsongraph.getDetectionsPerTimestep(detections, timesteps)
-    divisionsPerTimestep = toolbox.core.jsongraph.getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps, withDivisions)
-    mergerLinks = toolbox.core.jsongraph.getMergerLinks(linksPerTimestep, mergersPerTimestep, timesteps)
-
     # ------------------------------------------------------------
     
-    pluginManager = TrackingPluginManager(verbose=True)
+    pluginManager = TrackingPluginManager(verbose=args.verbose)
     pluginManager.setImageProvider('LocalImageLoader')
 
     # ------------------------------------------------------------
-    
-    # set up unresolved graph and then refine the nodes to get the resolved graph
-    unresolvedGraph = createUnresolvedGraph(divisionsPerTimestep, mergersPerTimestep, mergerLinks)
-    resolvedGraph = prepareResolvedGraph(unresolvedGraph)
-    labelImages = refineMergerSegmentations(resolvedGraph, 
-                                unresolvedGraph, 
-                                detectionsPerTimestep,
-                                mergersPerTimestep,
-                                timesteps, 
-                                pluginManager, 
-                                options.label_image_filename, 
-                                options.label_image_path)
 
-    # ------------------------------------------------------------
-    # compute new object features
-    objectFeatures = computeObjectFeatures(labelImages, pluginManager, options, resolvedGraph)
-
-    # ------------------------------------------------------------
-    # load transition classifier if any
-    if options.transition_classifier_filename is not None:
-        print("\tLoading transition classifier")
-        transitionClassifier = traxelstore.RandomForestClassifier(
-            options.transition_classifier_path, options.transition_classifier_filename)
+    # it may be, that there are no mergers, so do basically nothing, just copy al the ingoing data
+    if len(mergers)==0:
+        # graph
+        toolbox.core.jsongraph.writeToFormattedJSON(options.out_result, result)
+        # result
+        toolbox.core.jsongraph.writeToFormattedJSON(options.out_model_filename, model)
+        # segmentation
+        intTimesteps = [int(t) for t in timesteps]
+        intTimesteps.sort()
+        imageProvider = pluginManager.getImageProvider()
+        h5py.File(args.out_label_image, 'w').close()
+        for t in intTimesteps:
+            labelImage = imageProvider.getLabelImageForFrame(args.label_image_filename, args.label_image_path, int(t))
+            pluginManager.getImageProvider().exportLabelImage(labelImage, int(t), args.out_label_image, args.label_image_path)
     else:
-        print("\tUsing distance based transition energies")
-        transitionClassifier = None
+        mergersPerTimestep = toolbox.core.jsongraph.getMergersPerTimestep(mergers, timesteps)
+        linksPerTimestep = toolbox.core.jsongraph.getLinksPerTimestep(links, timesteps)
+        detectionsPerTimestep = toolbox.core.jsongraph.getDetectionsPerTimestep(detections, timesteps)
+        divisionsPerTimestep = toolbox.core.jsongraph.getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps, withDivisions)
+        mergerLinks = toolbox.core.jsongraph.getMergerLinks(linksPerTimestep, mergersPerTimestep, timesteps)
+        
+        # set up unresolved graph and then refine the nodes to get the resolved graph
+        unresolvedGraph = createUnresolvedGraph(divisionsPerTimestep, mergersPerTimestep, mergerLinks)
+        resolvedGraph = prepareResolvedGraph(unresolvedGraph)
+        labelImages = refineMergerSegmentations(resolvedGraph, 
+                                    unresolvedGraph, 
+                                    detectionsPerTimestep,
+                                    mergersPerTimestep,
+                                    timesteps, 
+                                    pluginManager, 
+                                    options.label_image_filename, 
+                                    options.label_image_path)
 
-    # ------------------------------------------------------------
-    # run min-cost max-flow to find merger assignments
-    print("Running min-cost max-flow to find resolved merger assignments")
+        # ------------------------------------------------------------
+        # compute new object features
+        objectFeatures = computeObjectFeatures(labelImages, pluginManager, options, resolvedGraph)
 
-    nodeFlowMap, arcFlowMap = minCostMaxFlowMergerResolving(resolvedGraph, objectFeatures, pluginManager, transitionClassifier)
+        # ------------------------------------------------------------
+        # load transition classifier if any
+        if options.transition_classifier_filename is not None:
+            print("\tLoading transition classifier")
+            transitionClassifier = traxelstore.RandomForestClassifier(
+                options.transition_classifier_path, options.transition_classifier_filename)
+        else:
+            print("\tUsing distance based transition energies")
+            transitionClassifier = None
 
-    # ------------------------------------------------------------
-    # fuse results into a new solution
+        # ------------------------------------------------------------
+        # run min-cost max-flow to find merger assignments
+        print("Running min-cost max-flow to find resolved merger assignments")
 
-    # 1.) replace merger nodes in JSON graph by their replacements -> new JSON graph
-    #     update UUID to traxel map.
-    #     a) how do we deal with the smaller number of states? 
-    #        Does it matter as we're done with tracking anyway..?
+        nodeFlowMap, arcFlowMap = minCostMaxFlowMergerResolving(resolvedGraph, objectFeatures, pluginManager, transitionClassifier)
 
-    def mergerNodeFilter(jsonNode):
-        uuid = int(jsonNode['id'])
-        traxels = uuidToTraxelMap[uuid]
-        return not any(t[1] in mergersPerTimestep[str(t[0])] for t in traxels)
+        # ------------------------------------------------------------
+        # fuse results into a new solution
 
-    def mergerLinkFilter(jsonLink):
-        srcUuid = int(jsonLink['src'])
-        destUuid = int(jsonLink['dest'])
-        srcTraxels = uuidToTraxelMap[srcUuid]
-        destTraxels = uuidToTraxelMap[destUuid]
-        return not any((str(destT[0]), (srcT[1], destT[1])) in mergerLinks for srcT, destT in itertools.product(srcTraxels, destTraxels))
+        # 1.) replace merger nodes in JSON graph by their replacements -> new JSON graph
+        #     update UUID to traxel map.
+        #     a) how do we deal with the smaller number of states? 
+        #        Does it matter as we're done with tracking anyway..?
 
-    exportRefinedHypothesesGraph(options.out_model_filename,
-                                model, 
-                                resolvedGraph,
-                                unresolvedGraph,
-                                uuidToTraxelMap, 
-                                traxelIdPerTimestepToUniqueIdMap, 
-                                mergerNodeFilter, 
-                                mergerLinkFilter)
-    
-    # 
-    # 2.) new result = union(old result, resolved mergers) - old mergers
+        def mergerNodeFilter(jsonNode):
+            uuid = int(jsonNode['id'])
+            traxels = uuidToTraxelMap[uuid]
+            return not any(t[1] in mergersPerTimestep[str(t[0])] for t in traxels)
 
-    exportRefinedSolution(options.out_result,
-                        result, 
-                        nodeFlowMap,
-                        arcFlowMap,
-                        resolvedGraph,
-                        unresolvedGraph,
-                        traxelIdPerTimestepToUniqueIdMap,
-                        mergerNodeFilter, 
-                        mergerLinkFilter)
+        def mergerLinkFilter(jsonLink):
+            srcUuid = int(jsonLink['src'])
+            destUuid = int(jsonLink['dest'])
+            srcTraxels = uuidToTraxelMap[srcUuid]
+            destTraxels = uuidToTraxelMap[destUuid]
+            return not any((str(destT[0]), (srcT[1], destT[1])) in mergerLinks for srcT, destT in itertools.product(srcTraxels, destTraxels))
 
-    # 
-    # 3.) export refined segmentation
-    h5py.File(options.out_label_image, 'w').close()
-    for t in timesteps:
-        pluginManager.getImageProvider().exportLabelImage(labelImages[t], int(t), options.out_label_image, options.label_image_path)
+        exportRefinedHypothesesGraph(options.out_model_filename,
+                                    model, 
+                                    resolvedGraph,
+                                    unresolvedGraph,
+                                    uuidToTraxelMap, 
+                                    traxelIdPerTimestepToUniqueIdMap, 
+                                    mergerNodeFilter, 
+                                    mergerLinkFilter)
+        
+        # 
+        # 2.) new result = union(old result, resolved mergers) - old mergers
+
+        exportRefinedSolution(options.out_result,
+                            result, 
+                            nodeFlowMap,
+                            arcFlowMap,
+                            resolvedGraph,
+                            unresolvedGraph,
+                            traxelIdPerTimestepToUniqueIdMap,
+                            mergerNodeFilter, 
+                            mergerLinkFilter)
+
+        # 
+        # 3.) export refined segmentation
+        h5py.File(options.out_label_image, 'w').close()
+        for t in timesteps:
+            pluginManager.getImageProvider().exportLabelImage(labelImages[t], int(t), options.out_label_image, options.label_image_path)
 
 # ------------------------------------------------------------
 
@@ -537,7 +552,8 @@ if __name__ == "__main__":
                         help='Filename where to store the new result')
     parser.add_argument('--trans-par', dest='trans_par', type=float, default=5.0,
                         help='alpha for the transition prior')
-    
+    parser.add_argument('--verbose', dest='verbose', action='store_true',
+                        help='Turn on verbose logging', default=False)
     args, _ = parser.parse_known_args()
     logging.basicConfig(level=logging.INFO)
 
