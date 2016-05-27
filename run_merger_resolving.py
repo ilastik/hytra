@@ -511,7 +511,7 @@ if __name__ == "__main__":
                         + ' resolves all mergers by updating the segmentation and inserting the appropriate '
                         + 'nodes and links.',
                         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-c', '--config', is_config_file=True, help='config file path', dest='config_file', required=True)
+    parser.add_argument('-c', '--config', is_config_file=True, help='config file path', dest='config_file')
 
     parser.add_argument('--graph-json-file', required=True, type=str, dest='model_filename',
                         help='IN Filename of the json model description')
