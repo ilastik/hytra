@@ -13,8 +13,7 @@ def convert_to_volume(options):
     os.chdir(path)
     data = tifffile.imread(files)
     reshapedData = toolbox.util.axesconversion.adjustOrder(data, options.tif_input_axes)
-
-    print("Saving h5 volume of shape {}".format(data.shape))
+    logging.getLogger('stack_to_h5.py').info("Saving h5 volume of shape {}".format(data.shape))
     vigra.writeHDF5(reshapedData, options.output_file, options.output_path)
 
 if __name__ == "__main__":

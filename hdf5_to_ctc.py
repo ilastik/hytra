@@ -83,7 +83,7 @@ def remap_label_image(label_image, mapping):
 def convert_label_volume(options):
     num_frames = get_num_frames(options)
     if num_frames == 0:
-        logging.error("Cannot work on empty set")
+        logging.getLogger('hdf5_to_ctc.py').error("Cannot work on empty set")
         return
 
     # for each track, indexed by first label, store [parent, begin, end]
@@ -94,7 +94,7 @@ def convert_label_volume(options):
     # handle frame 0 -> only add those nodes that are referenced from frame 1 events
     label_image = get_frame_label_image(0, options)
     label_image_indices = np.unique(label_image)
-    logging.debug("Processing frame 0 of shape {}".format(label_image.shape))
+    logging.getLogger('hdf5_to_ctc.py').debug("Processing frame 0 of shape {}".format(label_image.shape))
 
     moves = get_frame_dataset(1, "Moves", options)
     splits = get_frame_dataset(1, "Splits", options)
@@ -117,7 +117,7 @@ def convert_label_volume(options):
         new_track_id += 1
     remapped_label_image = remap_label_image(label_image, old_mapping)
     save_frame_to_tif(0, remapped_label_image, options)
-    logging.debug("Tracks in first frame: {}".format(new_track_id))
+    logging.getLogger('hdf5_to_ctc.py').debug("Tracks in first frame: {}".format(new_track_id))
 
     # handle all further frames by remapping their indices
     for frame in range(1, num_frames):
@@ -126,7 +126,7 @@ def convert_label_volume(options):
         start_time = time.time()
         label_image = get_frame_label_image(frame, options)
         label_image_indices = np.unique(label_image)
-        logging.debug("Processing frame {} of shape {}".format(frame, label_image.shape))
+        logging.getLogger('hdf5_to_ctc.py').debug("Processing frame {} of shape {}".format(frame, label_image.shape))
         mapping = {}
 
         moves = get_frame_dataset(frame, "Moves", options)
@@ -152,7 +152,7 @@ def convert_label_volume(options):
             if parent in old_mapping.keys():
                 tracks[old_mapping[parent]].append(frame - 1)
             elif not parent in old_label_image_indices:
-                logging.warning("Found division where parent id was not present in previous frame")
+                logging.getLogger('hdf5_to_ctc.py').warning("Found division where parent id was not present in previous frame")
                 parent = 0
                 old_mapping[parent] = 0
             else:
@@ -160,7 +160,7 @@ def convert_label_volume(options):
                 old_mapping[parent] = new_track_id
                 tracks[new_track_id] = [0, frame - 1, frame - 1]
                 new_track_id += 1
-                logging.warning("Adding single-node-track parent of division with id {}".format(new_track_id - 1))
+                logging.getLogger('hdf5_to_ctc.py').warning("Adding single-node-track parent of division with id {}".format(new_track_id - 1))
                 remapped_label_image = remap_label_image(old_label_image, old_mapping)
                 save_frame_to_tif(frame-1, remapped_label_image, options)
 
@@ -171,7 +171,7 @@ def convert_label_volume(options):
                     mapping[c] = new_track_id
                     new_track_id += 1
                 else:
-                    logging.warning("Discarding child {} of parent track {} because it is not present in image".format(c, parent))
+                    logging.getLogger('hdf5_to_ctc.py').warning("Discarding child {} of parent track {} because it is not present in image".format(c, parent))
 
         # find all tracks that ended (so not in a move or split (-> is parent))
         disappeared_indices = set(old_mapping.values()) - set(mapping.values())
@@ -184,10 +184,10 @@ def convert_label_volume(options):
 
         # save for next iteration
         old_mapping = mapping
-        logging.debug("\tFrame done in {} secs".format(time.time() - start_time))
-        logging.debug("Track count is now at {}".format(new_track_id))
+        logging.getLogger('hdf5_to_ctc.py').debug("\tFrame done in {} secs".format(time.time() - start_time))
+        logging.getLogger('hdf5_to_ctc.py').debug("Track count is now at {}".format(new_track_id))
 
-    logging.info("Done processing frames, saving track info...")
+    logging.getLogger('hdf5_to_ctc.py').info("Done processing frames, saving track info...")
     # done, save tracks
     save_tracks(tracks, num_frames, options)
 
@@ -214,7 +214,7 @@ if __name__ == "__main__":
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.INFO)
-    logging.debug("Ignoring unknown parameters: {}".format(unknown))
+    logging.getLogger('hdf5_to_ctc.py').debug("Ignoring unknown parameters: {}".format(unknown))
 
     # find all files matching the pattern
     args.input_files = glob.glob(args.input_file_pattern)

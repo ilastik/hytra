@@ -127,8 +127,8 @@ def generate_traxelstore(h5file,
     ilastik project files and load the stored probabilities.
     """
 
-    logging.info("generating traxels")
-    logging.info("filling traxelstore")
+    logging.getLogger('hypotheses_graph_to_json.py').info("generating traxels")
+    logging.getLogger('hypotheses_graph_to_json.py').info("filling traxelstore")
     try:
         import pgmlink as track
         ts = track.TraxelStore()
@@ -141,16 +141,16 @@ def generate_traxelstore(h5file,
         ts, fs = None, None
         max_traxel_id_at = []
 
-    logging.info("fetching region features and division probabilities")
-    logging.debug("region features path: {}".format(options.obj_count_path))
-    logging.debug("division features path: {}".format(options.div_prob_path))
-    logging.debug("{}, {}".format(h5file.filename, feature_path))
+    logging.getLogger('hypotheses_graph_to_json.py').info("fetching region features and division probabilities")
+    logging.getLogger('hypotheses_graph_to_json.py').debug("region features path: {}".format(options.obj_count_path))
+    logging.getLogger('hypotheses_graph_to_json.py').debug("division features path: {}".format(options.div_prob_path))
+    logging.getLogger('hypotheses_graph_to_json.py').debug("{}, {}".format(h5file.filename, feature_path))
 
     detection_probabilities = []
     division_probabilities = []
 
     if with_div:
-        logging.debug(options.div_prob_path)
+        logging.getLogger('hypotheses_graph_to_json.py').debug(options.div_prob_path)
         divProbs = h5file[options.div_prob_path]
 
     if with_merger_prior:
@@ -211,7 +211,7 @@ def generate_traxelstore(h5file,
         if pixel_count.size:
             pixel_count = pixel_count[1:, ...]
 
-        logging.info("at timestep {}, {} traxels found".format(t, region_centers.shape[0]))
+        logging.getLogger('hypotheses_graph_to_json.py').info("at timestep {}, {} traxels found".format(t, region_centers.shape[0]))
         count = 0
         filtered_labels[t] = []
         for idx in range(region_centers.shape[0]):
@@ -271,7 +271,7 @@ def generate_traxelstore(h5file,
 
             ts.add(fs, traxel)
 
-        logging.info("at timestep {}, {} traxels passed filter".format(t, count))
+        logging.getLogger('hypotheses_graph_to_json.py').info("at timestep {}, {} traxels passed filter".format(t, count))
         max_traxel_id_at.append(int(region_centers.shape[0]))
         if count == 0:
             empty_frame = True
@@ -280,7 +280,7 @@ def generate_traxelstore(h5file,
 
     if median_object_size is not None:
         median_object_size[0] = np.median(np.array(obj_sizes), overwrite_input=True)
-        logging.info('median object size = {}'.format(median_object_size[0]))
+        logging.getLogger('hypotheses_graph_to_json.py').info('median object size = {}'.format(median_object_size[0]))
 
     return ts, fs, max_traxel_id_at, division_probabilities, detection_probabilities
 
@@ -320,15 +320,15 @@ def getTraxelStore(options, ilp_fn, time_range, shape):
     with h5py.File(ilp_fn, 'r') as h5file:
         ndim = 3
 
-        logging.debug('/'.join(options.label_img_path.strip('/').split('/')[:-1]))
+        logging.getLogger('hypotheses_graph_to_json.py').debug('/'.join(options.label_img_path.strip('/').split('/')[:-1]))
 
         if h5file['/'.join(options.label_img_path.strip('/').split('/')[:-1])].values()[0].shape[3] == 1:
             ndim = 2
-        logging.debug('ndim={}'.format(ndim))
+        logging.getLogger('hypotheses_graph_to_json.py').debug('ndim={}'.format(ndim))
 
-        logging.info("Time Range: {}".format(time_range))
+        logging.getLogger('hypotheses_graph_to_json.py').info("Time Range: {}".format(time_range))
         if options.load_traxelstore:
-            logging.info('loading traxelstore from file')
+            logging.getLogger('hypotheses_graph_to_json.py').info('loading traxelstore from file')
             import pickle
 
             with open(options.load_traxelstore, 'rb') as ts_in:
@@ -342,7 +342,7 @@ def getTraxelStore(options, ilp_fn, time_range, shape):
             if info[0] != options.mints or (options.maxts != -1 and info[4] != options.maxts - 1):
                 if options.maxts == -1:
                     options.maxts = info[4] + 1
-                logging.warning("Traxelstore has different time range than requested FOV. Trimming traxels...")
+                logging.getLogger('hypotheses_graph_to_json.py').warning("Traxelstore has different time range than requested FOV. Trimming traxels...")
                 fov = getFovFromOptions(options, shape, t0, t1)
                 fov.set_time_bounds(options.mints, options.maxts - 1)
                 new_ts = track.TraxelStore(turnOffFeatures=options.turnOffFeatures)
@@ -372,10 +372,10 @@ def getTraxelStore(options, ilp_fn, time_range, shape):
 
         info = [int(x) for x in ts.bounding_box()]
         t0, t1 = (info[0], info[4])
-        logging.info("-> Traxelstore bounding box: " + str(info))
+        logging.getLogger('hypotheses_graph_to_json.py').info("-> Traxelstore bounding box: " + str(info))
 
         if options.dump_traxelstore:
-            logging.info('dumping traxelstore to file')
+            logging.getLogger('hypotheses_graph_to_json.py').info('dumping traxelstore to file')
             import pickle
 
             with open(options.dump_traxelstore, 'wb') as ts_out:
@@ -558,7 +558,7 @@ def getHypothesesGraphAndIterators(options, shape, t0, t1, ts, pyTraxelstore):
     Build the hypotheses graph either using pgmlink, or from the python traxelstore in python
     """
     if pyTraxelstore is not None:
-        logging.info("Building python hypotheses graph")
+        logging.getLogger('hypotheses_graph_to_json.py').info("Building python hypotheses graph")
         hypotheses_graph = hypothesesgraph.HypothesesGraph()
         hypotheses_graph.buildFromTraxelstore(pyTraxelstore,
                                               numNearestNeighbors=options.max_nearest_neighbors,
@@ -576,7 +576,7 @@ def getHypothesesGraphAndIterators(options, shape, t0, t1, ts, pyTraxelstore):
 
     else:
         import pgmlink as track
-        logging.info("Building pgmlink hypotheses graph")
+        logging.getLogger('hypotheses_graph_to_json.py').info("Building pgmlink hypotheses graph")
         # initialize tracker to get hypotheses graph
         tracker, fov = initializeConservationTracking(options, shape, t0, t1)
         hypotheses_graph = tracker.buildGraph(ts, options.max_nearest_neighbors)
@@ -613,7 +613,7 @@ def loadTraxelstoreAndTransitionClassifier(options, ilp_fn, time_range, shape):
     except Exception as e:
         print("{}: {}".format(type(e), e))
         foundDetectionProbabilities = False
-        logging.warning("could not load detection (and/or division) probabilities from ilastik project file")
+        logging.getLogger('hypotheses_graph_to_json.py').warning("could not load detection (and/or division) probabilities from ilastik project file")
 
     if options.raw_filename != None:
         if foundDetectionProbabilities:
@@ -657,7 +657,7 @@ if __name__ == "__main__":
     else:
         logging.basicConfig(level=logging.INFO)
 
-    logging.debug("Ignoring unknown parameters: {}".format(unknown))
+    logging.getLogger('hypotheses_graph_to_json.py').debug("Ignoring unknown parameters: {}".format(unknown))
     ilp_fn = options.label_image_file
 
     # Do the tracking

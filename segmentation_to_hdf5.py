@@ -15,17 +15,17 @@ def segmentation_to_hdf5(options):
         data = tifffile.imread(options.tif_input_files[timeframe])
         
         if timeframe == 0:
-            logging.info("Found image of shape {}".format(data.shape))
+            logging.getLogger('segmentation_to_hdf5.py').info("Found image of shape {}".format(data.shape))
         
         data = toolbox.util.axesconversion.adjustOrder(data, options.tif_input_axes, 'txyzc')
 
         if timeframe == 0:
-            logging.info("Changed into shape {}".format(data.shape))
+            logging.getLogger('segmentation_to_hdf5.py').info("Changed into shape {}".format(data.shape))
 
         internalPath = options.hdf5ImagePath % (timeframe, timeframe + 1, data.shape[1], data.shape[2], data.shape[3])
         out_h5.create_dataset(internalPath, data=data, dtype='u2', compression='gzip')
         time = timeframe
-    logging.info("Saved {} timeframes".format(time))
+    logging.getLogger('segmentation_to_hdf5.py').info("Saved {} timeframes".format(time))
 
 if __name__ == '__main__':
     """
@@ -58,6 +58,6 @@ if __name__ == '__main__':
     else:
         logging.basicConfig(level=logging.INFO)
 
-    logging.debug("Ignoring unknown parameters: {}".format(unknown))
+    logging.getLogger('segmentation_to_hdf5.py').debug("Ignoring unknown parameters: {}".format(unknown))
 
     segmentation_to_hdf5(options)
