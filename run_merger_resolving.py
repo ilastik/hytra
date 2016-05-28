@@ -173,7 +173,9 @@ def computeObjectFeatures(labelImages, pluginManager, options, resolvedGraph):
     objectFeatures = {}
     imageShape = pluginManager.getImageProvider().getImageShape(options.label_image_filename, options.label_image_path)
     print("Found image of shape", imageShape)
-    ndims = len(np.array(imageShape).squeeze()) - 1 # get rid of axes with length 1, and minus time axis
+    # ndims = len(np.array(imageShape).squeeze()) - 1 # get rid of axes with length 1, and minus time axis
+    # there is no time axis...
+    ndims = len([i for i in imageShape if i != 1])
     print("Data has dimensionality ", ndims)
     for node in resolvedGraph.nodes_iter():
         intT, idx = node
