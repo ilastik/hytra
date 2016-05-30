@@ -32,7 +32,7 @@ def find_splits(filename, start_frame):
 
                 split_events[timestep][parent].append(idx)
 
-    logging.info("Found number of splits: {}".format(num_splits))
+    logging.getLogger('ctc_gt_to_hdf5.py').info("Found number of splits: {}".format(num_splits))
     return split_events
 
 def remap_label_image(label_image, mapping):
@@ -129,7 +129,7 @@ def create_label_volume(options):
     path, files = hack(options.input_tif)
     os.chdir(path)
     label_volume = tifffile.imread(files)
-    logging.info("Found dataset of size {}".format(label_volume.shape))
+    logging.getLogger('ctc_gt_to_hdf5.py').info("Found dataset of size {}".format(label_volume.shape))
     label_volume = toolbox.util.axesconversion.adjustOrder(label_volume, options.tif_input_axes, 'xyztc')
     timeaxis = label_volume.shape[3]
 
@@ -199,17 +199,17 @@ def create_label_volume(options):
                 value = [v for v in value if v in objects_per_frame[frame]]
 
                 if key not in objects_per_frame[frame - 1]:
-                    logging.warning("Parent {} of split is not in previous frame {}. Ignored".format(key, frame - 1))
+                    logging.getLogger('ctc_gt_to_hdf5.py').warning("Parent {} of split is not in previous frame {}. Ignored".format(key, frame - 1))
                     continue
 
                 if len(value) > 1:
                     if len(value) > 2:
-                        logging.warning("Cutting off children of {} in timestep {}".format(key, frame))
+                        logging.getLogger('ctc_gt_to_hdf5.py').warning("Cutting off children of {} in timestep {}".format(key, frame))
                     # cut off divisions into more than 2
                     splits.append([key] + value[0:2])
                 elif len(value) == 1:
                     # store as move
-                    logging.warning("Store move ({},{}) instead of split into one in timestep {}".format(key, value[0], frame))
+                    logging.getLogger('ctc_gt_to_hdf5.py').warning("Store move ({},{}) instead of split into one in timestep {}".format(key, value[0], frame))
                     moves.append((key, value[0]))
 
             if len(splits) > 0:
@@ -259,6 +259,6 @@ if __name__ == "__main__":
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.INFO)
-    logging.debug("Ignoring unknown parameters: {}".format(unknown))
+    logging.getLogger('ctc_gt_to_hdf5.py').debug("Ignoring unknown parameters: {}".format(unknown))
 
     create_label_volume(options)
