@@ -422,6 +422,7 @@ def resolveMergers(options):
 
     # it may be, that there are no mergers, so do basically nothing, just copy al the ingoing data
     if len(mergers)==0:
+        logging.getLogger('run_merger_resolver.py').info("The maximum number of objects is 1, so nothing to be done. Writing the output...")
         # graph
         toolbox.core.jsongraph.writeToFormattedJSON(options.out_result, result)
         # result
