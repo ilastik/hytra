@@ -1,7 +1,6 @@
 import networkx as nx
 from sklearn.neighbors import KDTree
 
-
 def getTraxelFeatureVector(traxel, featureName, maxNumDimensions=3):
     """
     extract a feature vector from a traxel
@@ -20,7 +19,8 @@ def getTraxelFeatureVector(traxel, featureName, maxNumDimensions=3):
                 print traxel.print_available_features()
                 raise Exception
             else:
-                pass
+                print("Error: Classifier was trained with less merger than maxNumObjects {}.".format(maxNumDimensions))
+                raise Exception
     return result
 
 
