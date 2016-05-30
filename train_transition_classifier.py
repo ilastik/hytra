@@ -289,8 +289,7 @@ if __name__ == '__main__':
         filepath = args.filepath[dataset]
         # filepattern is now a list of filepatterns
         files = glob.glob(os.path.join(filepath, args.filepattern[dataset]))
-        print files
-        # files.sort() # not needed, we don't train on consecutive frames.
+        files.sort()
         initFrame = args.initFrame
         endFrame = args.endFrame
         if endFrame < 0:
