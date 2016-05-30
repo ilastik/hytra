@@ -36,7 +36,7 @@ def compute_features(raw_image, labeled_image, n1, n2, pluginManager, filepath):
         if raw_image[..., i, 0].shape != labeled_image[i][..., 0].shape: 
             labeled_image[i] = np.transpose(labeled_image[i], axes=[3,1,0,2])
 
-        moreFeats, ignoreNames = pluginManager.applyObjectFeatureComputationPlugins(
+        moreFeats, _ = pluginManager.applyObjectFeatureComputationPlugins(
             len(raw_image.shape)-2, raw_image[..., i, 0], labeled_image[i][..., 0], i, filepath)
         frameFeatureItems = []
         for f in moreFeats:

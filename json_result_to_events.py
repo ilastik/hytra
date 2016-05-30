@@ -15,16 +15,14 @@ def writeEvents(timestep, activeLinks, activeDivisions, mergers, detections, fn,
     mer = []
     mul = []
     
-    logging.debug("-- Writing results to {}".format(fn))
+    logging.getLogger('json_result_to_events.py').debug("-- Writing results to {}".format(fn))
     try:
-        # TODO: find appearances/disappearances?
-
         # convert to ndarray for better indexing
         dis = np.asarray(dis)
         app = np.asarray(app)
-        div = np.asarray(activeDivisions)
+        div = np.asarray([[k, v[0], v[1]] for k,v in activeDivisions.iteritems()])
         mov = np.asarray(activeLinks)
-        mer = np.asarray(mergers)
+        mer = np.asarray([[k,v] for k,v in mergers.iteritems()])
         mul = np.asarray(mul)
 
         with h5py.File(ilpFilename, 'r') as src_file:
@@ -47,33 +45,33 @@ def writeEvents(timestep, activeLinks, activeDivisions, mergers, detections, fn,
                 tg = dest_file.create_group("tracking")
 
                 # write associations
-                if len(app):
+                if app is not None and len(app) > 0:
                     ds = tg.create_dataset("Appearances", data=app, dtype=np.int32)
                     ds.attrs["Format"] = "cell label appeared in current file"
 
-                if len(dis):
+                if dis is not None and len(dis) > 0:
                     ds = tg.create_dataset("Disappearances", data=dis, dtype=np.int32)
                     ds.attrs["Format"] = "cell label disappeared in current file"
 
-                if len(mov):
+                if mov is not None and len(mov) > 0:
                     ds = tg.create_dataset("Moves", data=mov, dtype=np.int32)
                     ds.attrs["Format"] = "from (previous file), to (current file)"
 
-                if len(div):
+                if div is not None and len(div) > 0:
                     ds = tg.create_dataset("Splits", data=div, dtype=np.int32)
                     ds.attrs["Format"] = "ancestor (previous file), descendant (current file), descendant (current file)"
 
-                if len(mer):
+                if mer is not None and len(mer) > 0:
                     ds = tg.create_dataset("Mergers", data=mer, dtype=np.int32)
                     ds.attrs["Format"] = "descendant (current file), number of objects"
 
-                if len(mul):
+                if mul is not None and len(mul) > 0:
                     ds = tg.create_dataset("MultiFrameMoves", data=mul, dtype=np.int32)
                     ds.attrs["Format"] = "from (given by timestep), to (current file), timestep"
 
-        logging.debug("-> results successfully written")
+        logging.getLogger('json_result_to_events.py').debug("-> results successfully written")
     except Exception as e:
-        logging.warning("ERROR while writing events: {}".format(str(e)))
+        logging.getLogger('json_result_to_events.py').warning("ERROR while writing events: {}".format(str(e)))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Take a json file containing a result to a set of HDF5 events files',
@@ -107,7 +105,7 @@ if __name__ == "__main__":
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.INFO)
-    logging.debug("Ignoring unknown parameters: {}".format(unknown))
+    logging.getLogger('json_result_to_events.py').debug("Ignoring unknown parameters: {}".format(unknown))
 
     traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = toolbox.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(model)
     timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
@@ -115,24 +113,11 @@ if __name__ == "__main__":
     mergers, detections, links, divisions = toolbox.core.jsongraph.getMergersDetectionsLinksDivisions(result, uuidToTraxelMap, withDivisions)
 
     # group by timestep for event creation
-    mergersPerTimestep = dict([(t, [(idx, count) for timestep, idx, count in mergers if timestep == int(t)]) for t in timesteps])
-    detectionsPerTimestep = dict([(t, [idx for timestep, idx in detections if timestep == int(t)]) for t in timesteps])
-    linksPerTimestep = dict([(t, [(a[1], b[1]) for a, b in links if b[0] == int(t)]) for t in timesteps])
-
-    if withDivisions:
-        # find children of divisions by looking for the active links
-        divisionsPerTimestep = {}
-        for t in timesteps:
-            divisionsPerTimestep[t] = []
-            for div_timestep, div_idx in divisions:
-                if div_timestep == int(t) - 1:
-                    # we have an active division of the mother cell "div_idx" in the previous frame
-                    children = [b for a,b in linksPerTimestep[t] if a == div_idx]
-                    assert(len(children) == 2)
-                    divisionsPerTimestep[t].append((div_idx,) + tuple(children))
-    else:
-        divisionsPerTimestep = dict([(t,[]) for t in timesteps])
-
+    mergersPerTimestep = toolbox.core.jsongraph.getMergersPerTimestep(mergers, timesteps)
+    linksPerTimestep = toolbox.core.jsongraph.getLinksPerTimestep(links, timesteps)
+    detectionsPerTimestep = toolbox.core.jsongraph.getDetectionsPerTimestep(detections, timesteps)
+    divisionsPerTimestep = toolbox.core.jsongraph.getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps, withDivisions)
+    
     # save to disk in parallel
     if not os.path.exists(args.out_dir):
         os.makedirs(args.out_dir)
@@ -141,14 +126,14 @@ if __name__ == "__main__":
     for timestep in traxelIdPerTimestepToUniqueIdMap.keys():
         fn = os.path.join(args.out_dir, "{0:05d}.h5".format(int(timestep)))
         processing_pool.apply_async(writeEvents,
-            (int(timestep),
-            linksPerTimestep[timestep], 
-            divisionsPerTimestep[timestep], 
-            mergersPerTimestep[timestep], 
-            detectionsPerTimestep[timestep], 
-            fn, 
-            args.label_img_path, 
-            args.ilp_filename))
+                                    (int(timestep),
+                                     linksPerTimestep[timestep], 
+                                     divisionsPerTimestep[timestep], 
+                                     mergersPerTimestep[timestep], 
+                                     detectionsPerTimestep[timestep], 
+                                     fn, 
+                                     args.label_img_path, 
+                                     args.ilp_filename))
 
     processing_pool.close()
     processing_pool.join()

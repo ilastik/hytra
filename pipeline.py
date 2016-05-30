@@ -38,6 +38,9 @@ def run_pipeline(options):
                 check_call(["python", "hdf5_to_ctc.py", "--config", options.config_file])
         elif options.export_format == 'labelimage':
             check_call(["python", "json_result_to_labelimage.py", "--config", options.config_file])
+        elif options.export_format is not None:
+            logging.error("Unknown export format chosen!")
+            raise ValueError("Unknown export format chosen!")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

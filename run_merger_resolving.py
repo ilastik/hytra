@@ -75,13 +75,13 @@ def prepareResolvedGraph(unresolvedGraph):
     return resolvedGraph
 
 def refineMergerSegmentations(resolvedGraph, 
-                                unresolvedGraph, 
-                                detectionsPerTimestep,
-                                mergersPerTimestep,
-                                timesteps, 
-                                pluginManager, 
-                                labelImageFilename, 
-                                labelImagePath):
+                              unresolvedGraph, 
+                              detectionsPerTimestep,
+                              mergersPerTimestep,
+                              timesteps, 
+                              pluginManager, 
+                              labelImageFilename, 
+                              labelImagePath):
     ''' 
     Update segmentation of mergers (nodes in unresolvedGraph) from first timeframe to last 
     and create new nodes in `resolvedGraph`. Links to merger nodes are duplicated to all new nodes.
@@ -284,13 +284,13 @@ def minCostMaxFlowMergerResolving(resolvedGraph, objectFeatures, pluginManager, 
     return nodeFlowMap, arcFlowMap
 
 def exportRefinedHypothesesGraph(outFilename,
-                                model, 
-                                resolvedGraph,
-                                unresolvedGraph,
-                                uuidToTraxelMap, 
-                                traxelIdPerTimestepToUniqueIdMap, 
-                                mergerNodeFilter, 
-                                mergerLinkFilter):
+                                 model, 
+                                 resolvedGraph,
+                                 unresolvedGraph,
+                                 uuidToTraxelMap, 
+                                 traxelIdPerTimestepToUniqueIdMap, 
+                                 mergerNodeFilter, 
+                                 mergerLinkFilter):
     """
     Take the `model` (JSON format) with mergers, remove the merger nodes, but add new
     de-merged nodes and links. Also updates `traxelIdPerTimestepToUniqueIdMap` locally and in the resulting file,
@@ -334,14 +334,14 @@ def exportRefinedHypothesesGraph(outFilename,
     toolbox.core.jsongraph.writeToFormattedJSON(outFilename, model)
 
 def exportRefinedSolution(outFilename, 
-                        result,
-                        nodeFlowMap,
-                        arcFlowMap,
-                        resolvedGraph,
-                        unresolvedGraph,
-                        traxelIdPerTimestepToUniqueIdMap,
-                        mergerNodeFilter, 
-                        mergerLinkFilter):
+                          result,
+                          nodeFlowMap,
+                          arcFlowMap,
+                          resolvedGraph,
+                          unresolvedGraph,
+                          traxelIdPerTimestepToUniqueIdMap,
+                          mergerNodeFilter, 
+                          mergerLinkFilter):
     """
     Update a `result` dict by removing the mergers and adding the refined nodes and links.
 
@@ -420,8 +420,8 @@ def resolveMergers(options):
 
     # ------------------------------------------------------------
 
-    # it may be, that there are no mergers, so do basically nothing, just copy al the ingoing data
-    if len(mergers)==0:
+    # it may be, that there are no mergers, so do basically nothing, just copy all the ingoing data
+    if len(mergers) == 0:
         logging.getLogger('run_merger_resolver.py').info("The maximum number of objects is 1, so nothing to be done. Writing the output...")
         # graph
         toolbox.core.jsongraph.writeToFormattedJSON(options.out_result, result)
@@ -446,13 +446,13 @@ def resolveMergers(options):
         unresolvedGraph = createUnresolvedGraph(divisionsPerTimestep, mergersPerTimestep, mergerLinks)
         resolvedGraph = prepareResolvedGraph(unresolvedGraph)
         labelImages = refineMergerSegmentations(resolvedGraph, 
-                                    unresolvedGraph, 
-                                    detectionsPerTimestep,
-                                    mergersPerTimestep,
-                                    timesteps, 
-                                    pluginManager, 
-                                    options.label_image_filename, 
-                                    options.label_image_path)
+                                                unresolvedGraph, 
+                                                detectionsPerTimestep,
+                                                mergersPerTimestep,
+                                                timesteps, 
+                                                pluginManager, 
+                                                options.label_image_filename, 
+                                                options.label_image_path)
 
         # ------------------------------------------------------------
         # compute new object features
@@ -495,26 +495,26 @@ def resolveMergers(options):
             return not any((str(destT[0]), (srcT[1], destT[1])) in mergerLinks for srcT, destT in itertools.product(srcTraxels, destTraxels))
 
         exportRefinedHypothesesGraph(options.out_model_filename,
-                                    model, 
-                                    resolvedGraph,
-                                    unresolvedGraph,
-                                    uuidToTraxelMap, 
-                                    traxelIdPerTimestepToUniqueIdMap, 
-                                    mergerNodeFilter, 
-                                    mergerLinkFilter)
+                                     model, 
+                                     resolvedGraph,
+                                     unresolvedGraph,
+                                     uuidToTraxelMap, 
+                                     traxelIdPerTimestepToUniqueIdMap, 
+                                     mergerNodeFilter, 
+                                     mergerLinkFilter)
         
         # 
         # 2.) new result = union(old result, resolved mergers) - old mergers
 
         exportRefinedSolution(options.out_result,
-                            result, 
-                            nodeFlowMap,
-                            arcFlowMap,
-                            resolvedGraph,
-                            unresolvedGraph,
-                            traxelIdPerTimestepToUniqueIdMap,
-                            mergerNodeFilter, 
-                            mergerLinkFilter)
+                              result, 
+                              nodeFlowMap,
+                              arcFlowMap,
+                              resolvedGraph,
+                              unresolvedGraph,
+                              traxelIdPerTimestepToUniqueIdMap,
+                              mergerNodeFilter, 
+                              mergerLinkFilter)
 
         # 
         # 3.) export refined segmentation
