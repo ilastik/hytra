@@ -2,7 +2,18 @@ import configargparse as argparse
 import logging
 from subprocess import check_call
 
-def run_pipeline(options):
+def run_pipeline(options, unknown):
+    """
+    Run the complete tracking pipeline by invoking the scripts as subprocesses.
+    Using the `do-SOMETHING` switches one can configure which parts of the pipeline are run.
+
+    **Params:**
+    
+    * `options`: the options of the tracking script as returned from argparse
+    * `unknown`: unknown parameters read from the config file, needed in case merger resolving is supposed to be run.
+
+    """
+
     if options.do_ctc_groundtruth_conversion:
         logging.info("Convert CTC groundtruth to our format...")
         check_call(["python", "ctc_gt_to_hdf5.py", "--config", options.config_file])
@@ -25,19 +36,29 @@ def run_pipeline(options):
 
     if options.do_tracking:
         logging.info("Run tracking...")
-        check_call([options.tracking_executable, 
-                    "-m", options.model_filename, 
+        check_call([options.tracking_executable,
+                    "-m", options.model_filename,
                     "-w", options.weight_filename,
                     "-o", options.result_filename])
+
+    extra_params = []
+    if options.do_merger_resolving:
+        logging.info("Run merger resolving")
+        check_call(["python", "run_merger_resolving.py", "--config", options.config_file])
+
+        for p in ["--out-graph-json-file", "--out-label-image-file", "--out-result-json-file"]:
+            index = unknown.index(p)
+            extra_params.append(p.replace('--out-', '--'))
+            extra_params.append(unknown[index + 1])
 
     if options.export_format is not None:
         logging.info("Convert result to {}...".format(options.export_format))
         if options.export_format in ['ilastikH5', 'ctc']:
-            check_call(["python", "json_result_to_events.py", "--config", options.config_file])
+            check_call(["python", "json_result_to_events.py", "--config", options.config_file] + extra_params)
             if options.export_format == 'ctc':
-                check_call(["python", "hdf5_to_ctc.py", "--config", options.config_file])
+                check_call(["python", "hdf5_to_ctc.py", "--config", options.config_file] + extra_params)
         elif options.export_format == 'labelimage':
-            check_call(["python", "json_result_to_labelimage.py", "--config", options.config_file])
+            check_call(["python", "json_result_to_labelimage.py", "--config", options.config_file] + extra_params)
         elif options.export_format is not None:
             logging.error("Unknown export format chosen!")
             raise ValueError("Unknown export format chosen!")
@@ -54,6 +75,7 @@ if __name__ == "__main__":
     parser.add_argument("--do-train-transition-classifier", dest='do_train_transition_classifier', action='store_true', default=False)
     parser.add_argument("--do-create-graph", dest='do_create_graph', action='store_true', default=False)
     parser.add_argument("--do-tracking", dest='do_tracking', action='store_true', default=False)
+    parser.add_argument("--do-merger-resolving", dest='do_merger_resolving', action='store_true', default=False)
     parser.add_argument("--export-format", dest='export_format', type=str, default=None,
                         help='Export format may be one of: "ilastikH5", "ctc", "labelimage", or None')
     parser.add_argument("--tracking-executable", dest='tracking_executable', required=True,
@@ -75,4 +97,4 @@ if __name__ == "__main__":
         logging.basicConfig(level=logging.INFO)
     logging.debug("Ignoring unknown parameters: {}".format(unknown))
 
-    run_pipeline(options)
+    run_pipeline(options, unknown)
