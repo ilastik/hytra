@@ -535,7 +535,7 @@ if __name__ == "__main__":
                         help='IN Filename of the json model description')
     parser.add_argument('--result-json-file', required=True, type=str, dest='result_filename',
                         help='IN Filename of the json file containing results')
-    parser.add_argument('--label-image-filename', required=True, type=str, dest='label_image_filename',
+    parser.add_argument('--label-image-file', required=True, type=str, dest='label_image_filename',
                         help='IN Filename of the original ilasitk tracking project')
     parser.add_argument('--label-image-path', dest='label_image_path', type=str,
                         default='/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]',
@@ -547,11 +547,11 @@ if __name__ == "__main__":
     parser.add_argument('--transition-classifier-file', dest='transition_classifier_filename', type=str,
                         default=None)
     parser.add_argument('--transition-classifier-path', dest='transition_classifier_path', type=str, default='/')
-    parser.add_argument('--out-model', type=str, dest='out_model_filename', required=True, 
+    parser.add_argument('--out-graph-json-file', type=str, dest='out_model_filename', required=True, 
                         help='Filename of the json model containing the hypotheses graph including new nodes')
-    parser.add_argument('--out-label-image', type=str, dest='out_label_image', required=True, 
+    parser.add_argument('--out-label-image-file', type=str, dest='out_label_image', required=True, 
                         help='Filename where to store the label image with updated segmentation')
-    parser.add_argument('--out-result', type=str, dest='out_result', required=True, 
+    parser.add_argument('--out-result-json-file', type=str, dest='out_result', required=True, 
                         help='Filename where to store the new result')
     parser.add_argument('--trans-par', dest='trans_par', type=float, default=5.0,
                         help='alpha for the transition prior')
