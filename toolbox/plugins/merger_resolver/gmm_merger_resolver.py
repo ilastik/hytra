@@ -9,7 +9,7 @@ class GMMMergerResolver(merger_resolver_plugin.MergerResolverPlugin):
     Computes the subtraction of features in the feature vector
     """
 
-    def initGMM(self,mergerCount,object_init_list):
+    def initGMM(self, mergerCount, object_init_list):
         gmm = mixture.GMM(n_components=mergerCount)
         if len(object_init_list) > 0:
             gmm.weights_ = np.array([o[0] for o in object_init_list])
@@ -17,8 +17,8 @@ class GMMMergerResolver(merger_resolver_plugin.MergerResolverPlugin):
             gmm.means_ = np.array([o[2] for o in object_init_list])
         return gmm
 
-    def getObjectInitializationList(self,gmm):
-        return zip(gmm.weights_,gmm.covars_,gmm.means_)
+    def getObjectInitializationList(self, gmm):
+        return zip(gmm.weights_, gmm.covars_, gmm.means_)
 
     def resolveMerger(self, labelImage, objectId, nextId, mergerCount, initializations=[]):
         """
@@ -34,14 +34,15 @@ class GMMMergerResolver(merger_resolver_plugin.MergerResolverPlugin):
         """
 
         # fit GMM to label image data
-        coordinates =  np.transpose(np.vstack(np.where(labelImage==objectId)))
-        gmm = self.initGMM(mergerCount,initializations)
+        coordinates = np.transpose(np.vstack(np.where(labelImage == objectId)))
+        gmm = self.initGMM(mergerCount, initializations)
         gmm.fit(coordinates)
 
-        # edit labelimage in-place
-        responsibilities = gmm.predict(coordinates)
-        newObjectIds = responsibilities + nextId
-        labelImage[labelImage==objectId] = newObjectIds
+        if mergerCount > 1:
+            # edit labelimage in-place
+            responsibilities = gmm.predict(coordinates)
+            newObjectIds = responsibilities + nextId
+            labelImage[labelImage == objectId] = newObjectIds
 
         return self.getObjectInitializationList(gmm)
 
