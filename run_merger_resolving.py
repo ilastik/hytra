@@ -28,8 +28,10 @@ def createUnresolvedGraph(divisionsPerTimestep, mergersPerTimestep, mergerLinks)
     def addNode(node):
         ''' add a node to the unresolved graph and fill in the properties `division` and `count` '''
         intT, idx = node
-        if divisionsPerTimestep is not None:
-            division = idx in divisionsPerTimestep[str(intT)]
+
+        lastframe = max(divisionsPerTimestep.keys(), key=int)
+        if divisionsPerTimestep is not None and int(intT)<int(lastframe):
+            division = idx in divisionsPerTimestep[str(intT+1)] # +1 screams for lastframe condition.
         else:
             division = False
         count = 1
@@ -411,6 +413,9 @@ def resolveMergers(options):
 
     traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = toolbox.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(model)
     timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
+
+    divisions = [uuidToTraxelMap[int(entry['id'])][-1] for entry in result['divisionResults'] if entry['value'] == True]
+
     mergers, detections, links, divisions = toolbox.core.jsongraph.getMergersDetectionsLinksDivisions(result, uuidToTraxelMap, withDivisions)
 
     # ------------------------------------------------------------
