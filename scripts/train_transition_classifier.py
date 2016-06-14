@@ -1,4 +1,4 @@
-# pythonpath modification to make toolbox and empryonic available 
+# pythonpath modification to make hytra and empryonic available 
 # for import without requiring it to be installed
 import os
 import sys
@@ -11,7 +11,7 @@ import vigra
 from vigra import numpy as np
 import h5py
 from sklearn.neighbors import KDTree
-from toolbox.pluginsystem.plugin_manager import TrackingPluginManager
+from hytra.pluginsystem.plugin_manager import TrackingPluginManager
 
 logger = logging.getLogger('TransitionClassifier')
 logger.setLevel(logging.DEBUG)
@@ -258,7 +258,7 @@ if __name__ == '__main__':
                              "this value is 1. Set to -1 to disable any changes. Expected axis order is x,y,(z),t,c")
     parser.add_argument("--verbose", dest='verbose', action='store_true', default=False)
     parser.add_argument('--plugin-paths', dest='pluginPaths', type=str, nargs='+',
-                        default=[os.path.abspath('../toolbox/plugins')],
+                        default=[os.path.abspath('../hytra/plugins')],
                         help='A list of paths to search for plugins for the tracking pipeline.')
 
     args, unknown = parser.parse_known_args()

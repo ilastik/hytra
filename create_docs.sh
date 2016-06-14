@@ -1,2 +1,2 @@
 #! /bin/bash
-pdoc toolbox --all-submodules --html --html-dir ../embryonic-doc --overwrite
+pdoc hytra --all-submodules --html --html-dir ../embryonic-doc --overwrite

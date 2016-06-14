@@ -1,4 +1,4 @@
-from toolbox.pluginsystem import merger_resolver_plugin
+from hytra.pluginsystem import merger_resolver_plugin
 import numpy as np
 
 from sklearn import mixture

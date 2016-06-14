@@ -1,4 +1,4 @@
-# pythonpath modification to make toolbox and empryonic available 
+# pythonpath modification to make hytra and empryonic available 
 # for import without requiring it to be installed
 import os
 import sys
@@ -9,16 +9,16 @@ import vigra
 import configargparse as argparse
 import logging
 from skimage.external import tifffile
-import toolbox.util.axesconversion
+import hytra.util.axesconversion
 import glob
-from toolbox.util.skimage_tifffile_hack import hack
+from hytra.util.skimage_tifffile_hack import hack
 
 def convert_to_volume(options):
     # data = tifffile.imread(options.input_file)
     path, files = hack(options.input_file)
     os.chdir(path)
     data = tifffile.imread(files)
-    reshapedData = toolbox.util.axesconversion.adjustOrder(data, options.tif_input_axes)
+    reshapedData = hytra.util.axesconversion.adjustOrder(data, options.tif_input_axes)
     logging.getLogger('stack_to_h5.py').info("Saving h5 volume of shape {}".format(data.shape))
     vigra.writeHDF5(reshapedData, options.output_file, options.output_path)
 

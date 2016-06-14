@@ -1,4 +1,4 @@
-from toolbox.pluginsystem import feature_serializer_plugin
+from hytra.pluginsystem import feature_serializer_plugin
 import numpy as np
 
 class LoadFeatureSerializer(feature_serializer_plugin.FeatureSerializerPlugin):

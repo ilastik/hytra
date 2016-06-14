@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import argparse
 
 import sys
-sys.path.append('../toolbox/.')
+sys.path.append('../hytra/.')
 # need this for weighted loss loading!
 import structsvm
 

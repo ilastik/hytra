@@ -5,11 +5,11 @@ import logging
 import time
 import concurrent.futures
 
-import toolbox.core.divisionfeatures
-from toolbox.core.progressbar import ProgressBar
-from toolbox.pluginsystem.plugin_manager import TrackingPluginManager
-from toolbox.core.random_forest_classifier import RandomForestClassifier
-from toolbox.core.ilastik_project_options import IlastikProjectOptions
+import hytra.core.divisionfeatures
+from hytra.core.progressbar import ProgressBar
+from hytra.pluginsystem.plugin_manager import TrackingPluginManager
+from hytra.core.random_forest_classifier import RandomForestClassifier
+from hytra.core.ilastik_project_options import IlastikProjectOptions
 
 
 class Traxel(object):
@@ -74,7 +74,7 @@ def computeRegionFeaturesOnCloud(frame,
                                  labelImageFilename,
                                  labelImagePath,
                                  turnOffFeatures,
-                                 pluginPaths=['toolbox/plugins'],
+                                 pluginPaths=['hytra/plugins'],
                                  featuresPerFrame = None,
                                  imageProviderPluginName='LocalImageLoader',
                                  featureSerializerPluginName='LocalFeatureSerializer'
@@ -97,7 +97,7 @@ def computeRegionFeaturesOnCloud(frame,
     '''
 
     # set up plugin manager
-    from toolbox.pluginsystem.plugin_manager import TrackingPluginManager
+    from hytra.pluginsystem.plugin_manager import TrackingPluginManager
     pluginManager = TrackingPluginManager(pluginPaths=pluginPaths, turnOffFeatures=turnOffFeatures, verbose=False)
     pluginManager.setImageProvider(imageProviderPluginName)
     pluginManager.setFeatureSerializer(featureSerializerPluginName)
@@ -164,7 +164,7 @@ def computeDivisionFeaturesOnCloud(frameT,
     * `featuresAtTPlus1`: feature dict of next frame
     * `imageProviderPlugin`: plugin for feature loading
     * `numDimensions`: number of dimensions of the dataset
-    * `divisionFeatureNames`: list of feature names for the `toolbox.divisionfeatures.FeatureManager`
+    * `divisionFeatureNames`: list of feature names for the `hytra.divisionfeatures.FeatureManager`
 
     **returns** a tuple of `frameT` and the dictionary of the newly computed division 
     features for `frameT`
@@ -175,7 +175,7 @@ def computeDivisionFeaturesOnCloud(frameT,
         labelImageAtTPlus1 = imageProviderPlugin.getLabelImageForFrame(labelImageFilename, labelImagePath, frameT + 1)
 
     # compute features
-    fm = toolbox.core.divisionfeatures.FeatureManager(ndim=numDimensions)
+    fm = hytra.core.divisionfeatures.FeatureManager(ndim=numDimensions)
     feats = fm.computeFeatures_at(featuresAtT, featuresAtTPlus1, labelImageAtTPlus1, divisionFeatureNames)
 
     return frameT, feats
@@ -221,7 +221,7 @@ class Traxelstore(object):
                  ilpOptions, 
                  turnOffFeatures=[], 
                  useMultiprocessing=True, 
-                 pluginPaths=['toolbox/plugins'],
+                 pluginPaths=['hytra/plugins'],
                  verbose=False):
         self._useMultiprocessing = useMultiprocessing
         self._options = ilpOptions
@@ -294,7 +294,7 @@ class Traxelstore(object):
         """
         Computes the division features for all objects in the images
         """
-        fm = toolbox.core.divisionfeatures.FeatureManager(ndim=self.getNumDimensions())
+        fm = hytra.core.divisionfeatures.FeatureManager(ndim=self.getNumDimensions())
         return fm.computeFeatures_at(featuresAtT, featuresAtTPlus1, labelImageAtTPlus1, self._divisionFeatureNames)
 
     def setDivisionFeatures(self, divisionFeatures):

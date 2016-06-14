@@ -1,4 +1,4 @@
-# pythonpath modification to make toolbox and empryonic available 
+# pythonpath modification to make hytra and empryonic available 
 # for import without requiring it to be installed
 import os
 import sys

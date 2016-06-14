@@ -1,4 +1,4 @@
-# pythonpath modification to make toolbox and empryonic available 
+# pythonpath modification to make hytra and empryonic available 
 # for import without requiring it to be installed
 import os
 import sys
@@ -12,8 +12,8 @@ import h5py
 import vigra
 from skimage.external import tifffile
 import glob
-import toolbox.util.axesconversion
-from toolbox.util.skimage_tifffile_hack import hack
+import hytra.util.axesconversion
+from hytra.util.skimage_tifffile_hack import hack
 
 def find_splits(filename, start_frame):
     # store split events indexed by timestep, then parent
@@ -135,7 +135,7 @@ def create_label_volume(options):
     os.chdir(path)
     label_volume = tifffile.imread(files)
     logging.getLogger('ctc_gt_to_hdf5.py').info("Found dataset of size {}".format(label_volume.shape))
-    label_volume = toolbox.util.axesconversion.adjustOrder(label_volume, options.tif_input_axes, 'xyztc')
+    label_volume = hytra.util.axesconversion.adjustOrder(label_volume, options.tif_input_axes, 'xyztc')
     timeaxis = label_volume.shape[3]
 
     split_events = find_splits(options.input_track, options.start_frame)

@@ -1,4 +1,4 @@
-from toolbox.core.traxelstore import RandomForestClassifier
+from hytra.core.traxelstore import RandomForestClassifier
 
 def test_rf():
     rf = RandomForestClassifier('/CountClassification', 'tests/mergerResolvingTestDataset/tracking.ilp')

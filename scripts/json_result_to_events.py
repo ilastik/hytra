@@ -1,4 +1,4 @@
-# pythonpath modification to make toolbox available 
+# pythonpath modification to make hytra available 
 # for import without requiring it to be installed
 import os
 import sys
@@ -10,7 +10,7 @@ import configargparse as argparse
 import numpy as np
 import h5py
 from multiprocessing import Pool
-import toolbox.core.jsongraph
+import hytra.core.jsongraph
 
 def writeEvents(timestep, activeLinks, activeDivisions, mergers, detections, fn, labelImagePath, ilpFilename):
     dis = []
@@ -112,16 +112,16 @@ if __name__ == "__main__":
         logging.basicConfig(level=logging.INFO)
     logging.getLogger('json_result_to_events.py').debug("Ignoring unknown parameters: {}".format(unknown))
 
-    traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = toolbox.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(model)
+    traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(model)
     timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
 
-    mergers, detections, links, divisions = toolbox.core.jsongraph.getMergersDetectionsLinksDivisions(result, uuidToTraxelMap, withDivisions)
+    mergers, detections, links, divisions = hytra.core.jsongraph.getMergersDetectionsLinksDivisions(result, uuidToTraxelMap, withDivisions)
 
     # group by timestep for event creation
-    mergersPerTimestep = toolbox.core.jsongraph.getMergersPerTimestep(mergers, timesteps)
-    linksPerTimestep = toolbox.core.jsongraph.getLinksPerTimestep(links, timesteps)
-    detectionsPerTimestep = toolbox.core.jsongraph.getDetectionsPerTimestep(detections, timesteps)
-    divisionsPerTimestep = toolbox.core.jsongraph.getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps, withDivisions)
+    mergersPerTimestep = hytra.core.jsongraph.getMergersPerTimestep(mergers, timesteps)
+    linksPerTimestep = hytra.core.jsongraph.getLinksPerTimestep(links, timesteps)
+    detectionsPerTimestep = hytra.core.jsongraph.getDetectionsPerTimestep(detections, timesteps)
+    divisionsPerTimestep = hytra.core.jsongraph.getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps, withDivisions)
     
     # save to disk in parallel
     if not os.path.exists(args.out_dir):

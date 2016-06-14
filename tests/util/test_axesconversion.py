@@ -1,5 +1,5 @@
 import numpy as np
-import toolbox.util.axesconversion as ax
+import hytra.util.axesconversion as ax
 
 def test_conversion_default():
     a = np.zeros([123,64])

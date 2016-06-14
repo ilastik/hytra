@@ -1,4 +1,4 @@
-# pythonpath modification to make toolbox available 
+# pythonpath modification to make hytra available 
 # for import without requiring it to be installed
 import os
 import sys
@@ -10,8 +10,8 @@ import time
 import numpy as np
 import h5py
 import json
-from toolbox.core.progressbar import ProgressBar
-import toolbox.core.hypothesesgraph as hypothesesgraph
+from hytra.core.progressbar import ProgressBar
+import hytra.core.hypothesesgraph as hypothesesgraph
 import logging
 
 def getConfigAndCommandLineArguments():
@@ -104,7 +104,7 @@ def getConfigAndCommandLineArguments():
     parser.add_argument('--verbose', dest='verbose', action='store_true',
                         help='Turn on verbose logging', default=False)
     parser.add_argument('--plugin-paths', dest='pluginPaths', type=str, nargs='+',
-                        default=[os.path.abspath('../toolbox/plugins')],
+                        default=[os.path.abspath('../hytra/plugins')],
                         help='A list of paths to search for plugins for the tracking pipeline.')
 
     options, unknown = parser.parse_known_args()
@@ -144,7 +144,7 @@ def generate_traxelstore(h5file,
         max_traxel_id_at = track.VectorOfInt()
         withPgmlink = True
     except:
-        import toolbox.core.traxelstore as track
+        import hytra.core.traxelstore as track
         withPgmlink = False
         ts, fs = None, None
         max_traxel_id_at = []
@@ -404,7 +404,7 @@ def getFovFromOptions(options, shape, t0, t1):
 
 
 def getPythonFovFromOptions(options, shape, t0, t1):
-    from toolbox.core.fieldofview import FieldOfView
+    from hytra.core.fieldofview import FieldOfView
     [xshape, yshape, zshape] = shape
 
     fov = FieldOfView(t0, 0, 0, 0, t1, options.x_scale * (xshape - 1), options.y_scale * (yshape - 1),
@@ -461,8 +461,8 @@ def loadPyTraxelstore(options,
     """
     Set up a python side traxel store: compute all features, but do not evaluate classifiers.
     """
-    import toolbox.core.traxelstore as traxelstore
-    from toolbox.core.ilastik_project_options import IlastikProjectOptions
+    import hytra.core.traxelstore as traxelstore
+    from hytra.core.ilastik_project_options import IlastikProjectOptions
     ilpOptions = IlastikProjectOptions()
     ilpOptions.labelImagePath = options.label_img_path
     ilpOptions.rawImagePath = options.raw_path
@@ -509,7 +509,7 @@ def loadTransitionClassifier(transitionClassifierFilename, transitionClassifierP
     """
     Load a transition classifier random forest from a HDF5 file
     """
-    import toolbox.core.traxelstore as traxelstore
+    import hytra.core.traxelstore as traxelstore
     rf = traxelstore.RandomForestClassifier(transitionClassifierPath, transitionClassifierFilename)
     return rf
 

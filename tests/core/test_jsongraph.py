@@ -1,4 +1,4 @@
-import toolbox.core.jsongraph as jg
+import hytra.core.jsongraph as jg
 
 def return_example_model():
     model = {

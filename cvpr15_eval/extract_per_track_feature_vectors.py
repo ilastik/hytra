@@ -4,7 +4,7 @@ __author__ = 'chaubold'
 import os.path
 import sys
 sys.path.append('.')
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../toolbox/.')
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../hytra/.')
 
 import numpy as np
 import matplotlib.pyplot as plt

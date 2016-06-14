@@ -1,4 +1,4 @@
-# pythonpath modification to make toolbox available 
+# pythonpath modification to make hytra available 
 # for import without requiring it to be installed
 import os
 import sys
@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.abspath('..'))
 import commentjson as json
 import argparse
 import numpy as np
-from toolbox.core.progressbar import ProgressBar
+from hytra.core.progressbar import ProgressBar
 
 def listify(l):
     return [[e] for e in l]

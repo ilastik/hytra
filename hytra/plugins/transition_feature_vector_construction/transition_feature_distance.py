@@ -1,4 +1,4 @@
-from toolbox.pluginsystem import transition_feature_vector_construction_plugin
+from hytra.pluginsystem import transition_feature_vector_construction_plugin
 import numpy as np
 
 

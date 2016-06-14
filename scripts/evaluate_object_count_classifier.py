@@ -1,4 +1,4 @@
-# pythonpath modification to make toolbox available 
+# pythonpath modification to make hytra available 
 # for import without requiring it to be installed
 import os
 import sys
@@ -9,7 +9,7 @@ import argparse
 import numpy as np
 import h5py
 from multiprocessing import Pool
-from toolbox.core.progressbar import ProgressBar
+from hytra.core.progressbar import ProgressBar
 
 def get_num_frames(options):
     if len(options.input_files) == 1:

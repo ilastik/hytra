@@ -1,4 +1,4 @@
-# pythonpath modification to make toolbox and empryonic available 
+# pythonpath modification to make hytra and empryonic available 
 # for import without requiring it to be installed
 import os
 import sys
@@ -8,7 +8,7 @@ import commentjson as json
 import argparse
 import numpy as np
 import copy
-from toolbox.core.progressbar import ProgressBar
+from hytra.core.progressbar import ProgressBar
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Replicate nodes, links, divisions and exclusion sets N times, ' \

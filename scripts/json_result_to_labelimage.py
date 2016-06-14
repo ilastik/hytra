@@ -1,4 +1,4 @@
-# pythonpath modification to make toolbox available 
+# pythonpath modification to make hytra available 
 # for import without requiring it to be installed
 import os
 import sys
@@ -10,7 +10,7 @@ import h5py
 import vigra
 from vigra import numpy as np
 import commentjson as json
-from toolbox.core.progressbar import ProgressBar
+from hytra.core.progressbar import ProgressBar
 
 def get_uuid_to_traxel_map(traxelIdPerTimestepToUniqueIdMap):
     timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]

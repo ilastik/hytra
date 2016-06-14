@@ -1,4 +1,4 @@
-# pythonpath modification to make toolbox and empryonic available 
+# pythonpath modification to make hytra and empryonic available 
 # for import without requiring it to be installed
 import os
 import sys
@@ -11,9 +11,9 @@ import numpy as np
 import h5py
 import itertools
 import networkx as nx
-from toolbox.pluginsystem.plugin_manager import TrackingPluginManager
-import toolbox.core.traxelstore as traxelstore
-import toolbox.core.jsongraph
+from hytra.pluginsystem.plugin_manager import TrackingPluginManager
+import hytra.core.traxelstore as traxelstore
+import hytra.core.jsongraph
 
 def createUnresolvedGraph(divisionsPerTimestep, mergersPerTimestep, mergerLinks):
     """ 
@@ -336,7 +336,7 @@ def exportRefinedHypothesesGraph(outFilename,
         model['linkingHypotheses'].append(newLink)
 
     # save
-    toolbox.core.jsongraph.writeToFormattedJSON(outFilename, model)
+    hytra.core.jsongraph.writeToFormattedJSON(outFilename, model)
 
 def exportRefinedSolution(outFilename, 
                           result,
@@ -389,7 +389,7 @@ def exportRefinedSolution(outFilename,
         result['linkingResults'].append(newLink)
 
     # save
-    toolbox.core.jsongraph.writeToFormattedJSON(outFilename, result)
+    hytra.core.jsongraph.writeToFormattedJSON(outFilename, result)
 
 
 def resolveMergers(options):
@@ -414,10 +414,10 @@ def resolveMergers(options):
         assert(result['linkingResults'] is not None)
         withDivisions = result['divisionResults'] is not None
 
-    traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = toolbox.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(model)
+    traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(model)
     timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
 
-    mergers, detections, links, divisions = toolbox.core.jsongraph.getMergersDetectionsLinksDivisions(result, uuidToTraxelMap, withDivisions)
+    mergers, detections, links, divisions = hytra.core.jsongraph.getMergersDetectionsLinksDivisions(result, uuidToTraxelMap, withDivisions)
 
     # ------------------------------------------------------------
     
@@ -430,9 +430,9 @@ def resolveMergers(options):
     if len(mergers) == 0:
         logging.getLogger('run_merger_resolver.py').info("The maximum number of objects is 1, so nothing to be done. Writing the output...")
         # graph
-        toolbox.core.jsongraph.writeToFormattedJSON(options.out_result, result)
+        hytra.core.jsongraph.writeToFormattedJSON(options.out_result, result)
         # result
-        toolbox.core.jsongraph.writeToFormattedJSON(options.out_model_filename, model)
+        hytra.core.jsongraph.writeToFormattedJSON(options.out_model_filename, model)
         # segmentation
         intTimesteps = [int(t) for t in timesteps]
         intTimesteps.sort()
@@ -442,11 +442,11 @@ def resolveMergers(options):
             labelImage = imageProvider.getLabelImageForFrame(options.label_image_filename, options.label_image_path, int(t))
             pluginManager.getImageProvider().exportLabelImage(labelImage, int(t), options.out_label_image, options.label_image_path)
     else:
-        mergersPerTimestep = toolbox.core.jsongraph.getMergersPerTimestep(mergers, timesteps)
-        linksPerTimestep = toolbox.core.jsongraph.getLinksPerTimestep(links, timesteps)
-        detectionsPerTimestep = toolbox.core.jsongraph.getDetectionsPerTimestep(detections, timesteps)
-        divisionsPerTimestep = toolbox.core.jsongraph.getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps, withDivisions)
-        mergerLinks = toolbox.core.jsongraph.getMergerLinks(linksPerTimestep, mergersPerTimestep, timesteps)
+        mergersPerTimestep = hytra.core.jsongraph.getMergersPerTimestep(mergers, timesteps)
+        linksPerTimestep = hytra.core.jsongraph.getLinksPerTimestep(links, timesteps)
+        detectionsPerTimestep = hytra.core.jsongraph.getDetectionsPerTimestep(detections, timesteps)
+        divisionsPerTimestep = hytra.core.jsongraph.getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps, withDivisions)
+        mergerLinks = hytra.core.jsongraph.getMergerLinks(linksPerTimestep, mergersPerTimestep, timesteps)
         
         # set up unresolved graph and then refine the nodes to get the resolved graph
         unresolvedGraph = createUnresolvedGraph(divisionsPerTimestep, mergersPerTimestep, mergerLinks)
@@ -564,7 +564,7 @@ if __name__ == "__main__":
     parser.add_argument('--verbose', dest='verbose', action='store_true',
                         help='Turn on verbose logging', default=False)
     parser.add_argument('--plugin-paths', dest='pluginPaths', type=str, nargs='+',
-                        default=[os.path.abspath('../toolbox/plugins')],
+                        default=[os.path.abspath('../hytra/plugins')],
                         help='A list of paths to search for plugins for the tracking pipeline.')
     args, _ = parser.parse_known_args()
     logging.basicConfig(level=logging.INFO)

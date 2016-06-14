@@ -1,4 +1,4 @@
-# pythonpath modification to make toolbox and empryonic available 
+# pythonpath modification to make hytra and empryonic available 
 # for import without requiring it to be installed
 import os
 import sys
@@ -10,7 +10,7 @@ import configargparse as argparse
 import logging
 import glob
 from skimage.external import tifffile
-import toolbox.util.axesconversion
+import hytra.util.axesconversion
 
 def segmentation_to_hdf5(options):
     """
@@ -24,7 +24,7 @@ def segmentation_to_hdf5(options):
         if timeframe == 0:
             logging.getLogger('segmentation_to_hdf5.py').info("Found image of shape {}".format(data.shape))
         
-        data = toolbox.util.axesconversion.adjustOrder(data, options.tif_input_axes, 'txyzc')
+        data = hytra.util.axesconversion.adjustOrder(data, options.tif_input_axes, 'txyzc')
 
         if timeframe == 0:
             logging.getLogger('segmentation_to_hdf5.py').info("Changed into shape {}".format(data.shape))

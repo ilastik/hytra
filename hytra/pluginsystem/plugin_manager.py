@@ -1,17 +1,17 @@
 from yapsy.PluginManager import PluginManager
 from yapsy.FilteredPluginManager import FilteredPluginManager
 import logging
-from toolbox.pluginsystem.object_feature_computation_plugin import ObjectFeatureComputationPlugin
-from toolbox.pluginsystem.transition_feature_vector_construction_plugin import TransitionFeatureVectorConstructionPlugin
-from toolbox.pluginsystem.image_provider_plugin import ImageProviderPlugin
-from toolbox.pluginsystem.feature_serializer_plugin import FeatureSerializerPlugin
-from toolbox.pluginsystem.merger_resolver_plugin import MergerResolverPlugin
+from hytra.pluginsystem.object_feature_computation_plugin import ObjectFeatureComputationPlugin
+from hytra.pluginsystem.transition_feature_vector_construction_plugin import TransitionFeatureVectorConstructionPlugin
+from hytra.pluginsystem.image_provider_plugin import ImageProviderPlugin
+from hytra.pluginsystem.feature_serializer_plugin import FeatureSerializerPlugin
+from hytra.pluginsystem.merger_resolver_plugin import MergerResolverPlugin
 
 class TrackingPluginManager(object):
     """
     Our plugin manager that handles the types of plugins known in this pipeline
     """
-    def __init__(self, pluginPaths=['toolbox/plugins'], turnOffFeatures=[], verbose=False):
+    def __init__(self, pluginPaths=['hytra/plugins'], turnOffFeatures=[], verbose=False):
         """
         Create the plugin manager that looks inside the specified `pluginPaths` (recursively),
         and if `verbose=True` then the [yapsy](http://yapsy.sourceforge.net/) plugin backend 
