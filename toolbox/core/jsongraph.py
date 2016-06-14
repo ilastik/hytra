@@ -87,9 +87,9 @@ def getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps, withDivision
         for t in timesteps:
             divisionsPerTimestep[t] = {}
             for div_timestep, div_idx in divisions:
-                if div_timestep == int(t) - 1:
+                if div_timestep == int(t):
                     # we have an active division of the mother cell "div_idx" in the previous frame
-                    children = [b for a,b in linksPerTimestep[t] if a == div_idx]
+                    children = [b for a,b in linksPerTimestep[str(int(t)+1)] if a == div_idx]
                     assert(len(children) == 2)
                     divisionsPerTimestep[t][div_idx] = children
     else:

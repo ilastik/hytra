@@ -1,5 +1,6 @@
 import configargparse as argparse
 import logging
+import os
 from subprocess import check_call
 
 def run_pipeline(options, unknown):
@@ -16,23 +17,23 @@ def run_pipeline(options, unknown):
 
     if options.do_ctc_groundtruth_conversion:
         logging.info("Convert CTC groundtruth to our format...")
-        check_call(["python", "ctc_gt_to_hdf5.py", "--config", options.config_file])
+        check_call(["python", os.path.abspath("ctc/ctc_gt_to_hdf5.py"), "--config", options.config_file])
     
     if options.do_ctc_raw_data_conversion:
         logging.info("Convert CTC raw data to HDF5...")
-        check_call(["python", "stack_to_h5.py", "--config", options.config_file])
+        check_call(["python", os.path.abspath("ctc/stack_to_h5.py"), "--config", options.config_file])
     
     if options.do_ctc_segmentation_conversion:
         logging.info("Convert CTC segmentation to HDF5...")
-        check_call(["python", "segmentation_to_hdf5.py", "--config", options.config_file])
+        check_call(["python", os.path.abspath("ctc/segmentation_to_hdf5.py"), "--config", options.config_file])
     
     if options.do_train_transition_classifier:
         logging.info("Train transition classifier...")
-        check_call(["python", "train_transition_classifier.py", "--config", options.config_file])
+        check_call(["python", os.path.abspath("train_transition_classifier.py"), "--config", options.config_file])
     
     if options.do_create_graph:
         logging.info("Create hypotheses graph...")
-        check_call(["python", "hypotheses_graph_to_json.py", "--config", options.config_file])
+        check_call(["python", os.path.abspath("hypotheses_graph_to_json.py"), "--config", options.config_file])
 
     if options.do_tracking:
         logging.info("Run tracking...")
@@ -44,7 +45,7 @@ def run_pipeline(options, unknown):
     extra_params = []
     if options.do_merger_resolving:
         logging.info("Run merger resolving")
-        check_call(["python", "run_merger_resolving.py", "--config", options.config_file])
+        check_call(["python", os.path.abspath("run_merger_resolving.py"), "--config", options.config_file])
 
         for p in ["--out-graph-json-file", "--out-label-image-file", "--out-result-json-file"]:
             index = unknown.index(p)
@@ -54,11 +55,11 @@ def run_pipeline(options, unknown):
     if options.export_format is not None:
         logging.info("Convert result to {}...".format(options.export_format))
         if options.export_format in ['ilastikH5', 'ctc']:
-            check_call(["python", "json_result_to_events.py", "--config", options.config_file] + extra_params)
+            check_call(["python", os.path.abspath("json_result_to_events.py"), "--config", options.config_file] + extra_params)
             if options.export_format == 'ctc':
-                check_call(["python", "hdf5_to_ctc.py", "--config", options.config_file] + extra_params)
+                check_call(["python", os.path.abspath("ctc/hdf5_to_ctc.py"), "--config", options.config_file] + extra_params)
         elif options.export_format == 'labelimage':
-            check_call(["python", "json_result_to_labelimage.py", "--config", options.config_file] + extra_params)
+            check_call(["python", os.path.abspath("json_result_to_labelimage.py"), "--config", options.config_file] + extra_params)
         elif options.export_format is not None:
             logging.error("Unknown export format chosen!")
             raise ValueError("Unknown export format chosen!")

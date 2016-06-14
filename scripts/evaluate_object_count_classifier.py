@@ -1,16 +1,15 @@
-import sys
-
-sys.path.append('../.')
-sys.path.append('.')
-
-from empryonic import io
-import commentjson as json
+# pythonpath modification to make toolbox available 
+# for import without requiring it to be installed
 import os
+import sys
+sys.path.insert(0, os.path.abspath('..'))
+# standard importsfrom empryonic import io
+import commentjson as json
 import argparse
 import numpy as np
 import h5py
 from multiprocessing import Pool
-from core.progressbar import ProgressBar
+from toolbox.core.progressbar import ProgressBar
 
 def get_num_frames(options):
     if len(options.input_files) == 1:

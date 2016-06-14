@@ -1,6 +1,11 @@
+# pythonpath modification to make toolbox and empryonic available 
+# for import without requiring it to be installed
+import os
+import sys
+sys.path.insert(0, os.path.abspath('..'))
+# standard imports
 import commentjson as json
 import logging
-import os
 import configargparse as argparse
 import numpy as np
 import h5py
@@ -17,7 +22,6 @@ def createUnresolvedGraph(divisionsPerTimestep, mergersPerTimestep, mergerLinks)
 
     ** returns ** the `unresolvedGraph` 
     """
-
     unresolvedGraph = nx.DiGraph()
     def source(timestep, link):
         return int(timestep) - 1, link[0]
@@ -304,7 +308,6 @@ def exportRefinedHypothesesGraph(outFilename,
     The updated `model` dictionary is then saved to a JSON file at `outFilename`.
     """
 
-
     # remove merger detections
     model['segmentationHypotheses'] = filter(mergerNodeFilter, model['segmentationHypotheses'])
 
@@ -418,7 +421,7 @@ def resolveMergers(options):
 
     # ------------------------------------------------------------
     
-    pluginManager = TrackingPluginManager(verbose=args.verbose)
+    pluginManager = TrackingPluginManager(verbose=options.verbose, pluginPaths=options.pluginPaths)
     pluginManager.setImageProvider('LocalImageLoader')
 
     # ------------------------------------------------------------
@@ -434,10 +437,10 @@ def resolveMergers(options):
         intTimesteps = [int(t) for t in timesteps]
         intTimesteps.sort()
         imageProvider = pluginManager.getImageProvider()
-        h5py.File(args.out_label_image, 'w').close()
+        h5py.File(options.out_label_image, 'w').close()
         for t in intTimesteps:
-            labelImage = imageProvider.getLabelImageForFrame(args.label_image_filename, args.label_image_path, int(t))
-            pluginManager.getImageProvider().exportLabelImage(labelImage, int(t), args.out_label_image, args.label_image_path)
+            labelImage = imageProvider.getLabelImageForFrame(options.label_image_filename, options.label_image_path, int(t))
+            pluginManager.getImageProvider().exportLabelImage(labelImage, int(t), options.out_label_image, options.label_image_path)
     else:
         mergersPerTimestep = toolbox.core.jsongraph.getMergersPerTimestep(mergers, timesteps)
         linksPerTimestep = toolbox.core.jsongraph.getLinksPerTimestep(links, timesteps)
@@ -560,6 +563,9 @@ if __name__ == "__main__":
                         help='alpha for the transition prior')
     parser.add_argument('--verbose', dest='verbose', action='store_true',
                         help='Turn on verbose logging', default=False)
+    parser.add_argument('--plugin-paths', dest='pluginPaths', type=str, nargs='+',
+                        default=[os.path.abspath('../toolbox/plugins')],
+                        help='A list of paths to search for plugins for the tracking pipeline.')
     args, _ = parser.parse_known_args()
     logging.basicConfig(level=logging.INFO)
 

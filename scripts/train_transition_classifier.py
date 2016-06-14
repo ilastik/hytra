@@ -1,5 +1,10 @@
-from compiler.ast import flatten
+# pythonpath modification to make toolbox and empryonic available 
+# for import without requiring it to be installed
 import os
+import sys
+sys.path.insert(0, os.path.abspath('..'))
+# standard imports
+from compiler.ast import flatten
 import logging
 import glob
 import vigra
@@ -252,6 +257,9 @@ if __name__ == '__main__':
                         help="Zero-based index of the time axis in your raw data. E.g. if it has shape (x,t,y,c) "
                              "this value is 1. Set to -1 to disable any changes. Expected axis order is x,y,(z),t,c")
     parser.add_argument("--verbose", dest='verbose', action='store_true', default=False)
+    parser.add_argument('--plugin-paths', dest='pluginPaths', type=str, nargs='+',
+                        default=[os.path.abspath('../toolbox/plugins')],
+                        help='A list of paths to search for plugins for the tracking pipeline.')
 
     args, unknown = parser.parse_known_args()
 
@@ -296,7 +304,8 @@ if __name__ == '__main__':
             endFrame += len(files)
     
         # compute features
-        trackingPluginManager = TrackingPluginManager(verbose=args.verbose)
+        trackingPluginManager = TrackingPluginManager(verbose=args.verbose, 
+                                                      pluginPaths=args.pluginPaths)
         features = compute_features(rawimage,
                                         read_in_images(initFrame, endFrame, files),
                                         initFrame,

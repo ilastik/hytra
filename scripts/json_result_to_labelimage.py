@@ -1,12 +1,15 @@
+# pythonpath modification to make toolbox available 
+# for import without requiring it to be installed
+import os
+import sys
+sys.path.insert(0, os.path.abspath('..'))
+# standard imports
 import configargparse as argparse
 import logging
 import h5py
 import vigra
 from vigra import numpy as np
-import sys
-import os
-import json
-sys.path.append('.')
+import commentjson as json
 from toolbox.core.progressbar import ProgressBar
 
 def get_uuid_to_traxel_map(traxelIdPerTimestepToUniqueIdMap):

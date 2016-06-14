@@ -217,10 +217,18 @@ class Traxelstore(object):
     and evaluate the division/count/transition classifiers.
     """
 
-    def __init__(self, ilpOptions, turnOffFeatures=[], useMultiprocessing=True, verbose=False):
+    def __init__(self, 
+                 ilpOptions, 
+                 turnOffFeatures=[], 
+                 useMultiprocessing=True, 
+                 pluginPaths=['toolbox/plugins'],
+                 verbose=False):
         self._useMultiprocessing = useMultiprocessing
         self._options = ilpOptions
-        self._pluginManager = TrackingPluginManager(turnOffFeatures=turnOffFeatures, verbose=verbose)
+        self._pluginPaths = pluginPaths
+        self._pluginManager = TrackingPluginManager(turnOffFeatures=turnOffFeatures, 
+                                                    verbose=verbose,
+                                                    pluginPaths=pluginPaths)
         self._pluginManager.setImageProvider(ilpOptions.imageProviderName)
         self._pluginManager.setFeatureSerializer(ilpOptions.featureSerializerName)
 
@@ -406,7 +414,8 @@ class Traxelstore(object):
                                                 self._options.rawImagePath,
                                                 self._options.labelImageFilename,
                                                 self._options.labelImagePath,
-                                                turnOffFeatures
+                                                turnOffFeatures,
+                                                self._pluginPaths
                     ))
                 for job in concurrent.futures.as_completed(jobs):
                     progressBar.show()
@@ -455,6 +464,7 @@ class Traxelstore(object):
                                     self._options.rawImagePath,
                                     self._options.labelImageFilename,
                                     self._options.labelImagePath,
+                                    turnOffFeatures,
                                     pluginPaths=['/home/carstenhaubold/embryonic/plugins'])
                 job.id = frame
                 jobs.append(job)

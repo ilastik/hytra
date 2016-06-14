@@ -2,9 +2,6 @@
 import os
 import os.path as path
 import sys
-sys.path.append('../.')
-sys.path.append('.')
-
 import imp
 multitrack = imp.load_source("multitrack", "./multitrack_ilastik10")
 import optparse

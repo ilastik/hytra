@@ -1,10 +1,16 @@
+# pythonpath modification to make toolbox and empryonic available 
+# for import without requiring it to be installed
+import os
+import sys
+sys.path.insert(0, os.path.abspath('../..'))
+sys.path.insert(0, os.path.abspath('..'))
+# standard imports
 import configargparse as argparse
 import numpy as np
 import h5py
 import vigra
 import time
 import glob
-import os
 import logging
 from skimage.external import tifffile
 

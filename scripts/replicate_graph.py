@@ -1,13 +1,14 @@
-import sys
-import commentjson as json
+# pythonpath modification to make toolbox and empryonic available 
+# for import without requiring it to be installed
 import os
+import sys
+sys.path.insert(0, os.path.abspath('..'))
+# standard imports
+import commentjson as json
 import argparse
 import numpy as np
 import copy
-
-sys.path.append('../.')
-sys.path.append('.')
-from core.progressbar import ProgressBar
+from toolbox.core.progressbar import ProgressBar
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Replicate nodes, links, divisions and exclusion sets N times, ' \

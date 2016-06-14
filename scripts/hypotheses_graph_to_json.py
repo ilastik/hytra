@@ -1,4 +1,9 @@
+# pythonpath modification to make toolbox available 
+# for import without requiring it to be installed
+import os
 import sys
+sys.path.insert(0, os.path.abspath('..'))
+# standard imports
 import os.path as path
 import configargparse
 import time
@@ -98,6 +103,9 @@ def getConfigAndCommandLineArguments():
     parser.add_argument('--turn-off-features', dest='turnOffFeatures', type=str, nargs='+', default=[])
     parser.add_argument('--verbose', dest='verbose', action='store_true',
                         help='Turn on verbose logging', default=False)
+    parser.add_argument('--plugin-paths', dest='pluginPaths', type=str, nargs='+',
+                        default=[os.path.abspath('../toolbox/plugins')],
+                        help='A list of paths to search for plugins for the tracking pipeline.')
 
     options, unknown = parser.parse_known_args()
 
@@ -481,7 +489,10 @@ def loadPyTraxelstore(options,
         else:
             ilpOptions.divisionClassifierFilename = ilpFilename
 
-    pyTraxelstore = traxelstore.Traxelstore(ilpOptions, turnOffFeatures=options.turnOffFeatures, useMultiprocessing=not options.disableMultiprocessing)
+    pyTraxelstore = traxelstore.Traxelstore(ilpOptions, 
+                                            turnOffFeatures=options.turnOffFeatures, 
+                                            pluginPaths=options.pluginPaths,
+                                            useMultiprocessing=not options.disableMultiprocessing)
     if time_range is not None:
         pyTraxelstore.timeRange = time_range
 

@@ -4,7 +4,8 @@
 # script provided by the ctc.
 #
 # Example how to use:
-# python hdf_gt_to_tif.py --output-dir ~/Documents/data/rapoport --input-file ~/Documents/data/rapoport/rapoport_ground_truth_sub_tolerant.h5 --label-image volume
+# python hdf_gt_to_tif.py --output-dir ~/Documents/data/rapoport \ 
+#  --input-file ~/Documents/data/rapoport/rapoport_ground_truth_sub_tolerant.h5 --label-image volume
 ###################################################################################
 
 import argparse

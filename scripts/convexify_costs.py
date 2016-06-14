@@ -1,12 +1,13 @@
-import sys
-import commentjson as json
+# pythonpath modification to make toolbox available 
+# for import without requiring it to be installed
 import os
+import sys
+sys.path.insert(0, os.path.abspath('..'))
+# standard imports
+import commentjson as json
 import argparse
 import numpy as np
-
-sys.path.append('../.')
-sys.path.append('.')
-from core.progressbar import ProgressBar
+from toolbox.core.progressbar import ProgressBar
 
 def listify(l):
     return [[e] for e in l]
@@ -19,7 +20,7 @@ def check(feats):
 def convexify(l, eps):
     features = np.array(l)
     if features.shape[1] != 1:
-        raise InvalidArgumentException('This script can only convexify feature vectors with one feature per state!')
+        raise ValueError('This script can only convexify feature vectors with one feature per state!')
 
     # Note from Numpy Docs: In case of multiple occurrences of the minimum values, the indices corresponding to the first occurrence are returned.
     bestState = np.argmin(features)

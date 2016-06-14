@@ -1,10 +1,9 @@
-#!/usr/bin/env python
-import sys
-
-sys.path.append('../.')
-sys.path.append('.')
-
+# pythonpath modification to make toolbox and empryonic available 
+# for import without requiring it to be installed
 import os
+import sys
+sys.path.insert(0, os.path.abspath('..'))
+# standard imports
 import os.path as path
 import getpass
 import glob

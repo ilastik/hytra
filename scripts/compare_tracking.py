@@ -1,8 +1,9 @@
-#!/usr/bin/env python
+# pythonpath modification to make toolbox available 
+# for import without requiring it to be installed
+import os
 import sys
-sys.path.append('../.')
-sys.path.append('.')
-
+sys.path.insert(0, os.path.abspath('..'))
+# standard imports
 import numpy as np
 import cPickle
 import collections

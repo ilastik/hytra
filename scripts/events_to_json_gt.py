@@ -1,9 +1,9 @@
+# pythonpath modification to make toolbox available 
+# for import without requiring it to be installed
+import os
 import sys
-
-sys.path.append('../.')
-sys.path.append('.')
-
-from empryonic import io
+sys.path.insert(0, os.path.abspath('..'))
+# standard importsfrom empryonic import io
 import commentjson as json
 import os
 import argparse

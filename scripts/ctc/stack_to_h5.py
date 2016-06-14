@@ -1,3 +1,10 @@
+# pythonpath modification to make toolbox and empryonic available 
+# for import without requiring it to be installed
+import os
+import sys
+sys.path.insert(0, os.path.abspath('../..'))
+sys.path.insert(0, os.path.abspath('..'))
+# standard imports
 import vigra
 import configargparse as argparse
 import logging
@@ -5,7 +12,6 @@ from skimage.external import tifffile
 import toolbox.util.axesconversion
 import glob
 from toolbox.util.skimage_tifffile_hack import hack
-import os
 
 def convert_to_volume(options):
     # data = tifffile.imread(options.input_file)
