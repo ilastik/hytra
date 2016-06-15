@@ -758,8 +758,8 @@ if __name__ == "__main__":
         # division only if probability is big enough
         try:
             divFeats = getDivisionFeatures(traxels[-1])
-            if divFeats[1] > options.division_threshold:
-                detection['divisionFeatures'] = listify(negLog(divFeats))
+            if divFeats[0] > options.division_threshold:
+                detection['divisionFeatures'] = list(reversed(listify(negLog(divFeats))))
         except:
             pass
 
