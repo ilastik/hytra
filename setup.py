@@ -10,7 +10,7 @@ setup(
     description=("Tracking pipeline of the IAL lab at the University of Heidelberg"),
     license="BSD",
     keywords="cell tracking divisions ilastik",
-    url="http://github.com/ilastik/hytra",
+    url="http://github.com/chaubold/hytra",
     packages=['hytra', 'hytra.core', 'hytra.util', 'hytra.pluginsystem', 'hytra.plugins', 'hytra.dvid'],
     classifiers=[
         "Development Status :: 3 - Alpha",
