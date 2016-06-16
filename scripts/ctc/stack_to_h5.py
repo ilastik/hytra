@@ -18,7 +18,7 @@ def convert_to_volume(options):
     path, files = hack(options.input_file)
     os.chdir(path)
     data = tifffile.imread(files)
-    reshapedData = hytra.util.axesconversion.adjustOrder(data, options.tif_input_axes)
+    reshapedData = hytra.util.axesconversion.adjustOrder(data, options.tif_input_axes, options.output_axes)
     logging.getLogger('stack_to_h5.py').info("Saving h5 volume of shape {}".format(data.shape))
     vigra.writeHDF5(reshapedData, options.output_file, options.output_path)
 
@@ -37,6 +37,8 @@ if __name__ == "__main__":
                         help='Filename for the resulting HDF5 file.')
     parser.add_argument('--raw-data-path', type=str, dest='output_path', default='exported_data',
                         help='Path inside the HDF5 file to the data')
+    parser.add_argument("--raw-data-axes", dest='output_axes', type=str, default='txyzc',
+                        help="axes ordering of the produced raw image, e.g. xyztc.")
     parser.add_argument("--verbose", dest='verbose', action='store_true', default=False)
 
     # parse command line

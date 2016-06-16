@@ -173,7 +173,7 @@ def computeObjectFeatures(labelImages, pluginManager, options, resolvedGraph):
     rawImages = {}
     for t in labelImages.keys():
         rawImages[t] = pluginManager.getImageProvider().getImageDataAtTimeFrame(
-            options.raw_filename, options.raw_path, int(t))
+            options.raw_filename, options.raw_path, options.raw_axes, int(t))
 
     print("Computing object features")
     objectFeatures = {}
@@ -550,6 +550,8 @@ if __name__ == "__main__":
                       help='filename to the raw h5 file')
     parser.add_argument('--raw-data-path', type=str, dest='raw_path', default='volume/data',
                       help='Path inside the raw h5 file to the data')
+    parser.add_argument("--raw-data-axes", dest='raw_axes', type=str, default='txyzc',
+                        help="axes ordering of the produced raw image, e.g. xyztc.")
     parser.add_argument('--transition-classifier-file', dest='transition_classifier_filename', type=str,
                         default=None)
     parser.add_argument('--transition-classifier-path', dest='transition_classifier_path', type=str, default='/')

@@ -4,7 +4,6 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
 # standard imports
-import os.path as path
 import configargparse
 import time
 import numpy as np
@@ -43,6 +42,8 @@ def getConfigAndCommandLineArguments():
                       help='filename to the raw h5 file')
     parser.add_argument('--raw-data-path', type=str, dest='raw_path', default='volume/data',
                       help='Path inside the raw h5 file to the data')
+    parser.add_argument("--raw-data-axes", dest='raw_axes', type=str, default='txyzc',
+                        help="axes ordering of the produced raw image, e.g. xyztc.")
     parser.add_argument('--dump-hypotheses-graph', type=str, dest='hypotheses_graph_filename', default=None,
                       help='save hypotheses graph so it can be loaded later')
     parser.add_argument('--label-image-file', type=str, dest='label_image_file', default=None,
@@ -50,15 +51,12 @@ def getConfigAndCommandLineArguments():
     parser.add_argument('--label-image-path', dest='label_img_path', type=str,
                         default='/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]',
                         help='internal hdf5 path to label image')
-
     parser.add_argument('--image-provider', type=str, dest='image_provider_name', default="LocalImageLoader")
-    
     parser.add_argument('--graph-json-file', type=str, required=True, dest='json_filename', default=None,
                       help='filename where to save the generated JSON file to')
-
     parser.add_argument('--max-number-objects', dest='max_num_objects', type=float, default=2,
                         help='Give maximum number of objects one connected component may consist of')
-    parser.add_argument('--max-neighbor-distance', dest='mnd', type=float, default=30)
+    parser.add_argument('--max-neighbor-distance', dest='mnd', type=float, default=200)
     parser.add_argument('--max-nearest-neighbors', dest='max_nearest_neighbors', type=int, default=1)
     parser.add_argument('--division-threshold', dest='division_threshold', type=float, default=0.1)
     # detection_rf_filename in general parser options
@@ -467,6 +465,7 @@ def loadPyTraxelstore(options,
     ilpOptions.labelImagePath = options.label_img_path
     ilpOptions.rawImagePath = options.raw_path
     ilpOptions.rawImageFilename = options.raw_filename
+    ilpOptions.rawImageAxes = options.raw_axes
     ilpOptions.sizeFilter = [options.minsize, options.maxsize]
     if options.label_image_file is not None:
         ilpOptions.labelImageFilename = options.label_image_file

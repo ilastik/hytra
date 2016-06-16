@@ -1,6 +1,4 @@
-import vigra
 import numpy as np
-import h5py
 import logging
 import time
 import concurrent.futures
@@ -71,6 +69,7 @@ class Traxel(object):
 def computeRegionFeaturesOnCloud(frame,
                                  rawImageFilename,
                                  rawImagePath,
+                                 rawImageAxes,
                                  labelImageFilename,
                                  labelImagePath,
                                  turnOffFeatures,
@@ -88,6 +87,7 @@ def computeRegionFeaturesOnCloud(frame,
     * `frame`: the frame number
     * `rawImageFilename`: the base filename of the raw image volume, or a dvid server address
     * `rawImagePath`: path inside the raw image HDF5 file, or DVID dataset UUID
+    * `rawImageAxes`: axes configuration of the raw data
     * `labelImageFilename`: the base filename of the label image volume, or a dvid server address
     * `labelImagePath`: path inside the label image HDF5 file, or DVID dataset UUID
     * `pluginPaths`: where all yapsy plugins are stored (should be absolute for DVID)
@@ -104,7 +104,7 @@ def computeRegionFeaturesOnCloud(frame,
 
     # load raw and label image (depending on chosen plugin this works via DVID or locally)
     rawImage = pluginManager.getImageProvider().getImageDataAtTimeFrame(
-        rawImageFilename, rawImagePath, frame)
+        rawImageFilename, rawImagePath, rawImageAxes, frame)
     labelImage = pluginManager.getImageProvider().getLabelImageForFrame(
         labelImageFilename, labelImagePath, frame)
 
@@ -412,6 +412,7 @@ class Traxelstore(object):
                                                 frame,
                                                 self._options.rawImageFilename, 
                                                 self._options.rawImagePath,
+                                                self._options.rawImageAxes,
                                                 self._options.labelImageFilename,
                                                 self._options.labelImagePath,
                                                 turnOffFeatures,
@@ -462,6 +463,7 @@ class Traxelstore(object):
                 job = cluster.submit(frame,
                                     self._options.rawImageFilename,
                                     self._options.rawImagePath,
+                                    self._options.rawImageAxes,
                                     self._options.labelImageFilename,
                                     self._options.labelImagePath,
                                     turnOffFeatures,
@@ -639,6 +641,8 @@ if __name__ == '__main__':
                         help='Filename of the hdf5 file containing the raw data')
     parser.add_argument('--raw-path', required=True, type=str, dest='rawPath',
                         help='Path inside HDF5 file to raw volume')
+    parser.add_argument("--raw-data-axes", dest='rawAxes', type=str, default='txyzc',
+                        help="axes ordering of the raw image, e.g. xyztc.")
     parser.add_argument('--label-image-path', type=str, dest='labelImagePath',
                         help='Path inside ilastik project file to the label image',
                         default='/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]')
@@ -678,6 +682,7 @@ if __name__ == '__main__':
     ilpOptions.randomForestZeroPaddingWidth = args.rfZeroPadding
     ilpOptions.labelImagePath = args.labelImagePath
     ilpOptions.rawImagePath = args.rawPath
+    ilpOptions.rawImageAxes = args.rawAxes
 
     ilpOptions.imageProviderName = args.image_provider_name
     ilpOptions.featureSerializerName = args.feature_serializer_name

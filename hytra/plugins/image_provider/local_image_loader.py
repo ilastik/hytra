@@ -1,4 +1,5 @@
 from hytra.pluginsystem import image_provider_plugin
+import hytra.util.axesconversion
 import numpy as np
 import h5py
 import logging
@@ -10,7 +11,7 @@ class LocalImageLoader(image_provider_plugin.ImageProviderPlugin):
 
     shape = None
 
-    def getImageDataAtTimeFrame(self, Resource, PathInResource, timeframe):
+    def getImageDataAtTimeFrame(self, Resource, PathInResource, axes, timeframe):
         """
         Loads image data from local resource file in hdf5 format.
         PathInResource provides the internal image path 
@@ -19,7 +20,7 @@ class LocalImageLoader(image_provider_plugin.ImageProviderPlugin):
         logging.getLogger("LocalImageLoader").debug("opening {}".format(Resource))
         with h5py.File(Resource, 'r') as rawH5:
             logging.getLogger("LocalImageLoader").debug("PathInResource {}".format(timeframe))
-            rawImage = rawH5[PathInResource][timeframe, ...]
+            rawImage = rawH5[PathInResource][hytra.util.axesconversion.getFrameSlicing(axes, timeframe)]
             return rawImage
 
     def getLabelImageForFrame(self, Resource, PathInResource, timeframe):
@@ -67,10 +68,10 @@ class LocalImageLoader(image_provider_plugin.ImageProviderPlugin):
         export labelimage of timeframe
         """
         with h5py.File(Resource, 'r+') as h5file:
-        	internalPath = PathInResource % (timeframe, timeframe + 1, self.shape[0], self.shape[1], self.shape[2])
-        	if(len(labelimage.shape) == 3):
-	        	h5file.create_dataset(internalPath, data=labelimage[np.newaxis,:,:,:,np.newaxis], dtype='u2', compression='gzip')
-        	elif(len(labelimage.shape) == 2):
-	        	h5file.create_dataset(internalPath, data=labelimage[np.newaxis,:,:,np.newaxis,np.newaxis], dtype='u2', compression='gzip')
-	        else:
-	        	raise NotImplementedError()
+            internalPath = PathInResource % (timeframe, timeframe + 1, self.shape[0], self.shape[1], self.shape[2])
+            if(len(labelimage.shape) == 3):
+                h5file.create_dataset(internalPath, data=labelimage[np.newaxis, :, :, :, np.newaxis], dtype='u2', compression='gzip')
+            elif(len(labelimage.shape) == 2):
+                h5file.create_dataset(internalPath, data=labelimage[np.newaxis, :, :, np.newaxis, np.newaxis], dtype='u2', compression='gzip')
+            else:
+                raise NotImplementedError()
