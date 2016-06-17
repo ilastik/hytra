@@ -18,7 +18,7 @@ class DvidImageLoader(image_provider_plugin.ImageProviderPlugin):
         return "seg-"+str(timeframe)
 
 
-    def getImageDataAtTimeFrame(self, Resource, PathInResource, timeframe):
+    def getImageDataAtTimeFrame(self, Resource, PathInResource, axes, timeframe):
         """
         Loads image data from local resource file in hdf5 format.
         PathInResource provides the internal image path 

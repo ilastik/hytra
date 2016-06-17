@@ -1,3 +1,7 @@
+"""
+This module provides some helper methods to deal with multidimensional arrays of different axes order.
+"""
+
 import numpy as np
 
 def adjustOrder(volume, inputAxes, outputAxes='txyzc'):
@@ -38,4 +42,20 @@ def adjustOrder(volume, inputAxes, outputAxes='txyzc'):
 
     return outVolume
 
+def getFrameSlicing(inputAxes, selectValue, selectAxis='t'):
+    """
+    This methods helps to get a slice of a multidimensional array of the specified `inputAxes`,
+    where only for one specific axis (`selectAxis`) an index (or a list of indices, or a slicing object) is given.
 
+    Example: `myarray[getFrameSlicing('xzt', 3, t)]`
+    Example: `myarray[getFrameSlicing('xzt', [3,7,9], t)]`
+    """
+    assert(len(selectAxis) == 1)
+    assert(inputAxes.count(selectAxis) == 1)
+    slicing = tuple()
+    for a in inputAxes:
+        if a == selectAxis:
+            slicing += (selectValue,)
+        else:
+            slicing += (slice(None),)
+    return slicing

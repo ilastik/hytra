@@ -112,6 +112,7 @@ def save_label_image_for_frame(options, label_volume, out_h5, frame, mapping_per
         if options.index_remapping and mapping_per_frame is not None:
             out_label_volume = remap_label_image(out_label_volume, mapping_per_frame[frame])
 
+        out_label_volume = hytra.util.axesconversion.adjustOrder(out_label_volume, 'xyzc', options.groundtruth_axes)
         out_h5.create_dataset("segmentation/labels", data=out_label_volume, dtype='u2', compression='gzip')
     else:
         raise NotImplementedError
@@ -247,6 +248,8 @@ if __name__ == "__main__":
                         help='Path to Cell Tracking Challenge manual tracking file: man_track.txt')
     parser.add_argument('--groundtruth', type=str, dest='output_file', required=True,
                         help='Filename for the resulting HDF5 file/folder.')
+    parser.add_argument("--groundtruth-axes", dest='groundtruth_axes', type=str, default='xyzc',
+                        help="axes ordering to use when creating the ground truth segmentations per frame (no t!), e.g. xyzc")
     parser.add_argument('--start-frame', type=int, dest='start_frame', default=0,
                         help='First frame number (usually 0, but e.g. their rapoport starts at 150')
     parser.add_argument('--ctc-to-gt-single-frames', action='store_true', dest='single_frames',

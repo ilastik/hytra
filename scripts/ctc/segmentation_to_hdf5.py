@@ -46,7 +46,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--ctc-segmentation-input-tif-pattern', required=True, type=str, dest='tif_input_file_pattern',
                         help='Filename pattern of the all tif files containing the segmentation data')
-    parser.add_argument('--ctc-segmentation-input-axes', type=str, dest='tif_input_axes', default='xy',
+    parser.add_argument('--ctc-segmentation-input-tif-axes', type=str, dest='tif_input_axes', default='xy',
                         help='Axes string defining a single images input shape')
     parser.add_argument('--label-image-file', required=True, type=str, dest='hdf5Path',
                         help='filename of where the segmentation HDF5 file will be created')

@@ -18,6 +18,7 @@ class IlastikProjectOptions:
         self.labelImagePath = '/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]'
         self.rawImageFilename = None
         self.rawImagePath = None
+        self.rawImageAxes = None
         self.imageProviderName = 'LocalImageLoader'
         self.featureSerializerName = 'LocalFeatureSerializer'
         self.sizeFilter = None  # set to tuple with min,max pixel count
