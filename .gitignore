@@ -146,3 +146,27 @@ doc/trackingfeatures.rst
 
 # added by GitSavvy
 /hytra/tests/mergerResolvingTestDataset/result.json
+
+# added by GitSavvy
+/tests/divisionTestDataset/ctc_RES/
+
+# added by GitSavvy
+/tests/divisionTestDataset/events/
+
+# added by GitSavvy
+/tests/divisionTestDataset/graph.json
+
+# added by GitSavvy
+/tests/divisionTestDataset/out-graph.json
+
+# added by GitSavvy
+/tests/divisionTestDataset/out-label-image.h5
+
+# added by GitSavvy
+/tests/divisionTestDataset/out-result.json
+
+# added by GitSavvy
+/tests/divisionTestDataset/result.json
+
+# added by GitSavvy
+/tests/divisionTestDataset/test_config.ini
