@@ -1,7 +1,16 @@
-import configargparse as argparse
-import logging
+"""
+Run the full pipeline, configured by a config file
+"""
+
+# pythonpath modification to make hytra available 
+# for import without requiring it to be installed
 import os
+import sys
+sys.path.insert(0, os.path.abspath('..'))
+
+import logging
 from subprocess import check_call
+import configargparse as argparse
 
 def run_pipeline(options, unknown):
     """
@@ -9,7 +18,7 @@ def run_pipeline(options, unknown):
     Using the `do-SOMETHING` switches one can configure which parts of the pipeline are run.
 
     **Params:**
-    
+
     * `options`: the options of the tracking script as returned from argparse
     * `unknown`: unknown parameters read from the config file, needed in case merger resolving is supposed to be run.
 
@@ -18,19 +27,19 @@ def run_pipeline(options, unknown):
     if options.do_ctc_groundtruth_conversion:
         logging.info("Convert CTC groundtruth to our format...")
         check_call(["python", os.path.abspath("ctc/ctc_gt_to_hdf5.py"), "--config", options.config_file])
-    
+
     if options.do_ctc_raw_data_conversion:
         logging.info("Convert CTC raw data to HDF5...")
         check_call(["python", os.path.abspath("ctc/stack_to_h5.py"), "--config", options.config_file])
-    
+
     if options.do_ctc_segmentation_conversion:
         logging.info("Convert CTC segmentation to HDF5...")
         check_call(["python", os.path.abspath("ctc/segmentation_to_hdf5.py"), "--config", options.config_file])
-    
+
     if options.do_train_transition_classifier:
         logging.info("Train transition classifier...")
         check_call(["python", os.path.abspath("train_transition_classifier.py"), "--config", options.config_file])
-    
+
     if options.do_create_graph:
         logging.info("Create hypotheses graph...")
         check_call(["python", os.path.abspath("hypotheses_graph_to_json.py"), "--config", options.config_file])
@@ -41,10 +50,24 @@ def run_pipeline(options, unknown):
 
     if options.do_tracking:
         logging.info("Run tracking...")
-        check_call([options.tracking_executable,
-                    "-m", options.model_filename,
-                    "-w", options.weight_filename,
-                    "-o", options.result_filename])
+        import commentjson as json
+        import dpct
+        import hytra.core.jsongraph
+
+        with open(options.model_filename, 'r') as f:
+            model = json.load(f)
+
+        with open(options.weight_filename, 'r') as f:
+            weights = json.load(f)
+
+        result = dpct.trackFlowBased(model, weights)
+
+        hytra.core.jsongraph.writeToFormattedJSON(options.result_filename, result)
+
+    #     check_call([options.tracking_executable,
+    #                 "-m", options.model_filename,
+    #                 "-w", options.weight_filename,
+    #                 "-o", options.result_filename])
 
     extra_params = []
     if options.do_merger_resolving:
@@ -73,12 +96,13 @@ if __name__ == "__main__":
         description='Cell Tracking Pipeline',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-c', '--config', is_config_file=True, help='config file path', dest='config_file', required=True)
-    
+
     parser.add_argument("--do-ctc-groundtruth-conversion", dest='do_ctc_groundtruth_conversion', action='store_true', default=False)
     parser.add_argument("--do-ctc-raw-data-conversion", dest='do_ctc_raw_data_conversion', action='store_true', default=False)
     parser.add_argument("--do-ctc-segmentation-conversion", dest='do_ctc_segmentation_conversion', action='store_true', default=False)
     parser.add_argument("--do-train-transition-classifier", dest='do_train_transition_classifier', action='store_true', default=False)
     parser.add_argument("--do-create-graph", dest='do_create_graph', action='store_true', default=False)
+    parser.add_argument("--do-convexify", dest='do_convexify', action='store_true', default=False)
     parser.add_argument("--do-tracking", dest='do_tracking', action='store_true', default=False)
     parser.add_argument("--do-merger-resolving", dest='do_merger_resolving', action='store_true', default=False)
     parser.add_argument("--export-format", dest='export_format', type=str, default=None,
