@@ -31,7 +31,7 @@ dependencies:
 
     - pip install configargparse
     - pip install commentjson
-    - conda install jinja2
+    - conda install -y jinja2
     - conda install -y yapsy -c ilastik
     - conda install -y dpct -c chaubold
     
