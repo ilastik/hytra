@@ -4,10 +4,14 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
 # standard imports
-import commentjson as json
-import argparse
+import logging
 import numpy as np
+import commentjson as json
+import configargparse as argparse
 from hytra.core.progressbar import ProgressBar
+
+def getLogger():
+    return logging.getLogger('convexify_costs.py')
 
 def listify(l):
     return [[e] for e in l]
@@ -41,31 +45,43 @@ def convexify(l, eps):
             else:
                 # all good, continue with new slope
                 previousGradient = newGradient
-                
+
             pos += direction
     try:
         check(features)
     except:
-        print("Failed convexifying to {}".format(features))
+        getLogger().warning("Failed convexifying {}".format(features))
     return listify(features.flatten())
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='(Strictly!) Convexify the costs of a model to allow a flow-based solution')
-    parser.add_argument('--model', required=True, type=str, dest='model_filename',
+    parser = argparse.ArgumentParser(
+        description='(Strictly!) Convexify the costs of a model to allow a flow-based solution',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('-c', '--config', is_config_file=True, help='config file path', dest='config_file', required=True)
+    parser.add_argument('--graph-json-file', required=True, type=str, dest='model_filename',
                         help='Filename of the json model description')
-    parser.add_argument('--output', required=True, type=str, dest='result_filename',
-                        help='Filename of the json file containing the model with convexified costs')
+    parser.add_argument('--out-json-file', default=None, type=str, dest='result_filename',
+                        help='Filename of the json file containing the model with convexified costs.'
+                        +' If None, it works in-place.')
     parser.add_argument('--epsilon', type=float, dest='epsilon', default=0.000001,
                         help='Epsilon is added to the gradient if the 1st derivative has a plateau.')
-    
-    args = parser.parse_args()
+    parser.add_argument("--verbose", dest='verbose', action='store_true', default=False)
 
-    print("Loading model file: " + args.model_filename)
+    # parse command line
+    args, unknown = parser.parse_known_args()
+
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
+    getLogger().debug("Ignoring unknown parameters: {}".format(unknown))
+
+    getLogger().debug("Loading model file: " + args.model_filename)
     with open(args.model_filename, 'r') as f:
         model = json.load(f)
 
     if not model['settings']['statesShareWeights']:
-        raise InvalidArgumentException('This script can only convexify feature vectors with shared weights!')
+        raise ValueError('This script can only convexify feature vectors with shared weights!')
 
     progressBar = ProgressBar(stop=(len(model['segmentationHypotheses']) + len(model['linkingHypotheses'])))
     segmentationHypotheses = model['segmentationHypotheses']
@@ -75,7 +91,7 @@ if __name__ == "__main__":
                 try:
                     seg[f] = convexify(seg[f], args.epsilon)
                 except:
-                    print("Convexification failed for feature {} of :{}".format(f, seg))
+                    getLogger().warning("Convexification failed for feature {} of :{}".format(f, seg))
                     exit(0)
         # division features are always convex (is just a line)
         progressBar.show()
@@ -84,6 +100,9 @@ if __name__ == "__main__":
     for link in linkingHypotheses:
         link['features'] = convexify(link['features'], args.epsilon)
         progressBar.show()
+
+    if args.result_filename is None:
+        args.result_filename = args.model_filename
 
     with open(args.result_filename, 'w') as f:
         json.dump(model, f, indent=4, separators=(',', ': '))

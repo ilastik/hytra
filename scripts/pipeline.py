@@ -35,6 +35,10 @@ def run_pipeline(options, unknown):
         logging.info("Create hypotheses graph...")
         check_call(["python", os.path.abspath("hypotheses_graph_to_json.py"), "--config", options.config_file])
 
+    if options.do_convexify:
+        logging.info("Convexifying graph energies...")
+        check_call(["python", os.path.abspath("convexify_costs.py"), "--config", options.config_file])
+
     if options.do_tracking:
         logging.info("Run tracking...")
         check_call([options.tracking_executable,
