@@ -29,13 +29,17 @@ dependencies:
           conda install -y -n ${TEST_ENV_NAME} -c ilastik ilastik-everything-but-tracking;
       fi
 
-    - pip install configargparse
-    - pip install commentjson
-    - conda install -y jinja2
-    - conda install -y yapsy -c ilastik
-    - conda install -y dpct -c chaubold
+    - >
+      source /home/ubuntu/miniconda/bin/activate ${TEST_ENV_NAME}
+      pip install configargparse
+      pip install commentjson
+      conda install -y jinja2
+      conda install -y yapsy -c ilastik
+      conda install -y dpct -c chaubold
     
 ## Customize test commands
 test:
   override:
-    - nosetests tests
+    - > 
+      source /home/ubuntu/miniconda/bin/activate ${TEST_ENV_NAME}
+      nosetests tests
