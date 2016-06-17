@@ -123,8 +123,8 @@ def checkForConvexity(feats):
     for i in range(len(grad) - 1):
         assert(grad[i+1] > grad[i])
 
-def convexify(l, eps):
-    features = np.array(l)
+def convexify(listOfNumbers, eps):
+    features = np.array(listOfNumbers)
     if features.shape[1] != 1:
         raise ValueError('This script can only convexify feature vectors with one feature per state!')
 
@@ -166,16 +166,24 @@ class JsonTrackingGraph(object):
 
     def __init__(self, model_filename=None, weights_filename=None, result_filename=None):
         # default values
-        self.model = {'segmentationHypotheses':[],
-                      'linkingHypotheses':[],
-                      'exclusions':[],
-                      'divisionHypotheses':[],
-                      'settings':{'statesShareWeights':True}
-                     }
+        self.traxelIdPerTimestepToUniqueIdMap = {}
+        self.model = {
+            'segmentationHypotheses':[],
+            'linkingHypotheses':[],
+            'exclusions':[],
+            'divisionHypotheses':[],
+            'traxelToUniqueId':self.traxelIdPerTimestepToUniqueIdMap,
+            'settings':{'statesShareWeights':True,
+                        'allowPartialMergerAppearance':False,
+                        'requireSeparateChildrenOfDivision':True,
+                        'optimizerEpGap':0.01,
+                        'optimizerVerbose':True,
+                        'optimizerNumThreads':1
+                       }
+            }
         self.weights = None
         self.result = None
-        self.traxelIdPerTimestepToUniqueIdMap = None
-        self.uuidToTraxelMap = None
+        self.uuidToTraxelMap = {}
 
         # load from file if specified
         if model_filename is not None:
@@ -194,12 +202,31 @@ class JsonTrackingGraph(object):
 
     def addDetectionHypothesesFromTracklet(self,
                                            listOfTraxels,
-                                           detectionFeatureFunc,
-                                           divisionFeatureFunc,
-                                           appearanceFeatureFunc,
-                                           disappearanceFeatureFunc,
+                                           detectionFeatures,
+                                           divisionFeatures=None,
+                                           appearanceFeatures=None,
+                                           disappearanceFeatures=None,
                                            **kwargs):
-        pass
+        '''
+        Create a detection based on a `listOfTraxels` (because we can have tracklets). 
+        Generates a new unique ID that represents this detection in the graph as one node and sets up the respective mappings
+        in `JsonTrackingGraph.traxelIdPerTimestepToUniqueIdMap` and `JsonTrackingGraph.uuidToTraxelMap`.
+
+        All further arguments in `**kwargs` are added to the detection dict in `segmentationHypotheses`.
+        '''
+        assert(listOfTraxels is not None and len(listOfTraxels) > 0)
+
+        # store mapping of all contained traxels to this detection uuid
+        self.uuidToTraxelMap[self._nextUuid] = []
+        for t in listOfTraxels:
+            self.traxelIdPerTimestepToUniqueIdMap.setdefault(str(t.Timestep), {})[str(t.Id)] = self._nextUuid
+            self.uuidToTraxelMap[self._nextUuid].append((int(t.Timestep), int(t.Id)))
+
+        return self.addDetectionHypotheses(detectionFeatures,
+                                           divisionFeatures=divisionFeatures,
+                                           appearanceFeatures=appearanceFeatures,
+                                           disappearanceFeatures=disappearanceFeatures)
+
 
     def addDetectionHypotheses(self, features, **kwargs):
         '''
@@ -211,7 +238,8 @@ class JsonTrackingGraph(object):
         '''
         detection = {'id':self._nextUuid, 'features':features}
         for k,v in kwargs.iteritems():
-            detection[k] = v
+            if v != None:
+                detection[k] = v
 
         self.model['segmentationHypotheses'].append(detection)
         self._nextUuid += 1
