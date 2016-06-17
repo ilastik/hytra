@@ -9,49 +9,10 @@ import numpy as np
 import commentjson as json
 import configargparse as argparse
 from hytra.core.progressbar import ProgressBar
+from hytra.core.jsongraph import convexify
 
 def getLogger():
     return logging.getLogger('convexify_costs.py')
-
-def listify(l):
-    return [[e] for e in l]
-
-def check(feats):
-    grad = feats[1:] - feats[0:-1]
-    for i in range(len(grad) - 1):
-        assert(grad[i+1] > grad[i])
-
-def convexify(l, eps):
-    features = np.array(l)
-    if features.shape[1] != 1:
-        raise ValueError('This script can only convexify feature vectors with one feature per state!')
-
-    # Note from Numpy Docs: In case of multiple occurrences of the minimum values, the indices corresponding to the first occurrence are returned.
-    bestState = np.argmin(features)
-
-    for direction in [-1, 1]:
-        pos = bestState + direction
-        previousGradient = 0
-        while pos >= 0 and pos < features.shape[0]:
-            newGradient = features[pos] - features[pos-direction]
-            if np.abs(newGradient - previousGradient) < eps:
-                # cost function's derivative is roughly constant, add epsilon
-                previousGradient += eps
-                features[pos] = features[pos-direction] + previousGradient
-            elif newGradient < previousGradient:
-                # cost function got too flat, set feature value to match old slope
-                previousGradient += eps
-                features[pos] = features[pos-direction] + previousGradient
-            else:
-                # all good, continue with new slope
-                previousGradient = newGradient
-
-            pos += direction
-    try:
-        check(features)
-    except:
-        getLogger().warning("Failed convexifying {}".format(features))
-    return listify(features.flatten())
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

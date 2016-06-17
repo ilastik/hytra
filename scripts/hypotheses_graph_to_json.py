@@ -11,6 +11,7 @@ import h5py
 import json
 from hytra.core.progressbar import ProgressBar
 import hytra.core.hypothesesgraph as hypothesesgraph
+from hytra.core.jsongraph import negLog, listify
 import logging
 
 def getConfigAndCommandLineArguments():
@@ -513,12 +514,6 @@ def loadTransitionClassifier(transitionClassifierFilename, transitionClassifierP
     return rf
 
 
-def negLog(features):
-    fa = np.array(features)
-    fa[fa < 0.0000000001] = 0.0000000001
-    return list(np.log(fa) * -1.0)
-
-
 def getDetectionFeatures(traxel, max_state):
     return hypothesesgraph.getTraxelFeatureVector(traxel, "detProb", max_state)
 
@@ -557,11 +552,6 @@ def getBoundaryCostMultiplier(traxel, fov, margin):
             return float(dist) / margin
         else:
             return 1.0
-
-
-def listify(l):
-    return [[e] for e in l]
-
 
 def getHypothesesGraphAndIterators(options, shape, t0, t1, ts, pyTraxelstore):
     """

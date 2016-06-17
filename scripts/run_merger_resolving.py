@@ -14,6 +14,7 @@ import networkx as nx
 from hytra.pluginsystem.plugin_manager import TrackingPluginManager
 import hytra.core.traxelstore as traxelstore
 import hytra.core.jsongraph
+from hytra.core.jsongraph import negLog, listify
 
 def createUnresolvedGraph(divisionsPerTimestep, mergersPerTimestep, mergerLinks):
     """ 
@@ -238,14 +239,6 @@ def minCostMaxFlowMergerResolving(resolvedGraph, objectFeatures, pluginManager, 
         if len(resolvedGraph.out_edges(node)) == 0:
             o['disappearanceFeatures'] = [[0], [0]]
         segmentationHypotheses.append(o)
-
-    def negLog(features):
-        fa = np.array(features)
-        fa[fa < 0.0000000001] = 0.0000000001
-        return list(np.log(fa) * -1.0)
-
-    def listify(l):
-        return [[e] for e in l]
 
     linkingHypotheses = []
     for edge in resolvedGraph.edges_iter():
