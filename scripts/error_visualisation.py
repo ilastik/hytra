@@ -6,6 +6,7 @@ from skimage.external import tifffile
 import matplotlib.pyplot as plt
 import matplotlib
 from math import ceil
+import copy
 
 def error_visualisation(options):
     '''
@@ -16,6 +17,7 @@ def error_visualisation(options):
 
     The false negatives (from tracking) will be shown in red in the groundtruth and in the segmentation.
     The false positives from the segmentation will appear pink in the segmentation.
+    The mergers are shown in purple on the tracking image.
 
     The output images for all problematic frames will be written in the ouptut directory. If this directory
     is not specified, then the results open in normal pyplot pop-up windows.
@@ -28,11 +30,18 @@ def error_visualisation(options):
         content = txt.readlines()
 
     problematic = []
+    merger = {}
     for line in content:
         if "[T=" in line:
             break
         if "T=" in line:
+            if ' Label=' in line:
+                merger.setdefault('*'+line[2:4].strip().zfill(3), [])
+                merger['*'+line[2:4].strip().zfill(3)].append(line[-3:-1].strip('='))
+
+                    # merger['*'+line[2:4].strip().zfill(3)] = line[-2:-1].strip('=')
             problematic.append('*'+line[2:4].strip().zfill(3))
+
     for frame in sorted(list(set(problematic))):
         # extract the frame number
         logging.getLogger('error_visualisation.py').debug("Looking at frame {}".format(frame))
@@ -46,8 +55,15 @@ def error_visualisation(options):
         colors = np.array([[0,0,0]])  # background
         for grayval in range(1,traim.max()+1):
             colors = np.vstack((colors, [0,float(grayval)/traim.max(), 1-float(grayval)/traim.max()]))
-        tracolormap = matplotlib.colors.ListedColormap(colors, N=traim.max()+1)
+
+        tra_colors = colors.copy()
+        # visualise mergers as purple blobs in the tracking result
+        if frame in merger.keys():
+            for label in merger[frame]:
+                tra_colors[(int(label))] = [0.65, 0, 1]
+        tracolormap = matplotlib.colors.ListedColormap(tra_colors, N=traim.max()+1)
         
+        # groundtruth colormap
         err_colors = np.array([[0,0,0]])
         for grayval in range(1, gtim.max()+1):
             position = np.where(gtim == grayval)
@@ -56,7 +72,7 @@ def error_visualisation(options):
             else:
                 act_grayval = int(ceil(np.median(traim[position])))
                 if act_grayval == 0:
-                    err_colors = np.vstack((err_colors, [1,0,0]))
+                    err_colors = np.vstack((err_colors, [1,0,0])) # false negatives in tracking result
                 else:
                     err_colors = np.vstack((err_colors, colors[act_grayval]))
         gtcolormap = matplotlib.colors.ListedColormap(err_colors, N=gtim.max()+1)
@@ -70,13 +86,13 @@ def error_visualisation(options):
             else:
                 act_grayval = int(ceil(np.median(gtim[position])))
                 if act_grayval == 0:
-                    seg_colors = np.vstack((seg_colors, [1,0.8,0.9]))
+                    seg_colors = np.vstack((seg_colors, [1,0.8,0.9])) # false positives will appear pink
                 else:
                     seg_colors = np.vstack((seg_colors, err_colors[act_grayval]))
         segcolormap = matplotlib.colors.ListedColormap(seg_colors, N=gtim.max()+1)
 
         # cmap can/should be adjusted here. 'flag' is best for Fluo-SIM 01
-        name, raw, axraw= tifffile.imshow(rawim,figure=frame[-1], subplot=221, title='raw image', cmap='flag')
+        name, raw, axraw= tifffile.imshow(rawim,figure=frame[-1], subplot=221, title='raw image FRAME {}'.format(frame.strip('*')), cmap='flag')
         axraw.colorbar.remove()
         raw.axis('off')
 
