@@ -30,16 +30,16 @@ dependencies:
       fi
 
     - >
-      source /home/ubuntu/miniconda/bin/activate ${TEST_ENV_NAME}
-      pip install configargparse
-      pip install commentjson
-      conda install -y jinja2
-      conda install -y yapsy -c ilastik
+      source /home/ubuntu/miniconda/bin/activate ${TEST_ENV_NAME};
+      pip install configargparse;
+      pip install commentjson;
+      conda install -y jinja2;
+      conda install -y yapsy -c ilastik;
       conda install -y dpct -c chaubold
     
 ## Customize test commands
 test:
   override:
     - > 
-      source /home/ubuntu/miniconda/bin/activate ${TEST_ENV_NAME}
+      source /home/ubuntu/miniconda/bin/activate ${TEST_ENV_NAME};
       nosetests tests
