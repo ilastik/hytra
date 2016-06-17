@@ -14,7 +14,7 @@ import networkx as nx
 from hytra.pluginsystem.plugin_manager import TrackingPluginManager
 import hytra.core.traxelstore as traxelstore
 import hytra.core.jsongraph
-from hytra.core.jsongraph import negLog, listify
+from hytra.core.jsongraph import negLog, listify, JsonTrackingGraph
 
 def createUnresolvedGraph(divisionsPerTimestep, mergersPerTimestep, mergerLinks):
     """ 
@@ -225,26 +225,19 @@ def minCostMaxFlowMergerResolving(resolvedGraph, objectFeatures, pluginManager, 
     **Note:** cannot use `networkx` flow methods because they don't work with floating point weights.
     """
 
-    segmentationHypotheses = []
-    nextId = 0
-    
+    trackingGraph = JsonTrackingGraph()
     for node in resolvedGraph.nodes_iter():
-        o = {}
-        o['id'] = nextId
-        resolvedGraph.node[node]['id'] = nextId
-        nextId += 1
-        o['features'] = [[0], [1]]
+        additionalFeatures = {}
         if len(resolvedGraph.in_edges(node)) == 0:
-            o['appearanceFeatures'] = [[0], [0]]
+            additionalFeatures['appearanceFeatures'] = [[0], [0]]
         if len(resolvedGraph.out_edges(node)) == 0:
-            o['disappearanceFeatures'] = [[0], [0]]
-        segmentationHypotheses.append(o)
+            additionalFeatures['disappearanceFeatures'] = [[0], [0]]
+        uuid = trackingGraph.addDetectionHypotheses([[0], [1]], **additionalFeatures)
+        resolvedGraph.node[node]['id'] = uuid
 
-    linkingHypotheses = []
     for edge in resolvedGraph.edges_iter():
-        e = {}
-        e['src'] = resolvedGraph.node[edge[0]]['id']
-        e['dest'] = resolvedGraph.node[edge[1]]['id']
+        src = resolvedGraph.node[edge[0]]['id']
+        dest = resolvedGraph.node[edge[1]]['id']
 
         featuresAtSrc = objectFeatures[edge[0]]
         featuresAtDest = objectFeatures[edge[1]]
@@ -259,22 +252,12 @@ def minCostMaxFlowMergerResolving(resolvedGraph, objectFeatures, pluginManager, 
             prob = np.exp(-dist / transitionParameter)
             probs = [1.0 - prob, prob]
 
-        e['features'] = listify(negLog(probs))
-        linkingHypotheses.append(e)
-
-    trackingGraph = {}
-    trackingGraph['segmentationHypotheses'] = segmentationHypotheses
-    trackingGraph['linkingHypotheses'] = linkingHypotheses
-    trackingGraph['exclusions'] = []
-
-    settings = {}
-    settings['statesShareWeights'] = True
-    trackingGraph['settings'] = settings
+        trackingGraph.addLinkingHypotheses(src, dest, listify(negLog(probs)))
 
     # track
     import dpct
     weights = {"weights": [1, 1, 1, 1]}
-    mergerResult = dpct.trackMaxFlow(trackingGraph, weights)
+    mergerResult = dpct.trackMaxFlow(trackingGraph.model, weights)
 
     # transform results to dictionaries that can be indexed by id or (src,dest)
     nodeFlowMap = dict([(int(d['id']), int(d['value'])) for d in mergerResult['detectionResults']])

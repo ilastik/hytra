@@ -108,14 +108,17 @@ def getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps, withDivision
     return divisionsPerTimestep
 
 def negLog(features):
+    ''' compute the (clamped) negative log of every entry in the list/array '''
     fa = np.array(features)
     fa[fa < 0.0000000001] = 0.0000000001
     return list(np.log(fa) * -1.0)
 
 def listify(l):
+    ''' put every element of the list in it's own list, and thus extends the depth of nested lists by one '''
     return [[e] for e in l]
 
-def check(feats):
+def checkForConvexity(feats):
+    ''' check whether the given array of numbers is convex, meaning that the difference between consecutive numbers never decreases '''
     grad = feats[1:] - feats[0:-1]
     for i in range(len(grad) - 1):
         assert(grad[i+1] > grad[i])
@@ -147,8 +150,87 @@ def convexify(l, eps):
 
             pos += direction
     try:
-        check(features)
+        checkForConvexity(features)
     except:
         getLogger().warning("Failed convexifying {}".format(features))
     return listify(features.flatten())
+
+# ----------------------------------------------------------------------------
+# helper class for graph-dictionaries
+
+class JsonTrackingGraph(object):
+    """
+    Convenience class to handle a hypotheses graph stored as dictionary,
+    which is transparently saved/loaded to JSON files.
+    """
+
+    def __init__(self, model_filename=None, weights_filename=None, result_filename=None):
+        # default values
+        self.model = {'segmentationHypotheses':[],
+                      'linkingHypotheses':[],
+                      'exclusions':[],
+                      'divisionHypotheses':[],
+                      'settings':{'statesShareWeights':True}
+                     }
+        self.weights = None
+        self.result = None
+        self.traxelIdPerTimestepToUniqueIdMap = None
+        self.uuidToTraxelMap = None
+
+        # load from file if specified
+        if model_filename is not None:
+            self.model = readFromJSON(model_filename)
+            self.traxelIdPerTimestepToUniqueIdMap, self.uuidToTraxelMap = \
+                getMappingsBetweenUUIDsAndTraxels(self.model)
+
+        if weights_filename is not None:
+            self.weights = readFromJSON(weights_filename)
+
+        if result_filename is not None:
+            self.result = readFromJSON(result_filename)
+
+        # private initializations
+        self._nextUuid = 0
+
+    def addDetectionHypothesesFromTracklet(self,
+                                           listOfTraxels,
+                                           detectionFeatureFunc,
+                                           divisionFeatureFunc,
+                                           appearanceFeatureFunc,
+                                           disappearanceFeatureFunc,
+                                           **kwargs):
+        pass
+
+    def addDetectionHypotheses(self, features, **kwargs):
+        '''
+        Construct a detection with the given features, assign it a new Uuid, and add it to the model's `segmentationHypotheses`.
+
+        All further arguments in `**kwargs` are added to the detection dict in `segmentationHypotheses`.
+
+        **Returns:** the unique ID of the newly created node in the graph
+        '''
+        detection = {'id':self._nextUuid, 'features':features}
+        for k,v in kwargs.iteritems():
+            detection[k] = v
+
+        self.model['segmentationHypotheses'].append(detection)
+        self._nextUuid += 1
+
+        return detection['id']
+
+    def addLinkingHypotheses(self, srcUuid, destUuid, features, **kwargs):
+        '''
+        Add a link to the JSON encoded graph between two nodes which are identified by their unique ids
+        '''
+        link = {'src':srcUuid, 'dest':destUuid, 'features':features}
+        for k,v in kwargs.iteritems():
+            link[k] = v
+
+        self.model['linkingHypotheses'].append(link)
+
+    def getNumDetections(self):
+        return len(self.model['segmentationHypotheses'])
+
+    def getNumLinks(self):
+        return len(self.model['linkingHypotheses'])
 
