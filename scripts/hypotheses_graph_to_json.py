@@ -7,12 +7,9 @@ sys.path.insert(0, os.path.abspath('..'))
 import logging
 import time
 import h5py
-import commentjson as json
 import numpy as np
 import configargparse
-from hytra.core.progressbar import ProgressBar
 import hytra.core.hypothesesgraph as hypothesesgraph
-from hytra.core.jsongraph import negLog, listify
 import hytra.core.jsongraph
 
 def getConfigAndCommandLineArguments():
@@ -544,7 +541,10 @@ def getTransitionFeaturesRF(traxelA, traxelB, transitionClassifier, pyTraxelstor
     return [probs[0]] + [probs[1]] * (max_state - 1)
 
 
-def getBoundaryCostMultiplier(traxel, fov, margin):
+def getBoundaryCostMultiplier(traxel, fov, margin, t0, t1):
+    if traxel.Timestep <= t0 or traxel.Timestep >= t1 - 1:
+        return 0.0
+
     dist = fov.spatial_distance_to_border(traxel.Timestep, traxel.X(), traxel.Y(), traxel.Z(), False)
     if dist > margin:
         return 1.0
@@ -694,14 +694,9 @@ if __name__ == "__main__":
 
     if pyTraxelstore is None:
         import pgmlink
-
         numElements = pgmlink.countNodes(hypotheses_graph) + pgmlink.countArcs(hypotheses_graph)
     else:
         numElements = hypotheses_graph.countNodes() + hypotheses_graph.countArcs()
-
-    progressBar = ProgressBar(stop=numElements)
-    maxNumObjects = int(options.max_num_objects) + 1  # because we need features for state 0 as well!
-    margin = float(options.border_width)
 
     # get the map of node -> list(traxel) or just traxel
     if options.without_tracklets:
@@ -709,84 +704,44 @@ if __name__ == "__main__":
     else:
         traxelMap = hypotheses_graph.getNodeTrackletMap()
 
-    trackingGraph = hytra.core.jsongraph.JsonTrackingGraph()
+    maxNumObjects = int(options.max_num_objects)
+    margin = float(options.border_width)
 
-    # add all detections to JSON
-    detections = []
-    for i, n in enumerate(n_it):
-        detection = {}
-        if options.without_tracklets:
-            # only one traxel, but make it a list so everything below works the same
-            traxels = [traxelMap[n]]
+    def detectionProbabilityFunc(traxel):
+        return getDetectionFeatures(traxel, maxNumObjects + 1)
+
+    def transitionProbabilityFunc(srcTraxel, destTraxel):
+        if transitionClassifier is None:
+            return getTransitionFeaturesDist(srcTraxel, destTraxel, options.trans_par, maxNumObjects + 1)
         else:
-            traxels = traxelMap[n]
+            return getTransitionFeaturesRF(srcTraxel, destTraxel, transitionClassifier, pyTraxelstore, maxNumObjects + 1)
 
-        # accumulate features over all contained traxels
-        previousTraxel = None
-        detectionFeatures = np.zeros(maxNumObjects)
-        for t in traxels:
-            detectionFeatures += np.array(negLog(getDetectionFeatures(t, maxNumObjects)))
-            if previousTraxel is not None:
-                if transitionClassifier is None:
-                    detectionFeatures += np.array(
-                        negLog(getTransitionFeaturesDist(previousTraxel, t, options.trans_par, maxNumObjects)))
-                else:
-                    detectionFeatures += np.array(negLog(
-                        getTransitionFeaturesRF(previousTraxel, t, transitionClassifier, pyTraxelstore, maxNumObjects)))
-            previousTraxel = t
+    def boundaryCostMultiplierFunc(traxel):
+        return getBoundaryCostMultiplier(traxel, fov, margin, t0, t1)
 
-        detectionFeatures = listify(list(detectionFeatures))
-
-        # division only if probability is big enough
+    def divisionProbabilityFunc(traxel):
         try:
-            divisionFeatures = getDivisionFeatures(traxels[-1])
+            divisionFeatures = getDivisionFeatures(traxel)
             if divisionFeatures[0] > options.division_threshold:
-                divisionFeatures = list(reversed(listify(negLog(divisionFeatures))))
+                divisionFeatures = list(reversed(divisionFeatures))
             else:
                 divisionFeatures = None
         except:
             divisionFeatures = None
+        return divisionFeatures
 
-        # appearance/disappearance
-        if traxels[0].Timestep <= t0:
-            appearanceFeatures = listify([0.0] * (maxNumObjects))
-        else:
-            appearanceFeatures = listify(
-                [0.0] + [getBoundaryCostMultiplier(traxels[0], fov, margin)] * (maxNumObjects - 1))
-
-        if traxels[-1].Timestep >= t1 - 1:
-            disappearanceFeatures = listify([0.0] * (maxNumObjects))
-        else:
-            disappearanceFeatures = listify(
-                [0.0] + [getBoundaryCostMultiplier(traxels[-1], fov, margin)] * (maxNumObjects - 1))
-
-        trackingGraph.addDetectionHypothesesFromTracklet(traxels, 
-                                                         detectionFeatures,
-                                                         divisionFeatures,
-                                                         appearanceFeatures,
-                                                         disappearanceFeatures,
-                                                         timestep=[traxels[0].Timestep, traxels[-1].Timestep])
-        progressBar.show()
-
-    # add all links
-    for a in a_it:
-        if options.without_tracklets:
-            srcTraxel = traxelMap[hypotheses_graph.source(a)]
-            destTraxel = traxelMap[hypotheses_graph.target(a)]
-        else:
-            srcTraxel = traxelMap[hypotheses_graph.source(a)][-1]  # src is last of the traxels in source tracklet
-            destTraxel = traxelMap[hypotheses_graph.target(a)][0]  # dest is first of traxels in destination tracklet
-        src = trackingGraph.traxelIdPerTimestepToUniqueIdMap[str(srcTraxel.Timestep)][str(srcTraxel.Id)]
-        dest = trackingGraph.traxelIdPerTimestepToUniqueIdMap[str(destTraxel.Timestep)][str(destTraxel.Id)]
-
-        if transitionClassifier is None:
-            features = listify(
-                negLog(getTransitionFeaturesDist(srcTraxel, destTraxel, options.trans_par, maxNumObjects)))
-        else:
-            features = listify(negLog(
-                getTransitionFeaturesRF(srcTraxel, destTraxel, transitionClassifier, pyTraxelstore, maxNumObjects)))
-        trackingGraph.addLinkingHypotheses(src, dest, features)
-        progressBar.show()
+    trackingGraph = hytra.core.hypothesesgraph.convertHypothesesGraphToJsonGraph(
+        hypotheses_graph,
+        n_it,
+        a_it,
+        not options.without_tracklets,
+        maxNumObjects, 
+        numElements,
+        traxelMap,
+        detectionProbabilityFunc,
+        transitionProbabilityFunc,
+        boundaryCostMultiplierFunc,
+        divisionProbabilityFunc)
 
     # write everything to JSON
     hytra.core.jsongraph.writeToFormattedJSON(options.json_filename, trackingGraph.model)
