@@ -9,7 +9,7 @@ import numpy as np
 import commentjson as json
 import configargparse as argparse
 from hytra.core.progressbar import ProgressBar
-from hytra.core.jsongraph import convexify
+from hytra.core.jsongraph import JsonTrackingGraph, writeToFormattedJSON
 
 def getLogger():
     return logging.getLogger('convexify_costs.py')
@@ -37,33 +37,10 @@ if __name__ == "__main__":
         logging.basicConfig(level=logging.INFO)
     getLogger().debug("Ignoring unknown parameters: {}".format(unknown))
 
-    getLogger().debug("Loading model file: " + args.model_filename)
-    with open(args.model_filename, 'r') as f:
-        model = json.load(f)
-
-    if not model['settings']['statesShareWeights']:
-        raise ValueError('This script can only convexify feature vectors with shared weights!')
-
-    progressBar = ProgressBar(stop=(len(model['segmentationHypotheses']) + len(model['linkingHypotheses'])))
-    segmentationHypotheses = model['segmentationHypotheses']
-    for seg in segmentationHypotheses:
-        for f in ['features', 'appearanceFeatures', 'disappearanceFeatures']:
-            if f in seg:
-                try:
-                    seg[f] = convexify(seg[f], args.epsilon)
-                except:
-                    getLogger().warning("Convexification failed for feature {} of :{}".format(f, seg))
-                    exit(0)
-        # division features are always convex (is just a line)
-        progressBar.show()
-
-    linkingHypotheses = model['linkingHypotheses']
-    for link in linkingHypotheses:
-        link['features'] = convexify(link['features'], args.epsilon)
-        progressBar.show()
+    trackingGraph = JsonTrackingGraph(model_filename=args.model_filename)
+    trackingGraph.convexifyCosts(args.epsilon)
 
     if args.result_filename is None:
         args.result_filename = args.model_filename
 
-    with open(args.result_filename, 'w') as f:
-        json.dump(model, f, indent=4, separators=(',', ': '))
+    writeToFormattedJSON(args.result_filename, trackingGraph.model)

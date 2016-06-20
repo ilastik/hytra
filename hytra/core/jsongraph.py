@@ -6,6 +6,7 @@ hypotheses graphs stored in our json (or python dictionary) format.
 import logging
 import numpy as np
 import commentjson as json
+from hytra.core.progressbar import ProgressBar
 
 # ----------------------------------------------------------------------------
 # Utility functions
@@ -187,14 +188,17 @@ class JsonTrackingGraph(object):
 
         # load from file if specified
         if model_filename is not None:
+            getLogger().debug("Loading model file: " + model_filename)
             self.model = readFromJSON(model_filename)
             self.traxelIdPerTimestepToUniqueIdMap, self.uuidToTraxelMap = \
                 getMappingsBetweenUUIDsAndTraxels(self.model)
 
         if weights_filename is not None:
+            getLogger().debug("Loading weights file: " + weights_filename)
             self.weights = readFromJSON(weights_filename)
 
         if result_filename is not None:
+            getLogger().debug("Loading result file: " + result_filename)
             self.result = readFromJSON(result_filename)
 
         # private initializations
@@ -261,4 +265,27 @@ class JsonTrackingGraph(object):
 
     def getNumLinks(self):
         return len(self.model['linkingHypotheses'])
+
+    def convexifyCosts(self, epsilon=0.000001):
+        if not self.model['settings']['statesShareWeights']:
+            raise ValueError('This script can only convexify feature vectors with shared weights!')
+
+        progressBar = ProgressBar(stop=(len(self.model['segmentationHypotheses']) + len(self.model['linkingHypotheses'])))
+        segmentationHypotheses = self.model['segmentationHypotheses']
+        for seg in segmentationHypotheses:
+            for f in ['features', 'appearanceFeatures', 'disappearanceFeatures']:
+                if f in seg:
+                    try:
+                        seg[f] = convexify(seg[f], epsilon)
+                    except:
+                        getLogger().warning("Convexification failed for feature {} of :{}".format(f, seg))
+                        exit(0)
+            # division features are always convex (2 values defines just a line)
+            progressBar.show()
+
+        linkingHypotheses = self.model['linkingHypotheses']
+        for link in linkingHypotheses:
+            link['features'] = convexify(link['features'], epsilon)
+            progressBar.show()
+
 
