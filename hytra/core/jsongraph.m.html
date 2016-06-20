@@ -1,0 +1,2344 @@
+<!doctype html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+
+    <title>hytra.core.jsongraph API documentation</title>
+    <meta name="description" content="Utilities that help with loading / saving as well as constructing and parsing
+hypotheses graphs stor..." />
+
+  <link href='http://fonts.googleapis.com/css?family=Source+Sans+Pro:400,300' rel='stylesheet' type='text/css'>
+  
+  <style type="text/css">
+  
+* {
+  box-sizing: border-box;
+}
+/*! normalize.css v1.1.1 | MIT License | git.io/normalize */
+
+/* ==========================================================================
+   HTML5 display definitions
+   ========================================================================== */
+
+/**
+ * Correct `block` display not defined in IE 6/7/8/9 and Firefox 3.
+ */
+
+article,
+aside,
+details,
+figcaption,
+figure,
+footer,
+header,
+hgroup,
+main,
+nav,
+section,
+summary {
+    display: block;
+}
+
+/**
+ * Correct `inline-block` display not defined in IE 6/7/8/9 and Firefox 3.
+ */
+
+audio,
+canvas,
+video {
+    display: inline-block;
+    *display: inline;
+    *zoom: 1;
+}
+
+/**
+ * Prevent modern browsers from displaying `audio` without controls.
+ * Remove excess height in iOS 5 devices.
+ */
+
+audio:not([controls]) {
+    display: none;
+    height: 0;
+}
+
+/**
+ * Address styling not present in IE 7/8/9, Firefox 3, and Safari 4.
+ * Known issue: no IE 6 support.
+ */
+
+[hidden] {
+    display: none;
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+
+/**
+ * 1. Prevent system color scheme's background color being used in Firefox, IE,
+ *    and Opera.
+ * 2. Prevent system color scheme's text color being used in Firefox, IE, and
+ *    Opera.
+ * 3. Correct text resizing oddly in IE 6/7 when body `font-size` is set using
+ *    `em` units.
+ * 4. Prevent iOS text size adjust after orientation change, without disabling
+ *    user zoom.
+ */
+
+html {
+    background: #fff; /* 1 */
+    color: #000; /* 2 */
+    font-size: 100%; /* 3 */
+    -webkit-text-size-adjust: 100%; /* 4 */
+    -ms-text-size-adjust: 100%; /* 4 */
+}
+
+/**
+ * Address `font-family` inconsistency between `textarea` and other form
+ * elements.
+ */
+
+html,
+button,
+input,
+select,
+textarea {
+    font-family: sans-serif;
+}
+
+/**
+ * Address margins handled incorrectly in IE 6/7.
+ */
+
+body {
+    margin: 0;
+}
+
+/* ==========================================================================
+   Links
+   ========================================================================== */
+
+/**
+ * Address `outline` inconsistency between Chrome and other browsers.
+ */
+
+a:focus {
+    outline: thin dotted;
+}
+
+/**
+ * Improve readability when focused and also mouse hovered in all browsers.
+ */
+
+a:active,
+a:hover {
+    outline: 0;
+}
+
+/* ==========================================================================
+   Typography
+   ========================================================================== */
+
+/**
+ * Address font sizes and margins set differently in IE 6/7.
+ * Address font sizes within `section` and `article` in Firefox 4+, Safari 5,
+ * and Chrome.
+ */
+
+h1 {
+    font-size: 2em;
+    margin: 0.67em 0;
+}
+
+h2 {
+    font-size: 1.5em;
+    margin: 0.83em 0;
+}
+
+h3 {
+    font-size: 1.17em;
+    margin: 1em 0;
+}
+
+h4 {
+    font-size: 1em;
+    margin: 1.33em 0;
+}
+
+h5 {
+    font-size: 0.83em;
+    margin: 1.67em 0;
+}
+
+h6 {
+    font-size: 0.67em;
+    margin: 2.33em 0;
+}
+
+/**
+ * Address styling not present in IE 7/8/9, Safari 5, and Chrome.
+ */
+
+abbr[title] {
+    border-bottom: 1px dotted;
+}
+
+/**
+ * Address style set to `bolder` in Firefox 3+, Safari 4/5, and Chrome.
+ */
+
+b,
+strong {
+    font-weight: bold;
+}
+
+blockquote {
+    margin: 1em 40px;
+}
+
+/**
+ * Address styling not present in Safari 5 and Chrome.
+ */
+
+dfn {
+    font-style: italic;
+}
+
+/**
+ * Address differences between Firefox and other browsers.
+ * Known issue: no IE 6/7 normalization.
+ */
+
+hr {
+    -moz-box-sizing: content-box;
+    box-sizing: content-box;
+    height: 0;
+}
+
+/**
+ * Address styling not present in IE 6/7/8/9.
+ */
+
+mark {
+    background: #ff0;
+    color: #000;
+}
+
+/**
+ * Address margins set differently in IE 6/7.
+ */
+
+p,
+pre {
+    margin: 1em 0;
+}
+
+/**
+ * Correct font family set oddly in IE 6, Safari 4/5, and Chrome.
+ */
+
+code,
+kbd,
+pre,
+samp {
+    font-family: monospace, serif;
+    _font-family: 'courier new', monospace;
+    font-size: 1em;
+}
+
+/**
+ * Improve readability of pre-formatted text in all browsers.
+ */
+
+pre {
+    white-space: pre;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+/**
+ * Address CSS quotes not supported in IE 6/7.
+ */
+
+q {
+    quotes: none;
+}
+
+/**
+ * Address `quotes` property not supported in Safari 4.
+ */
+
+q:before,
+q:after {
+    content: '';
+    content: none;
+}
+
+/**
+ * Address inconsistent and variable font size in all browsers.
+ */
+
+small {
+    font-size: 80%;
+}
+
+/**
+ * Prevent `sub` and `sup` affecting `line-height` in all browsers.
+ */
+
+sub,
+sup {
+    font-size: 75%;
+    line-height: 0;
+    position: relative;
+    vertical-align: baseline;
+}
+
+sup {
+    top: -0.5em;
+}
+
+sub {
+    bottom: -0.25em;
+}
+
+/* ==========================================================================
+   Lists
+   ========================================================================== */
+
+/**
+ * Address margins set differently in IE 6/7.
+ */
+
+dl,
+menu,
+ol,
+ul {
+    margin: 1em 0;
+}
+
+dd {
+    margin: 0 0 0 40px;
+}
+
+/**
+ * Address paddings set differently in IE 6/7.
+ */
+
+menu,
+ol,
+ul {
+    padding: 0 0 0 40px;
+}
+
+/**
+ * Correct list images handled incorrectly in IE 7.
+ */
+
+nav ul,
+nav ol {
+    list-style: none;
+    list-style-image: none;
+}
+
+/* ==========================================================================
+   Embedded content
+   ========================================================================== */
+
+/**
+ * 1. Remove border when inside `a` element in IE 6/7/8/9 and Firefox 3.
+ * 2. Improve image quality when scaled in IE 7.
+ */
+
+img {
+    border: 0; /* 1 */
+    -ms-interpolation-mode: bicubic; /* 2 */
+}
+
+/**
+ * Correct overflow displayed oddly in IE 9.
+ */
+
+svg:not(:root) {
+    overflow: hidden;
+}
+
+/* ==========================================================================
+   Figures
+   ========================================================================== */
+
+/**
+ * Address margin not present in IE 6/7/8/9, Safari 5, and Opera 11.
+ */
+
+figure {
+    margin: 0;
+}
+
+/* ==========================================================================
+   Forms
+   ========================================================================== */
+
+/**
+ * Correct margin displayed oddly in IE 6/7.
+ */
+
+form {
+    margin: 0;
+}
+
+/**
+ * Define consistent border, margin, and padding.
+ */
+
+fieldset {
+    border: 1px solid #c0c0c0;
+    margin: 0 2px;
+    padding: 0.35em 0.625em 0.75em;
+}
+
+/**
+ * 1. Correct color not being inherited in IE 6/7/8/9.
+ * 2. Correct text not wrapping in Firefox 3.
+ * 3. Correct alignment displayed oddly in IE 6/7.
+ */
+
+legend {
+    border: 0; /* 1 */
+    padding: 0;
+    white-space: normal; /* 2 */
+    *margin-left: -7px; /* 3 */
+}
+
+/**
+ * 1. Correct font size not being inherited in all browsers.
+ * 2. Address margins set differently in IE 6/7, Firefox 3+, Safari 5,
+ *    and Chrome.
+ * 3. Improve appearance and consistency in all browsers.
+ */
+
+button,
+input,
+select,
+textarea {
+    font-size: 100%; /* 1 */
+    margin: 0; /* 2 */
+    vertical-align: baseline; /* 3 */
+    *vertical-align: middle; /* 3 */
+}
+
+/**
+ * Address Firefox 3+ setting `line-height` on `input` using `!important` in
+ * the UA stylesheet.
+ */
+
+button,
+input {
+    line-height: normal;
+}
+
+/**
+ * Address inconsistent `text-transform` inheritance for `button` and `select`.
+ * All other form control elements do not inherit `text-transform` values.
+ * Correct `button` style inheritance in Chrome, Safari 5+, and IE 6+.
+ * Correct `select` style inheritance in Firefox 4+ and Opera.
+ */
+
+button,
+select {
+    text-transform: none;
+}
+
+/**
+ * 1. Avoid the WebKit bug in Android 4.0.* where (2) destroys native `audio`
+ *    and `video` controls.
+ * 2. Correct inability to style clickable `input` types in iOS.
+ * 3. Improve usability and consistency of cursor style between image-type
+ *    `input` and others.
+ * 4. Remove inner spacing in IE 7 without affecting normal text inputs.
+ *    Known issue: inner spacing remains in IE 6.
+ */
+
+button,
+html input[type="button"], /* 1 */
+input[type="reset"],
+input[type="submit"] {
+    -webkit-appearance: button; /* 2 */
+    cursor: pointer; /* 3 */
+    *overflow: visible;  /* 4 */
+}
+
+/**
+ * Re-set default cursor for disabled elements.
+ */
+
+button[disabled],
+html input[disabled] {
+    cursor: default;
+}
+
+/**
+ * 1. Address box sizing set to content-box in IE 8/9.
+ * 2. Remove excess padding in IE 8/9.
+ * 3. Remove excess padding in IE 7.
+ *    Known issue: excess padding remains in IE 6.
+ */
+
+input[type="checkbox"],
+input[type="radio"] {
+    box-sizing: border-box; /* 1 */
+    padding: 0; /* 2 */
+    *height: 13px; /* 3 */
+    *width: 13px; /* 3 */
+}
+
+/**
+ * 1. Address `appearance` set to `searchfield` in Safari 5 and Chrome.
+ * 2. Address `box-sizing` set to `border-box` in Safari 5 and Chrome
+ *    (include `-moz` to future-proof).
+ */
+
+input[type="search"] {
+    -webkit-appearance: textfield; /* 1 */
+    -moz-box-sizing: content-box;
+    -webkit-box-sizing: content-box; /* 2 */
+    box-sizing: content-box;
+}
+
+/**
+ * Remove inner padding and search cancel button in Safari 5 and Chrome
+ * on OS X.
+ */
+
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-decoration {
+    -webkit-appearance: none;
+}
+
+/**
+ * Remove inner padding and border in Firefox 3+.
+ */
+
+button::-moz-focus-inner,
+input::-moz-focus-inner {
+    border: 0;
+    padding: 0;
+}
+
+/**
+ * 1. Remove default vertical scrollbar in IE 6/7/8/9.
+ * 2. Improve readability and alignment in all browsers.
+ */
+
+textarea {
+    overflow: auto; /* 1 */
+    vertical-align: top; /* 2 */
+}
+
+/* ==========================================================================
+   Tables
+   ========================================================================== */
+
+/**
+ * Remove most spacing between table cells.
+ */
+
+table {
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+
+  </style>
+
+  <style type="text/css">
+  
+  html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+  }
+  body {
+    background: #fff;
+    font-family: "Source Sans Pro", "Helvetica Neueue", Helvetica, sans;
+    font-weight: 300;
+    font-size: 16px;
+    line-height: 1.6em;
+  }
+  #content {
+    width: 70%;
+    max-width: 850px;
+    float: left;
+    padding: 30px 60px;
+    border-left: 1px solid #ddd;
+  }
+  #sidebar {
+    width: 25%;
+    float: left;
+    padding: 30px;
+    overflow: hidden;
+  }
+  #nav {
+    font-size: 130%;
+    margin: 0 0 15px 0;
+  }
+
+  #top {
+    display: block;
+    position: fixed;
+    bottom: 5px;
+    left: 5px;
+    font-size: .85em;
+    text-transform: uppercase;
+  }
+
+  #footer {
+    font-size: .75em;
+    padding: 5px 30px;
+    border-top: 1px solid #ddd;
+    text-align: right;
+  }
+    #footer p {
+      margin: 0 0 0 30px;
+      display: inline-block;
+    }
+
+  h1, h2, h3, h4, h5 {
+    font-weight: 300;
+  }
+  h1 {
+    font-size: 2.5em;
+    line-height: 1.1em;
+    margin: 0 0 .50em 0;
+  }
+
+  h2 {
+    font-size: 1.75em;
+    margin: 1em 0 .50em 0;
+  }
+
+  h3 {
+    margin: 25px 0 10px 0;
+  }
+
+  h4 {
+    margin: 0;
+    font-size: 105%;
+  }
+
+  a {
+    color: #058;
+    text-decoration: none;
+    transition: color .3s ease-in-out;
+  }
+
+  a:hover {
+    color: #e08524;
+    transition: color .3s ease-in-out;
+  }
+
+  pre, code, .mono, .name {
+    font-family: "Ubuntu Mono", "Cousine", "DejaVu Sans Mono", monospace;
+  }
+
+  .title .name {
+    font-weight: bold;
+  }
+  .section-title {
+    margin-top: 2em;
+  }
+  .ident {
+    color: #900;
+  }
+
+  code {
+    background: #f9f9f9;
+  } 
+
+  pre {
+    background: #fefefe;
+    border: 1px solid #ddd;
+    box-shadow: 2px 2px 0 #f3f3f3;
+    margin: 0 30px;
+    padding: 15px 30px;
+  }
+
+  .codehilite {
+    margin: 0 30px 10px 30px;
+  }
+
+    .codehilite pre {
+      margin: 0;
+    }
+    .codehilite .err { background: #ff3300; color: #fff !important; } 
+
+  table#module-list {
+    font-size: 110%;
+  }
+
+    table#module-list tr td:first-child {
+      padding-right: 10px;
+      white-space: nowrap;
+    }
+
+    table#module-list td {
+      vertical-align: top;
+      padding-bottom: 8px;
+    }
+
+      table#module-list td p {
+        margin: 0 0 7px 0;
+      }
+
+  .def {
+    display: table;
+  }
+
+    .def p {
+      display: table-cell;
+      vertical-align: top;
+      text-align: left;
+    }
+
+    .def p:first-child {
+      white-space: nowrap;
+    }
+
+    .def p:last-child {
+      width: 100%;
+    }
+
+
+  #index {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+  }
+    ul#index .class_name {
+      /* font-size: 110%; */
+      font-weight: bold;
+    }
+    #index ul {
+      margin: 0;
+    }
+
+  .item {
+    margin: 0 0 15px 0;
+  }
+
+    .item .class {
+      margin: 0 0 25px 30px;
+    }
+
+      .item .class ul.class_list {
+        margin: 0 0 20px 0;
+      }
+
+    .item .name {
+      background: #fafafa;
+      margin: 0;
+      font-weight: bold;
+      padding: 5px 10px;
+      border-radius: 3px;
+      display: inline-block;
+      min-width: 40%;
+    }
+      .item .name:hover {
+        background: #f6f6f6;
+      }
+
+    .item .empty_desc {
+      margin: 0 0 5px 0;
+      padding: 0;
+    }
+
+    .item .inheritance {
+      margin: 3px 0 0 30px;
+    }
+
+    .item .inherited {
+      color: #666;
+    }
+
+    .item .desc {
+      padding: 0 8px;
+      margin: 0;
+    }
+
+      .item .desc p {
+        margin: 0 0 10px 0;
+      }
+
+    .source_cont {
+      margin: 0;
+      padding: 0;
+    }
+
+    .source_link a {
+      background: #ffc300;
+      font-weight: 400;
+      font-size: .75em;
+      text-transform: uppercase;
+      color: #fff;
+      text-shadow: 1px 1px 0 #f4b700;
+      
+      padding: 3px 8px;
+      border-radius: 2px;
+      transition: background .3s ease-in-out;
+    }
+      .source_link a:hover {
+        background: #FF7200;
+        text-shadow: none;
+        transition: background .3s ease-in-out;
+      }
+
+    .source {
+      display: none;
+      max-height: 600px;
+      overflow-y: scroll;
+      margin-bottom: 15px;
+    }
+
+      .source .codehilite {
+        margin: 0;
+      }
+
+  .desc h1, .desc h2, .desc h3 {
+    font-size: 100% !important;
+  }
+  .clear {
+    clear: both;
+  }
+
+  @media all and (max-width: 950px) {
+    #sidebar {
+      width: 35%;
+    }
+    #content {
+      width: 65%;
+    }
+  }
+  @media all and (max-width: 650px) {
+    #top {
+      display: none;
+    }
+    #sidebar {
+      float: none;
+      width: auto;
+    }
+    #content {
+      float: none;
+      width: auto;
+      padding: 30px;
+    }
+
+    #index ul {
+      padding: 0;
+      margin-bottom: 15px;
+    }
+    #index ul li {
+      display: inline-block;
+      margin-right: 30px;
+    }
+    #footer {
+      text-align: left;
+    }
+    #footer p {
+      display: block;
+      margin: inherit;
+    }
+  }
+
+  /*****************************/
+
+  </style>
+
+  <style type="text/css">
+  .codehilite .hll { background-color: #ffffcc }
+.codehilite  { background: #f8f8f8; }
+.codehilite .c { color: #408080; font-style: italic } /* Comment */
+.codehilite .err { border: 1px solid #FF0000 } /* Error */
+.codehilite .k { color: #008000; font-weight: bold } /* Keyword */
+.codehilite .o { color: #666666 } /* Operator */
+.codehilite .ch { color: #408080; font-style: italic } /* Comment.Hashbang */
+.codehilite .cm { color: #408080; font-style: italic } /* Comment.Multiline */
+.codehilite .cp { color: #BC7A00 } /* Comment.Preproc */
+.codehilite .cpf { color: #408080; font-style: italic } /* Comment.PreprocFile */
+.codehilite .c1 { color: #408080; font-style: italic } /* Comment.Single */
+.codehilite .cs { color: #408080; font-style: italic } /* Comment.Special */
+.codehilite .gd { color: #A00000 } /* Generic.Deleted */
+.codehilite .ge { font-style: italic } /* Generic.Emph */
+.codehilite .gr { color: #FF0000 } /* Generic.Error */
+.codehilite .gh { color: #000080; font-weight: bold } /* Generic.Heading */
+.codehilite .gi { color: #00A000 } /* Generic.Inserted */
+.codehilite .go { color: #888888 } /* Generic.Output */
+.codehilite .gp { color: #000080; font-weight: bold } /* Generic.Prompt */
+.codehilite .gs { font-weight: bold } /* Generic.Strong */
+.codehilite .gu { color: #800080; font-weight: bold } /* Generic.Subheading */
+.codehilite .gt { color: #0044DD } /* Generic.Traceback */
+.codehilite .kc { color: #008000; font-weight: bold } /* Keyword.Constant */
+.codehilite .kd { color: #008000; font-weight: bold } /* Keyword.Declaration */
+.codehilite .kn { color: #008000; font-weight: bold } /* Keyword.Namespace */
+.codehilite .kp { color: #008000 } /* Keyword.Pseudo */
+.codehilite .kr { color: #008000; font-weight: bold } /* Keyword.Reserved */
+.codehilite .kt { color: #B00040 } /* Keyword.Type */
+.codehilite .m { color: #666666 } /* Literal.Number */
+.codehilite .s { color: #BA2121 } /* Literal.String */
+.codehilite .na { color: #7D9029 } /* Name.Attribute */
+.codehilite .nb { color: #008000 } /* Name.Builtin */
+.codehilite .nc { color: #0000FF; font-weight: bold } /* Name.Class */
+.codehilite .no { color: #880000 } /* Name.Constant */
+.codehilite .nd { color: #AA22FF } /* Name.Decorator */
+.codehilite .ni { color: #999999; font-weight: bold } /* Name.Entity */
+.codehilite .ne { color: #D2413A; font-weight: bold } /* Name.Exception */
+.codehilite .nf { color: #0000FF } /* Name.Function */
+.codehilite .nl { color: #A0A000 } /* Name.Label */
+.codehilite .nn { color: #0000FF; font-weight: bold } /* Name.Namespace */
+.codehilite .nt { color: #008000; font-weight: bold } /* Name.Tag */
+.codehilite .nv { color: #19177C } /* Name.Variable */
+.codehilite .ow { color: #AA22FF; font-weight: bold } /* Operator.Word */
+.codehilite .w { color: #bbbbbb } /* Text.Whitespace */
+.codehilite .mb { color: #666666 } /* Literal.Number.Bin */
+.codehilite .mf { color: #666666 } /* Literal.Number.Float */
+.codehilite .mh { color: #666666 } /* Literal.Number.Hex */
+.codehilite .mi { color: #666666 } /* Literal.Number.Integer */
+.codehilite .mo { color: #666666 } /* Literal.Number.Oct */
+.codehilite .sb { color: #BA2121 } /* Literal.String.Backtick */
+.codehilite .sc { color: #BA2121 } /* Literal.String.Char */
+.codehilite .sd { color: #BA2121; font-style: italic } /* Literal.String.Doc */
+.codehilite .s2 { color: #BA2121 } /* Literal.String.Double */
+.codehilite .se { color: #BB6622; font-weight: bold } /* Literal.String.Escape */
+.codehilite .sh { color: #BA2121 } /* Literal.String.Heredoc */
+.codehilite .si { color: #BB6688; font-weight: bold } /* Literal.String.Interpol */
+.codehilite .sx { color: #008000 } /* Literal.String.Other */
+.codehilite .sr { color: #BB6688 } /* Literal.String.Regex */
+.codehilite .s1 { color: #BA2121 } /* Literal.String.Single */
+.codehilite .ss { color: #19177C } /* Literal.String.Symbol */
+.codehilite .bp { color: #008000 } /* Name.Builtin.Pseudo */
+.codehilite .vc { color: #19177C } /* Name.Variable.Class */
+.codehilite .vg { color: #19177C } /* Name.Variable.Global */
+.codehilite .vi { color: #19177C } /* Name.Variable.Instance */
+.codehilite .il { color: #666666 } /* Literal.Number.Integer.Long */
+  </style>
+
+  <style type="text/css">
+  
+/* ==========================================================================
+   EXAMPLE Media Queries for Responsive Design.
+   These examples override the primary ('mobile first') styles.
+   Modify as content requires.
+   ========================================================================== */
+
+@media only screen and (min-width: 35em) {
+    /* Style adjustments for viewports that meet the condition */
+}
+
+@media print,
+       (-o-min-device-pixel-ratio: 5/4),
+       (-webkit-min-device-pixel-ratio: 1.25),
+       (min-resolution: 120dpi) {
+    /* Style adjustments for high resolution devices */
+}
+
+/* ==========================================================================
+   Print styles.
+   Inlined to avoid required HTTP connection: h5bp.com/r
+   ========================================================================== */
+
+@media print {
+    * {
+        background: transparent !important;
+        color: #000 !important; /* Black prints faster: h5bp.com/s */
+        box-shadow: none !important;
+        text-shadow: none !important;
+    }
+
+    a,
+    a:visited {
+        text-decoration: underline;
+    }
+
+    a[href]:after {
+        content: " (" attr(href) ")";
+    }
+
+    abbr[title]:after {
+        content: " (" attr(title) ")";
+    }
+
+    /*
+     * Don't show links for images, or javascript/internal links
+     */
+
+    .ir a:after,
+    a[href^="javascript:"]:after,
+    a[href^="#"]:after {
+        content: "";
+    }
+
+    pre,
+    blockquote {
+        border: 1px solid #999;
+        page-break-inside: avoid;
+    }
+
+    thead {
+        display: table-header-group; /* h5bp.com/t */
+    }
+
+    tr,
+    img {
+        page-break-inside: avoid;
+    }
+
+    img {
+        max-width: 100% !important;
+    }
+
+    @page {
+        margin: 0.5cm;
+    }
+
+    p,
+    h2,
+    h3 {
+        orphans: 3;
+        widows: 3;
+    }
+
+    h2,
+    h3 {
+        page-break-after: avoid;
+    }
+}
+
+  </style>
+
+  <script type="text/javascript">
+  function toggle(id, $link) {
+    $node = document.getElementById(id);
+    if (!$node)
+    return;
+    if (!$node.style.display || $node.style.display == 'none') {
+    $node.style.display = 'block';
+    $link.innerHTML = 'Hide source &nequiv;';
+    } else {
+    $node.style.display = 'none';
+    $link.innerHTML = 'Show source &equiv;';
+    }
+  }
+  </script>
+</head>
+<body>
+<a href="#" id="top">Top</a>
+
+<div id="container">
+    
+  
+  <div id="sidebar">
+    <h1>Index</h1>
+    <ul id="index">
+
+    <li class="set"><h3><a href="#header-functions">Functions</a></h3>
+      
+  <ul>
+    <li class="mono"><a href="#hytra.core.jsongraph.checkForConvexity">checkForConvexity</a></li>
+    <li class="mono"><a href="#hytra.core.jsongraph.convexify">convexify</a></li>
+    <li class="mono"><a href="#hytra.core.jsongraph.getDetectionsPerTimestep">getDetectionsPerTimestep</a></li>
+    <li class="mono"><a href="#hytra.core.jsongraph.getDivisionsPerTimestep">getDivisionsPerTimestep</a></li>
+    <li class="mono"><a href="#hytra.core.jsongraph.getLinksPerTimestep">getLinksPerTimestep</a></li>
+    <li class="mono"><a href="#hytra.core.jsongraph.getLogger">getLogger</a></li>
+    <li class="mono"><a href="#hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels">getMappingsBetweenUUIDsAndTraxels</a></li>
+    <li class="mono"><a href="#hytra.core.jsongraph.getMergerLinks">getMergerLinks</a></li>
+    <li class="mono"><a href="#hytra.core.jsongraph.getMergersDetectionsLinksDivisions">getMergersDetectionsLinksDivisions</a></li>
+    <li class="mono"><a href="#hytra.core.jsongraph.getMergersPerTimestep">getMergersPerTimestep</a></li>
+    <li class="mono"><a href="#hytra.core.jsongraph.listify">listify</a></li>
+    <li class="mono"><a href="#hytra.core.jsongraph.negLog">negLog</a></li>
+    <li class="mono"><a href="#hytra.core.jsongraph.readFromJSON">readFromJSON</a></li>
+    <li class="mono"><a href="#hytra.core.jsongraph.writeToFormattedJSON">writeToFormattedJSON</a></li>
+  </ul>
+
+    </li>
+
+    <li class="set"><h3><a href="#header-classes">Classes</a></h3>
+      <ul>
+        <li class="mono">
+        <span class="class_name"><a href="#hytra.core.jsongraph.JsonTrackingGraph">JsonTrackingGraph</a></span>
+        
+          
+  <ul>
+    <li class="mono"><a href="#hytra.core.jsongraph.JsonTrackingGraph.__init__">__init__</a></li>
+    <li class="mono"><a href="#hytra.core.jsongraph.JsonTrackingGraph.addDetectionHypotheses">addDetectionHypotheses</a></li>
+    <li class="mono"><a href="#hytra.core.jsongraph.JsonTrackingGraph.addDetectionHypothesesFromTracklet">addDetectionHypothesesFromTracklet</a></li>
+    <li class="mono"><a href="#hytra.core.jsongraph.JsonTrackingGraph.addLinkingHypotheses">addLinkingHypotheses</a></li>
+    <li class="mono"><a href="#hytra.core.jsongraph.JsonTrackingGraph.convexifyCosts">convexifyCosts</a></li>
+    <li class="mono"><a href="#hytra.core.jsongraph.JsonTrackingGraph.getNumDetections">getNumDetections</a></li>
+    <li class="mono"><a href="#hytra.core.jsongraph.JsonTrackingGraph.getNumLinks">getNumLinks</a></li>
+  </ul>
+
+        </li>
+      </ul>
+    </li>
+
+    </ul>
+  </div>
+
+    <article id="content">
+      
+  
+
+  
+
+
+  <header id="section-intro">
+  <h1 class="title"><span class="name">hytra.core.jsongraph</span> module</h1>
+  <p>Utilities that help with loading / saving as well as constructing and parsing
+hypotheses graphs stored in our json (or python dictionary) format.</p>
+  
+  <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-hytra.core.jsongraph', this);">Show source &equiv;</a></p>
+  <div id="source-hytra.core.jsongraph" class="source">
+    <div class="codehilite"><pre><span></span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">Utilities that help with loading / saving as well as constructing and parsing</span>
+<span class="sd">hypotheses graphs stored in our json (or python dictionary) format.</span>
+<span class="sd">&#39;&#39;&#39;</span>
+
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">commentjson</span> <span class="kn">as</span> <span class="nn">json</span>
+<span class="kn">from</span> <span class="nn">hytra.util.progressbar</span> <span class="kn">import</span> <span class="n">ProgressBar</span>
+
+<span class="c1"># ----------------------------------------------------------------------------</span>
+<span class="c1"># Utility functions</span>
+
+<span class="k">def</span> <span class="nf">getLogger</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39; logger to be used in this module &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">readFromJSON</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; Read a dictionary from JSON &#39;&#39;&#39;</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">writeToFormattedJSON</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">dictionary</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; Write a dictionary to JSON, but use proper readable formatting  &#39;&#39;&#39;</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">dictionary</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">separators</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">,</span> <span class="s1">&#39;: &#39;</span><span class="p">))</span>
+
+<span class="k">def</span> <span class="nf">getMappingsBetweenUUIDsAndTraxels</span><span class="p">(</span><span class="n">model</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    From a dictionary encoded model, load the &quot;traxelToUniqueId&quot; mapping,</span>
+<span class="sd">    create a reverse mapping, and return both.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="c1"># create reverse mapping from json uuid to (timestep,ID)</span>
+    <span class="n">traxelIdPerTimestepToUniqueIdMap</span> <span class="o">=</span> <span class="n">model</span><span class="p">[</span><span class="s1">&#39;traxelToUniqueId&#39;</span><span class="p">]</span>
+    <span class="n">timesteps</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">traxelIdPerTimestepToUniqueIdMap</span><span class="o">.</span><span class="n">keys</span><span class="p">()]</span>
+    <span class="n">uuidToTraxelMap</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">timesteps</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">traxelIdPerTimestepToUniqueIdMap</span><span class="p">[</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">uuid</span> <span class="o">=</span> <span class="n">traxelIdPerTimestepToUniqueIdMap</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="n">i</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">uuid</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">uuidToTraxelMap</span><span class="p">:</span>
+                <span class="n">uuidToTraxelMap</span><span class="p">[</span><span class="n">uuid</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">uuidToTraxelMap</span><span class="p">[</span><span class="n">uuid</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="nb">int</span><span class="p">(</span><span class="n">t</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">i</span><span class="p">)))</span>
+
+    <span class="c1"># sort the list of traxels per UUID by their timesteps</span>
+    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">uuidToTraxelMap</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+        <span class="n">v</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">timestepIdTuple</span><span class="p">:</span> <span class="n">timestepIdTuple</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">traxelIdPerTimestepToUniqueIdMap</span><span class="p">,</span> <span class="n">uuidToTraxelMap</span>
+
+<span class="k">def</span> <span class="nf">getMergersDetectionsLinksDivisions</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">uuidToTraxelMap</span><span class="p">,</span> <span class="n">withDivisions</span><span class="p">):</span>
+    <span class="c1"># load results and map indices</span>
+    <span class="n">mergers</span> <span class="o">=</span> <span class="p">[</span><span class="n">timestepIdTuple</span> <span class="o">+</span> <span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">],)</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">result</span><span class="p">[</span><span class="s1">&#39;detectionResults&#39;</span><span class="p">]</span> <span class="k">if</span> <span class="n">entry</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">timestepIdTuple</span> <span class="ow">in</span> <span class="n">uuidToTraxelMap</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">])]]</span>
+    <span class="n">detections</span> <span class="o">=</span> <span class="p">[</span><span class="n">timestepIdTuple</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">result</span><span class="p">[</span><span class="s1">&#39;detectionResults&#39;</span><span class="p">]</span> <span class="k">if</span> <span class="n">entry</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">timestepIdTuple</span> <span class="ow">in</span> <span class="n">uuidToTraxelMap</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">])]]</span>
+    <span class="k">if</span> <span class="n">withDivisions</span><span class="p">:</span>
+        <span class="n">divisions</span> <span class="o">=</span> <span class="p">[</span><span class="n">uuidToTraxelMap</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">])][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">result</span><span class="p">[</span><span class="s1">&#39;divisionResults&#39;</span><span class="p">]</span> <span class="k">if</span> <span class="n">entry</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="bp">True</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">divisions</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">links</span> <span class="o">=</span> <span class="p">[(</span><span class="n">uuidToTraxelMap</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;src&#39;</span><span class="p">])][</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">uuidToTraxelMap</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;dest&#39;</span><span class="p">])][</span><span class="mi">0</span><span class="p">])</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">result</span><span class="p">[</span><span class="s1">&#39;linkingResults&#39;</span><span class="p">]</span> <span class="k">if</span> <span class="n">entry</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
+
+    <span class="c1"># add all internal links of tracklets</span>
+    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">uuidToTraxelMap</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+        <span class="n">prev</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">for</span> <span class="n">timestepIdTuple</span> <span class="ow">in</span> <span class="n">v</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">prev</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">links</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">prev</span><span class="p">,</span> <span class="n">timestepIdTuple</span><span class="p">))</span>
+            <span class="n">prev</span> <span class="o">=</span> <span class="n">timestepIdTuple</span>
+
+    <span class="k">return</span> <span class="n">mergers</span><span class="p">,</span> <span class="n">detections</span><span class="p">,</span> <span class="n">links</span><span class="p">,</span> <span class="n">divisions</span>
+
+<span class="k">def</span> <span class="nf">getMergersPerTimestep</span><span class="p">(</span><span class="n">mergers</span><span class="p">,</span> <span class="n">timesteps</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; returns mergersPerTimestep = { &quot;&lt;timestep&gt;&quot;: {&lt;idx&gt;: &lt;count&gt;, &lt;idx&gt;: &lt;count&gt;, ...}, &quot;&lt;timestep&gt;&quot;: {...}, ... } &#39;&#39;&#39;</span>
+    <span class="n">mergersPerTimestep</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">([(</span><span class="n">t</span><span class="p">,</span> <span class="nb">dict</span><span class="p">([(</span><span class="n">idx</span><span class="p">,</span> <span class="n">count</span><span class="p">)</span> <span class="k">for</span> <span class="n">timestep</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">count</span> <span class="ow">in</span> <span class="n">mergers</span> <span class="k">if</span> <span class="n">timestep</span> <span class="o">==</span> <span class="nb">int</span><span class="p">(</span><span class="n">t</span><span class="p">)]))</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">timesteps</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">mergersPerTimestep</span>
+
+<span class="k">def</span> <span class="nf">getDetectionsPerTimestep</span><span class="p">(</span><span class="n">detections</span><span class="p">,</span> <span class="n">timesteps</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; returns detectionsPerTimestep = { &quot;&lt;timestep&gt;&quot;: [&lt;idx&gt;, &lt;idx&gt;, ...], &quot;&lt;timestep&gt;&quot;: [...], ...} &#39;&#39;&#39;</span>
+    <span class="n">detectionsPerTimestep</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">([(</span><span class="n">t</span><span class="p">,</span> <span class="p">[</span><span class="n">idx</span> <span class="k">for</span> <span class="n">timestep</span><span class="p">,</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">detections</span> <span class="k">if</span> <span class="n">timestep</span> <span class="o">==</span> <span class="nb">int</span><span class="p">(</span><span class="n">t</span><span class="p">)])</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">timesteps</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">detectionsPerTimestep</span>
+    
+<span class="k">def</span> <span class="nf">getLinksPerTimestep</span><span class="p">(</span><span class="n">links</span><span class="p">,</span> <span class="n">timesteps</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; returns linksPerTimestep = { &quot;&lt;timestep&gt;&quot;: [(&lt;idxA&gt; (at previous timestep), &lt;idxB&gt; (at timestep)), (&lt;idxA&gt;, &lt;idxB&gt;), ...], ...} &#39;&#39;&#39;</span>
+    <span class="n">linksPerTimestep</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">([(</span><span class="n">t</span><span class="p">,</span> <span class="p">[(</span><span class="n">a</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">b</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">links</span> <span class="k">if</span> <span class="n">b</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="nb">int</span><span class="p">(</span><span class="n">t</span><span class="p">)])</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">timesteps</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">linksPerTimestep</span>
+
+<span class="k">def</span> <span class="nf">getMergerLinks</span><span class="p">(</span><span class="n">linksPerTimestep</span><span class="p">,</span> <span class="n">mergersPerTimestep</span><span class="p">,</span> <span class="n">timesteps</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; returns merger links as triplets [(&quot;timestep&quot;, (sourceIdAtTMinus1, destIdAtT)), (), ...]&quot;&quot;&quot;</span>
+    <span class="c1"># filter links: at least one of the two incident nodes must be a merger </span>
+    <span class="c1"># for it to be added to the merger resolving graph</span>
+    <span class="n">mergerLinks</span> <span class="o">=</span> <span class="p">[(</span><span class="n">t</span><span class="p">,(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">))</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">timesteps</span> <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">linksPerTimestep</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="k">if</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">mergersPerTimestep</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">t</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)]</span> <span class="ow">or</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">mergersPerTimestep</span><span class="p">[</span><span class="n">t</span><span class="p">]]</span>
+    <span class="k">return</span> <span class="n">mergerLinks</span>
+
+<span class="k">def</span> <span class="nf">getDivisionsPerTimestep</span><span class="p">(</span><span class="n">divisions</span><span class="p">,</span> <span class="n">linksPerTimestep</span><span class="p">,</span> <span class="n">timesteps</span><span class="p">,</span> <span class="n">withDivisions</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; returns divisionsPerTimestep = { &quot;&lt;timestep&gt;&quot;: {&lt;parentIdx&gt;: [&lt;childIdx&gt;, &lt;childIdx&gt;], ...}, &quot;&lt;timestep&gt;&quot;: {...}, ... } &#39;&#39;&#39;</span>
+    <span class="k">if</span> <span class="n">withDivisions</span><span class="p">:</span>
+        <span class="c1"># find children of divisions by looking for the active links</span>
+        <span class="n">divisionsPerTimestep</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">timesteps</span><span class="p">:</span>
+            <span class="n">divisionsPerTimestep</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">div_timestep</span><span class="p">,</span> <span class="n">div_idx</span> <span class="ow">in</span> <span class="n">divisions</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">div_timestep</span> <span class="o">==</span> <span class="nb">int</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="c1"># we have an active division of the mother cell &quot;div_idx&quot; in the previous frame</span>
+                    <span class="n">children</span> <span class="o">=</span> <span class="p">[</span><span class="n">b</span> <span class="k">for</span> <span class="n">a</span><span class="p">,</span><span class="n">b</span> <span class="ow">in</span> <span class="n">linksPerTimestep</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="k">if</span> <span class="n">a</span> <span class="o">==</span> <span class="n">div_idx</span><span class="p">]</span>
+                    <span class="k">assert</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">children</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">)</span>
+                    <span class="n">divisionsPerTimestep</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="n">div_idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">children</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">divisionsPerTimestep</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">([(</span><span class="n">t</span><span class="p">,{})</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">timesteps</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">divisionsPerTimestep</span>
+
+<span class="k">def</span> <span class="nf">negLog</span><span class="p">(</span><span class="n">features</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; compute the (clamped) negative log of every entry in the list/array &#39;&#39;&#39;</span>
+    <span class="n">fa</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
+    <span class="n">fa</span><span class="p">[</span><span class="n">fa</span> <span class="o">&lt;</span> <span class="mf">0.0000000001</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0000000001</span>
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">fa</span><span class="p">)</span> <span class="o">*</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">listify</span><span class="p">(</span><span class="n">l</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; put every element of the list in it&#39;s own list, and thus extends the depth of nested lists by one &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="p">[[</span><span class="n">e</span><span class="p">]</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">l</span><span class="p">]</span>
+
+<span class="k">def</span> <span class="nf">checkForConvexity</span><span class="p">(</span><span class="n">feats</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; check whether the given array of numbers is convex, meaning that the difference between consecutive numbers never decreases &#39;&#39;&#39;</span>
+    <span class="n">grad</span> <span class="o">=</span> <span class="n">feats</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="n">feats</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">grad</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="k">assert</span><span class="p">(</span><span class="n">grad</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">grad</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+<span class="k">def</span> <span class="nf">convexify</span><span class="p">(</span><span class="n">listOfNumbers</span><span class="p">,</span> <span class="n">eps</span><span class="p">):</span>
+    <span class="n">features</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">listOfNumbers</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">features</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;This script can only convexify feature vectors with one feature per state!&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Note from Numpy Docs: In case of multiple occurrences of the minimum values, the indices corresponding to the first occurrence are returned.</span>
+    <span class="n">bestState</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">direction</span> <span class="ow">in</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]:</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="n">bestState</span> <span class="o">+</span> <span class="n">direction</span>
+        <span class="n">previousGradient</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">while</span> <span class="n">pos</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">pos</span> <span class="o">&lt;</span> <span class="n">features</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="n">newGradient</span> <span class="o">=</span> <span class="n">features</span><span class="p">[</span><span class="n">pos</span><span class="p">]</span> <span class="o">-</span> <span class="n">features</span><span class="p">[</span><span class="n">pos</span><span class="o">-</span><span class="n">direction</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">newGradient</span> <span class="o">-</span> <span class="n">previousGradient</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">eps</span><span class="p">:</span>
+                <span class="c1"># cost function&#39;s derivative is roughly constant, add epsilon</span>
+                <span class="n">previousGradient</span> <span class="o">+=</span> <span class="n">eps</span>
+                <span class="n">features</span><span class="p">[</span><span class="n">pos</span><span class="p">]</span> <span class="o">=</span> <span class="n">features</span><span class="p">[</span><span class="n">pos</span><span class="o">-</span><span class="n">direction</span><span class="p">]</span> <span class="o">+</span> <span class="n">previousGradient</span>
+            <span class="k">elif</span> <span class="n">newGradient</span> <span class="o">&lt;</span> <span class="n">previousGradient</span><span class="p">:</span>
+                <span class="c1"># cost function got too flat, set feature value to match old slope</span>
+                <span class="n">previousGradient</span> <span class="o">+=</span> <span class="n">eps</span>
+                <span class="n">features</span><span class="p">[</span><span class="n">pos</span><span class="p">]</span> <span class="o">=</span> <span class="n">features</span><span class="p">[</span><span class="n">pos</span><span class="o">-</span><span class="n">direction</span><span class="p">]</span> <span class="o">+</span> <span class="n">previousGradient</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># all good, continue with new slope</span>
+                <span class="n">previousGradient</span> <span class="o">=</span> <span class="n">newGradient</span>
+
+            <span class="n">pos</span> <span class="o">+=</span> <span class="n">direction</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">checkForConvexity</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">getLogger</span><span class="p">()</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Failed convexifying {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">features</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">listify</span><span class="p">(</span><span class="n">features</span><span class="o">.</span><span class="n">flatten</span><span class="p">())</span>
+
+<span class="c1"># ----------------------------------------------------------------------------</span>
+<span class="c1"># helper class for graph-dictionaries</span>
+
+<span class="k">class</span> <span class="nc">JsonTrackingGraph</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convenience class to handle a hypotheses graph stored as dictionary,</span>
+<span class="sd">    which is transparently saved/loaded to JSON files.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_filename</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">weights_filename</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">result_filename</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="c1"># default values</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">traxelIdPerTimestepToUniqueIdMap</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;segmentationHypotheses&#39;</span><span class="p">:[],</span>
+            <span class="s1">&#39;linkingHypotheses&#39;</span><span class="p">:[],</span>
+            <span class="s1">&#39;exclusions&#39;</span><span class="p">:[],</span>
+            <span class="s1">&#39;divisionHypotheses&#39;</span><span class="p">:[],</span>
+            <span class="s1">&#39;traxelToUniqueId&#39;</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">traxelIdPerTimestepToUniqueIdMap</span><span class="p">,</span>
+            <span class="s1">&#39;settings&#39;</span><span class="p">:{</span><span class="s1">&#39;statesShareWeights&#39;</span><span class="p">:</span><span class="bp">True</span><span class="p">,</span>
+                        <span class="s1">&#39;allowPartialMergerAppearance&#39;</span><span class="p">:</span><span class="bp">False</span><span class="p">,</span>
+                        <span class="s1">&#39;requireSeparateChildrenOfDivision&#39;</span><span class="p">:</span><span class="bp">True</span><span class="p">,</span>
+                        <span class="s1">&#39;optimizerEpGap&#39;</span><span class="p">:</span><span class="mf">0.01</span><span class="p">,</span>
+                        <span class="s1">&#39;optimizerVerbose&#39;</span><span class="p">:</span><span class="bp">True</span><span class="p">,</span>
+                        <span class="s1">&#39;optimizerNumThreads&#39;</span><span class="p">:</span><span class="mi">1</span>
+                       <span class="p">}</span>
+            <span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">result</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">uuidToTraxelMap</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># load from file if specified</span>
+        <span class="k">if</span> <span class="n">model_filename</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">getLogger</span><span class="p">()</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Loading model file: &quot;</span> <span class="o">+</span> <span class="n">model_filename</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">readFromJSON</span><span class="p">(</span><span class="n">model_filename</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">traxelIdPerTimestepToUniqueIdMap</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">uuidToTraxelMap</span> <span class="o">=</span> \
+                <span class="n">getMappingsBetweenUUIDsAndTraxels</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">weights_filename</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">getLogger</span><span class="p">()</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Loading weights file: &quot;</span> <span class="o">+</span> <span class="n">weights_filename</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="n">readFromJSON</span><span class="p">(</span><span class="n">weights_filename</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">result_filename</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">getLogger</span><span class="p">()</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Loading result file: &quot;</span> <span class="o">+</span> <span class="n">result_filename</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">result</span> <span class="o">=</span> <span class="n">readFromJSON</span><span class="p">(</span><span class="n">result_filename</span><span class="p">)</span>
+
+        <span class="c1"># private initializations</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_nextUuid</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">addDetectionHypothesesFromTracklet</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                                           <span class="n">listOfTraxels</span><span class="p">,</span>
+                                           <span class="n">detectionFeatures</span><span class="p">,</span>
+                                           <span class="n">divisionFeatures</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                                           <span class="n">appearanceFeatures</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                                           <span class="n">disappearanceFeatures</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                                           <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Create a detection based on a `listOfTraxels` (because we can have tracklets). </span>
+<span class="sd">        Generates a new unique ID that represents this detection in the graph as one node and sets up the respective mappings</span>
+<span class="sd">        in `JsonTrackingGraph.traxelIdPerTimestepToUniqueIdMap` and `JsonTrackingGraph.uuidToTraxelMap`.</span>
+
+<span class="sd">        All further arguments in `**kwargs` are added to the detection dict in `segmentationHypotheses`.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">assert</span><span class="p">(</span><span class="n">listOfTraxels</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">listOfTraxels</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># store mapping of all contained traxels to this detection uuid</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">uuidToTraxelMap</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_nextUuid</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">listOfTraxels</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">traxelIdPerTimestepToUniqueIdMap</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">Timestep</span><span class="p">),</span> <span class="p">{})[</span><span class="nb">str</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">Id</span><span class="p">)]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nextUuid</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">uuidToTraxelMap</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_nextUuid</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="nb">int</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">Timestep</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">Id</span><span class="p">)))</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">addDetectionHypotheses</span><span class="p">(</span><span class="n">detectionFeatures</span><span class="p">,</span>
+                                           <span class="n">divisionFeatures</span><span class="o">=</span><span class="n">divisionFeatures</span><span class="p">,</span>
+                                           <span class="n">appearanceFeatures</span><span class="o">=</span><span class="n">appearanceFeatures</span><span class="p">,</span>
+                                           <span class="n">disappearanceFeatures</span><span class="o">=</span><span class="n">disappearanceFeatures</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">addDetectionHypotheses</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Construct a detection with the given features, assign it a new Uuid, and add it to the model&#39;s `segmentationHypotheses`.</span>
+
+<span class="sd">        All further arguments in `**kwargs` are added to the detection dict in `segmentationHypotheses`.</span>
+
+<span class="sd">        **Returns:** the unique ID of the newly created node in the graph</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">detection</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;id&#39;</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">_nextUuid</span><span class="p">,</span> <span class="s1">&#39;features&#39;</span><span class="p">:</span><span class="n">features</span><span class="p">}</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">v</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">detection</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">[</span><span class="s1">&#39;segmentationHypotheses&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">detection</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_nextUuid</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">return</span> <span class="n">detection</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">addLinkingHypotheses</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">srcUuid</span><span class="p">,</span> <span class="n">destUuid</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Add a link to the JSON encoded graph between two nodes which are identified by their unique ids</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">link</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;src&#39;</span><span class="p">:</span><span class="n">srcUuid</span><span class="p">,</span> <span class="s1">&#39;dest&#39;</span><span class="p">:</span><span class="n">destUuid</span><span class="p">,</span> <span class="s1">&#39;features&#39;</span><span class="p">:</span><span class="n">features</span><span class="p">}</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="n">link</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">[</span><span class="s1">&#39;linkingHypotheses&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">link</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">getNumDetections</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">[</span><span class="s1">&#39;segmentationHypotheses&#39;</span><span class="p">])</span>
+
+    <span class="k">def</span> <span class="nf">getNumLinks</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">[</span><span class="s1">&#39;linkingHypotheses&#39;</span><span class="p">])</span>
+
+    <span class="k">def</span> <span class="nf">convexifyCosts</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">epsilon</span><span class="o">=</span><span class="mf">0.000001</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Convexify all cost vectors in this model (in place!).</span>
+<span class="sd">        If two values are equal, the specified `epsilon` will be added to make sure the gradient</span>
+<span class="sd">        does not stay at 0.</span>
+
+<span class="sd">        Needed to run the flow solver afterwards</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">[</span><span class="s1">&#39;settings&#39;</span><span class="p">][</span><span class="s1">&#39;statesShareWeights&#39;</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;This script can only convexify feature vectors with shared weights!&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s1">&#39;segmentationHypotheses&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">:</span>
+            <span class="n">segmentationHypotheses</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">[</span><span class="s1">&#39;segmentationHypotheses&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">segmentationHypotheses</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="s1">&#39;linkingHypotheses&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">:</span>
+            <span class="n">linkingHypotheses</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">[</span><span class="s1">&#39;linkingHypotheses&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">linkingHypotheses</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="s1">&#39;divisionHypotheses&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">:</span>
+            <span class="n">divisionHypotheses</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">[</span><span class="s1">&#39;divisionHypotheses&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">divisionHypotheses</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="n">progressBar</span> <span class="o">=</span> <span class="n">ProgressBar</span><span class="p">(</span><span class="n">stop</span><span class="o">=</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">segmentationHypotheses</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">linkingHypotheses</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">divisionHypotheses</span><span class="p">)))</span>
+        <span class="k">for</span> <span class="n">seg</span> <span class="ow">in</span> <span class="n">segmentationHypotheses</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;features&#39;</span><span class="p">,</span> <span class="s1">&#39;appearanceFeatures&#39;</span><span class="p">,</span> <span class="s1">&#39;disappearanceFeatures&#39;</span><span class="p">]:</span>
+                <span class="k">if</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">seg</span><span class="p">:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">seg</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="n">convexify</span><span class="p">(</span><span class="n">seg</span><span class="p">[</span><span class="n">f</span><span class="p">],</span> <span class="n">epsilon</span><span class="p">)</span>
+                    <span class="k">except</span><span class="p">:</span>
+                        <span class="n">getLogger</span><span class="p">()</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Convexification failed for feature {} of :{}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">seg</span><span class="p">))</span>
+                        <span class="nb">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="c1"># division features are always convex (2 values defines just a line)</span>
+            <span class="n">progressBar</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">link</span> <span class="ow">in</span> <span class="n">linkingHypotheses</span><span class="p">:</span>
+            <span class="n">link</span><span class="p">[</span><span class="s1">&#39;features&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">convexify</span><span class="p">(</span><span class="n">link</span><span class="p">[</span><span class="s1">&#39;features&#39;</span><span class="p">],</span> <span class="n">epsilon</span><span class="p">)</span>
+            <span class="n">progressBar</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">division</span> <span class="ow">in</span> <span class="n">divisionHypotheses</span><span class="p">:</span>
+            <span class="n">division</span><span class="p">[</span><span class="s1">&#39;features&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">convexify</span><span class="p">(</span><span class="n">division</span><span class="p">[</span><span class="s1">&#39;features&#39;</span><span class="p">],</span> <span class="n">epsilon</span><span class="p">)</span>
+            <span class="n">progressBar</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>        
+</pre></div>
+
+  </div>
+
+  </header>
+
+  <section id="section-items">
+
+    <h2 class="section-title" id="header-functions">Functions</h2>
+      
+  <div class="item">
+    <div class="name def" id="hytra.core.jsongraph.checkForConvexity">
+    <p>def <span class="ident">checkForConvexity</span>(</p><p>feats)</p>
+    </div>
+    
+
+    
+  
+    <div class="desc"><p>check whether the given array of numbers is convex, meaning that the difference between consecutive numbers never decreases</p></div>
+  <div class="source_cont">
+  <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-hytra.core.jsongraph.checkForConvexity', this);">Show source &equiv;</a></p>
+  <div id="source-hytra.core.jsongraph.checkForConvexity" class="source">
+    <div class="codehilite"><pre><span></span><span class="k">def</span> <span class="nf">checkForConvexity</span><span class="p">(</span><span class="n">feats</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; check whether the given array of numbers is convex, meaning that the difference between consecutive numbers never decreases &#39;&#39;&#39;</span>
+    <span class="n">grad</span> <span class="o">=</span> <span class="n">feats</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="n">feats</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">grad</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="k">assert</span><span class="p">(</span><span class="n">grad</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">grad</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+</pre></div>
+
+  </div>
+</div>
+
+  </div>
+  
+      
+  <div class="item">
+    <div class="name def" id="hytra.core.jsongraph.convexify">
+    <p>def <span class="ident">convexify</span>(</p><p>listOfNumbers, eps)</p>
+    </div>
+    
+
+    
+  
+  <div class="source_cont">
+  <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-hytra.core.jsongraph.convexify', this);">Show source &equiv;</a></p>
+  <div id="source-hytra.core.jsongraph.convexify" class="source">
+    <div class="codehilite"><pre><span></span><span class="k">def</span> <span class="nf">convexify</span><span class="p">(</span><span class="n">listOfNumbers</span><span class="p">,</span> <span class="n">eps</span><span class="p">):</span>
+    <span class="n">features</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">listOfNumbers</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">features</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;This script can only convexify feature vectors with one feature per state!&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Note from Numpy Docs: In case of multiple occurrences of the minimum values, the indices corresponding to the first occurrence are returned.</span>
+    <span class="n">bestState</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">direction</span> <span class="ow">in</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]:</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="n">bestState</span> <span class="o">+</span> <span class="n">direction</span>
+        <span class="n">previousGradient</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">while</span> <span class="n">pos</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">pos</span> <span class="o">&lt;</span> <span class="n">features</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="n">newGradient</span> <span class="o">=</span> <span class="n">features</span><span class="p">[</span><span class="n">pos</span><span class="p">]</span> <span class="o">-</span> <span class="n">features</span><span class="p">[</span><span class="n">pos</span><span class="o">-</span><span class="n">direction</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">newGradient</span> <span class="o">-</span> <span class="n">previousGradient</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">eps</span><span class="p">:</span>
+                <span class="c1"># cost function&#39;s derivative is roughly constant, add epsilon</span>
+                <span class="n">previousGradient</span> <span class="o">+=</span> <span class="n">eps</span>
+                <span class="n">features</span><span class="p">[</span><span class="n">pos</span><span class="p">]</span> <span class="o">=</span> <span class="n">features</span><span class="p">[</span><span class="n">pos</span><span class="o">-</span><span class="n">direction</span><span class="p">]</span> <span class="o">+</span> <span class="n">previousGradient</span>
+            <span class="k">elif</span> <span class="n">newGradient</span> <span class="o">&lt;</span> <span class="n">previousGradient</span><span class="p">:</span>
+                <span class="c1"># cost function got too flat, set feature value to match old slope</span>
+                <span class="n">previousGradient</span> <span class="o">+=</span> <span class="n">eps</span>
+                <span class="n">features</span><span class="p">[</span><span class="n">pos</span><span class="p">]</span> <span class="o">=</span> <span class="n">features</span><span class="p">[</span><span class="n">pos</span><span class="o">-</span><span class="n">direction</span><span class="p">]</span> <span class="o">+</span> <span class="n">previousGradient</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># all good, continue with new slope</span>
+                <span class="n">previousGradient</span> <span class="o">=</span> <span class="n">newGradient</span>
+
+            <span class="n">pos</span> <span class="o">+=</span> <span class="n">direction</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">checkForConvexity</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">getLogger</span><span class="p">()</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Failed convexifying {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">features</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">listify</span><span class="p">(</span><span class="n">features</span><span class="o">.</span><span class="n">flatten</span><span class="p">())</span>
+</pre></div>
+
+  </div>
+</div>
+
+  </div>
+  
+      
+  <div class="item">
+    <div class="name def" id="hytra.core.jsongraph.getDetectionsPerTimestep">
+    <p>def <span class="ident">getDetectionsPerTimestep</span>(</p><p>detections, timesteps)</p>
+    </div>
+    
+
+    
+  
+    <div class="desc"><p>returns detectionsPerTimestep = { "<timestep>": [<idx>, <idx>, ...], "<timestep>": [...], ...}</p></div>
+  <div class="source_cont">
+  <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-hytra.core.jsongraph.getDetectionsPerTimestep', this);">Show source &equiv;</a></p>
+  <div id="source-hytra.core.jsongraph.getDetectionsPerTimestep" class="source">
+    <div class="codehilite"><pre><span></span><span class="k">def</span> <span class="nf">getDetectionsPerTimestep</span><span class="p">(</span><span class="n">detections</span><span class="p">,</span> <span class="n">timesteps</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; returns detectionsPerTimestep = { &quot;&lt;timestep&gt;&quot;: [&lt;idx&gt;, &lt;idx&gt;, ...], &quot;&lt;timestep&gt;&quot;: [...], ...} &#39;&#39;&#39;</span>
+    <span class="n">detectionsPerTimestep</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">([(</span><span class="n">t</span><span class="p">,</span> <span class="p">[</span><span class="n">idx</span> <span class="k">for</span> <span class="n">timestep</span><span class="p">,</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">detections</span> <span class="k">if</span> <span class="n">timestep</span> <span class="o">==</span> <span class="nb">int</span><span class="p">(</span><span class="n">t</span><span class="p">)])</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">timesteps</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">detectionsPerTimestep</span>
+</pre></div>
+
+  </div>
+</div>
+
+  </div>
+  
+      
+  <div class="item">
+    <div class="name def" id="hytra.core.jsongraph.getDivisionsPerTimestep">
+    <p>def <span class="ident">getDivisionsPerTimestep</span>(</p><p>divisions, linksPerTimestep, timesteps, withDivisions)</p>
+    </div>
+    
+
+    
+  
+    <div class="desc"><p>returns divisionsPerTimestep = { "<timestep>": {<parentIdx>: [<childIdx>, <childIdx>], ...}, "<timestep>": {...}, ... }</p></div>
+  <div class="source_cont">
+  <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-hytra.core.jsongraph.getDivisionsPerTimestep', this);">Show source &equiv;</a></p>
+  <div id="source-hytra.core.jsongraph.getDivisionsPerTimestep" class="source">
+    <div class="codehilite"><pre><span></span><span class="k">def</span> <span class="nf">getDivisionsPerTimestep</span><span class="p">(</span><span class="n">divisions</span><span class="p">,</span> <span class="n">linksPerTimestep</span><span class="p">,</span> <span class="n">timesteps</span><span class="p">,</span> <span class="n">withDivisions</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; returns divisionsPerTimestep = { &quot;&lt;timestep&gt;&quot;: {&lt;parentIdx&gt;: [&lt;childIdx&gt;, &lt;childIdx&gt;], ...}, &quot;&lt;timestep&gt;&quot;: {...}, ... } &#39;&#39;&#39;</span>
+    <span class="k">if</span> <span class="n">withDivisions</span><span class="p">:</span>
+        <span class="c1"># find children of divisions by looking for the active links</span>
+        <span class="n">divisionsPerTimestep</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">timesteps</span><span class="p">:</span>
+            <span class="n">divisionsPerTimestep</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">div_timestep</span><span class="p">,</span> <span class="n">div_idx</span> <span class="ow">in</span> <span class="n">divisions</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">div_timestep</span> <span class="o">==</span> <span class="nb">int</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="c1"># we have an active division of the mother cell &quot;div_idx&quot; in the previous frame</span>
+                    <span class="n">children</span> <span class="o">=</span> <span class="p">[</span><span class="n">b</span> <span class="k">for</span> <span class="n">a</span><span class="p">,</span><span class="n">b</span> <span class="ow">in</span> <span class="n">linksPerTimestep</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="k">if</span> <span class="n">a</span> <span class="o">==</span> <span class="n">div_idx</span><span class="p">]</span>
+                    <span class="k">assert</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">children</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">)</span>
+                    <span class="n">divisionsPerTimestep</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="n">div_idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">children</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">divisionsPerTimestep</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">([(</span><span class="n">t</span><span class="p">,{})</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">timesteps</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">divisionsPerTimestep</span>
+</pre></div>
+
+  </div>
+</div>
+
+  </div>
+  
+      
+  <div class="item">
+    <div class="name def" id="hytra.core.jsongraph.getLinksPerTimestep">
+    <p>def <span class="ident">getLinksPerTimestep</span>(</p><p>links, timesteps)</p>
+    </div>
+    
+
+    
+  
+    <div class="desc"><p>returns linksPerTimestep = { "<timestep>": [(<idxA> (at previous timestep), <idxB> (at timestep)), (<idxA>, <idxB>), ...], ...}</p></div>
+  <div class="source_cont">
+  <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-hytra.core.jsongraph.getLinksPerTimestep', this);">Show source &equiv;</a></p>
+  <div id="source-hytra.core.jsongraph.getLinksPerTimestep" class="source">
+    <div class="codehilite"><pre><span></span><span class="k">def</span> <span class="nf">getLinksPerTimestep</span><span class="p">(</span><span class="n">links</span><span class="p">,</span> <span class="n">timesteps</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; returns linksPerTimestep = { &quot;&lt;timestep&gt;&quot;: [(&lt;idxA&gt; (at previous timestep), &lt;idxB&gt; (at timestep)), (&lt;idxA&gt;, &lt;idxB&gt;), ...], ...} &#39;&#39;&#39;</span>
+    <span class="n">linksPerTimestep</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">([(</span><span class="n">t</span><span class="p">,</span> <span class="p">[(</span><span class="n">a</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">b</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">links</span> <span class="k">if</span> <span class="n">b</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="nb">int</span><span class="p">(</span><span class="n">t</span><span class="p">)])</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">timesteps</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">linksPerTimestep</span>
+</pre></div>
+
+  </div>
+</div>
+
+  </div>
+  
+      
+  <div class="item">
+    <div class="name def" id="hytra.core.jsongraph.getLogger">
+    <p>def <span class="ident">getLogger</span>(</p><p>)</p>
+    </div>
+    
+
+    
+  
+    <div class="desc"><p>logger to be used in this module</p></div>
+  <div class="source_cont">
+  <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-hytra.core.jsongraph.getLogger', this);">Show source &equiv;</a></p>
+  <div id="source-hytra.core.jsongraph.getLogger" class="source">
+    <div class="codehilite"><pre><span></span><span class="k">def</span> <span class="nf">getLogger</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39; logger to be used in this module &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
+</pre></div>
+
+  </div>
+</div>
+
+  </div>
+  
+      
+  <div class="item">
+    <div class="name def" id="hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels">
+    <p>def <span class="ident">getMappingsBetweenUUIDsAndTraxels</span>(</p><p>model)</p>
+    </div>
+    
+
+    
+  
+    <div class="desc"><p>From a dictionary encoded model, load the "traxelToUniqueId" mapping,
+create a reverse mapping, and return both.</p></div>
+  <div class="source_cont">
+  <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels', this);">Show source &equiv;</a></p>
+  <div id="source-hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels" class="source">
+    <div class="codehilite"><pre><span></span><span class="k">def</span> <span class="nf">getMappingsBetweenUUIDsAndTraxels</span><span class="p">(</span><span class="n">model</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    From a dictionary encoded model, load the &quot;traxelToUniqueId&quot; mapping,</span>
+<span class="sd">    create a reverse mapping, and return both.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="c1"># create reverse mapping from json uuid to (timestep,ID)</span>
+    <span class="n">traxelIdPerTimestepToUniqueIdMap</span> <span class="o">=</span> <span class="n">model</span><span class="p">[</span><span class="s1">&#39;traxelToUniqueId&#39;</span><span class="p">]</span>
+    <span class="n">timesteps</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">traxelIdPerTimestepToUniqueIdMap</span><span class="o">.</span><span class="n">keys</span><span class="p">()]</span>
+    <span class="n">uuidToTraxelMap</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">timesteps</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">traxelIdPerTimestepToUniqueIdMap</span><span class="p">[</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">uuid</span> <span class="o">=</span> <span class="n">traxelIdPerTimestepToUniqueIdMap</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="n">i</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">uuid</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">uuidToTraxelMap</span><span class="p">:</span>
+                <span class="n">uuidToTraxelMap</span><span class="p">[</span><span class="n">uuid</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">uuidToTraxelMap</span><span class="p">[</span><span class="n">uuid</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="nb">int</span><span class="p">(</span><span class="n">t</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">i</span><span class="p">)))</span>
+
+    <span class="c1"># sort the list of traxels per UUID by their timesteps</span>
+    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">uuidToTraxelMap</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+        <span class="n">v</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">timestepIdTuple</span><span class="p">:</span> <span class="n">timestepIdTuple</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">traxelIdPerTimestepToUniqueIdMap</span><span class="p">,</span> <span class="n">uuidToTraxelMap</span>
+</pre></div>
+
+  </div>
+</div>
+
+  </div>
+  
+      
+  <div class="item">
+    <div class="name def" id="hytra.core.jsongraph.getMergerLinks">
+    <p>def <span class="ident">getMergerLinks</span>(</p><p>linksPerTimestep, mergersPerTimestep, timesteps)</p>
+    </div>
+    
+
+    
+  
+    <div class="desc"><p>returns merger links as triplets [("timestep", (sourceIdAtTMinus1, destIdAtT)), (), ...]</p></div>
+  <div class="source_cont">
+  <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-hytra.core.jsongraph.getMergerLinks', this);">Show source &equiv;</a></p>
+  <div id="source-hytra.core.jsongraph.getMergerLinks" class="source">
+    <div class="codehilite"><pre><span></span><span class="k">def</span> <span class="nf">getMergerLinks</span><span class="p">(</span><span class="n">linksPerTimestep</span><span class="p">,</span> <span class="n">mergersPerTimestep</span><span class="p">,</span> <span class="n">timesteps</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; returns merger links as triplets [(&quot;timestep&quot;, (sourceIdAtTMinus1, destIdAtT)), (), ...]&quot;&quot;&quot;</span>
+    <span class="c1"># filter links: at least one of the two incident nodes must be a merger </span>
+    <span class="c1"># for it to be added to the merger resolving graph</span>
+    <span class="n">mergerLinks</span> <span class="o">=</span> <span class="p">[(</span><span class="n">t</span><span class="p">,(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">))</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">timesteps</span> <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">linksPerTimestep</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="k">if</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">mergersPerTimestep</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">t</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)]</span> <span class="ow">or</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">mergersPerTimestep</span><span class="p">[</span><span class="n">t</span><span class="p">]]</span>
+    <span class="k">return</span> <span class="n">mergerLinks</span>
+</pre></div>
+
+  </div>
+</div>
+
+  </div>
+  
+      
+  <div class="item">
+    <div class="name def" id="hytra.core.jsongraph.getMergersDetectionsLinksDivisions">
+    <p>def <span class="ident">getMergersDetectionsLinksDivisions</span>(</p><p>result, uuidToTraxelMap, withDivisions)</p>
+    </div>
+    
+
+    
+  
+  <div class="source_cont">
+  <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-hytra.core.jsongraph.getMergersDetectionsLinksDivisions', this);">Show source &equiv;</a></p>
+  <div id="source-hytra.core.jsongraph.getMergersDetectionsLinksDivisions" class="source">
+    <div class="codehilite"><pre><span></span><span class="k">def</span> <span class="nf">getMergersDetectionsLinksDivisions</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">uuidToTraxelMap</span><span class="p">,</span> <span class="n">withDivisions</span><span class="p">):</span>
+    <span class="c1"># load results and map indices</span>
+    <span class="n">mergers</span> <span class="o">=</span> <span class="p">[</span><span class="n">timestepIdTuple</span> <span class="o">+</span> <span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">],)</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">result</span><span class="p">[</span><span class="s1">&#39;detectionResults&#39;</span><span class="p">]</span> <span class="k">if</span> <span class="n">entry</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">timestepIdTuple</span> <span class="ow">in</span> <span class="n">uuidToTraxelMap</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">])]]</span>
+    <span class="n">detections</span> <span class="o">=</span> <span class="p">[</span><span class="n">timestepIdTuple</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">result</span><span class="p">[</span><span class="s1">&#39;detectionResults&#39;</span><span class="p">]</span> <span class="k">if</span> <span class="n">entry</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">timestepIdTuple</span> <span class="ow">in</span> <span class="n">uuidToTraxelMap</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">])]]</span>
+    <span class="k">if</span> <span class="n">withDivisions</span><span class="p">:</span>
+        <span class="n">divisions</span> <span class="o">=</span> <span class="p">[</span><span class="n">uuidToTraxelMap</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">])][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">result</span><span class="p">[</span><span class="s1">&#39;divisionResults&#39;</span><span class="p">]</span> <span class="k">if</span> <span class="n">entry</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="bp">True</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">divisions</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">links</span> <span class="o">=</span> <span class="p">[(</span><span class="n">uuidToTraxelMap</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;src&#39;</span><span class="p">])][</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">uuidToTraxelMap</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;dest&#39;</span><span class="p">])][</span><span class="mi">0</span><span class="p">])</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">result</span><span class="p">[</span><span class="s1">&#39;linkingResults&#39;</span><span class="p">]</span> <span class="k">if</span> <span class="n">entry</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
+
+    <span class="c1"># add all internal links of tracklets</span>
+    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">uuidToTraxelMap</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+        <span class="n">prev</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">for</span> <span class="n">timestepIdTuple</span> <span class="ow">in</span> <span class="n">v</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">prev</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">links</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">prev</span><span class="p">,</span> <span class="n">timestepIdTuple</span><span class="p">))</span>
+            <span class="n">prev</span> <span class="o">=</span> <span class="n">timestepIdTuple</span>
+
+    <span class="k">return</span> <span class="n">mergers</span><span class="p">,</span> <span class="n">detections</span><span class="p">,</span> <span class="n">links</span><span class="p">,</span> <span class="n">divisions</span>
+</pre></div>
+
+  </div>
+</div>
+
+  </div>
+  
+      
+  <div class="item">
+    <div class="name def" id="hytra.core.jsongraph.getMergersPerTimestep">
+    <p>def <span class="ident">getMergersPerTimestep</span>(</p><p>mergers, timesteps)</p>
+    </div>
+    
+
+    
+  
+    <div class="desc"><p>returns mergersPerTimestep = { "<timestep>": {<idx>: <count>, <idx>: <count>, ...}, "<timestep>": {...}, ... }</p></div>
+  <div class="source_cont">
+  <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-hytra.core.jsongraph.getMergersPerTimestep', this);">Show source &equiv;</a></p>
+  <div id="source-hytra.core.jsongraph.getMergersPerTimestep" class="source">
+    <div class="codehilite"><pre><span></span><span class="k">def</span> <span class="nf">getMergersPerTimestep</span><span class="p">(</span><span class="n">mergers</span><span class="p">,</span> <span class="n">timesteps</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; returns mergersPerTimestep = { &quot;&lt;timestep&gt;&quot;: {&lt;idx&gt;: &lt;count&gt;, &lt;idx&gt;: &lt;count&gt;, ...}, &quot;&lt;timestep&gt;&quot;: {...}, ... } &#39;&#39;&#39;</span>
+    <span class="n">mergersPerTimestep</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">([(</span><span class="n">t</span><span class="p">,</span> <span class="nb">dict</span><span class="p">([(</span><span class="n">idx</span><span class="p">,</span> <span class="n">count</span><span class="p">)</span> <span class="k">for</span> <span class="n">timestep</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">count</span> <span class="ow">in</span> <span class="n">mergers</span> <span class="k">if</span> <span class="n">timestep</span> <span class="o">==</span> <span class="nb">int</span><span class="p">(</span><span class="n">t</span><span class="p">)]))</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">timesteps</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">mergersPerTimestep</span>
+</pre></div>
+
+  </div>
+</div>
+
+  </div>
+  
+      
+  <div class="item">
+    <div class="name def" id="hytra.core.jsongraph.listify">
+    <p>def <span class="ident">listify</span>(</p><p>l)</p>
+    </div>
+    
+
+    
+  
+    <div class="desc"><p>put every element of the list in it's own list, and thus extends the depth of nested lists by one</p></div>
+  <div class="source_cont">
+  <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-hytra.core.jsongraph.listify', this);">Show source &equiv;</a></p>
+  <div id="source-hytra.core.jsongraph.listify" class="source">
+    <div class="codehilite"><pre><span></span><span class="k">def</span> <span class="nf">listify</span><span class="p">(</span><span class="n">l</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; put every element of the list in it&#39;s own list, and thus extends the depth of nested lists by one &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="p">[[</span><span class="n">e</span><span class="p">]</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">l</span><span class="p">]</span>
+</pre></div>
+
+  </div>
+</div>
+
+  </div>
+  
+      
+  <div class="item">
+    <div class="name def" id="hytra.core.jsongraph.negLog">
+    <p>def <span class="ident">negLog</span>(</p><p>features)</p>
+    </div>
+    
+
+    
+  
+    <div class="desc"><p>compute the (clamped) negative log of every entry in the list/array</p></div>
+  <div class="source_cont">
+  <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-hytra.core.jsongraph.negLog', this);">Show source &equiv;</a></p>
+  <div id="source-hytra.core.jsongraph.negLog" class="source">
+    <div class="codehilite"><pre><span></span><span class="k">def</span> <span class="nf">negLog</span><span class="p">(</span><span class="n">features</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; compute the (clamped) negative log of every entry in the list/array &#39;&#39;&#39;</span>
+    <span class="n">fa</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
+    <span class="n">fa</span><span class="p">[</span><span class="n">fa</span> <span class="o">&lt;</span> <span class="mf">0.0000000001</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0000000001</span>
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">fa</span><span class="p">)</span> <span class="o">*</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">)</span>
+</pre></div>
+
+  </div>
+</div>
+
+  </div>
+  
+      
+  <div class="item">
+    <div class="name def" id="hytra.core.jsongraph.readFromJSON">
+    <p>def <span class="ident">readFromJSON</span>(</p><p>filename)</p>
+    </div>
+    
+
+    
+  
+    <div class="desc"><p>Read a dictionary from JSON</p></div>
+  <div class="source_cont">
+  <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-hytra.core.jsongraph.readFromJSON', this);">Show source &equiv;</a></p>
+  <div id="source-hytra.core.jsongraph.readFromJSON" class="source">
+    <div class="codehilite"><pre><span></span><span class="k">def</span> <span class="nf">readFromJSON</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; Read a dictionary from JSON &#39;&#39;&#39;</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</pre></div>
+
+  </div>
+</div>
+
+  </div>
+  
+      
+  <div class="item">
+    <div class="name def" id="hytra.core.jsongraph.writeToFormattedJSON">
+    <p>def <span class="ident">writeToFormattedJSON</span>(</p><p>filename, dictionary)</p>
+    </div>
+    
+
+    
+  
+    <div class="desc"><p>Write a dictionary to JSON, but use proper readable formatting</p></div>
+  <div class="source_cont">
+  <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-hytra.core.jsongraph.writeToFormattedJSON', this);">Show source &equiv;</a></p>
+  <div id="source-hytra.core.jsongraph.writeToFormattedJSON" class="source">
+    <div class="codehilite"><pre><span></span><span class="k">def</span> <span class="nf">writeToFormattedJSON</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">dictionary</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; Write a dictionary to JSON, but use proper readable formatting  &#39;&#39;&#39;</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">dictionary</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">separators</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">,</span> <span class="s1">&#39;: &#39;</span><span class="p">))</span>
+</pre></div>
+
+  </div>
+</div>
+
+  </div>
+  
+
+    <h2 class="section-title" id="header-classes">Classes</h2>
+      
+      <div class="item">
+      <p id="hytra.core.jsongraph.JsonTrackingGraph" class="name">class <span class="ident">JsonTrackingGraph</span></p>
+      
+  
+    <div class="desc"><p>Convenience class to handle a hypotheses graph stored as dictionary,
+which is transparently saved/loaded to JSON files.</p></div>
+  <div class="source_cont">
+  <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-hytra.core.jsongraph.JsonTrackingGraph', this);">Show source &equiv;</a></p>
+  <div id="source-hytra.core.jsongraph.JsonTrackingGraph" class="source">
+    <div class="codehilite"><pre><span></span><span class="k">class</span> <span class="nc">JsonTrackingGraph</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convenience class to handle a hypotheses graph stored as dictionary,</span>
+<span class="sd">    which is transparently saved/loaded to JSON files.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_filename</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">weights_filename</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">result_filename</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="c1"># default values</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">traxelIdPerTimestepToUniqueIdMap</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;segmentationHypotheses&#39;</span><span class="p">:[],</span>
+            <span class="s1">&#39;linkingHypotheses&#39;</span><span class="p">:[],</span>
+            <span class="s1">&#39;exclusions&#39;</span><span class="p">:[],</span>
+            <span class="s1">&#39;divisionHypotheses&#39;</span><span class="p">:[],</span>
+            <span class="s1">&#39;traxelToUniqueId&#39;</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">traxelIdPerTimestepToUniqueIdMap</span><span class="p">,</span>
+            <span class="s1">&#39;settings&#39;</span><span class="p">:{</span><span class="s1">&#39;statesShareWeights&#39;</span><span class="p">:</span><span class="bp">True</span><span class="p">,</span>
+                        <span class="s1">&#39;allowPartialMergerAppearance&#39;</span><span class="p">:</span><span class="bp">False</span><span class="p">,</span>
+                        <span class="s1">&#39;requireSeparateChildrenOfDivision&#39;</span><span class="p">:</span><span class="bp">True</span><span class="p">,</span>
+                        <span class="s1">&#39;optimizerEpGap&#39;</span><span class="p">:</span><span class="mf">0.01</span><span class="p">,</span>
+                        <span class="s1">&#39;optimizerVerbose&#39;</span><span class="p">:</span><span class="bp">True</span><span class="p">,</span>
+                        <span class="s1">&#39;optimizerNumThreads&#39;</span><span class="p">:</span><span class="mi">1</span>
+                       <span class="p">}</span>
+            <span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">result</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">uuidToTraxelMap</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># load from file if specified</span>
+        <span class="k">if</span> <span class="n">model_filename</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">getLogger</span><span class="p">()</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Loading model file: &quot;</span> <span class="o">+</span> <span class="n">model_filename</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">readFromJSON</span><span class="p">(</span><span class="n">model_filename</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">traxelIdPerTimestepToUniqueIdMap</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">uuidToTraxelMap</span> <span class="o">=</span> \
+                <span class="n">getMappingsBetweenUUIDsAndTraxels</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">weights_filename</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">getLogger</span><span class="p">()</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Loading weights file: &quot;</span> <span class="o">+</span> <span class="n">weights_filename</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="n">readFromJSON</span><span class="p">(</span><span class="n">weights_filename</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">result_filename</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">getLogger</span><span class="p">()</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Loading result file: &quot;</span> <span class="o">+</span> <span class="n">result_filename</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">result</span> <span class="o">=</span> <span class="n">readFromJSON</span><span class="p">(</span><span class="n">result_filename</span><span class="p">)</span>
+
+        <span class="c1"># private initializations</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_nextUuid</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">addDetectionHypothesesFromTracklet</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                                           <span class="n">listOfTraxels</span><span class="p">,</span>
+                                           <span class="n">detectionFeatures</span><span class="p">,</span>
+                                           <span class="n">divisionFeatures</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                                           <span class="n">appearanceFeatures</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                                           <span class="n">disappearanceFeatures</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                                           <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Create a detection based on a `listOfTraxels` (because we can have tracklets). </span>
+<span class="sd">        Generates a new unique ID that represents this detection in the graph as one node and sets up the respective mappings</span>
+<span class="sd">        in `JsonTrackingGraph.traxelIdPerTimestepToUniqueIdMap` and `JsonTrackingGraph.uuidToTraxelMap`.</span>
+
+<span class="sd">        All further arguments in `**kwargs` are added to the detection dict in `segmentationHypotheses`.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">assert</span><span class="p">(</span><span class="n">listOfTraxels</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">listOfTraxels</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># store mapping of all contained traxels to this detection uuid</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">uuidToTraxelMap</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_nextUuid</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">listOfTraxels</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">traxelIdPerTimestepToUniqueIdMap</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">Timestep</span><span class="p">),</span> <span class="p">{})[</span><span class="nb">str</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">Id</span><span class="p">)]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nextUuid</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">uuidToTraxelMap</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_nextUuid</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="nb">int</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">Timestep</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">Id</span><span class="p">)))</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">addDetectionHypotheses</span><span class="p">(</span><span class="n">detectionFeatures</span><span class="p">,</span>
+                                           <span class="n">divisionFeatures</span><span class="o">=</span><span class="n">divisionFeatures</span><span class="p">,</span>
+                                           <span class="n">appearanceFeatures</span><span class="o">=</span><span class="n">appearanceFeatures</span><span class="p">,</span>
+                                           <span class="n">disappearanceFeatures</span><span class="o">=</span><span class="n">disappearanceFeatures</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">addDetectionHypotheses</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Construct a detection with the given features, assign it a new Uuid, and add it to the model&#39;s `segmentationHypotheses`.</span>
+
+<span class="sd">        All further arguments in `**kwargs` are added to the detection dict in `segmentationHypotheses`.</span>
+
+<span class="sd">        **Returns:** the unique ID of the newly created node in the graph</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">detection</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;id&#39;</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">_nextUuid</span><span class="p">,</span> <span class="s1">&#39;features&#39;</span><span class="p">:</span><span class="n">features</span><span class="p">}</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">v</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">detection</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">[</span><span class="s1">&#39;segmentationHypotheses&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">detection</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_nextUuid</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">return</span> <span class="n">detection</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">addLinkingHypotheses</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">srcUuid</span><span class="p">,</span> <span class="n">destUuid</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Add a link to the JSON encoded graph between two nodes which are identified by their unique ids</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">link</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;src&#39;</span><span class="p">:</span><span class="n">srcUuid</span><span class="p">,</span> <span class="s1">&#39;dest&#39;</span><span class="p">:</span><span class="n">destUuid</span><span class="p">,</span> <span class="s1">&#39;features&#39;</span><span class="p">:</span><span class="n">features</span><span class="p">}</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="n">link</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">[</span><span class="s1">&#39;linkingHypotheses&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">link</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">getNumDetections</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">[</span><span class="s1">&#39;segmentationHypotheses&#39;</span><span class="p">])</span>
+
+    <span class="k">def</span> <span class="nf">getNumLinks</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">[</span><span class="s1">&#39;linkingHypotheses&#39;</span><span class="p">])</span>
+
+    <span class="k">def</span> <span class="nf">convexifyCosts</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">epsilon</span><span class="o">=</span><span class="mf">0.000001</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Convexify all cost vectors in this model (in place!).</span>
+<span class="sd">        If two values are equal, the specified `epsilon` will be added to make sure the gradient</span>
+<span class="sd">        does not stay at 0.</span>
+
+<span class="sd">        Needed to run the flow solver afterwards</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">[</span><span class="s1">&#39;settings&#39;</span><span class="p">][</span><span class="s1">&#39;statesShareWeights&#39;</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;This script can only convexify feature vectors with shared weights!&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s1">&#39;segmentationHypotheses&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">:</span>
+            <span class="n">segmentationHypotheses</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">[</span><span class="s1">&#39;segmentationHypotheses&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">segmentationHypotheses</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="s1">&#39;linkingHypotheses&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">:</span>
+            <span class="n">linkingHypotheses</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">[</span><span class="s1">&#39;linkingHypotheses&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">linkingHypotheses</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="s1">&#39;divisionHypotheses&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">:</span>
+            <span class="n">divisionHypotheses</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">[</span><span class="s1">&#39;divisionHypotheses&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">divisionHypotheses</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="n">progressBar</span> <span class="o">=</span> <span class="n">ProgressBar</span><span class="p">(</span><span class="n">stop</span><span class="o">=</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">segmentationHypotheses</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">linkingHypotheses</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">divisionHypotheses</span><span class="p">)))</span>
+        <span class="k">for</span> <span class="n">seg</span> <span class="ow">in</span> <span class="n">segmentationHypotheses</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;features&#39;</span><span class="p">,</span> <span class="s1">&#39;appearanceFeatures&#39;</span><span class="p">,</span> <span class="s1">&#39;disappearanceFeatures&#39;</span><span class="p">]:</span>
+                <span class="k">if</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">seg</span><span class="p">:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">seg</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="n">convexify</span><span class="p">(</span><span class="n">seg</span><span class="p">[</span><span class="n">f</span><span class="p">],</span> <span class="n">epsilon</span><span class="p">)</span>
+                    <span class="k">except</span><span class="p">:</span>
+                        <span class="n">getLogger</span><span class="p">()</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Convexification failed for feature {} of :{}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">seg</span><span class="p">))</span>
+                        <span class="nb">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="c1"># division features are always convex (2 values defines just a line)</span>
+            <span class="n">progressBar</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">link</span> <span class="ow">in</span> <span class="n">linkingHypotheses</span><span class="p">:</span>
+            <span class="n">link</span><span class="p">[</span><span class="s1">&#39;features&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">convexify</span><span class="p">(</span><span class="n">link</span><span class="p">[</span><span class="s1">&#39;features&#39;</span><span class="p">],</span> <span class="n">epsilon</span><span class="p">)</span>
+            <span class="n">progressBar</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">division</span> <span class="ow">in</span> <span class="n">divisionHypotheses</span><span class="p">:</span>
+            <span class="n">division</span><span class="p">[</span><span class="s1">&#39;features&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">convexify</span><span class="p">(</span><span class="n">division</span><span class="p">[</span><span class="s1">&#39;features&#39;</span><span class="p">],</span> <span class="n">epsilon</span><span class="p">)</span>
+            <span class="n">progressBar</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>        
+</pre></div>
+
+  </div>
+</div>
+
+
+      <div class="class">
+          <h3>Ancestors (in MRO)</h3>
+          <ul class="class_list">
+          <li><a href="#hytra.core.jsongraph.JsonTrackingGraph">JsonTrackingGraph</a></li>
+          <li>__builtin__.object</li>
+          </ul>
+          <h3>Instance variables</h3>
+            <div class="item">
+            <p id="hytra.core.jsongraph.JsonTrackingGraph.model" class="name">var <span class="ident">model</span></p>
+            
+
+            
+  
+  <div class="source_cont">
+</div>
+
+            </div>
+            <div class="item">
+            <p id="hytra.core.jsongraph.JsonTrackingGraph.result" class="name">var <span class="ident">result</span></p>
+            
+
+            
+  
+  <div class="source_cont">
+</div>
+
+            </div>
+            <div class="item">
+            <p id="hytra.core.jsongraph.JsonTrackingGraph.traxelIdPerTimestepToUniqueIdMap" class="name">var <span class="ident">traxelIdPerTimestepToUniqueIdMap</span></p>
+            
+
+            
+  
+  <div class="source_cont">
+</div>
+
+            </div>
+            <div class="item">
+            <p id="hytra.core.jsongraph.JsonTrackingGraph.uuidToTraxelMap" class="name">var <span class="ident">uuidToTraxelMap</span></p>
+            
+
+            
+  
+  <div class="source_cont">
+</div>
+
+            </div>
+            <div class="item">
+            <p id="hytra.core.jsongraph.JsonTrackingGraph.weights" class="name">var <span class="ident">weights</span></p>
+            
+
+            
+  
+  <div class="source_cont">
+</div>
+
+            </div>
+          <h3>Methods</h3>
+            
+  <div class="item">
+    <div class="name def" id="hytra.core.jsongraph.JsonTrackingGraph.__init__">
+    <p>def <span class="ident">__init__</span>(</p><p>self, model_filename=None, weights_filename=None, result_filename=None)</p>
+    </div>
+    
+
+    
+  
+  <div class="source_cont">
+  <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-hytra.core.jsongraph.JsonTrackingGraph.__init__', this);">Show source &equiv;</a></p>
+  <div id="source-hytra.core.jsongraph.JsonTrackingGraph.__init__" class="source">
+    <div class="codehilite"><pre><span></span><span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_filename</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">weights_filename</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">result_filename</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="c1"># default values</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">traxelIdPerTimestepToUniqueIdMap</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;segmentationHypotheses&#39;</span><span class="p">:[],</span>
+        <span class="s1">&#39;linkingHypotheses&#39;</span><span class="p">:[],</span>
+        <span class="s1">&#39;exclusions&#39;</span><span class="p">:[],</span>
+        <span class="s1">&#39;divisionHypotheses&#39;</span><span class="p">:[],</span>
+        <span class="s1">&#39;traxelToUniqueId&#39;</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">traxelIdPerTimestepToUniqueIdMap</span><span class="p">,</span>
+        <span class="s1">&#39;settings&#39;</span><span class="p">:{</span><span class="s1">&#39;statesShareWeights&#39;</span><span class="p">:</span><span class="bp">True</span><span class="p">,</span>
+                    <span class="s1">&#39;allowPartialMergerAppearance&#39;</span><span class="p">:</span><span class="bp">False</span><span class="p">,</span>
+                    <span class="s1">&#39;requireSeparateChildrenOfDivision&#39;</span><span class="p">:</span><span class="bp">True</span><span class="p">,</span>
+                    <span class="s1">&#39;optimizerEpGap&#39;</span><span class="p">:</span><span class="mf">0.01</span><span class="p">,</span>
+                    <span class="s1">&#39;optimizerVerbose&#39;</span><span class="p">:</span><span class="bp">True</span><span class="p">,</span>
+                    <span class="s1">&#39;optimizerNumThreads&#39;</span><span class="p">:</span><span class="mi">1</span>
+                   <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">result</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">uuidToTraxelMap</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="c1"># load from file if specified</span>
+    <span class="k">if</span> <span class="n">model_filename</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">getLogger</span><span class="p">()</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Loading model file: &quot;</span> <span class="o">+</span> <span class="n">model_filename</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">readFromJSON</span><span class="p">(</span><span class="n">model_filename</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">traxelIdPerTimestepToUniqueIdMap</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">uuidToTraxelMap</span> <span class="o">=</span> \
+            <span class="n">getMappingsBetweenUUIDsAndTraxels</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">weights_filename</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">getLogger</span><span class="p">()</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Loading weights file: &quot;</span> <span class="o">+</span> <span class="n">weights_filename</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="n">readFromJSON</span><span class="p">(</span><span class="n">weights_filename</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">result_filename</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">getLogger</span><span class="p">()</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Loading result file: &quot;</span> <span class="o">+</span> <span class="n">result_filename</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">result</span> <span class="o">=</span> <span class="n">readFromJSON</span><span class="p">(</span><span class="n">result_filename</span><span class="p">)</span>
+    <span class="c1"># private initializations</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_nextUuid</span> <span class="o">=</span> <span class="mi">0</span>
+</pre></div>
+
+  </div>
+</div>
+
+  </div>
+  
+            
+  <div class="item">
+    <div class="name def" id="hytra.core.jsongraph.JsonTrackingGraph.addDetectionHypotheses">
+    <p>def <span class="ident">addDetectionHypotheses</span>(</p><p>self, features, **kwargs)</p>
+    </div>
+    
+
+    
+  
+    <div class="desc"><p>Construct a detection with the given features, assign it a new Uuid, and add it to the model's <code>segmentationHypotheses</code>.</p>
+<p>All further arguments in <code>**kwargs</code> are added to the detection dict in <code>segmentationHypotheses</code>.</p>
+<p><strong>Returns:</strong> the unique ID of the newly created node in the graph</p></div>
+  <div class="source_cont">
+  <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-hytra.core.jsongraph.JsonTrackingGraph.addDetectionHypotheses', this);">Show source &equiv;</a></p>
+  <div id="source-hytra.core.jsongraph.JsonTrackingGraph.addDetectionHypotheses" class="source">
+    <div class="codehilite"><pre><span></span><span class="k">def</span> <span class="nf">addDetectionHypotheses</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Construct a detection with the given features, assign it a new Uuid, and add it to the model&#39;s `segmentationHypotheses`.</span>
+<span class="sd">    All further arguments in `**kwargs` are added to the detection dict in `segmentationHypotheses`.</span>
+<span class="sd">    **Returns:** the unique ID of the newly created node in the graph</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">detection</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;id&#39;</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">_nextUuid</span><span class="p">,</span> <span class="s1">&#39;features&#39;</span><span class="p">:</span><span class="n">features</span><span class="p">}</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">v</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">detection</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">[</span><span class="s1">&#39;segmentationHypotheses&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">detection</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_nextUuid</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">detection</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span>
+</pre></div>
+
+  </div>
+</div>
+
+  </div>
+  
+            
+  <div class="item">
+    <div class="name def" id="hytra.core.jsongraph.JsonTrackingGraph.addDetectionHypothesesFromTracklet">
+    <p>def <span class="ident">addDetectionHypothesesFromTracklet</span>(</p><p>self, listOfTraxels, detectionFeatures, divisionFeatures=None, appearanceFeatures=None, disappearanceFeatures=None, **kwargs)</p>
+    </div>
+    
+
+    
+  
+    <div class="desc"><p>Create a detection based on a <code>listOfTraxels</code> (because we can have tracklets). 
+Generates a new unique ID that represents this detection in the graph as one node and sets up the respective mappings
+in <code>JsonTrackingGraph.traxelIdPerTimestepToUniqueIdMap</code> and <code>JsonTrackingGraph.uuidToTraxelMap</code>.</p>
+<p>All further arguments in <code>**kwargs</code> are added to the detection dict in <code>segmentationHypotheses</code>.</p></div>
+  <div class="source_cont">
+  <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-hytra.core.jsongraph.JsonTrackingGraph.addDetectionHypothesesFromTracklet', this);">Show source &equiv;</a></p>
+  <div id="source-hytra.core.jsongraph.JsonTrackingGraph.addDetectionHypothesesFromTracklet" class="source">
+    <div class="codehilite"><pre><span></span><span class="k">def</span> <span class="nf">addDetectionHypothesesFromTracklet</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                                       <span class="n">listOfTraxels</span><span class="p">,</span>
+                                       <span class="n">detectionFeatures</span><span class="p">,</span>
+                                       <span class="n">divisionFeatures</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                                       <span class="n">appearanceFeatures</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                                       <span class="n">disappearanceFeatures</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                                       <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Create a detection based on a `listOfTraxels` (because we can have tracklets). </span>
+<span class="sd">    Generates a new unique ID that represents this detection in the graph as one node and sets up the respective mappings</span>
+<span class="sd">    in `JsonTrackingGraph.traxelIdPerTimestepToUniqueIdMap` and `JsonTrackingGraph.uuidToTraxelMap`.</span>
+<span class="sd">    All further arguments in `**kwargs` are added to the detection dict in `segmentationHypotheses`.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">assert</span><span class="p">(</span><span class="n">listOfTraxels</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">listOfTraxels</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="c1"># store mapping of all contained traxels to this detection uuid</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">uuidToTraxelMap</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_nextUuid</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">listOfTraxels</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">traxelIdPerTimestepToUniqueIdMap</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">Timestep</span><span class="p">),</span> <span class="p">{})[</span><span class="nb">str</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">Id</span><span class="p">)]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nextUuid</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">uuidToTraxelMap</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_nextUuid</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="nb">int</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">Timestep</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">Id</span><span class="p">)))</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">addDetectionHypotheses</span><span class="p">(</span><span class="n">detectionFeatures</span><span class="p">,</span>
+                                       <span class="n">divisionFeatures</span><span class="o">=</span><span class="n">divisionFeatures</span><span class="p">,</span>
+                                       <span class="n">appearanceFeatures</span><span class="o">=</span><span class="n">appearanceFeatures</span><span class="p">,</span>
+                                       <span class="n">disappearanceFeatures</span><span class="o">=</span><span class="n">disappearanceFeatures</span><span class="p">)</span>
+</pre></div>
+
+  </div>
+</div>
+
+  </div>
+  
+            
+  <div class="item">
+    <div class="name def" id="hytra.core.jsongraph.JsonTrackingGraph.addLinkingHypotheses">
+    <p>def <span class="ident">addLinkingHypotheses</span>(</p><p>self, srcUuid, destUuid, features, **kwargs)</p>
+    </div>
+    
+
+    
+  
+    <div class="desc"><p>Add a link to the JSON encoded graph between two nodes which are identified by their unique ids</p></div>
+  <div class="source_cont">
+  <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-hytra.core.jsongraph.JsonTrackingGraph.addLinkingHypotheses', this);">Show source &equiv;</a></p>
+  <div id="source-hytra.core.jsongraph.JsonTrackingGraph.addLinkingHypotheses" class="source">
+    <div class="codehilite"><pre><span></span><span class="k">def</span> <span class="nf">addLinkingHypotheses</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">srcUuid</span><span class="p">,</span> <span class="n">destUuid</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Add a link to the JSON encoded graph between two nodes which are identified by their unique ids</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">link</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;src&#39;</span><span class="p">:</span><span class="n">srcUuid</span><span class="p">,</span> <span class="s1">&#39;dest&#39;</span><span class="p">:</span><span class="n">destUuid</span><span class="p">,</span> <span class="s1">&#39;features&#39;</span><span class="p">:</span><span class="n">features</span><span class="p">}</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+        <span class="n">link</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">[</span><span class="s1">&#39;linkingHypotheses&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">link</span><span class="p">)</span>
+</pre></div>
+
+  </div>
+</div>
+
+  </div>
+  
+            
+  <div class="item">
+    <div class="name def" id="hytra.core.jsongraph.JsonTrackingGraph.convexifyCosts">
+    <p>def <span class="ident">convexifyCosts</span>(</p><p>self, epsilon=1e-06)</p>
+    </div>
+    
+
+    
+  
+    <div class="desc"><p>Convexify all cost vectors in this model (in place!).
+If two values are equal, the specified <code>epsilon</code> will be added to make sure the gradient
+does not stay at 0.</p>
+<p>Needed to run the flow solver afterwards</p></div>
+  <div class="source_cont">
+  <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-hytra.core.jsongraph.JsonTrackingGraph.convexifyCosts', this);">Show source &equiv;</a></p>
+  <div id="source-hytra.core.jsongraph.JsonTrackingGraph.convexifyCosts" class="source">
+    <div class="codehilite"><pre><span></span><span class="k">def</span> <span class="nf">convexifyCosts</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">epsilon</span><span class="o">=</span><span class="mf">0.000001</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Convexify all cost vectors in this model (in place!).</span>
+<span class="sd">    If two values are equal, the specified `epsilon` will be added to make sure the gradient</span>
+<span class="sd">    does not stay at 0.</span>
+<span class="sd">    Needed to run the flow solver afterwards</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">[</span><span class="s1">&#39;settings&#39;</span><span class="p">][</span><span class="s1">&#39;statesShareWeights&#39;</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;This script can only convexify feature vectors with shared weights!&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s1">&#39;segmentationHypotheses&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">:</span>
+        <span class="n">segmentationHypotheses</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">[</span><span class="s1">&#39;segmentationHypotheses&#39;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">segmentationHypotheses</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="s1">&#39;linkingHypotheses&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">:</span>
+        <span class="n">linkingHypotheses</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">[</span><span class="s1">&#39;linkingHypotheses&#39;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">linkingHypotheses</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="s1">&#39;divisionHypotheses&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">:</span>
+        <span class="n">divisionHypotheses</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">[</span><span class="s1">&#39;divisionHypotheses&#39;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">divisionHypotheses</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">progressBar</span> <span class="o">=</span> <span class="n">ProgressBar</span><span class="p">(</span><span class="n">stop</span><span class="o">=</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">segmentationHypotheses</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">linkingHypotheses</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">divisionHypotheses</span><span class="p">)))</span>
+    <span class="k">for</span> <span class="n">seg</span> <span class="ow">in</span> <span class="n">segmentationHypotheses</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;features&#39;</span><span class="p">,</span> <span class="s1">&#39;appearanceFeatures&#39;</span><span class="p">,</span> <span class="s1">&#39;disappearanceFeatures&#39;</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">seg</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">seg</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="n">convexify</span><span class="p">(</span><span class="n">seg</span><span class="p">[</span><span class="n">f</span><span class="p">],</span> <span class="n">epsilon</span><span class="p">)</span>
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="n">getLogger</span><span class="p">()</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Convexification failed for feature {} of :{}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">seg</span><span class="p">))</span>
+                    <span class="nb">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="c1"># division features are always convex (2 values defines just a line)</span>
+        <span class="n">progressBar</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">link</span> <span class="ow">in</span> <span class="n">linkingHypotheses</span><span class="p">:</span>
+        <span class="n">link</span><span class="p">[</span><span class="s1">&#39;features&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">convexify</span><span class="p">(</span><span class="n">link</span><span class="p">[</span><span class="s1">&#39;features&#39;</span><span class="p">],</span> <span class="n">epsilon</span><span class="p">)</span>
+        <span class="n">progressBar</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">division</span> <span class="ow">in</span> <span class="n">divisionHypotheses</span><span class="p">:</span>
+        <span class="n">division</span><span class="p">[</span><span class="s1">&#39;features&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">convexify</span><span class="p">(</span><span class="n">division</span><span class="p">[</span><span class="s1">&#39;features&#39;</span><span class="p">],</span> <span class="n">epsilon</span><span class="p">)</span>
+        <span class="n">progressBar</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>        
+</pre></div>
+
+  </div>
+</div>
+
+  </div>
+  
+            
+  <div class="item">
+    <div class="name def" id="hytra.core.jsongraph.JsonTrackingGraph.getNumDetections">
+    <p>def <span class="ident">getNumDetections</span>(</p><p>self)</p>
+    </div>
+    
+
+    
+  
+  <div class="source_cont">
+  <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-hytra.core.jsongraph.JsonTrackingGraph.getNumDetections', this);">Show source &equiv;</a></p>
+  <div id="source-hytra.core.jsongraph.JsonTrackingGraph.getNumDetections" class="source">
+    <div class="codehilite"><pre><span></span><span class="k">def</span> <span class="nf">getNumDetections</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">[</span><span class="s1">&#39;segmentationHypotheses&#39;</span><span class="p">])</span>
+</pre></div>
+
+  </div>
+</div>
+
+  </div>
+  
+            
+  <div class="item">
+    <div class="name def" id="hytra.core.jsongraph.JsonTrackingGraph.getNumLinks">
+    <p>def <span class="ident">getNumLinks</span>(</p><p>self)</p>
+    </div>
+    
+
+    
+  
+  <div class="source_cont">
+  <p class="source_link"><a href="javascript:void(0);" onclick="toggle('source-hytra.core.jsongraph.JsonTrackingGraph.getNumLinks', this);">Show source &equiv;</a></p>
+  <div id="source-hytra.core.jsongraph.JsonTrackingGraph.getNumLinks" class="source">
+    <div class="codehilite"><pre><span></span><span class="k">def</span> <span class="nf">getNumLinks</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">[</span><span class="s1">&#39;linkingHypotheses&#39;</span><span class="p">])</span>
+</pre></div>
+
+  </div>
+</div>
+
+  </div>
+  
+      </div>
+      </div>
+
+  </section>
+
+    </article>
+  <div class="clear"> </div>
+  <footer id="footer">
+    <p>
+      Documentation generated by
+      <a href="https://github.com/BurntSushi/pdoc">pdoc 0.3.2</a>
+    </p>
+
+    <p>pdoc is in the public domain with the
+      <a href="http://unlicense.org">UNLICENSE</a></p>
+
+    <p>Design by <a href="http://nadh.in">Kailash Nadh</a></p>
+  </footer>
+</div>
+</body>
+</html>
