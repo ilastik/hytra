@@ -567,9 +567,8 @@ def getHypothesesGraphAndIterators(options, shape, t0, t1, ts, pyTraxelstore):
                                               withDivisions=not options.without_divisions,
                                               divisionThreshold=options.division_threshold)
 
-        # TODO:
-        # if not options.without_tracklets:
-        #       hypotheses_graph.generateTrackletGraph()
+        if not options.without_tracklets:
+              hypotheses_graph = hypotheses_graph.generateTrackletGraph()
 
         n_it = hypotheses_graph.nodeIterator()
         a_it = hypotheses_graph.arcIterator()
@@ -584,8 +583,7 @@ def getHypothesesGraphAndIterators(options, shape, t0, t1, ts, pyTraxelstore):
 
         # create tracklet graph if necessary
         if not options.without_tracklets:
-            traxel_graph = hypotheses_graph
-            hypotheses_graph = traxel_graph.generate_tracklet_graph()
+            hypotheses_graph = hypotheses_graph.generate_tracklet_graph()
 
         n_it = track.NodeIt(hypotheses_graph)
         a_it = track.ArcIt(hypotheses_graph)

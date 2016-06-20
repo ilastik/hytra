@@ -1,9 +1,14 @@
+import logging
 import networkx as nx
 import numpy as np
 from sklearn.neighbors import KDTree
 import hytra.core.jsongraph
 from hytra.core.jsongraph import negLog, listify
 from hytra.util.progressbar import ProgressBar
+
+def getLogger():
+    ''' logger to be used in this module '''
+    return logging.getLogger(__name__)
 
 def getTraxelFeatureVector(traxel, featureName, maxNumDimensions=3):
     """
@@ -15,22 +20,22 @@ def getTraxelFeatureVector(traxel, featureName, maxNumDimensions=3):
             result.append(traxel.get_feature_value(featureName, i))
         except:
             if i == 0:
-                print("Error when accessing feature {}[{}] for traxel (Id={},Timestep={})".format(featureName,
-                                                                                                  i,
-                                                                                                  traxel.Id,
-                                                                                                  traxel.Timestep))
-                print "Available features are: "
-                print traxel.print_available_features()
+                getLogger().error("Error when accessing feature {}[{}] for traxel (Id={},Timestep={})".format(featureName,
+                                                                                                              i,
+                                                                                                              traxel.Id,
+                                                                                                              traxel.Timestep))
+                getLogger().error("Available features are: ")
+                getLogger().error(traxel.print_available_features())
                 raise Exception
             else:
-                print("Error: Classifier was trained with less merger than maxNumObjects {}.".format(maxNumDimensions))
+                getLogger().error("Error: Classifier was trained with less merger than maxNumObjects {}.".format(maxNumDimensions))
                 raise Exception
     return result
 
 
-class NodeMap:
+class NodeMap(object):
     """
-    To access per node features of the hypotheses graph, 
+    To access per node features of the hypotheses graph,
     this node map provides the same interface as pgmlink's NodeMaps
     """
 
@@ -42,9 +47,9 @@ class NodeMap:
         return self.__graph.node[key][self.__attributeName]
 
 
-class HypothesesGraph:
+class HypothesesGraph(object):
     """
-    Replacement for pgmlink's hypotheses graph, 
+    Replacement for pgmlink's hypotheses graph,
     with a similar API so it can be used as drop-in replacement.
 
     Internally it uses [networkx](http://networkx.github.io/) to construct the graph.
@@ -100,8 +105,8 @@ class HypothesesGraph:
                 try:
                     return getTraxelFeatureVector(traxel, 'RegionCenter')
                 except:
-                    raise ValueError('given traxel (t={},id={}) does not have \
-                        "com" or "RegionCenter"'.format(traxel.Timestep, traxel.Id))
+                    raise ValueError('given traxel (t={},id={}) does not have '
+                                     '"com" or "RegionCenter"'.format(traxel.Timestep, traxel.Id))
 
     def _traxelMightDivide(self, traxel, divisionThreshold):
         assert 'divProb' in traxel.Features
@@ -141,8 +146,8 @@ class HypothesesGraph:
         assert (len(traxelstore.TraxelsPerFrame) > 0)
 
         def checkNodeWhileAddingLinks(frame, obj):
-            if not (frame, obj) in self._graph:
-                print("Adding node ({}, {}) when setting up links".format(frame, obj))
+            if (frame, obj) not in self._graph:
+                getLogger().warning("Adding node ({}, {}) when setting up links".format(frame, obj))
 
         kdTreeNextFrame = None
         for frame in range(len(traxelstore.TraxelsPerFrame.keys()) - 1):
@@ -184,13 +189,51 @@ class HypothesesGraph:
                         self._graph.add_edge((frame, n), (frame + 1, obj))
 
     def generateTrackletGraph(self):
-        raise NotImplementedError()
+        '''
+        **Return** a new hypotheses graph where chains of detections with only one possible 
+        incoming/outgoing transition are contracted into one node in the graph.
+
+        The `'tracklet'` node map contains a list of traxels that this node represents.
+        '''
+        getLogger().info("generating tracklet graph...")
+        tracklet_graph = HypothesesGraph()
+        tracklet_graph._graph = self._graph.copy()
+
+        # initialize tracklet map to contain a list of only one traxel per node
+        for node in tracklet_graph._graph.nodes_iter():
+            tracklet_graph._graph.node[node]['tracklet'] = [tracklet_graph._graph.node[node]['traxel']]
+            del tracklet_graph._graph.node[node]['traxel']
+
+        # set up a list of links that indicates whether the target's in- and source's out-degree
+        # are one, meaning the edge can be contracted
+        links_to_be_contracted = []
+        node_remapping = {}
+        for edge in tracklet_graph._graph.edges_iter():
+            if tracklet_graph._graph.out_degree(edge[0]) == 1 and tracklet_graph._graph.in_degree(edge[1]) == 1:
+                links_to_be_contracted.append(edge)
+                for i in [0, 1]:
+                    node_remapping[edge[i]] = edge[i]
+
+        # apply edge contraction
+        for edge in links_to_be_contracted:
+            src = node_remapping[edge[0]]
+            dest = node_remapping[edge[1]]
+            tracklet_graph._graph.node[src]['tracklet'].extend(tracklet_graph._graph.node[dest]['tracklet'])
+            for out_edge in tracklet_graph._graph.out_edges(dest):
+                tracklet_graph._graph.add_edge(src, out_edge[1])
+            tracklet_graph._graph.remove_node(dest)
+            node_remapping[dest] = src
+
+        getLogger().info("tracklet graph has {} nodes and {} edges (before {},{})".format(
+            tracklet_graph.countNodes(), tracklet_graph.countArcs(), self.countNodes(), self.countArcs()))
+
+        return tracklet_graph
 
     def getNodeTraxelMap(self):
         return NodeMap(self._graph, 'traxel')
 
     def getNodeTrackletMap(self):
-        raise NotImplementedError()
+        return NodeMap(self._graph, 'tracklet')
 
 
 def convertHypothesesGraphToJsonGraph(hypothesesGraph,
@@ -210,7 +253,7 @@ def convertHypothesesGraphToJsonGraph(hypothesesGraph,
     contained tracklets (`withTracklets`), then also the probabilities over all contained traxels will be
     accumulated for those nodes in the graph.
 
-    The `hypothesesGraph` as well as `nodeIterator` and `arcIterator` are needed as parameters to 
+    The `hypothesesGraph` as well as `nodeIterator` and `arcIterator` are needed as parameters to
     support the legacy pgmlink-style hypotheses graph as well.
 
     ** Parameters: **
@@ -232,6 +275,7 @@ def convertHypothesesGraphToJsonGraph(hypothesesGraph,
      ([probNoDiv, probDiv])
     '''
 
+    getLogger().info("Creating JSON graph from hypotheses graph")
     progressBar = ProgressBar(stop=numElements)
     trackingGraph = hytra.core.jsongraph.JsonTrackingGraph()
 
