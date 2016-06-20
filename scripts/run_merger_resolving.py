@@ -6,10 +6,8 @@ sys.path.insert(0, os.path.abspath('..'))
 # standard imports
 import logging
 import configargparse as argparse
-
-from hytra.core.mergerresolver import *
-
-# ------------------------------------------------------------
+from hytra.core.jsongraph import JsonTrackingGraph, writeToFormattedJSON
+from hytra.core.mergerresolver import MergerResolver
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Given a hypotheses json graph and a result.json, this script'
@@ -34,7 +32,7 @@ if __name__ == "__main__":
     parser.add_argument("--raw-data-axes", dest='raw_axes', type=str, default='txyzc',
                         help="axes ordering of the produced raw image, e.g. xyztc.")
     parser.add_argument('--transition-classifier-file', dest='transition_classifier_filename', type=str,
-                        default=None)
+                        default=None, help="Transition classifier filename, or None if distance-based energies should be used.")
     parser.add_argument('--transition-classifier-path', dest='transition_classifier_path', type=str, default='/')
     parser.add_argument('--out-graph-json-file', type=str, dest='out_model_filename', required=True, 
                         help='Filename of the json model containing the hypotheses graph including new nodes')
@@ -50,21 +48,27 @@ if __name__ == "__main__":
                         default=[os.path.abspath('../hytra/plugins')],
                         help='A list of paths to search for plugins for the tracking pipeline.')
     args, _ = parser.parse_known_args()
-    logging.basicConfig(level=logging.INFO)
 
-    logging.basicConfig(level=logging.DEBUG)
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
+    
+    trackingGraph = JsonTrackingGraph(model_filename=args.model_filename, result_filename=args.result_filename)
 
-    resolveMergers(args.label_image_filename,
-                   args.label_image_path,
-                   args.raw_filename,
-                   args.raw_path,
-                   args.raw_axes,
-                   args.model_filename,
-                   args.out_label_image,
-                   args.out_model_filename,
-                   args.out_result,
-                   args.pluginPaths,
-                   args.result_filename,
-                   args.transition_classifier_filename,
-                   args.transition_classifier_path,
-                   args.verbose)
+    merger_resolver = MergerResolver(trackingGraph)
+    merger_resolver.run(
+        args.label_image_filename,
+        args.label_image_path,
+        args.raw_filename,
+        args.raw_path,
+        args.raw_axes,
+        args.out_label_image,
+        args.pluginPaths,
+        args.transition_classifier_filename,
+        args.transition_classifier_path,
+        args.verbose)
+
+    # save
+    writeToFormattedJSON(args.out_model_filename, merger_resolver.model)
+    writeToFormattedJSON(args.out_result, merger_resolver.result)

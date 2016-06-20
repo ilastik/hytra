@@ -5,10 +5,7 @@ import sys
 sys.path.insert(0, os.path.abspath('..'))
 # standard imports
 import logging
-import numpy as np
-import commentjson as json
 import configargparse as argparse
-from hytra.util.progressbar import ProgressBar
 from hytra.core.jsongraph import JsonTrackingGraph, writeToFormattedJSON
 
 def getLogger():
