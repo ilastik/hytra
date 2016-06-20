@@ -10,7 +10,7 @@ import h5py
 import vigra
 from vigra import numpy as np
 import commentjson as json
-from hytra.core.progressbar import ProgressBar
+from hytra.util.progressbar import ProgressBar
 
 def get_uuid_to_traxel_map(traxelIdPerTimestepToUniqueIdMap):
     timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]

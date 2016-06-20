@@ -8,7 +8,7 @@ import math
 import os
 import os.path as path
 import argparse
-from progressbar import ProgressBar
+from hytra.util.progressbar import ProgressBar
 
 def get_feature(h5file, feature_path, object_id):
     if not feature_path in h5file:

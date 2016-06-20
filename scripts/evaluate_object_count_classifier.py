@@ -9,7 +9,7 @@ import argparse
 import numpy as np
 import h5py
 from multiprocessing import Pool
-from hytra.core.progressbar import ProgressBar
+from hytra.util.progressbar import ProgressBar
 
 def get_num_frames(options):
     if len(options.input_files) == 1:

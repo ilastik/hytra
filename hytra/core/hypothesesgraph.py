@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.neighbors import KDTree
 import hytra.core.jsongraph
 from hytra.core.jsongraph import negLog, listify
-from hytra.core.progressbar import ProgressBar
+from hytra.util.progressbar import ProgressBar
 
 def getTraxelFeatureVector(traxel, featureName, maxNumDimensions=3):
     """

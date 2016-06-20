@@ -4,7 +4,7 @@ import time
 import concurrent.futures
 
 import hytra.core.divisionfeatures
-from hytra.core.progressbar import ProgressBar
+from hytra.util.progressbar import ProgressBar
 from hytra.pluginsystem.plugin_manager import TrackingPluginManager
 from hytra.core.random_forest_classifier import RandomForestClassifier
 from hytra.core.ilastik_project_options import IlastikProjectOptions

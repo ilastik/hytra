@@ -8,7 +8,7 @@ import logging
 import numpy as np
 import commentjson as json
 import configargparse as argparse
-from hytra.core.progressbar import ProgressBar
+from hytra.util.progressbar import ProgressBar
 from hytra.core.jsongraph import JsonTrackingGraph, writeToFormattedJSON
 
 def getLogger():

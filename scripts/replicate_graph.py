@@ -8,7 +8,7 @@ import commentjson as json
 import argparse
 import numpy as np
 import copy
-from hytra.core.progressbar import ProgressBar
+from hytra.util.progressbar import ProgressBar
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Replicate nodes, links, divisions and exclusion sets N times, ' \

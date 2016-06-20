@@ -6,7 +6,7 @@ hypotheses graphs stored in our json (or python dictionary) format.
 import logging
 import numpy as np
 import commentjson as json
-from hytra.core.progressbar import ProgressBar
+from hytra.util.progressbar import ProgressBar
 
 # ----------------------------------------------------------------------------
 # Utility functions
