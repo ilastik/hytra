@@ -267,11 +267,32 @@ class JsonTrackingGraph(object):
         return len(self.model['linkingHypotheses'])
 
     def convexifyCosts(self, epsilon=0.000001):
+        '''
+        Convexify all cost vectors in this model (in place!).
+        If two values are equal, the specified `epsilon` will be added to make sure the gradient
+        does not stay at 0.
+
+        Needed to run the flow solver afterwards
+        '''
         if not self.model['settings']['statesShareWeights']:
             raise ValueError('This script can only convexify feature vectors with shared weights!')
 
-        progressBar = ProgressBar(stop=(len(self.model['segmentationHypotheses']) + len(self.model['linkingHypotheses'])))
-        segmentationHypotheses = self.model['segmentationHypotheses']
+        if 'segmentationHypotheses' in self.model:
+            segmentationHypotheses = self.model['segmentationHypotheses']
+        else:
+            segmentationHypotheses = []
+
+        if 'linkingHypotheses' in self.model:
+            linkingHypotheses = self.model['linkingHypotheses']
+        else:
+            linkingHypotheses = []
+
+        if 'divisionHypotheses' in self.model:
+            divisionHypotheses = self.model['divisionHypotheses']
+        else:
+            divisionHypotheses = []
+
+        progressBar = ProgressBar(stop=(len(segmentationHypotheses) + len(linkingHypotheses) + len(divisionHypotheses)))
         for seg in segmentationHypotheses:
             for f in ['features', 'appearanceFeatures', 'disappearanceFeatures']:
                 if f in seg:
@@ -283,9 +304,12 @@ class JsonTrackingGraph(object):
             # division features are always convex (2 values defines just a line)
             progressBar.show()
 
-        linkingHypotheses = self.model['linkingHypotheses']
         for link in linkingHypotheses:
             link['features'] = convexify(link['features'], epsilon)
             progressBar.show()
+
+        for division in divisionHypotheses:
+            division['features'] = convexify(division['features'], epsilon)
+            progressBar.show()        
 
 
