@@ -1,7 +1,11 @@
 # pythonpath modification to make hytra available 
 # for import without requiring it to be installed
 import os
-os.chdir('scripts')
+
+SCRIPTS_PATH = 'scripts'
+assert os.path.exists(SCRIPTS_PATH), 'Scripts path not found (Maybe you forgot to run the test from the root directory?)'
+os.chdir(SCRIPTS_PATH)
+
 import sys
 sys.path.insert(0, os.path.abspath('..'))
 from subprocess import check_call
