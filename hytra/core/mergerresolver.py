@@ -10,6 +10,10 @@ import hytra.core.traxelstore as traxelstore
 import hytra.core.jsongraph
 from hytra.core.jsongraph import negLog, listify, JsonTrackingGraph
 
+def getLogger():
+    ''' logger to be used in this module '''
+    return logging.getLogger(__name__)
+
 class MergerResolver(object):
     def __init__(self, jsonTrackingGraph):
         # copy model and result because we will modify it here
@@ -131,7 +135,7 @@ class MergerResolver(object):
                 count = 1
                 if idx in mergersPerTimestep[t]:
                     count = mergersPerTimestep[t][idx]
-                print("Looking at node {} in timestep {} with count {}".format(idx, t, count))
+                getLogger().debug("Looking at node {} in timestep {} with count {}".format(idx, t, count))
                 
                 # collect initializations from incoming
                 initializations = []
@@ -194,14 +198,14 @@ class MergerResolver(object):
             rawImages[t] = pluginManager.getImageProvider().getImageDataAtTimeFrame(
                 raw_filename, raw_path, raw_axes, int(t))
 
-        print("Computing object features")
+        getLogger().info("Computing object features")
         objectFeatures = {}
         imageShape = pluginManager.getImageProvider().getImageShape(label_image_filename, label_image_path)
-        print("Found image of shape", imageShape)
+        getLogger().info("Found image of shape {}".format(imageShape))
         # ndims = len(np.array(imageShape).squeeze()) - 1 # get rid of axes with length 1, and minus time axis
         # there is no time axis...
         ndims = len([i for i in imageShape if i != 1])
-        print("Data has dimensionality ", ndims)
+        getLogger().info("Data has dimensionality {}".format(ndims))
         for node in resolvedGraph.nodes_iter():
             intT, idx = node
             # mask out this object only and compute features
@@ -422,7 +426,7 @@ class MergerResolver(object):
 
         # it may be, that there are no mergers, so do basically nothing, just copy all the ingoing data
         if len(mergers) == 0:
-            logging.getLogger('run_merger_resolver.py').info("The maximum number of objects is 1, so nothing to be done. Writing the output...")
+            getLogger().info("The maximum number of objects is 1, so nothing to be done. Writing the output...")
             # segmentation
             intTimesteps = [int(t) for t in timesteps]
             intTimesteps.sort()
@@ -463,16 +467,16 @@ class MergerResolver(object):
             # ------------------------------------------------------------
             # load transition classifier if any
             if transition_classifier_filename is not None:
-                print("\tLoading transition classifier")
+                getLogger().info("\tLoading transition classifier")
                 transitionClassifier = traxelstore.RandomForestClassifier(
                     transition_classifier_path, transition_classifier_filename)
             else:
-                print("\tUsing distance based transition energies")
+                getLogger().info("\tUsing distance based transition energies")
                 transitionClassifier = None
 
             # ------------------------------------------------------------
             # run min-cost max-flow to find merger assignments
-            print("Running min-cost max-flow to find resolved merger assignments")
+            getLogger().info("Running min-cost max-flow to find resolved merger assignments")
 
             nodeFlowMap, arcFlowMap = self.minCostMaxFlowMergerResolving(resolvedGraph, objectFeatures, pluginManager, transitionClassifier)
 
