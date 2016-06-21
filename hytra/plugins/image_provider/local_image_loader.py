@@ -21,6 +21,8 @@ class LocalImageLoader(image_provider_plugin.ImageProviderPlugin):
         with h5py.File(Resource, 'r') as rawH5:
             logging.getLogger("LocalImageLoader").debug("PathInResource {}".format(timeframe))
             rawImage = rawH5[PathInResource][hytra.util.axesconversion.getFrameSlicing(axes, timeframe)]
+            remainingAxes = axes.replace('t', '')
+            rawImage = hytra.util.axesconversion.adjustOrder(rawImage, remainingAxes).squeeze()
             return rawImage
 
     def getLabelImageForFrame(self, Resource, PathInResource, timeframe):
