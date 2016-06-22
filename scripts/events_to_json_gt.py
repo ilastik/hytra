@@ -1,16 +1,16 @@
-# pythonpath modification to make hytra available 
+# pythonpath modification to make hytra available
 # for import without requiring it to be installed
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
 # standard importsfrom empryonic import io
-import commentjson as json
-import os
+import glob
 import argparse
-import numpy as np
 import h5py
-from multiprocessing import Pool
+import numpy as np
+import commentjson as json
 import networkx as nx
+import hytra.core.jsongraph
 
 def get_num_frames(options):
     if len(options.input_files) == 1:
@@ -34,42 +34,28 @@ def get_frame_dataset(timestep, dataset, options):
 
     return np.zeros(0)
 
-def get_uuid_to_traxel_map(traxelIdPerTimestepToUniqueIdMap):
-    timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
-    uuidToTraxelMap = {}
-    for t in timesteps:
-        for i in traxelIdPerTimestepToUniqueIdMap[t].keys():
-            uuid = traxelIdPerTimestepToUniqueIdMap[t][i]
-            if uuid not in uuidToTraxelMap:
-                uuidToTraxelMap[uuid] = []
-            uuidToTraxelMap[uuid].append((int(t), int(i)))
-
-    # sort the list of traxels per UUID by their timesteps
-    for v in uuidToTraxelMap.values():
-        v.sort(key=lambda timestepIdTuple: timestepIdTuple[0])
-
-    return uuidToTraxelMap
-
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Take a json file containing a result to a set of HDF5 events files',
-                                    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(description='Project a set of HDF5 events files onto a json hypotheses graph and create a JSON groundtruth',
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--model', required=True, type=str, dest='model_filename',
                         help='Filename of the json model description')
-    parser.add_argument('--input-files', type=str, nargs='+', dest='input_files', required=True,
-                        help='HDF5 file of ground truth, or list of files for individual frames')
+    parser.add_argument('--input-files', type=str, dest='input_file_pattern', required=True,
+                        help='HDF5 file of ground truth, or pattern that matches GT files for individual frames')
     parser.add_argument('--label-image-path', type=str, dest='label_image_path', default='label_image',
                         help='Path inside the HDF5 file(s) to the label image (only needed if it is a single HDF5)')
     parser.add_argument('--h5group-zero-pad-length', type=int, dest='h5group_zero_padding', default='4')
     parser.add_argument('--out', type=str, dest='out', required=True, help='Filename of the resulting json groundtruth')
-    
+
     args = parser.parse_args()
 
-    with open(args.model_filename, 'r') as f:
-        model = json.load(f)
+    trackingGraph = hytra.core.jsongraph.JsonTrackingGraph(model_filename=args.model_filename)
 
     # load forward mapping and create reverse mapping from json uuid to (timestep,ID)
-    traxelIdPerTimestepToUniqueIdMap = model['traxelToUniqueId']
-    uuidToTraxelMap = get_uuid_to_traxel_map(traxelIdPerTimestepToUniqueIdMap)
+    traxelIdPerTimestepToUniqueIdMap = trackingGraph.traxelIdPerTimestepToUniqueIdMap
+    uuidToTraxelMap = trackingGraph.uuidToTraxelMap
+
+    args.input_files = glob.glob(args.input_file_pattern)
+    args.input_files.sort()
 
     # check that we have the proper number of incoming frames
     num_frames = get_num_frames(args)
@@ -92,13 +78,13 @@ if __name__ == "__main__":
     for frame in range(0, num_frames):
         # print("Processing frame {}".format(frame))
 
-        # find moves, but only store in temporary list because 
+        # find moves, but only store in temporary list because
         # we don't know the number of cells in that move yet
         moves = get_frame_dataset(frame, "Moves", args)
         for src, dest in moves:
             if src == 0 or dest == 0:
                 continue
-            
+
             assert(str(src) in traxelIdPerTimestepToUniqueIdMap[str(frame-1)])
             assert(str(dest) in traxelIdPerTimestepToUniqueIdMap[str(frame)])
             s = traxelIdPerTimestepToUniqueIdMap[str(frame-1)][str(src)]
@@ -110,7 +96,7 @@ if __name__ == "__main__":
 
             # ignore moves if they cannot be represented in the given model (due to missing edge in graph)
             found = False
-            for link in model['linkingHypotheses']:
+            for link in trackingGraph.model['linkingHypotheses']:
                 if link['src'] == s and link['dest'] == t:
                     found = True
             if not found:
@@ -126,10 +112,21 @@ if __name__ == "__main__":
 
         # find all divisions and directly add them to json
         splits = get_frame_dataset(frame, "Splits", args)
-        for parent, _, _ in splits:
-            division = {}
+        for parent, child1, child2 in splits:
+            print("Found split of {} (t={}) into {} and {} ".format(parent, frame-1, child1, child2))
             assert(str(parent) in traxelIdPerTimestepToUniqueIdMap[str(frame-1)])
-            division['id'] = int(traxelIdPerTimestepToUniqueIdMap[str(frame-1)][str(parent)])
+            parentUuid = traxelIdPerTimestepToUniqueIdMap[str(frame-1)][str(parent)]
+            assert(objectCounts[parentUuid] > 0)
+
+            for c in [child1, child2]:
+                childUuid = traxelIdPerTimestepToUniqueIdMap[str(frame)][str(c)]
+                if childUuid not in objectCounts:
+                    objectCounts[childUuid] = 1
+                activeOutgoingLinks.setdefault(parentUuid, []).append(childUuid)
+                activeIncomingLinks.setdefault(childUuid, []).append(parentUuid)
+
+            division = {}
+            division['id'] = int(parentUuid)
             activeDivisions.append(division['id'])
             division['value'] = True
             divisionsJson.append(division)
@@ -143,7 +140,7 @@ if __name__ == "__main__":
 
     maxCapacity = max(objectCounts.values())
 
-    def addLinkToJson(s,t,value):
+    def addLinkToJson(s, t, value):
         link = {}
         link['src'] = int(s)
         link['dest'] = int(t)
@@ -168,7 +165,7 @@ if __name__ == "__main__":
         def sourceNodeName(n):
             return str(n) + '-U'
 
-        # add all nodes as two networkx nodes with an arc between them 
+        # add all nodes as two networkx nodes with an arc between them
         # that has the capacity of the detection's cell count
         for obj, val in objectCounts.iteritems():
             graph.add_node(sourceNodeName(obj))
@@ -193,7 +190,7 @@ if __name__ == "__main__":
             for s in sources:
                 cost = -1.0
                 found = False
-                for link in model['linkingHypotheses']:
+                for link in trackingGraph.model['linkingHypotheses']:
                     if link['src'] == s and link['dest'] == target:
                         # in the conservation tracking model, there is one feature per state (0,1,2,..) 
                         # and 1,2,... have the same value. So we take the delta between 0 and 1
