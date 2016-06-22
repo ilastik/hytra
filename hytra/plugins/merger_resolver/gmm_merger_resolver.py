@@ -37,10 +37,12 @@ class GMMMergerResolver(merger_resolver_plugin.MergerResolverPlugin):
         coordinates = np.transpose(np.vstack(np.where(labelImage == objectId)))
         gmm = self.initGMM(mergerCount, initializations)
         gmm.fit(coordinates)
+        assert(gmm.converged_)
 
         if mergerCount > 1:
             # edit labelimage in-place
             responsibilities = gmm.predict(coordinates)
+            assert(len(np.unique(responsibilities)) == mergerCount)
             newObjectIds = responsibilities + nextId
             labelImage[labelImage == objectId] = newObjectIds
 

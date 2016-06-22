@@ -215,7 +215,7 @@ class MergerResolver(object):
 
             # compute features, transform to one dict for frame
             frameFeatureDicts, ignoreNames = pluginManager.applyObjectFeatureComputationPlugins(
-                ndims, rawImages[str(intT)], labelImages[str(intT)], intT, raw_filename)
+                ndims, rawImages[str(intT)], mask, intT, raw_filename)
             frameFeatureItems = []
             for f in frameFeatureDicts:
                 frameFeatureItems = frameFeatureItems + f.items()
@@ -265,8 +265,14 @@ class MergerResolver(object):
             featuresAtDest = objectFeatures[edge[1]]
 
             if transitionClassifier is not None:
-                featVec = pluginManager.applyTransitionFeatureVectorConstructionPlugins(
-                    featuresAtSrc, featuresAtDest, transitionClassifier.selectedFeatures)
+                try:
+                    featVec = pluginManager.applyTransitionFeatureVectorConstructionPlugins(
+                        featuresAtSrc, featuresAtDest, transitionClassifier.selectedFeatures)
+                except:
+                    getLogger().error("Could not compute transition features of link {}->{}:".format(src, dest))
+                    getLogger().error(featuresAtSrc)
+                    getLogger().error(featuresAtDest)
+                    raise
                 featVec = np.expand_dims(np.array(featVec), axis=0)
                 probs = transitionClassifier.predictProbabilities(featVec)[0]
             else:
