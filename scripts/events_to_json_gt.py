@@ -5,9 +5,9 @@ import sys
 sys.path.insert(0, os.path.abspath('..'))
 # standard importsfrom empryonic import io
 import glob
-import argparse
 import h5py
 import numpy as np
+import configargparse as argparse
 import commentjson as json
 import networkx as nx
 import hytra.core.jsongraph
@@ -37,16 +37,17 @@ def get_frame_dataset(timestep, dataset, options):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Project a set of HDF5 events files onto a json hypotheses graph and create a JSON groundtruth',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--model', required=True, type=str, dest='model_filename',
+    parser.add_argument('-c', '--config', is_config_file=True, help='config file path', dest='config_file')
+    parser.add_argument('--graph-json-file', required=True, type=str, dest='model_filename',
                         help='Filename of the json model description')
-    parser.add_argument('--input-files', type=str, dest='input_file_pattern', required=True,
+    parser.add_argument('--h5-event-input-file-pattern', type=str, dest='input_file_pattern', required=True,
                         help='HDF5 file of ground truth, or pattern that matches GT files for individual frames')
     parser.add_argument('--label-image-path', type=str, dest='label_image_path', default='label_image',
                         help='Path inside the HDF5 file(s) to the label image (only needed if it is a single HDF5)')
     parser.add_argument('--h5group-zero-pad-length', type=int, dest='h5group_zero_padding', default='4')
     parser.add_argument('--out', type=str, dest='out', required=True, help='Filename of the resulting json groundtruth')
 
-    args = parser.parse_args()
+    args, _ = parser.parse_known_args()
 
     trackingGraph = hytra.core.jsongraph.JsonTrackingGraph(model_filename=args.model_filename)
 

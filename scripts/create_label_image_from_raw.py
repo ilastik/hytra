@@ -4,10 +4,10 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
 # standard imports
-import argparse
 import h5py
 import vigra
 from vigra import numpy as np
+import configargparse as argparse
 import hytra.util.axesconversion
 from hytra.util.progressbar import ProgressBar
 
@@ -38,6 +38,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Perform the segmentation as in ilastik for a new predicition map,'
                                                 + 'using the same settings as stored in the given ilastik project',
                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('-c', '--config', is_config_file=True, help='config file path', dest='config_file')
     parser.add_argument('--ilastik-project', required=True, type=str, dest='ilpFilename',
                         help='Filename of the ilastik project')
     parser.add_argument('--prediction-map', required=True, type=str, dest='predictionMapFilename',
@@ -49,9 +50,9 @@ if __name__ == "__main__":
                         default='/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]')
     parser.add_argument("--prediction-axes", dest='prediction_axes', required=True, type=str,
                         help="axes ordering of the prediction map, e.g. txyzc")
-    parser.add_argument('--out', type=str, dest='out', required=True, help='Filename of the resulting HDF5 labelimage')
+    parser.add_argument('--label-image-file', type=str, dest='out', required=True, help='Filename of the resulting HDF5 labelimage')
     
-    args = parser.parse_args()
+    args, _ = parser.parse_known_args()
     
     # load threshold settings
     with h5py.File(args.ilpFilename, 'r') as h5file:
