@@ -8,8 +8,7 @@ import argparse
 import h5py
 import vigra
 from vigra import numpy as np
-import sys
-sys.path.append('.')
+import hytra.util.axesconversion
 from hytra.util.progressbar import ProgressBar
 
 def filter_labels(a, min_size, max_size=None):
@@ -48,8 +47,8 @@ if __name__ == "__main__":
     parser.add_argument('--label-image-path', type=str, dest='labelImagePath',
                         help='Path inside result file to the label image',
                         default='/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]')
-    parser.add_argument("--time-axis-index", dest='timeAxisIndex', default=0, type=int,
-                        help="Zero-based index of the time axis in your new data. E.g. if it has shape (x,t,y,c) this value is 1. Set to -1 to disable any changes")
+    parser.add_argument("--prediction-axes", dest='prediction_axes', required=True, type=str,
+                        help="axes ordering of the prediction map, e.g. txyzc")
     parser.add_argument('--out', type=str, dest='out', required=True, help='Filename of the resulting HDF5 labelimage')
     
     args = parser.parse_args()
@@ -69,16 +68,14 @@ if __name__ == "__main__":
     with h5py.File(args.predictionMapFilename) as f:
         predictionMaps = f[args.predictionPath].value
 
-    ndim = len(predictionMaps.shape) - 2
-    print("Found PredictionMaps of size {}, assuming t-axis at position {}, using channel {}".format(
+    ndim = len(predictionMaps.squeeze().shape) - 2
+    predictionMaps = hytra.util.axesconversion.adjustOrder(predictionMaps, args.prediction_axes, 'txyzc')
+    shape = predictionMaps.shape
+
+    print("Found PredictionMaps of shape {} (txyzc), using channel {}".format(
         predictionMaps.shape, 
-        args.timeAxisIndex,
         threshold_channel))
 
-    # transform prediction map such that time axis is in front
-    if args.timeAxisIndex != 0:
-        predictionMaps = np.rollaxis(predictionMaps, args.timeAxisIndex, 0)
-    shape = predictionMaps.shape
     progressBar = ProgressBar(stop=shape[0])
     progressBar.show(0)
 
@@ -86,7 +83,7 @@ if __name__ == "__main__":
         # loop over timesteps
         for t in range(shape[0]):
             # smooth, threshold, and size filter from prediction map
-            framePrediction = predictionMaps[t, ..., threshold_channel]
+            framePrediction = predictionMaps[t, ..., threshold_channel].squeeze()
             assert ndim == len(framePrediction.shape)
 
             smoothedFramePrediction = vigra.filters.gaussianSmoothing(framePrediction.astype('float32'), threshold_sigmas[:ndim])
@@ -107,15 +104,16 @@ if __name__ == "__main__":
             else:
                 labelImage = vigra.analysis.labelVolumeWithBackground(labelImage)
 
-            z = 1
-            if ndim > 2:
-                z = shape[3]
-
             # bring to right size
-            labelImage = np.reshape(labelImage, (1, labelImage.shape[0], labelImage.shape[1], z, 1))
+            if ndim == 2:
+                axes = 'xy'
+            else:
+                axes = 'xyz'
+
+            labelImage = hytra.util.axesconversion.adjustOrder(labelImage, axes, 'txyzc')
 
             # save
-            h5file[args.labelImagePath % (t, t+1, shape[1], shape[2], z)] = labelImage
+            h5file[args.labelImagePath % (t, t+1, shape[1], shape[2], shape[3])] = labelImage
             progressBar.show()
 
 
