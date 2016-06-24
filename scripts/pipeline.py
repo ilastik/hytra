@@ -40,6 +40,10 @@ def run_pipeline(options, unknown):
         logging.info("Train transition classifier...")
         check_call(["python", os.path.abspath("train_transition_classifier.py"), "--config", options.config_file])
 
+    if options.do_extract_weights:
+        logging.info("Extracting weights from ilastik project...")
+        check_call(["python", os.path.abspath("tracking_ilp_to_weights.py"), "--config", options.config_file])
+
     if options.do_create_graph:
         logging.info("Create hypotheses graph...")
         check_call(["python", os.path.abspath("hypotheses_graph_to_json.py"), "--config", options.config_file])
@@ -101,6 +105,7 @@ if __name__ == "__main__":
     parser.add_argument("--do-ctc-raw-data-conversion", dest='do_ctc_raw_data_conversion', action='store_true', default=False)
     parser.add_argument("--do-ctc-segmentation-conversion", dest='do_ctc_segmentation_conversion', action='store_true', default=False)
     parser.add_argument("--do-train-transition-classifier", dest='do_train_transition_classifier', action='store_true', default=False)
+    parser.add_argument("--do-extract-weights", dest='do_extract_weights', action='store_true', default=False)
     parser.add_argument("--do-create-graph", dest='do_create_graph', action='store_true', default=False)
     parser.add_argument("--do-convexify", dest='do_convexify', action='store_true', default=False)
     parser.add_argument("--do-tracking", dest='do_tracking', action='store_true', default=False)
