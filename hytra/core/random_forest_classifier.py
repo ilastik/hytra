@@ -28,12 +28,12 @@ class RandomForestClassifier:
             else:
                 fullPath = '/'.join([self._classifierPath, self._options.classifierForestsGroupName])
             randomForests = []
-            logging.getLogger("RandomForestClassifier").info("trying to read {} classifiers in {} from {}".format(
-                len(h5file[fullPath].keys()), self._ilpFilename, fullPath))
+            logging.getLogger("RandomForestClassifier").info(" Attempting to read {} classifier(s) in {} from {}".format(
+                len([key for key in h5file[fullPath].keys() if 'Forest' in key]), self._ilpFilename, fullPath))
 
             for k in h5file[fullPath].keys():
                 if 'Forest' in k:
-                    print(str('/'.join([fullPath, k])))
+                    logging.getLogger("RandomForestClassifier").info(" Reading forest: {}".format( str('/'.join([fullPath, k])) ) )
                     rf = vigra.learning.RandomForest(str(self._ilpFilename), str('/'.join([fullPath, k])))
                     randomForests.append(rf)
             return randomForests
