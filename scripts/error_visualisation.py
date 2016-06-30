@@ -38,8 +38,6 @@ def error_visualisation(options):
             if ' Label=' in line:
                 merger.setdefault('*'+line[2:4].strip().zfill(3), [])
                 merger['*'+line[2:4].strip().zfill(3)].append(line[-3:-1].strip('='))
-
-                    # merger['*'+line[2:4].strip().zfill(3)] = line[-2:-1].strip('=')
             problematic.append('*'+line[2:4].strip().zfill(3))
 
     for frame in sorted(list(set(problematic))):
@@ -91,22 +89,26 @@ def error_visualisation(options):
                     seg_colors = np.vstack((seg_colors, err_colors[act_grayval]))
         segcolormap = matplotlib.colors.ListedColormap(seg_colors, N=gtim.max()+1)
 
+        fig, axes = plt.subplots(nrows=2, ncols=2)
         # cmap can/should be adjusted here. 'flag' is best for Fluo-SIM 01
-        name, raw, axraw= tifffile.imshow(rawim,figure=frame[-1], subplot=221, title='raw image FRAME {}'.format(frame.strip('*')), cmap='flag')
+        name, raw, axraw= tifffile.imshow(rawim, figure=fig, subplot=221, title='raw image FRAME {}'.format(frame.strip('*')), cmap='flag')
         axraw.colorbar.remove()
         raw.axis('off')
 
-        name, seg, axseg = tifffile.imshow(segim,figure=frame[-1], subplot=222, title='segmentation', cmap=segcolormap, vmin=0, vmax=gtim.max()+1)
+        name, seg, axseg = tifffile.imshow(segim, figure=fig, subplot=222, title='segmentation', cmap=segcolormap, vmin=0, vmax=gtim.max()+1)
         axseg.colorbar.remove()
         seg.axis('off')
 
-        name, tra, axtra = tifffile.imshow(traim,figure=frame[-1], subplot=223, title='tracking result', cmap=tracolormap, vmin=0, vmax=traim.max()+1)
+        name, tra, axtra = tifffile.imshow(traim, figure=fig, subplot=223, title='tracking result', cmap=tracolormap, vmin=0, vmax=traim.max()+1)
         axtra.colorbar.remove()
         tra.axis('off')
 
-        name, gt, axgt = tifffile.imshow(gtim, figure=frame[-1], subplot=224, title='groundtruth', cmap=gtcolormap, vmin=0, vmax=gtim.max()+1)
+        name, gt, axgt = tifffile.imshow(gtim, figure=fig, subplot=224, title='groundtruth', cmap=gtcolormap, vmin=0, vmax=gtim.max()+1)
         axgt.colorbar.remove()
         gt.axis('off')
+
+        fig.tight_layout()
+        plt.subplots_adjust(hspace = 0.2)
 
         if options.output == None:
             plt.show()

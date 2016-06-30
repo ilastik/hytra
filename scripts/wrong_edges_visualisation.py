@@ -24,7 +24,7 @@ def edges_visualisation(options):
     '''
 
     if options.output == None:
-        logging.getLogger('error_visualisation.py').info("Figures will open in pop-up windows. Specify an output path if you want to save them all.")
+        logging.getLogger('wrong_edges_visualisation.py').info("Figures will open in pop-up windows. Specify an output path if you want to save them all.")
 
     with open(options.txt_path) as txt:
         content = txt.readlines()
@@ -107,24 +107,23 @@ def edges_visualisation(options):
         tra_colors1 = colors1.copy()
         # visualise edges to be added as cyan blobs in the tracking result
         if any(frames == [x[0],x[1]] for x in edges_to_be_added):
-            print "EDGE TO BE ADDED"
+            logging.getLogger('wrong_edges_visualisation.py').debug("EDGE TO BE ADDED") 
             errors = [element for element in edges_to_be_added if [element[0], element[1]] == frames]
             for error in errors:
                 colors0[(int(error[2]))] = [0.5, 1, 1] # error[2] is the label
                 colors1[(int(error[3]))] = [0.5, 1, 1] # error[2] is the label
         # edges to be deleted as tomato orange blobs in the tracking result
         if any(frames == [x[0],x[1]] for x in redundant_edges):
-            print "REDUNDANT EDGE"
+            logging.getLogger('wrong_edges_visualisation.py').debug("REDUNDANT EDGE") 
             errors = [element for element in redundant_edges if [element[0], element[1]] == frames]
             for error in errors:
                 tra_colors0[(int(error[2]))] = [1, 0.2, 0.1]
                 tra_colors1[(int(error[3]))] = [1, 0.2, 0.1]
         # edges with incorrect semantics in gold in the tracking result
         if any(frames == [x[0],x[1]] for x in incorrect_semantics):
-            print "INCORRECT SEMANTICS"
+            logging.getLogger('wrong_edges_visualisation.py').debug("INCORRECT SEMANTICS") 
             errors = [element for element in incorrect_semantics if [element[0], element[1]] == frames]
             for error in errors:
-                print error[2], error[2]/float(traim[0].max())
                 tra_colors0[(int(error[2]))] = [1, 0.95, 0]
                 tra_colors1[(int(error[3]))] = [1, 0.95, 0]
 
