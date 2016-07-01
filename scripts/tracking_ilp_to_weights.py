@@ -4,9 +4,9 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
 # standard imports
-import h5py
 import configargparse as argparse
 import hytra.core.jsongraph
+import hytra.core.ilastik_project_options
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Extract the weights from an ilastik tracking project.',
@@ -18,18 +18,5 @@ if __name__ == "__main__":
 
     args, _ = parser.parse_known_args()
 
-    # load settings
-    with h5py.File(args.ilpFilename, 'r') as h5file:
-        withDivisions = h5file['/ConservationTracking/Parameters/0000/withDivisions'].value
-        transitionWeight = h5file['/ConservationTracking/Parameters/0000/transWeight'].value
-        detectionWeight = 10.0
-        divisionWeight = h5file['/ConservationTracking/Parameters/0000/divWeight'].value
-        appearanceWeight = h5file['/ConservationTracking/Parameters/0000/appearanceCost'].value
-        disappearanceWeight = h5file['/ConservationTracking/Parameters/0000/disappearanceCost'].value
-
-    if withDivisions:
-        weights = {'weights' : [transitionWeight, detectionWeight, divisionWeight, appearanceWeight, disappearanceWeight]}
-    else:
-        weights = {'weights' : [transitionWeight, detectionWeight, appearanceWeight, disappearanceWeight]}
-
-    hytra.core.jsongraph.writeToFormattedJSON(args.out, weights)
+    weightsDict = hytra.core.ilastik_project_options.extractWeightDictFromIlastikProject(args.ilpFilename)
+    hytra.core.jsongraph.writeToFormattedJSON(args.out, weightsDict)

@@ -225,6 +225,7 @@ if __name__ == "__main__":
     # find all files matching the pattern
     args.input_files = glob.glob(args.input_file_pattern)
     args.input_files.sort()
+    logging.info("Found {} files".format(len(args.input_files)))
 
     # make sure output directory exists
     if not os.path.exists(args.output_dir):
