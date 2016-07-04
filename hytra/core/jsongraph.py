@@ -165,33 +165,45 @@ class JsonTrackingGraph(object):
     which is transparently saved/loaded to JSON files.
     """
 
-    def __init__(self, model_filename=None, weights_filename=None, result_filename=None):
+    def __init__(self,
+                 model=None,
+                 weights=None,
+                 result=None, 
+                 model_filename=None, 
+                 weights_filename=None, 
+                 result_filename=None):
+        
+        assert(weights is None or weights_filename is None)
+        assert(model is None or model_filename is None)
+        assert(result is None or result_filename is None)
+
         # default values
         self.traxelIdPerTimestepToUniqueIdMap = {}
-        self.model = {
-            'segmentationHypotheses':[],
-            'linkingHypotheses':[],
-            'exclusions':[],
-            'divisionHypotheses':[],
-            'traxelToUniqueId':self.traxelIdPerTimestepToUniqueIdMap,
-            'settings':{'statesShareWeights':True,
-                        'allowPartialMergerAppearance':False,
-                        'requireSeparateChildrenOfDivision':True,
-                        'optimizerEpGap':0.01,
-                        'optimizerVerbose':True,
-                        'optimizerNumThreads':1
-                       }
-            }
-        self.weights = None
-        self.result = None
+        if model is None:
+            self.model = {
+                'segmentationHypotheses':[],
+                'linkingHypotheses':[],
+                'exclusions':[],
+                'divisionHypotheses':[],
+                'traxelToUniqueId':self.traxelIdPerTimestepToUniqueIdMap,
+                'settings':{'statesShareWeights':True,
+                            'allowPartialMergerAppearance':False,
+                            'requireSeparateChildrenOfDivision':True,
+                            'optimizerEpGap':0.01,
+                            'optimizerVerbose':True,
+                            'optimizerNumThreads':1
+                        }
+                }
+        else:
+            self.model = model
+        self.weights = weights
+        self.result = result
         self.uuidToTraxelMap = {}
 
         # load from file if specified
         if model_filename is not None:
             getLogger().debug("Loading model file: " + model_filename)
             self.model = readFromJSON(model_filename)
-            self.traxelIdPerTimestepToUniqueIdMap, self.uuidToTraxelMap = \
-                getMappingsBetweenUUIDsAndTraxels(self.model)
 
         if weights_filename is not None:
             getLogger().debug("Loading weights file: " + weights_filename)
@@ -201,7 +213,11 @@ class JsonTrackingGraph(object):
             getLogger().debug("Loading result file: " + result_filename)
             self.result = readFromJSON(result_filename)
 
-        # private initializations
+        # further initializations
+        if model is not None or model_filename is not None:
+            self.traxelIdPerTimestepToUniqueIdMap, self.uuidToTraxelMap = \
+                getMappingsBetweenUUIDsAndTraxels(self.model)
+        
         self._nextUuid = 0
 
     def addDetectionHypothesesFromTracklet(self,
