@@ -414,7 +414,7 @@ class MergerResolver(object):
         2. build graph of the unresolved (merger) nodes and their direct neighbors
         3. use a mergerResolving plugin to refine the merger nodes and their segmentation
         4. run min-cost max-flow tracking to find the fate of all the de-merged objects
-        5. export refined model, result, and segmentation
+        5. export refined segmentation, update member variables `model` and `result`
 
         """
 

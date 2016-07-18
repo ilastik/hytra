@@ -45,23 +45,7 @@ def run_pipeline(options, unknown):
     """
 
     params = convertToDict(unknown)
-
-    # if options.do_ctc_groundtruth_conversion:
-    #     logging.info("Convert CTC groundtruth to our format...")
-    #     check_call(["python", os.path.abspath("ctc/ctc_gt_to_hdf5.py"), "--config", options.config_file])
-
-    # if options.do_ctc_raw_data_conversion:
-    #     logging.info("Convert CTC raw data to HDF5...")
-    #     check_call(["python", os.path.abspath("ctc/stack_to_h5.py"), "--config", options.config_file])
-
-    # if options.do_ctc_segmentation_conversion:
-    #     logging.info("Convert CTC segmentation to HDF5...")
-    #     check_call(["python", os.path.abspath("ctc/segmentation_to_hdf5.py"), "--config", options.config_file])
-
-    # if options.do_train_transition_classifier:
-    #     logging.info("Train transition classifier...")
-    #     check_call(["python", os.path.abspath("train_transition_classifier.py"), "--config", options.config_file])
-
+    
     if options.do_extract_weights:
         logging.info("Extracting weights from ilastik project...")
         weights = hytra.core.ilastik_project_options.extractWeightDictFromIlastikProject(params['ilastik-tracking-project'])
@@ -137,7 +121,6 @@ def run_pipeline(options, unknown):
         result = dpct.trackFlowBased(model, weights)
         hytra.core.jsongraph.writeToFormattedJSON(options.result_filename, result)
 
-    extra_params = []
     if options.do_merger_resolving:
         logging.info("Run merger resolving")
         trackingGraph = JsonTrackingGraph(model=model, result=result)
@@ -162,22 +145,9 @@ def run_pipeline(options, unknown):
             None,
             True)
 
-    #     for p in ["--out-graph-json-file", "--out-label-image-file", "--out-result-json-file"]:
-    #         index = unknown.index(p)
-    #         extra_params.append(p.replace('--out-', '--'))
-    #         extra_params.append(unknown[index + 1])
-
-    # if options.export_format is not None:
-    #     logging.info("Convert result to {}...".format(options.export_format))
-    #     if options.export_format in ['ilastikH5', 'ctc']:
-    #         check_call(["python", os.path.abspath("json_result_to_events.py"), "--config", options.config_file] + extra_params)
-    #         if options.export_format == 'ctc':
-    #             check_call(["python", os.path.abspath("ctc/hdf5_to_ctc.py"), "--config", options.config_file] + extra_params)
-    #     elif options.export_format == 'labelimage':
-    #         check_call(["python", os.path.abspath("json_result_to_labelimage.py"), "--config", options.config_file] + extra_params)
-    #     elif options.export_format is not None:
-    #         logging.error("Unknown export format chosen!")
-    #         raise ValueError("Unknown export format chosen!")
+        ## resolved model and result are now here:
+        # merger_resolver.model
+        # merger_resolver.result
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
