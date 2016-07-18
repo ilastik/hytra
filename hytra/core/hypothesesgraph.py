@@ -275,6 +275,14 @@ def convertHypothesesGraphToJsonGraph(hypothesesGraph,
      ([probNoDiv, probDiv])
     '''
 
+    ## TODO: store probabilities inside the networkx-graph and then 
+    ## use the following networkx functionality to make this much nicer:
+    # a = json_graph.node_link_data(g, attrs={'source':'src', 'target':'dest', 'id':'id', 'key':'test'})
+    # a['segmentationHypotheses'] = a['nodes']
+    # del a['nodes']
+    # a['linkingHypotheses'] = a['links']
+    # del a['nodes']
+
     getLogger().info("Creating JSON graph from hypotheses graph")
     progressBar = ProgressBar(stop=numElements)
     trackingGraph = hytra.core.jsongraph.JsonTrackingGraph()
