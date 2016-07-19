@@ -7,7 +7,8 @@ class IlastikHypothesesGraph(HypothesesGraph):
     '''
 
     def __init__(self, 
-                 traxelstore, 
+                 traxelstore,
+                 timeRange, 
                  maxNumObjects, 
                  numNearestNeighbors,
                  fieldOfView,
@@ -25,6 +26,7 @@ class IlastikHypothesesGraph(HypothesesGraph):
 
         # store values
         self.traxelstore = traxelstore
+        self.timeRange = timeRange
         self.maxNumObjects = maxNumObjects
         self.numNearestNeighbors = numNearestNeighbors
         self.fieldOfView = fieldOfView
@@ -73,7 +75,7 @@ class IlastikHypothesesGraph(HypothesesGraph):
                 return self.getTransitionFeaturesRF(srcTraxel, destTraxel, self.transitionClassifier, self.traxelstore, self.maxNumObjects + 1)
 
         def boundaryCostMultiplierFunc(traxel):
-            return self.getBoundaryCostMultiplier(traxel, self.fieldOfView, self.borderAwareWidth, self.traxelstore.shape[0], self.traxelstore.shape[1])
+            return self.getBoundaryCostMultiplier(traxel, self.fieldOfView, self.borderAwareWidth, self.timeRange[0], self.timeRange[-1])
 
         def divisionProbabilityFunc(traxel):
             try:

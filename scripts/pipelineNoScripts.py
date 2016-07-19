@@ -97,6 +97,7 @@ def run_pipeline(options, unknown):
 
         hypotheses_graph = IlastikHypothesesGraph(
             traxelstore=probGenerator,
+            timeRange=traxelstore.timeRange,
             maxNumObjects=int(params['max-number-objects']),
             numNearestNeighbors=int(params['max-nearest-neighbors']),
             fieldOfView=fieldOfView,
