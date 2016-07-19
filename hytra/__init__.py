@@ -16,7 +16,7 @@ The important **modules** are:
 
 * `hytra.ilastik_project_options`
 * `hytra.random_forest_classifier`
-* `hytra.traxelstore`
+* `hytra.probabilitygenerator`
 * `hytra.hypothesesgraph`
 * `hytra.divisionfeatures`
 * `hytra.progressbar`

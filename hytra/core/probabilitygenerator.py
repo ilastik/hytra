@@ -210,9 +210,19 @@ class DummyExecutor(object):
 
         return f
 
-class Traxelstore(object):
+class ProbabilityGenerator(object):
     """
-    The traxelstore is a python wrapper around pgmlink's C++ traxelstore,
+    The ProbabilityGenerator contains a dictionary of all traxels. The traxels themself contain the 
+    probability estimates for detection and division. Any derived class will need to populate this
+    dictionary.
+    """
+    def __init__(self):
+        self.TraxelsPerFrame = {}
+
+
+class IlpProbabilityGenerator(ProbabilityGenerator):
+    """
+    The IlpProbabilityGenerator is a python wrapper around pgmlink's C++ traxelstore,
     but with the functionality to compute all region features 
     and evaluate the division/count/transition classifiers.
     """

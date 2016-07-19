@@ -56,7 +56,7 @@ def run_pipeline(options, unknown):
     if options.do_create_graph:
         logging.info("Create hypotheses graph...")
 
-        import hytra.core.traxelstore as traxelstore
+        import hytra.core.probabilitygenerator as probabilitygenerator
         from hytra.core.ilastik_project_options import IlastikProjectOptions
         ilpOptions = IlastikProjectOptions()
         ilpOptions.labelImagePath = params['label-image-path']
@@ -80,23 +80,23 @@ def run_pipeline(options, unknown):
         else:
             ilpOptions.divisionClassifierFilename = None # params['ilastik-tracking-project']
 
-        traxelstore = traxelstore.Traxelstore(ilpOptions, 
+        probGeneratorerator = probabilitygenerator.IlpProbabilityGenerator(ilpOptions, 
                                               pluginPaths=['../hytra/plugins'],
                                               useMultiprocessing=False)
 
         # if time_range is not None:
         #     traxelstore.timeRange = time_range
 
-        traxelstore.fillTraxelStore(usePgmlink=False)
-        fieldOfView = constructFov(traxelstore.shape,
-                                   traxelstore.timeRange[0],
-                                   traxelstore.timeRange[1],
-                                   [traxelstore.x_scale,
-                                   traxelstore.y_scale,
-                                   traxelstore.z_scale])
+        probGenerator.fillTraxelStore(usePgmlink=False)
+        fieldOfView = constructFov(probGenerator.shape,
+                                   probGenerator.timeRange[0],
+                                   probGenerator.timeRange[1],
+                                   [probGenerator.x_scale,
+                                   probGenerator.y_scale,
+                                   probGenerator.z_scale])
 
         hypotheses_graph = IlastikHypothesesGraph(
-            traxelstore=traxelstore,
+            traxelstore=probGenerator,
             maxNumObjects=int(params['max-number-objects']),
             numNearestNeighbors=int(params['max-nearest-neighbors']),
             fieldOfView=fieldOfView,

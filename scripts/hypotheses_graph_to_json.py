@@ -141,7 +141,7 @@ def generate_traxelstore(h5file,
         max_traxel_id_at = track.VectorOfInt()
         withPgmlink = True
     except:
-        import hytra.core.traxelstore as track
+        import hytra.core.probabilitygenerator as track
         withPgmlink = False
         ts, fs = None, None
         max_traxel_id_at = []
@@ -448,7 +448,7 @@ def initializeConservationTracking(options, shape, t0, t1):
     return tracker, fov
 
 
-def loadPyTraxelstore(options,
+def loadProbabilityGenerator(options,
                       ilpFilename,
                       objectCountClassifierPath=None,
                       divisionClassifierPath=None,
@@ -458,7 +458,7 @@ def loadPyTraxelstore(options,
     """
     Set up a python side traxel store: compute all features, but do not evaluate classifiers.
     """
-    import hytra.core.traxelstore as traxelstore
+    import hytra.core.probabilitygenerator as traxelstore
     from hytra.core.ilastik_project_options import IlastikProjectOptions
     ilpOptions = IlastikProjectOptions()
     ilpOptions.labelImagePath = options.label_img_path
@@ -487,27 +487,27 @@ def loadPyTraxelstore(options,
         else:
             ilpOptions.divisionClassifierFilename = ilpFilename
 
-    pyTraxelstore = traxelstore.Traxelstore(ilpOptions, 
+    probGenerator = traxelstore.IlpProbabilityGenerator(ilpOptions, 
                                             turnOffFeatures=options.turnOffFeatures, 
                                             pluginPaths=options.pluginPaths,
                                             useMultiprocessing=not options.disableMultiprocessing)
     if time_range is not None:
-        pyTraxelstore.timeRange = time_range
+        probGenerator.timeRange = time_range
 
-    a = pyTraxelstore.fillTraxelStore(usePgmlink=usePgmlink, turnOffFeatures=options.turnOffFeatures)
+    a = probGenerator.fillTraxelStore(usePgmlink=usePgmlink, turnOffFeatures=options.turnOffFeatures)
     if usePgmlink:
         t, f = a
     else:
         t = None
         f = None
-    return pyTraxelstore, t, f
+    return probGenerator, t, f
 
 
 def loadTransitionClassifier(transitionClassifierFilename, transitionClassifierPath):
     """
     Load a transition classifier random forest from a HDF5 file
     """
-    import hytra.core.traxelstore as traxelstore
+    import hytra.core.probabilitygenerator as traxelstore
     rf = traxelstore.RandomForestClassifier(transitionClassifierPath, transitionClassifierFilename)
     return rf
 
@@ -531,12 +531,12 @@ def getTransitionFeaturesDist(traxelA, traxelB, transitionParam, max_state):
     return [1.0 - prob] + [prob] * (max_state - 1)
 
 
-def getTransitionFeaturesRF(traxelA, traxelB, transitionClassifier, pyTraxelstore, max_state):
+def getTransitionFeaturesRF(traxelA, traxelB, transitionClassifier, probGenerator, max_state):
     """
     Get the transition probabilities by predicting them with the classifier
     """
-    feats = [pyTraxelstore.getTraxelFeatureDict(obj.Timestep, obj.Id) for obj in [traxelA, traxelB]]
-    featVec = pyTraxelstore.getTransitionFeatureVector(feats[0], feats[1], transitionClassifier.selectedFeatures)
+    feats = [probGenerator.getTraxelFeatureDict(obj.Timestep, obj.Id) for obj in [traxelA, traxelB]]
+    featVec = probGenerator.getTransitionFeatureVector(feats[0], feats[1], transitionClassifier.selectedFeatures)
     probs = transitionClassifier.predictProbabilities(featVec)[0]
     return [probs[0]] + [probs[1]] * (max_state - 1)
 
@@ -554,14 +554,14 @@ def getBoundaryCostMultiplier(traxel, fov, margin, t0, t1):
         else:
             return 1.0
 
-def getHypothesesGraphAndIterators(options, shape, t0, t1, ts, pyTraxelstore):
+def getHypothesesGraphAndIterators(options, shape, t0, t1, ts, probGenerator):
     """
     Build the hypotheses graph either using pgmlink, or from the python traxelstore in python
     """
-    if pyTraxelstore is not None:
+    if probGenerator is not None:
         logging.getLogger('hypotheses_graph_to_json.py').info("Building python hypotheses graph")
         hypotheses_graph = hypothesesgraph.HypothesesGraph()
-        hypotheses_graph.buildFromTraxelstore(pyTraxelstore,
+        hypotheses_graph.buildFromTraxelstore(probGenerator,
                                               numNearestNeighbors=options.max_nearest_neighbors,
                                               maxNeighborDist=options.mnd,
                                               withDivisions=not options.without_divisions,
@@ -590,13 +590,13 @@ def getHypothesesGraphAndIterators(options, shape, t0, t1, ts, pyTraxelstore):
 
     return hypotheses_graph, n_it, a_it, fov
 
-def insertProbsIntoPyTraxelstore(options, pyTraxelstore, ts):
+def insertProbsIntoProbabilityGenerator(options, probGenerator, ts):
     for traxel in ts.traxels:
         features = ['detProb']
         if not options.without_divisions:
             features.append('divProb')
         for featName in features:
-            pyTraxelstore.TraxelsPerFrame[traxel.Timestep][traxel.Id].Features[featName] = traxel.Features[featName]
+            probGenerator.TraxelsPerFrame[traxel.Timestep][traxel.Id].Features[featName] = traxel.Features[featName]
 
 def loadTraxelstoreAndTransitionClassifier(options, ilp_fn, time_range, shape):
     """
@@ -616,8 +616,8 @@ def loadTraxelstoreAndTransitionClassifier(options, ilp_fn, time_range, shape):
 
     if options.raw_filename != None:
         if foundDetectionProbabilities:
-            pyTraxelstore, _, _ = loadPyTraxelstore(options, ilp_fn, time_range=time_range, usePgmlink=False, featuresOnly=True)
-            insertProbsIntoPyTraxelstore(options, pyTraxelstore, ts)
+            probGenerator, _, _ = loadProbabilityGenerator(options, ilp_fn, time_range=time_range, usePgmlink=False, featuresOnly=True)
+            insertProbsIntoprobabilityGenerator(options, probGenerator, ts)
         else:
             # warning: assuming that the classifiers are top-level groups in HDF5
             objectCountClassifierPath = '/' + [t for t in options.obj_count_path.split('/') if len(t) > 0][0]
@@ -625,25 +625,25 @@ def loadTraxelstoreAndTransitionClassifier(options, ilp_fn, time_range, shape):
                 divisionClassifierPath = '/' + [t for t in options.div_prob_path.split('/') if len(t) > 0][0]
             else:
                 divisionClassifierPath = None
-            pyTraxelstore, ts, fs = loadPyTraxelstore(options,
+            probGenerator, ts, fs = loadProbabilityGenerator(options,
                                                       ilp_fn,
                                                       objectCountClassifierPath=objectCountClassifierPath,
                                                       divisionClassifierPath=divisionClassifierPath,
                                                       time_range=time_range,
                                                       usePgmlink=False)
-            t0, t1 = pyTraxelstore.timeRange
-            ndim = pyTraxelstore.getNumDimensions()
+            t0, t1 = probGenerator.timeRange
+            ndim = probGenerator.getNumDimensions()
             foundDetectionProbabilities = True
 
         if options.transition_classifier_filename != None:
             transitionClassifier = loadTransitionClassifier(options.transition_classifier_filename,
                                                             options.transition_classifier_path)
     else:
-        pyTraxelstore = None
+        probGenerator = None
 
     assert(foundDetectionProbabilities)
 
-    return ts, fs, ndim, t0, t1, pyTraxelstore, transitionClassifier
+    return ts, fs, ndim, t0, t1, probGenerator, transitionClassifier
 
 
 if __name__ == "__main__":
@@ -683,14 +683,14 @@ if __name__ == "__main__":
         shape = h5file['/'.join(options.label_img_path.split('/')[:-1])].values()[0].shape[1:4]
 
     # load traxelstore
-    ts, fs, ndim, t0, t1, pyTraxelstore, transitionClassifier = loadTraxelstoreAndTransitionClassifier(options, ilp_fn,
+    ts, fs, ndim, t0, t1, probGenerator, transitionClassifier = loadTraxelstoreAndTransitionClassifier(options, ilp_fn,
                                                                                                        time_range,
                                                                                                        shape)
 
     # build hypotheses graph
-    hypotheses_graph, n_it, a_it, fov = getHypothesesGraphAndIterators(options, shape, t0, t1, ts, pyTraxelstore)
+    hypotheses_graph, n_it, a_it, fov = getHypothesesGraphAndIterators(options, shape, t0, t1, ts, probGenerator)
 
-    if pyTraxelstore is None:
+    if probGenerator is None:
         import pgmlink
         numElements = pgmlink.countNodes(hypotheses_graph) + pgmlink.countArcs(hypotheses_graph)
     else:
@@ -712,7 +712,7 @@ if __name__ == "__main__":
         if transitionClassifier is None:
             return getTransitionFeaturesDist(srcTraxel, destTraxel, options.trans_par, maxNumObjects + 1)
         else:
-            return getTransitionFeaturesRF(srcTraxel, destTraxel, transitionClassifier, pyTraxelstore, maxNumObjects + 1)
+            return getTransitionFeaturesRF(srcTraxel, destTraxel, transitionClassifier, probGenerator, maxNumObjects + 1)
 
     def boundaryCostMultiplierFunc(traxel):
         return getBoundaryCostMultiplier(traxel, fov, margin, t0, t1)

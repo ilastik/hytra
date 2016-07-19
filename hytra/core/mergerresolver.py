@@ -6,7 +6,7 @@ import commentjson as json
 import networkx as nx
 import copy
 from hytra.pluginsystem.plugin_manager import TrackingPluginManager
-import hytra.core.traxelstore as traxelstore
+import hytra.core.probabilitygenerator as probabilitygenerator
 import hytra.core.jsongraph
 from hytra.core.jsongraph import negLog, listify, JsonTrackingGraph
 
@@ -474,7 +474,7 @@ class MergerResolver(object):
             # load transition classifier if any
             if transition_classifier_filename is not None:
                 getLogger().info("\tLoading transition classifier")
-                transitionClassifier = traxelstore.RandomForestClassifier(
+                transitionClassifier = probabilitygenerator.RandomForestClassifier(
                     transition_classifier_path, transition_classifier_filename)
             else:
                 getLogger().info("\tUsing distance based transition energies")
