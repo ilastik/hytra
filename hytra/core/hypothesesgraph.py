@@ -410,6 +410,24 @@ class HypothesesGraph(object):
 
         return trackingGraph
 
+    def insertSolution(self, resultDictionary):
+        '''
+        Add solution values to nodes and arcs from dictionary representation of solution.
+        The resulting graph (=model) gets an additional property "value that represents the number of objects inside a detection/arc
+        Additionally a division indicator is saved in the node property "divisionValue"
+        '''
+        traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = self.getMappingsBetweenUUIDsAndTraxels()
+
+        for detection in resultDictionary["detectionResults"]:
+            self._graph.node[uuidToTraxelMap[str(detection["id"])][0]]['value'] = detection["value"]
+
+        for link in resultDictionary["linkingResults"]:
+            source,dest = uuidToTraxelMap[str(link["src"])][0],uuidToTraxelMap[str(link["dest"])][0]
+            self._graph.edge[source][dest]['value'] = link["value"]
+
+        for division in resultDictionary["divisionResults"]:
+            self._graph.node[uuidToTraxelMap[str(division["id"])][0]]['divisionValue'] = division["value"]
+
 def convertLegacyHypothesesGraphToJsonGraph(hypothesesGraph,
                                       nodeIterator,
                                       arcIterator,
