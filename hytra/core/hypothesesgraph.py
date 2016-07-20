@@ -144,31 +144,31 @@ class HypothesesGraph(object):
             self._graph.add_node((frame, obj), traxel=traxel, id=self._nextNodeUuid)
             self._nextNodeUuid += 1
 
-    def buildFromTraxelstore(self, traxelstore, maxNeighborDist=200, numNearestNeighbors=1,
-                             forwardBackwardCheck=True, withDivisions=True, divisionThreshold=0.1):
+    def buildFromProbabilityGenerator(self, probabilityGenerator, maxNeighborDist=200, numNearestNeighbors=1,
+                                      forwardBackwardCheck=True, withDivisions=True, divisionThreshold=0.1):
         """
         Takes a python traxelstore containing traxel features and finds probable links between frames.
         """
-        assert (traxelstore is not None)
-        assert (len(traxelstore.TraxelsPerFrame) > 0)
+        assert (probabilityGenerator is not None)
+        assert (len(probabilityGenerator.TraxelsPerFrame) > 0)
 
         def checkNodeWhileAddingLinks(frame, obj):
             if (frame, obj) not in self._graph:
                 getLogger().warning("Adding node ({}, {}) when setting up links".format(frame, obj))
 
         kdTreeNextFrame = None
-        for frame in range(len(traxelstore.TraxelsPerFrame.keys()) - 1):
+        for frame in range(len(probabilityGenerator.TraxelsPerFrame.keys()) - 1):
             if frame > 0:
                 kdTreeThisFrame = kdTreeNextFrame
             else:
-                kdTreeThisFrame = self._buildFrameKdTree(traxelstore.TraxelsPerFrame[frame])
-                self._addNodesForFrame(frame, traxelstore.TraxelsPerFrame[frame])
+                kdTreeThisFrame = self._buildFrameKdTree(probabilityGenerator.TraxelsPerFrame[frame])
+                self._addNodesForFrame(frame, probabilityGenerator.TraxelsPerFrame[frame])
 
-            kdTreeNextFrame = self._buildFrameKdTree(traxelstore.TraxelsPerFrame[frame + 1])
-            self._addNodesForFrame(frame + 1, traxelstore.TraxelsPerFrame[frame + 1])
+            kdTreeNextFrame = self._buildFrameKdTree(probabilityGenerator.TraxelsPerFrame[frame + 1])
+            self._addNodesForFrame(frame + 1, probabilityGenerator.TraxelsPerFrame[frame + 1])
 
             # find forward links
-            for obj, traxel in traxelstore.TraxelsPerFrame[frame].iteritems():
+            for obj, traxel in probabilityGenerator.TraxelsPerFrame[frame].iteritems():
                 divisionPreservingNumNearestNeighbors = numNearestNeighbors
                 if divisionPreservingNumNearestNeighbors < 2 \
                         and withDivisions \
@@ -185,7 +185,7 @@ class HypothesesGraph(object):
 
             # find backward links
             if forwardBackwardCheck:
-                for obj, traxel in traxelstore.TraxelsPerFrame[frame + 1].iteritems():
+                for obj, traxel in probabilityGenerator.TraxelsPerFrame[frame + 1].iteritems():
                     neighbors = self._findNearestNeighbors(kdTreeThisFrame,
                                                            traxel,
                                                            numNearestNeighbors,

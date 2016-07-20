@@ -8,7 +8,7 @@ class IlastikHypothesesGraph(HypothesesGraph):
     '''
 
     def __init__(self, 
-                 traxelstore,
+                 probabilityGenerator,
                  timeRange, 
                  maxNumObjects, 
                  numNearestNeighbors,
@@ -25,7 +25,7 @@ class IlastikHypothesesGraph(HypothesesGraph):
         super(IlastikHypothesesGraph, self).__init__()
 
         # store values
-        self.traxelstore = traxelstore
+        self.probabilityGenerator = probabilityGenerator
         self.timeRange = timeRange
         self.maxNumObjects = maxNumObjects
         self.numNearestNeighbors = numNearestNeighbors
@@ -38,11 +38,11 @@ class IlastikHypothesesGraph(HypothesesGraph):
         self.transitionParameter = transitionParameter
 
         # build hypotheses graph
-        self.buildFromTraxelstore(traxelstore,
-                                  numNearestNeighbors=numNearestNeighbors,
-                                  maxNeighborDist=maxNeighborDistance,
-                                  withDivisions=withDivisions,
-                                  divisionThreshold=0.1)
+        self.buildFromProbabilityGenerator(probabilityGenerator,
+                                           numNearestNeighbors=numNearestNeighbors,
+                                           maxNeighborDist=maxNeighborDistance,
+                                           withDivisions=withDivisions,
+                                           divisionThreshold=0.1)
 
     def insertEnergies(self):
         """
@@ -59,7 +59,7 @@ class IlastikHypothesesGraph(HypothesesGraph):
             if self.transitionClassifier is None:
                 return self.getTransitionFeaturesDist(srcTraxel, destTraxel, self.transitionParameter, self.maxNumObjects + 1)
             else:
-                return self.getTransitionFeaturesRF(srcTraxel, destTraxel, self.transitionClassifier, self.traxelstore, self.maxNumObjects + 1)
+                return self.getTransitionFeaturesRF(srcTraxel, destTraxel, self.transitionClassifier, self.probabilityGenerator, self.maxNumObjects + 1)
 
         def boundaryCostMultiplierFunc(traxel):
             return self.getBoundaryCostMultiplier(traxel, self.fieldOfView, self.borderAwareWidth, self.timeRange[0], self.timeRange[-1])
@@ -101,12 +101,12 @@ class IlastikHypothesesGraph(HypothesesGraph):
         return [1.0 - prob] + [prob] * (max_state - 1)
 
 
-    def getTransitionFeaturesRF(self, traxelA, traxelB, transitionClassifier, pyTraxelstore, max_state):
+    def getTransitionFeaturesRF(self, traxelA, traxelB, transitionClassifier, probabilityGenerator, max_state):
         """
         Get the transition probabilities by predicting them with the classifier
         """
-        feats = [pyTraxelstore.getTraxelFeatureDict(obj.Timestep, obj.Id) for obj in [traxelA, traxelB]]
-        featVec = pyTraxelstore.getTransitionFeatureVector(feats[0], feats[1], transitionClassifier.selectedFeatures)
+        feats = [probabilityGenerator.getTraxelFeatureDict(obj.Timestep, obj.Id) for obj in [traxelA, traxelB]]
+        featVec = probabilityGenerator.getTransitionFeatureVector(feats[0], feats[1], transitionClassifier.selectedFeatures)
         probs = transitionClassifier.predictProbabilities(featVec)[0]
         return [probs[0]] + [probs[1]] * (max_state - 1)
 

@@ -495,7 +495,7 @@ def loadProbabilityGenerator(options,
     if time_range is not None:
         probGenerator.timeRange = time_range
 
-    a = probGenerator.fillTraxelStore(usePgmlink=usePgmlink, turnOffFeatures=options.turnOffFeatures)
+    a = probGenerator.fillTraxels(usePgmlink=usePgmlink, turnOffFeatures=options.turnOffFeatures)
     if usePgmlink:
         t, f = a
     else:

@@ -97,7 +97,7 @@ def run_pipeline(options, unknown):
         # if time_range is not None:
         #     traxelstore.timeRange = time_range
 
-        probGenerator.fillTraxelStore(usePgmlink=False)
+        probGenerator.fillTraxels(usePgmlink=False)
         fieldOfView = constructFov(probGenerator.shape,
                                    probGenerator.timeRange[0],
                                    probGenerator.timeRange[1],
@@ -106,7 +106,7 @@ def run_pipeline(options, unknown):
                                    probGenerator.z_scale])
 
         hypotheses_graph = IlastikHypothesesGraph(
-            traxelstore=probGenerator,
+            probabilityGenerator=probGenerator,
             timeRange=probGenerator.timeRange,
             maxNumObjects=int(params['max-number-objects']),
             numNearestNeighbors=int(params['max-nearest-neighbors']),

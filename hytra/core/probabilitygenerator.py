@@ -9,6 +9,8 @@ from hytra.pluginsystem.plugin_manager import TrackingPluginManager
 from hytra.core.random_forest_classifier import RandomForestClassifier
 from hytra.core.ilastik_project_options import IlastikProjectOptions
 
+def getLogger():
+    return logging.getLogger("ProbabilityGenerator")
 
 class Traxel(object):
     """
@@ -496,7 +498,7 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
             #         featuresPerFrame[frame].update(self._extractDivisionFeaturesForFrame(frame, featuresPerFrame)[1])
         
         t1 = time.time()
-        logging.getLogger("Traxelstore").info("Feature computation took {} secs".format(t1 - t0))
+        getLogger().info("Feature computation took {} secs".format(t1 - t0))
         
         return featuresPerFrame
 
@@ -507,7 +509,7 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
         for i, v in enumerate(featureArray):
             traxel.set_feature_value(name, i, float(v))
 
-    def fillTraxelStore(self, usePgmlink=True, ts=None, fs=None, dispyNodeIps=[], turnOffFeatures=[]):
+    def fillTraxels(self, usePgmlink=True, ts=None, fs=None, dispyNodeIps=[], turnOffFeatures=[]):
         """
         Compute all the features and predict object count as well as division probabilities.
         Store the resulting information (and all other features) in the given pgmlink::TraxelStore,
@@ -527,10 +529,10 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
             else:
                 assert (fs is not None)
 
-        logging.getLogger("Traxelstore").info("Extracting features...")
+        getLogger().info("Extracting features...")
         self._featuresPerFrame = self._extractAllFeatures(dispyNodeIps=dispyNodeIps, turnOffFeatures=turnOffFeatures)
 
-        logging.getLogger("Traxelstore").info("Creating traxels...")
+        getLogger().info("Creating traxels...")
         progressBar = ProgressBar(stop=len(self._featuresPerFrame))
         progressBar.show(increase=0)
 
@@ -569,7 +571,7 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
                         else:
                             featureValues = val[objectId, ...]
                     except:
-                        logging.getLogger("Traxelstore").error(
+                        getLogger().error(
                             "Could not get feature values of {} for key {} from matrix with shape {}".format(
                                 objectId, key, val.shape))
                         raise AssertionError()
@@ -578,7 +580,7 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
                         if key == 'RegionCenter':
                             self._setTraxelFeatureArray(traxel, featureValues, 'com')
                     except:
-                        logging.getLogger("Traxelstore").error(
+                        getLogger().error(
                             "Could not add feature array {} of shape {} for {}".format(
                                 featureValues, featureValues.shape, key))
                         raise AssertionError()
