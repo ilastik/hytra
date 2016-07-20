@@ -228,10 +228,13 @@ class HypothesesGraph(object):
             src = node_remapping[edge[0]]
             dest = node_remapping[edge[1]]
             tracklet_graph._graph.node[src]['tracklet'].extend(tracklet_graph._graph.node[dest]['tracklet'])
+            # duplicate out arcs with new source
             for out_edge in tracklet_graph._graph.out_edges(dest):
                 tracklet_graph._graph.add_edge(src, out_edge[1])
+            # adjust node remapping to point to new source for all contracted traxels
+            for t in tracklet_graph._graph.node[dest]['tracklet']:
+                node_remapping[(t.Timestep, t.Id)] = src
             tracklet_graph._graph.remove_node(dest)
-            node_remapping[dest] = src
 
         getLogger().info("tracklet graph has {} nodes and {} edges (before {},{})".format(
             tracklet_graph.countNodes(), tracklet_graph.countArcs(), self.countNodes(), self.countArcs()))
