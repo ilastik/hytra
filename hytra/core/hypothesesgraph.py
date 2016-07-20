@@ -431,6 +431,62 @@ class HypothesesGraph(object):
         for division in resultDictionary["divisionResults"]:
             self._graph.node[uuidToTraxelMap[str(division["id"])][0]]['divisionValue'] = division["value"]
 
+    def countIncommingObjects(self,node):
+        numberOfIncommingObject = 0
+        numberOfIncommingEdges = 0
+        for in_edge in self._graph.in_edges(node):
+            numberOfIncommingObject += self._graph.node[node]['value']
+            numberOfIncommingEdges += 1
+        return numberOfIncommingObject,numberOfIncommingEdges
+
+    def countOutgoingObjects(self,node):
+        numberOfOutgoingObject = 0
+        numberOfOutgoingEdges = 0
+        for in_edge in self._graph.out_edges(node):
+            numberOfOutgoingObject += self._graph.node[node]['value']
+            numberOfOutgoingEdges += 1
+        return numberOfOutgoingObject,numberOfOutgoingEdges
+
+    def computeLineage(self):
+        """
+        computes lineage and track id for every node in the graph
+        """
+
+        update_queue = []
+        max_lineage_id = 0
+        max_track_id = 0
+        # find start of lineages
+        for n in self.nodeIterator():
+            if self.countIncommingObjects(n)[0]==0:
+                # found start of a track
+                update_queue.append((n,max_lineage_id,max_track_id))
+                max_lineage_id += 1
+                max_track_id   += 1
+
+        print update_queue
+
+        while len(update_queue) > 0:
+            current_node,lineage_id,track_id = update_queue.pop()
+            self._graph.node[current_node]["lineageId"] = lineage_id
+            self._graph.node[current_node]["trackId"] = track_id
+
+            numberOfOutgoingObject,numberOfOutgoingEdges = self.countOutgoingObjects(current_node)
+            print self._graph.node[current_node]
+            if (numberOfOutgoingObject != numberOfOutgoingEdges):
+                print "WARNING: running lineage computation on unresolved graphs depends on a race condition"
+
+            if len(self._graph.out_edges(current_node)) == 1:
+                a = self._graph.out_edges(current_node)[0]
+                update_queue.append((self.target(a),
+                                    lineage_id,
+                                    track_id))
+            elif len(self._graph.out_edges(current_node)) == 2:
+                for a in self._graph.out_edges(current_node):
+                    update_queue.append((self.target(a),
+                                        lineage_id,
+                                        max_track_id))
+                    max_track_id += 1
+
 def convertLegacyHypothesesGraphToJsonGraph(hypothesesGraph,
                                       nodeIterator,
                                       arcIterator,
