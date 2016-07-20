@@ -1,4 +1,5 @@
 import logging
+import copy
 import networkx as nx
 import numpy as np
 from sklearn.neighbors import KDTree
@@ -6,9 +7,11 @@ import hytra.core.jsongraph
 from hytra.core.jsongraph import negLog, listify
 from hytra.util.progressbar import ProgressBar
 
+
 def getLogger():
     ''' logger to be used in this module '''
     return logging.getLogger(__name__)
+
 
 def getTraxelFeatureVector(traxel, featureName, maxNumDimensions=3):
     """
@@ -57,6 +60,8 @@ class HypothesesGraph(object):
 
     def __init__(self):
         self._graph = nx.DiGraph()
+        self.withTracklets = False
+        self._nextNodeUuid = 0
 
     def nodeIterator(self):
         return self._graph.nodes_iter()
@@ -86,7 +91,8 @@ class HypothesesGraph(object):
         kdtree, objectIdList = kdtreeObjectPair
         if len(objectIdList) <= numNeighbors:
             return objectIdList
-        distances, neighbors = kdtree.query(self._extractCenter(traxel), k=numNeighbors, return_distance=True)
+        distances, neighbors = kdtree.query(self._extractCenter(
+            traxel), k=numNeighbors, return_distance=True)
         return [objectIdList[index] for distance, index in zip(distances[0], neighbors[0]) if
                 distance < maxNeighborDist]
 
@@ -135,7 +141,8 @@ class HypothesesGraph(object):
         for obj, traxel in traxelDict.iteritems():
             if obj == 0:
                 continue
-            self._graph.add_node((frame, obj), traxel=traxel)
+            self._graph.add_node((frame, obj), traxel=traxel, id=self._nextNodeUuid)
+            self._nextNodeUuid += 1
 
     def buildFromTraxelstore(self, traxelstore, maxNeighborDist=200, numNearestNeighbors=1,
                              forwardBackwardCheck=True, withDivisions=True, divisionThreshold=0.1):
@@ -192,12 +199,14 @@ class HypothesesGraph(object):
         '''
         **Return** a new hypotheses graph where chains of detections with only one possible 
         incoming/outgoing transition are contracted into one node in the graph.
+        The returned graph will have `withTracklets` set to `True`!
 
         The `'tracklet'` node map contains a list of traxels that this node represents.
         '''
         getLogger().info("generating tracklet graph...")
-        tracklet_graph = HypothesesGraph()
-        tracklet_graph._graph = self._graph.copy()
+        tracklet_graph = copy.copy(self)
+        tracklet_graph._graph = tracklet_graph._graph.copy() 
+        tracklet_graph.withTracklets = True
 
         # initialize tracklet map to contain a list of only one traxel per node
         for node in tracklet_graph._graph.nodes_iter():
@@ -235,8 +244,173 @@ class HypothesesGraph(object):
     def getNodeTrackletMap(self):
         return NodeMap(self._graph, 'tracklet')
 
+    def insertEnergies(self,
+                       maxNumObjects,
+                       detectionProbabilityFunc,
+                       transitionProbabilityFunc,
+                       boundaryCostMultiplierFunc,
+                       divisionProbabilityFunc):
+        '''
+        Insert energies for detections, divisions and links into the hypotheses graph, 
+        by transforming the probabilities for certain
+        events (given by the `*ProbabilityFunc`-functions per traxel) into energies. If the given graph
+        contained tracklets (`self.withTracklets is True`), then also the probabilities over all contained traxels will be
+        accumulated for those nodes in the graph.
 
-def convertHypothesesGraphToJsonGraph(hypothesesGraph,
+        The energies are stored in the networkx graph under the following attribute names (to match the format for solvers):
+        * detection energies: `self._graph.node[n]['features']`
+        * division energies: `self._graph.node[n]['divisionFeatures']`
+        * appearance energies: `self._graph.node[n]['appearanceFeatures']`
+        * disappearance energies: `self._graph.node[n]['disappearanceFeatures']`
+        * transition energies: `self._graph.edge[src][dest]['features']`
+        * additionally we also store the timestep (range for traxels) per node as `timestep` attribute
+
+        ** Parameters: **
+
+        * `maxNumObjects`: the max number of objects per detections
+        * `detectionProbabilityFunc`: should take a traxel and return its detection probabilities
+         ([prob0objects, prob1object,...])
+        * `transitionProbabilityFunc`: should take two traxels and return this link's probabilities
+         ([prob0objectsInTransition, prob1objectsInTransition,...])
+        * `boundaryCostMultiplierFunc`: should take a traxel and return a scalar multiplier between 0 and 1 for the
+         appearance/disappearance cost that depends on the traxel's distance to the spacial and time boundary
+        * `divisionProbabilityFunc`: should take a traxel and return its division probabilities ([probNoDiv, probDiv])
+        '''
+        numElements = self._graph.number_of_nodes() + self._graph.number_of_edges() 
+        progressBar = ProgressBar(stop=numElements)
+
+        # insert detection probabilities for all detections (and some also get a div probability)
+        for n in self._graph.nodes_iter():
+            if not self.withTracklets:
+                # only one traxel, but make it a list so everything below works the same
+                traxels = [self._graph.node[n]['traxel']]
+            else:
+                traxels = self._graph.node[n]['tracklet']
+
+            # accumulate features over all contained traxels
+            previousTraxel = None
+            detectionFeatures = np.zeros(maxNumObjects + 1)
+            for t in traxels:
+                detectionFeatures += np.array(negLog(detectionProbabilityFunc(t)))
+                if previousTraxel is not None:
+                    detectionFeatures += np.array(negLog(transitionProbabilityFunc(previousTraxel, t)))
+                previousTraxel = t
+
+            detectionFeatures = listify(list(detectionFeatures))
+
+            # division only if probability is big enough
+            divisionFeatures = divisionProbabilityFunc(traxels[-1])
+            if divisionFeatures is not None:
+                divisionFeatures = listify(negLog(divisionFeatures))
+
+            # appearance/disappearance
+            appearanceFeatures = listify([0.0] + [boundaryCostMultiplierFunc(traxels[0])] * maxNumObjects)
+            disappearanceFeatures = listify([0.0] + [boundaryCostMultiplierFunc(traxels[-1])] * maxNumObjects)
+
+            self._graph.node[n]['features'] = detectionFeatures
+            if divisionFeatures is not None:
+                self._graph.node[n]['divisionFeatures'] = divisionFeatures
+            self._graph.node[n]['appearanceFeatures'] = appearanceFeatures
+            self._graph.node[n]['disappearanceFeatures'] = disappearanceFeatures
+            self._graph.node[n]['timestep'] = [traxels[0].Timestep, traxels[-1].Timestep]
+
+            progressBar.show()
+
+        # insert transition probabilities for all links
+        for a in self._graph.edges_iter():
+            if not self.withTracklets:
+                srcTraxel = self._graph.node[self.source(a)]['traxel']
+                destTraxel = self._graph.node[self.target(a)]['traxel']
+            else:
+                srcTraxel = self._graph.node[self.source(a)]['tracklet'][-1]  # src is last of the traxels in source tracklet
+                destTraxel = self._graph.node[self.target(a)]['tracklet'][0]  # dest is first of traxels in destination tracklet
+
+            features = listify(negLog(transitionProbabilityFunc(srcTraxel, destTraxel)))
+
+            self._graph.edge[a[0]][a[1]]['src'] = self._graph.node[a[0]]['id']
+            self._graph.edge[a[0]][a[1]]['dest'] = self._graph.node[a[1]]['id']
+            self._graph.edge[a[0]][a[1]]['features'] = features
+            
+            progressBar.show()
+        
+    def getMappingsBetweenUUIDsAndTraxels(self):
+        '''
+        Extract the mapping from UUID to traxel and vice versa from the networkx graph.
+
+        ** Returns: a tuple of **
+
+        * `traxelIdPerTimestepToUniqueIdMap`: a dictionary with keys = traxels (str(Timestep), str(Id)), values = int(uuid)
+        * `uuidToTraxelMap`: a dictionary with keys = int(uuid), values = list(of traxels (str(Timestep), str(Id)))
+        '''
+
+        uuidToTraxelMap = {}
+        traxelIdPerTimestepToUniqueIdMap = {}
+        
+        for n in self._graph.nodes_iter():
+            uuid = self._graph.node[n]['id']
+            traxels = []
+            if self.withTracklets:
+                traxels = self._graph.node[n]['tracklet']
+            else:
+                traxels = [self._graph.node[n]['traxel']]
+            uuidToTraxelMap[uuid] = [(str(t.Timestep), str(t.Id)) for t in traxels]
+
+            for t in uuidToTraxelMap[uuid]:
+                traxelIdPerTimestepToUniqueIdMap.setdefault(t[0], {})[t[1]] = uuid
+                
+        # sort the list of traxels per UUID by their timesteps
+        for v in uuidToTraxelMap.values():
+            v.sort(key=lambda timestepIdTuple: timestepIdTuple[0])
+
+        return traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap
+
+    def toTrackingGraph(self):
+        '''
+        Create a dictionary representation of this graph which can be passed to the solvers directly.
+        The resulting graph (=model) is wrapped within a `hytra.jsongraph.JsonTrackingGraph` structure for convenience.
+        '''
+
+        def translateNodeToDict(n):
+            result = {}
+            attrs = self._graph.node[n]
+            for k in ['id', 'features', 'appearanceFeatures', 'disappearanceFeatures', 'divisionFeatures', 'timestep']:
+                if k in attrs:
+                    result[k] = attrs[k]
+                elif k == 'features' or k == 'id':
+                    raise ValueError('Cannot use graph nodes without assigned ID and features, run insertEnergies() first')
+            return result
+        
+        def translateLinkToDict(l):
+            result = {}
+            attrs = self._graph.edge[l[0]][l[1]]
+            for k in ['src', 'dest', 'features']:
+                if k in attrs:
+                    result[k] = attrs[k]
+                else:
+                    raise ValueError('Cannot use graph links without source, target, and features, run insertEnergies() first')
+            return result
+
+        traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = self.getMappingsBetweenUUIDsAndTraxels()
+        model = {
+                'segmentationHypotheses':[translateNodeToDict(n) for n in self._graph.nodes_iter()],
+                'linkingHypotheses':[translateLinkToDict(e) for e in self._graph.edges_iter()],
+                'exclusions':[],
+                'divisionHypotheses':[],
+                'traxelToUniqueId':traxelIdPerTimestepToUniqueIdMap,
+                'settings':{'statesShareWeights':True,
+                            'allowPartialMergerAppearance':False,
+                            'requireSeparateChildrenOfDivision':True,
+                            'optimizerEpGap':0.01,
+                            'optimizerVerbose':True,
+                            'optimizerNumThreads':1
+                        }
+                }
+        # TODO: this recomputes the uuidToTraxelMap even though we have it already...
+        trackingGraph = hytra.core.jsongraph.JsonTrackingGraph(model=model)
+
+        return trackingGraph
+
+def convertLegacyHypothesesGraphToJsonGraph(hypothesesGraph,
                                       nodeIterator,
                                       arcIterator,
                                       withTracklets,
@@ -283,7 +457,7 @@ def convertHypothesesGraphToJsonGraph(hypothesesGraph,
     # a['linkingHypotheses'] = a['links']
     # del a['nodes']
 
-    getLogger().info("Creating JSON graph from hypotheses graph")
+    getLogger().info("Creating JSON graph from legacy hypotheses graph")
     progressBar = ProgressBar(stop=numElements)
     trackingGraph = hytra.core.jsongraph.JsonTrackingGraph()
 

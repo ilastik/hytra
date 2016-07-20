@@ -10,6 +10,7 @@ import h5py
 import numpy as np
 import configargparse
 import hytra.core.hypothesesgraph as hypothesesgraph
+import hytra.core.ilastikhypothesesgraph as ilastikhypothesesgraph
 import hytra.core.jsongraph
 
 def getConfigAndCommandLineArguments():
@@ -560,19 +561,28 @@ def getHypothesesGraphAndIterators(options, shape, t0, t1, ts, probGenerator):
     """
     if probGenerator is not None:
         logging.getLogger('hypotheses_graph_to_json.py').info("Building python hypotheses graph")
-        hypotheses_graph = hypothesesgraph.HypothesesGraph()
-        hypotheses_graph.buildFromTraxelstore(probGenerator,
-                                              numNearestNeighbors=options.max_nearest_neighbors,
-                                              maxNeighborDist=options.mnd,
-                                              withDivisions=not options.without_divisions,
-                                              divisionThreshold=options.division_threshold)
+        fov = getPythonFovFromOptions(options, shape, t0, t1)
+        maxNumObjects = int(options.max_num_objects)
+        margin = float(options.border_width)
+
+        hypotheses_graph = ilastikhypothesesgraph.IlastikHypothesesGraph(
+            probGenerator,
+            [t0, t1],
+            maxNumObjects=maxNumObjects,
+            numNearestNeighbors=options.max_nearest_neighbors,
+            fieldOfView=fov,
+            divisionThreshold=options.division_threshold,
+            withDivisions=not options.without_divisions,
+            borderAwareWidth=margin,
+            maxNeighborDistance=options.mnd,
+            transitionParameter=options.trans_par,
+            transitionClassifier=None)
 
         if not options.without_tracklets:
-              hypotheses_graph = hypotheses_graph.generateTrackletGraph()
+            hypotheses_graph = hypotheses_graph.generateTrackletGraph()
 
         n_it = hypotheses_graph.nodeIterator()
         a_it = hypotheses_graph.arcIterator()
-        fov = getPythonFovFromOptions(options, shape, t0, t1)
 
     else:
         import pgmlink as track
@@ -693,53 +703,55 @@ if __name__ == "__main__":
     if probGenerator is None:
         import pgmlink
         numElements = pgmlink.countNodes(hypotheses_graph) + pgmlink.countArcs(hypotheses_graph)
-    else:
-        numElements = hypotheses_graph.countNodes() + hypotheses_graph.countArcs()
-
-    # get the map of node -> list(traxel) or just traxel
-    if options.without_tracklets:
-        traxelMap = hypotheses_graph.getNodeTraxelMap()
-    else:
-        traxelMap = hypotheses_graph.getNodeTrackletMap()
-
-    maxNumObjects = int(options.max_num_objects)
-    margin = float(options.border_width)
-
-    def detectionProbabilityFunc(traxel):
-        return getDetectionFeatures(traxel, maxNumObjects + 1)
-
-    def transitionProbabilityFunc(srcTraxel, destTraxel):
-        if transitionClassifier is None:
-            return getTransitionFeaturesDist(srcTraxel, destTraxel, options.trans_par, maxNumObjects + 1)
+        
+        # get the map of node -> list(traxel) or just traxel
+        if options.without_tracklets:
+            traxelMap = hypotheses_graph.getNodeTraxelMap()
         else:
-            return getTransitionFeaturesRF(srcTraxel, destTraxel, transitionClassifier, probGenerator, maxNumObjects + 1)
+            traxelMap = hypotheses_graph.getNodeTrackletMap()
 
-    def boundaryCostMultiplierFunc(traxel):
-        return getBoundaryCostMultiplier(traxel, fov, margin, t0, t1)
 
-    def divisionProbabilityFunc(traxel):
-        try:
-            divisionFeatures = getDivisionFeatures(traxel)
-            if divisionFeatures[0] > options.division_threshold:
-                divisionFeatures = list(reversed(divisionFeatures))
+        maxNumObjects = int(options.max_num_objects)
+        margin = float(options.border_width)
+
+        def detectionProbabilityFunc(traxel):
+            return getDetectionFeatures(traxel, maxNumObjects + 1)
+
+        def transitionProbabilityFunc(srcTraxel, destTraxel):
+            if transitionClassifier is None:
+                return getTransitionFeaturesDist(srcTraxel, destTraxel, options.trans_par, maxNumObjects + 1)
             else:
-                divisionFeatures = None
-        except:
-            divisionFeatures = None
-        return divisionFeatures
+                return getTransitionFeaturesRF(srcTraxel, destTraxel, transitionClassifier, probGenerator, maxNumObjects + 1)
 
-    trackingGraph = hytra.core.hypothesesgraph.convertHypothesesGraphToJsonGraph(
-        hypotheses_graph,
-        n_it,
-        a_it,
-        not options.without_tracklets,
-        maxNumObjects, 
-        numElements,
-        traxelMap,
-        detectionProbabilityFunc,
-        transitionProbabilityFunc,
-        boundaryCostMultiplierFunc,
-        divisionProbabilityFunc)
+        def boundaryCostMultiplierFunc(traxel):
+            return getBoundaryCostMultiplier(traxel, fov, margin, t0, t1)
+
+        def divisionProbabilityFunc(traxel):
+            try:
+                divisionFeatures = getDivisionFeatures(traxel)
+                if divisionFeatures[0] > options.division_threshold:
+                    divisionFeatures = list(reversed(divisionFeatures))
+                else:
+                    divisionFeatures = None
+            except:
+                divisionFeatures = None
+            return divisionFeatures
+
+        trackingGraph = hytra.core.hypothesesgraph.convertLegacyHypothesesGraphToJsonGraph(
+            hypotheses_graph,
+            n_it,
+            a_it,
+            not options.without_tracklets,
+            maxNumObjects, 
+            numElements,
+            traxelMap,
+            detectionProbabilityFunc,
+            transitionProbabilityFunc,
+            boundaryCostMultiplierFunc,
+            divisionProbabilityFunc)
+    else:
+        hypotheses_graph.insertEnergies()
+        trackingGraph = hypotheses_graph.toTrackingGraph()
 
     # write everything to JSON
     hytra.core.jsongraph.writeToFormattedJSON(options.json_filename, trackingGraph.model)

@@ -1,5 +1,6 @@
 import numpy as np
-from hytra.core.hypothesesgraph import HypothesesGraph, convertHypothesesGraphToJsonGraph, getTraxelFeatureVector
+from hytra.core.hypothesesgraph import HypothesesGraph, convertLegacyHypothesesGraphToJsonGraph, getTraxelFeatureVector
+
 
 class IlastikHypothesesGraph(HypothesesGraph):
     '''
@@ -14,7 +15,6 @@ class IlastikHypothesesGraph(HypothesesGraph):
                  fieldOfView,
                  divisionThreshold=0.1,
                  withDivisions=True,
-                 withTracklets=True,
                  borderAwareWidth=10,
                  maxNeighborDistance=200,
                  transitionParameter=5.0,
@@ -32,7 +32,6 @@ class IlastikHypothesesGraph(HypothesesGraph):
         self.fieldOfView = fieldOfView
         self.divisionThreshold = divisionThreshold
         self.withDivisions = withDivisions
-        self.withTracklets = withTracklets
         self.borderAwareWidth = borderAwareWidth
         self.maxNeighborDistance = maxNeighborDistance
         self.transitionClassifier = transitionClassifier
@@ -45,25 +44,13 @@ class IlastikHypothesesGraph(HypothesesGraph):
                                   withDivisions=withDivisions,
                                   divisionThreshold=0.1)
 
-        if withTracklets:
-            # TODO: fixme!
-            self = self.generateTrackletGraph()
-
-    def toTrackingGraph(self):
+    def insertEnergies(self):
         """
+        Inserts the energies (AKA features) into the graph, such that each node and link 
+        hold all information needed to run tracking.
 
+        See the documentation of `hytra.core.hypothesesgraph` for details on how the features are stored.
         """
-
-        # graph preparations
-        n_it = self.nodeIterator()
-        a_it = self.arcIterator()
-        numElements = self.countNodes() + self.countArcs()
-
-        if self.withTracklets:
-            traxelMap = self.getNodeTrackletMap()
-        else:
-            traxelMap = self.getNodeTraxelMap()
-
         # define wrapper functions
         def detectionProbabilityFunc(traxel):
             return self.getDetectionFeatures(traxel, self.maxNumObjects + 1)
@@ -88,20 +75,12 @@ class IlastikHypothesesGraph(HypothesesGraph):
                 divisionFeatures = None
             return divisionFeatures
 
-        # convert to tracking graph
-        trackingGraph = convertHypothesesGraphToJsonGraph(
-            self,
-            n_it,
-            a_it,
-            self.withTracklets,
+        super(IlastikHypothesesGraph, self).insertEnergies(
             self.maxNumObjects,
-            numElements,
-            traxelMap,
             detectionProbabilityFunc,
             transitionProbabilityFunc,
             boundaryCostMultiplierFunc,
             divisionProbabilityFunc)
-        return trackingGraph
 
     def getDetectionFeatures(self, traxel, max_state):
         return getTraxelFeatureVector(traxel, "detProb", max_state)
