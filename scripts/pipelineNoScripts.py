@@ -20,8 +20,14 @@ from hytra.core.fieldofview import FieldOfView
 from hytra.core.mergerresolver import MergerResolver
 
 def convertToDict(unknown):
-    keys = [u.replace('--', '') for u in unknown[0:None:2]]
-    values = unknown[1:None:2]
+    indicesOfParameters = [i for i,p in enumerate(unknown) if p.startswith('--')]
+    keys = [u.replace('--', '') for u in [unknown[i] for i in indicesOfParameters]]
+    values = []
+    for i in indicesOfParameters:
+        if i + 1 > len(unknown) or unknown[i + 1].startswith('--'):
+            values.append(True)
+        else:
+            values.append(unknown[i + 1])
     return dict(zip(keys, values))
 
 def constructFov(shape, t0, t1, scale=[1, 1, 1]):
@@ -48,7 +54,7 @@ def run_pipeline(options, unknown):
     
     if options.do_extract_weights:
         logging.info("Extracting weights from ilastik project...")
-        weights = hytra.core.ilastik_project_options.extractWeightDictFromIlastikProject(params['ilastik-tracking-project'])
+        weights = hytra.core.ilastik_project_options.extractWeightDictFromIlastikProject(options.ilastik_tracking_project)
     else:
         with open(options.weight_filename, 'r') as f:
             weights = json.load(f)
@@ -73,14 +79,18 @@ def run_pipeline(options, unknown):
         if 'object-count-classifier-file' in params:
             ilpOptions.objectCountClassifierFilename = params['object-count-classifier-file']
         else:
-            ilpOptions.objectCountClassifierFilename = params['ilastik-tracking-project']
+            ilpOptions.objectCountClassifierFilename = options.ilastik_tracking_project
 
-        if 'division-classifier-file' in params:
-            ilpOptions.divisionClassifierFilename = params['division-classifier-file']
+        withDivisions = 'without-divisions' not in params
+        if withDivisions:
+            if 'division-classifier-file' in params:
+                ilpOptions.divisionClassifierFilename = params['division-classifier-file']
+            else:
+                ilpOptions.divisionClassifierFilename = options.ilastik_tracking_project
         else:
-            ilpOptions.divisionClassifierFilename = None # params['ilastik-tracking-project']
+            ilpOptions.divisionClassifierFilename = None
 
-        probGeneratorerator = probabilitygenerator.IlpProbabilityGenerator(ilpOptions, 
+        probGenerator = probabilitygenerator.IlpProbabilityGenerator(ilpOptions, 
                                               pluginPaths=['../hytra/plugins'],
                                               useMultiprocessing=False)
 
@@ -97,15 +107,19 @@ def run_pipeline(options, unknown):
 
         hypotheses_graph = IlastikHypothesesGraph(
             traxelstore=probGenerator,
-            timeRange=traxelstore.timeRange,
+            timeRange=probGenerator.timeRange,
             maxNumObjects=int(params['max-number-objects']),
             numNearestNeighbors=int(params['max-nearest-neighbors']),
             fieldOfView=fieldOfView,
-            withDivisions=False,#'without-divisions' not in params,
-            withTracklets=False,
+            withDivisions=withDivisions,
             divisionThreshold=0.1
         )
 
+        withTracklets = True
+        if withTracklets:
+            hypotheses_graph = hypotheses_graph.generateTrackletGraph()
+
+        hypotheses_graph.insertEnergies()
         trackingGraph = hypotheses_graph.toTrackingGraph()
     else:
         trackingGraph = JsonTrackingGraph(model_filename=options.model_filename)
@@ -167,8 +181,8 @@ if __name__ == "__main__":
     parser.add_argument("--do-merger-resolving", dest='do_merger_resolving', action='store_true', default=False)
     parser.add_argument("--export-format", dest='export_format', type=str, default=None,
                         help='Export format may be one of: "ilastikH5", "ctc", "labelimage", or None')
-    parser.add_argument("--tracking-executable", dest='tracking_executable', required=True,
-                        type=str, help='executable that can run tracking based on JSON specified models')
+    parser.add_argument("--ilastik-tracking-project", dest='ilastik_tracking_project', required=True,
+                        type=str, help='ilastik tracking project file that contains the chosen weights')
     parser.add_argument('--graph-json-file', required=True, type=str, dest='model_filename',
                         help='Filename of the json graph description')
     parser.add_argument('--result-json-file', required=True, type=str, dest='result_filename',
