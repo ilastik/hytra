@@ -1,12 +1,16 @@
 import hytra.core.hypothesesgraph as hg
 import hytra.core.probabilitygenerator as pg
 import networkx as nx
+from hytra.core.probabilitygenerator import Traxel
 
 def test_trackletgraph():
     h = hg.HypothesesGraph()
-    h._graph.add_path([0,1,2,3])
-    for i in [0,1,2,3]:
-        h._graph.node[i]['traxel'] = i
+    h._graph.add_path([(0,1),(1,1),(2,1),(3,1)])
+    for i in [(0,1),(1,1),(2,1),(3,1)]:
+        t = Traxel()
+        t.Timestep = i[0]
+        t.Id = i[1]
+        h._graph.node[i]['traxel'] = t
     
     t = h.generateTrackletGraph()
     assert(t.countArcs() == 0)

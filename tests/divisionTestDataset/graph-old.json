@@ -1,0 +1,247 @@
+{
+    "traxelToUniqueId": {
+        "1": {
+            "1": 0
+        },
+        "0": {
+            "1": 0
+        },
+        "3": {
+            "1": 2,
+            "2": 1
+        },
+        "2": {
+            "1": 3,
+            "2": 4
+        }
+    },
+    "settings": {
+        "optimizerNumThreads": 1,
+        "optimizerEpGap": 0.01,
+        "requireSeparateChildrenOfDivision": true,
+        "statesShareWeights": true,
+        "optimizerVerbose": true,
+        "allowPartialMergerAppearance": false
+    },
+    "divisionHypotheses": [],
+    "linkingHypotheses": [
+        {
+            "dest": 3,
+            "src": 0,
+            "features": [
+                [
+                    0.00010100810663770131
+                ],
+                [
+                    9.2003602842322749
+                ]
+            ]
+        },
+        {
+            "dest": 4,
+            "src": 0,
+            "features": [
+                [
+                    0.0040109243171924458
+                ],
+                [
+                    5.520738353030497
+                ]
+            ]
+        },
+        {
+            "dest": 1,
+            "src": 3,
+            "features": [
+                [
+                    8.2459885926398341e-09
+                ],
+                [
+                    18.613538986192154
+                ]
+            ]
+        },
+        {
+            "dest": 2,
+            "src": 3,
+            "features": [
+                [
+                    0.018519724992042821
+                ],
+                [
+                    3.9981644708107318
+                ]
+            ]
+        },
+        {
+            "dest": 1,
+            "src": 4,
+            "features": [
+                [
+                    0.018838558278007594
+                ],
+                [
+                    3.9812540293301111
+                ]
+            ]
+        },
+        {
+            "dest": 2,
+            "src": 4,
+            "features": [
+                [
+                    2.6754115284252721e-06
+                ],
+                [
+                    12.831408684734868
+                ]
+            ]
+        }
+    ],
+    "segmentationHypotheses": [
+        {
+            "features": [
+                [
+                    69.077552789821368
+                ],
+                [
+                    0.0
+                ]
+            ],
+            "divisionFeatures": [
+                [
+                    0.941608576538227
+                ],
+                [
+                    0.4942962983637726
+                ]
+            ],
+            "appearanceFeatures": [
+                [
+                    0.0
+                ],
+                [
+                    9.9999999999999995e-07
+                ]
+            ],
+            "disappearanceFeatures": [
+                [
+                    0.0
+                ],
+                [
+                    1.0
+                ]
+            ],
+            "id": 0
+        },
+        {
+            "features": [
+                [
+                    23.025850929940457
+                ],
+                [
+                    0.0
+                ]
+            ],
+            "appearanceFeatures": [
+                [
+                    0.0
+                ],
+                [
+                    9.9999999999999995e-07
+                ]
+            ],
+            "disappearanceFeatures": [
+                [
+                    0.0
+                ],
+                [
+                    9.9999999999999995e-07
+                ]
+            ],
+            "id": 1
+        },
+        {
+            "features": [
+                [
+                    23.025850929940457
+                ],
+                [
+                    0.0
+                ]
+            ],
+            "appearanceFeatures": [
+                [
+                    0.0
+                ],
+                [
+                    9.9999999999999995e-07
+                ]
+            ],
+            "disappearanceFeatures": [
+                [
+                    0.0
+                ],
+                [
+                    9.9999999999999995e-07
+                ]
+            ],
+            "id": 2
+        },
+        {
+            "features": [
+                [
+                    23.025850929940457
+                ],
+                [
+                    0.0
+                ]
+            ],
+            "appearanceFeatures": [
+                [
+                    0.0
+                ],
+                [
+                    1.0
+                ]
+            ],
+            "disappearanceFeatures": [
+                [
+                    0.0
+                ],
+                [
+                    1.0
+                ]
+            ],
+            "id": 3
+        },
+        {
+            "features": [
+                [
+                    23.025850929940457
+                ],
+                [
+                    0.0
+                ]
+            ],
+            "appearanceFeatures": [
+                [
+                    0.0
+                ],
+                [
+                    1.0
+                ]
+            ],
+            "disappearanceFeatures": [
+                [
+                    0.0
+                ],
+                [
+                    1.0
+                ]
+            ],
+            "id": 4
+        }
+    ],
+    "exclusions": []
+}
