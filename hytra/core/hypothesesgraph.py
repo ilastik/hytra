@@ -462,7 +462,7 @@ class HypothesesGraph(object):
         numberOfOutgoingObject = 0
         numberOfOutgoingEdges = 0
         for out_edge in self._graph.out_edges(node):
-            if 'value' in self._graph.edge[node][out_edge[1]]:
+            if 'value' in self._graph.edge[node][out_edge[1]] and self._graph.edge[node][out_edge[1]]['value'] > 0:
                 numberOfOutgoingObject += self._graph.edge[node][out_edge[1]]['value']
                 numberOfOutgoingEdges += 1
         return numberOfOutgoingObject, numberOfOutgoingEdges
