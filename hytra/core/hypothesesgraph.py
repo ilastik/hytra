@@ -439,13 +439,13 @@ class HypothesesGraph(object):
         for division in resultDictionary["divisionResults"]:
             self._graph.node[uuidToTraxelMap[str(division["id"])][0]]['divisionValue'] = division["value"]
 
-    def countIncommingObjects(self,node):
-        numberOfIncommingObject = 0
-        numberOfIncommingEdges = 0
+    def countIncomingObjects(self,node):
+        numberOfIncomingObject = 0
+        numberOfIncomingEdges = 0
         for in_edge in self._graph.in_edges(node):
-            numberOfIncommingObject += self._graph.node[node]['value']
-            numberOfIncommingEdges += 1
-        return numberOfIncommingObject,numberOfIncommingEdges
+            numberOfIncomingObject += self._graph.node[node]['value']
+            numberOfIncomingEdges += 1
+        return numberOfIncomingObject,numberOfIncomingEdges
 
     def countOutgoingObjects(self,node):
         numberOfOutgoingObject = 0
@@ -465,7 +465,7 @@ class HypothesesGraph(object):
         max_track_id = 0
         # find start of lineages
         for n in self.nodeIterator():
-            if self.countIncommingObjects(n)[0]==0:
+            if self.countIncomingObjects(n)[0]==0:
                 # found start of a track
                 update_queue.append((n,max_lineage_id,max_track_id))
                 max_lineage_id += 1
