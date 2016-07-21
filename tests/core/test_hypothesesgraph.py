@@ -220,5 +220,5 @@ def test_insertEnergies():
 if __name__ == "__main__":
     test_trackletgraph()
     test_insertSolution()
-    test_computeLineages()
+    test_computeLineagesAndPrune()
     test_insertEnergies()

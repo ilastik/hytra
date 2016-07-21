@@ -214,6 +214,7 @@ class HypothesesGraph(object):
         tracklet_graph = copy.copy(self)
         tracklet_graph._graph = tracklet_graph._graph.copy()
         tracklet_graph.withTracklets = True
+        tracklet_graph.referenceTraxelGraph = self
 
         # initialize tracklet map to contain a list of only one traxel per node
         for node in tracklet_graph._graph.nodes_iter():
@@ -429,15 +430,24 @@ class HypothesesGraph(object):
         '''
         _, uuidToTraxelMap = self.getMappingsBetweenUUIDsAndTraxels()
 
+        if self.withTracklets:
+            traxelgraph = self.referenceTraxelGraph
+        else:
+            traxelgraph = self
+
         for detection in resultDictionary["detectionResults"]:
-            self._graph.node[uuidToTraxelMap[detection["id"]][0]]['value'] = detection["value"]
+            traxels = uuidToTraxelMap[detection["id"]]
+            for traxel in traxels:
+                traxelgraph._graph.node[traxel]['value'] = detection["value"]
+            for internal_edge in zip(traxels,traxels[1:]):
+                traxelgraph._graph.edge[internal_edge[0]][internal_edge[1]]['value'] = detection["value"]
 
         for link in resultDictionary["linkingResults"]:
-            source, dest = uuidToTraxelMap[link["src"]][0], uuidToTraxelMap[link["dest"]][0]
-            self._graph.edge[source][dest]['value'] = link["value"]
+            source, dest = uuidToTraxelMap[link["src"]][-1], uuidToTraxelMap[link["dest"]][0]
+            traxelgraph._graph.edge[source][dest]['value'] = link["value"]
 
         for division in resultDictionary["divisionResults"]:
-            self._graph.node[uuidToTraxelMap[division["id"]][0]]['divisionValue'] = division["value"]
+            traxelgraph._graph.node[uuidToTraxelMap[division["id"]][-1]]['divisionValue'] = division["value"]
 
     def countIncomingObjects(self, node):
         '''
@@ -475,9 +485,15 @@ class HypothesesGraph(object):
         update_queue = []
         max_lineage_id = 0
         max_track_id = 0
+
+        if self.withTracklets:
+            traxelgraph = self.referenceTraxelGraph
+        else:
+            traxelgraph = self
+
         # find start of lineages
-        for n in self.nodeIterator():
-            if self.countIncomingObjects(n)[0] == 0 and 'value' in self._graph.node[n] and self._graph.node[n]['value'] > 0:
+        for n in traxelgraph.nodeIterator():
+            if traxelgraph.countIncomingObjects(n)[0] == 0 and 'value' in traxelgraph._graph.node[n] and traxelgraph._graph.node[n]['value'] > 0:
                 # found start of a track
                 update_queue.append((n,max_lineage_id,max_track_id))
                 max_lineage_id += 1
@@ -487,22 +503,22 @@ class HypothesesGraph(object):
 
         while len(update_queue) > 0:
             current_node,lineage_id,track_id = update_queue.pop()
-            self._graph.node[current_node]["lineageId"] = lineage_id
-            self._graph.node[current_node]["trackId"] = track_id
+            traxelgraph._graph.node[current_node]["lineageId"] = lineage_id
+            traxelgraph._graph.node[current_node]["trackId"] = track_id
 
-            numberOfOutgoingObject,numberOfOutgoingEdges = self.countOutgoingObjects(current_node)
-            print self._graph.node[current_node]
+            numberOfOutgoingObject,numberOfOutgoingEdges = traxelgraph.countOutgoingObjects(current_node)
+            print traxelgraph._graph.node[current_node]
             if (numberOfOutgoingObject != numberOfOutgoingEdges):
                 print "WARNING: running lineage computation on unresolved graphs depends on a race condition"
 
-            if len(self._graph.out_edges(current_node)) == 1:
-                a = self._graph.out_edges(current_node)[0]
-                update_queue.append((self.target(a),
+            if len(traxelgraph._graph.out_edges(current_node)) == 1:
+                a = traxelgraph._graph.out_edges(current_node)[0]
+                update_queue.append((traxelgraph.target(a),
                                     lineage_id,
                                     track_id))
-            elif len(self._graph.out_edges(current_node)) == 2:
-                for a in self._graph.out_edges(current_node):
-                    update_queue.append((self.target(a),
+            elif len(traxelgraph._graph.out_edges(current_node)) == 2:
+                for a in traxelgraph._graph.out_edges(current_node):
+                    update_queue.append((traxelgraph.target(a),
                                         lineage_id,
                                         max_track_id))
                     max_track_id += 1
@@ -546,6 +562,7 @@ class HypothesesGraph(object):
         try:
             return self._graph.node[(int(timestep), int(objectId))][attribute]
         except KeyError:
+            print self._graph.node.keys()
             getLogger().error(attribute + ' not found in graph node properties, call computeLineage() first!')
             raise
 
@@ -553,10 +570,18 @@ class HypothesesGraph(object):
         '''
         return the lineage Id of a certain node specified by timestep and objectId
         '''
-        return self._getNodeAttribute(timestep, objectId, 'lineageId') 
+        if self.withTracklets:
+            traxelgraph = self.referenceTraxelGraph
+        else:
+            traxelgraph = self
+        return traxelgraph._getNodeAttribute(timestep, objectId, 'lineageId') 
     
     def getTrackId(self, timestep, objectId):
         '''
         return the track Id of a certain node specified by timestep and objectId
         '''
-        return self._getNodeAttribute(timestep, objectId, 'trackId')
+        if self.withTracklets:
+            traxelgraph = self.referenceTraxelGraph
+        else:
+            traxelgraph = self
+        return traxelgraph._getNodeAttribute(timestep, objectId, 'trackId')
