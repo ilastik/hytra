@@ -708,6 +708,6 @@ if __name__ == '__main__':
     ilpOptions.divisionClassifierFilename = args.ilpFilename
     ilpOptions.rawImageFilename = args.rawFilename
 
-    traxelstore = Traxelstore(ilpOptions=ilpOptions, useMultiprocessing=not args.disableMultiprocessing)
-    traxelstore.timeRange = (0, 3)
-    traxelstore.fillTraxelStore(usePgmlink=False)
+    probabilityGenerator = IlpProbabilityGenerator(ilpOptions=ilpOptions, useMultiprocessing=not args.disableMultiprocessing)
+    probabilityGenerator.timeRange = (0, 3)
+    probabilityGenerator.fillTraxels(usePgmlink=False)

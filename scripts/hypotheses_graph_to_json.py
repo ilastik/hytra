@@ -737,7 +737,7 @@ if __name__ == "__main__":
                 divisionFeatures = None
             return divisionFeatures
 
-        trackingGraph = hytra.core.hypothesesgraph.convertLegacyHypothesesGraphToJsonGraph(
+        trackingGraph = ilastikhypothesesgraph.convertLegacyHypothesesGraphToJsonGraph(
             hypotheses_graph,
             n_it,
             a_it,
