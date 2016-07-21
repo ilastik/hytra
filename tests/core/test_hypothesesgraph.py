@@ -18,7 +18,7 @@ def test_trackletgraph():
     assert(t.countNodes() == 1)
     assert('tracklet' in t._graph.node[(0,1)])
 
-def test_computeLineages():
+def test_computeLineagesAndPrune():
     h = hg.HypothesesGraph()
     h._graph.add_path([(0, 0),(1, 1),(2, 2)])
     h._graph.add_path([(1, 1),(2, 3),(3, 4)])
@@ -88,6 +88,8 @@ def test_computeLineages():
 
     h.insertSolution(solutionDict)
     h.computeLineage()
+    h.pruneGraphToSolution(0)
+    h.pruneGraphToSolution(1)
 
 def test_insertSolution():
     h = hg.HypothesesGraph()
