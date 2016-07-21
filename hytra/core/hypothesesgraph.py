@@ -150,6 +150,16 @@ class HypothesesGraph(object):
                 continue
             self._graph.add_node((frame, obj), traxel=traxel, id=self._nextNodeUuid)
             self._nextNodeUuid += 1
+    
+    def addNodeFromTraxel(self, traxel, **kwargs):
+        """
+        Insert a single node specified by a traxel.
+        All keyword arguments are passed to the node as well.
+        """
+        assert(traxel is not None)
+        assert(not self.withTracklets)
+        self._graph.add_node((traxel.Timestep, traxel.Id), traxel=traxel, id=self._nextNodeUuid, **kwargs)
+        self._nextNodeUuid += 1
 
     def buildFromProbabilityGenerator(self, probabilityGenerator, maxNeighborDist=200, numNearestNeighbors=1,
                                       forwardBackwardCheck=True, withDivisions=True, divisionThreshold=0.1):
