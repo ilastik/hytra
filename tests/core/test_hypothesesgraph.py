@@ -91,7 +91,7 @@ def test_computeLineagesAndPrune():
     h.pruneGraphToSolution(0)
     h.pruneGraphToSolution(1)
 
-def test_insertSolution():
+def test_insertAndExtractSolution():
     h = hg.HypothesesGraph()
     h._graph.add_path([(0, 0),(1, 1),(2, 2)])
     h._graph.add_path([(1, 1),(2, 3),(3, 4)])
@@ -160,6 +160,16 @@ def test_insertSolution():
     }
 
     h.insertSolution(solutionDict)
+    outSolutionDict = h.getSolutionDictionary()
+    for k in (["detectionResults","divisionResults"]):
+        for cat_dict in solutionDict[k]:
+            ref = [m for m in outSolutionDict[k] if m['id'] == cat_dict['id']]
+            assert(len(ref)==1)
+            for c,v in ref[0].items():
+                assert(v==cat_dict[c])
+
+    assert(len([i for k in solutionDict for i in solutionDict[k] ]) 
+        == len([i for k in outSolutionDict for i in outSolutionDict[k] ]))
     assert(h._graph.node[(1, 1)]["divisionValue"] == 1)
     assert(h._graph.node[(2, 2)]["divisionValue"] == 0)
     assert(h._graph.node[(0, 0)]["value"] == 1)
@@ -219,6 +229,6 @@ def test_insertEnergies():
 
 if __name__ == "__main__":
     test_trackletgraph()
-    test_insertSolution()
+    test_insertAndExtractSolution()
     test_computeLineagesAndPrune()
     test_insertEnergies()

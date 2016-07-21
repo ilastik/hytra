@@ -459,6 +459,44 @@ class HypothesesGraph(object):
         for division in resultDictionary["divisionResults"]:
             traxelgraph._graph.node[uuidToTraxelMap[division["id"]][-1]]['divisionValue'] = division["value"]
 
+    def getSolutionDictionary(self):
+        resultDictionary = {}
+
+        if self.withTracklets:
+            traxelgraph = self.referenceTraxelGraph
+        else:
+            traxelgraph = self
+
+        detectionList = []
+        divisionList = []
+        linkList = []
+
+        for n in traxelgraph._graph.nodes_iter():
+            newDetection = {}
+            newDetection['id'] = traxelgraph._graph.node[n]['id']
+            newDetection['value'] = traxelgraph._graph.node[n]['value']
+            detectionList.append(newDetection)
+            if 'divisionValue' in traxelgraph._graph.node[n]:
+                newDivsion = {}
+                newDivsion['id'] = traxelgraph._graph.node[n]['id']
+                newDivsion['value'] = traxelgraph._graph.node[n]['divisionValue']
+                divisionList.append(newDivsion)
+                
+        for a in traxelgraph.arcIterator():
+            newLink = {}
+            src = self.source(a)
+            dest = self.target(a)
+            newLink['src'] = traxelgraph._graph.node[src]['id']
+            newLink['dest'] = traxelgraph._graph.node[dest]['id']
+            newLink['value'] = traxelgraph._graph.edge[src][dest]['value']
+            linkList.append(newLink)
+
+        resultDictionary["detectionResults"] = detectionList
+        resultDictionary["linkingResults"] = linkList
+        resultDictionary["divisionResults"] = divisionList
+
+        return resultDictionary
+
     def countIncomingObjects(self, node):
         '''
         Once a solution was written to the graph, this returns the number of
@@ -509,7 +547,6 @@ class HypothesesGraph(object):
                 max_lineage_id += 1
                 max_track_id   += 1
 
-        print update_queue
 
         while len(update_queue) > 0:
             current_node,lineage_id,track_id = update_queue.pop()
@@ -517,7 +554,7 @@ class HypothesesGraph(object):
             traxelgraph._graph.node[current_node]["trackId"] = track_id
 
             numberOfOutgoingObject,numberOfOutgoingEdges = traxelgraph.countOutgoingObjects(current_node)
-            print traxelgraph._graph.node[current_node]
+            
             if (numberOfOutgoingObject != numberOfOutgoingEdges):
                 print "WARNING: running lineage computation on unresolved graphs depends on a race condition"
 
