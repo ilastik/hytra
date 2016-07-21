@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.abspath('..'))
 import logging
 import configargparse as argparse
 from hytra.core.jsongraph import JsonTrackingGraph, writeToFormattedJSON
-from hytra.core.mergerresolver import MergerResolver
+from hytra.core.jsonmergerresolver import JsonMergerResolver
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Given a hypotheses json graph and a result.json, this script'
@@ -56,18 +56,18 @@ if __name__ == "__main__":
     
     trackingGraph = JsonTrackingGraph(model_filename=args.model_filename, result_filename=args.result_filename)
 
-    merger_resolver = MergerResolver(trackingGraph)
-    merger_resolver.run(
+    merger_resolver = JsonMergerResolver(trackingGraph,
         args.label_image_filename,
         args.label_image_path,
+        args.out_label_image,
         args.raw_filename,
         args.raw_path,
         args.raw_axes,
-        args.out_label_image,
         args.pluginPaths,
-        args.transition_classifier_filename,
-        args.transition_classifier_path,
         args.verbose)
+    merger_resolver.run(
+        args.transition_classifier_filename,
+        args.transition_classifier_path)
 
     # save
     writeToFormattedJSON(args.out_model_filename, merger_resolver.model)

@@ -1,10 +1,9 @@
 import logging
 import itertools
 import h5py
+import os
 import numpy as np
-import commentjson as json
 import networkx as nx
-import copy
 from hytra.pluginsystem.plugin_manager import TrackingPluginManager
 import hytra.core.probabilitygenerator as probabilitygenerator
 import hytra.core.jsongraph
@@ -15,21 +14,19 @@ def getLogger():
     return logging.getLogger(__name__)
 
 class MergerResolver(object):
-    def __init__(self, jsonTrackingGraph):
-        # copy model and result because we will modify it here
-        assert(isinstance(jsonTrackingGraph, JsonTrackingGraph))
-        assert(jsonTrackingGraph.model is not None and len(jsonTrackingGraph.model) > 0)
-        assert(jsonTrackingGraph.result is not None and len(jsonTrackingGraph.result) > 0)
-        self.model = copy.copy(jsonTrackingGraph.model)
-        self.result = copy.copy(jsonTrackingGraph.result)
+    """
+    Base class for all merger resolving implementations. Use one of the derived classes
+    that handle reading/writing data to the respective sources.
+    """
 
-        assert(self.result['detectionResults'] is not None)
-        assert(self.result['linkingResults'] is not None)
-        self.withDivisions = self.result['divisionResults'] is not None
-
+    def __init__(self, pluginPaths=[os.path.abspath('../hytra/plugins')], verbose=False):
         self.unresolvedGraph = None
         self.resolvedGraph = None
-        self.resolvedJsonGraph = None
+        self.pluginManager = TrackingPluginManager(verbose=verbose, pluginPaths=pluginPaths)
+
+        # should be filled by constructors of derived classes!
+        self.model = None
+        self.result = None
 
     def _createUnresolvedGraph(self, divisionsPerTimestep, mergersPerTimestep, mergerLinks):
         """
@@ -77,33 +74,35 @@ class MergerResolver(object):
 
         ** returns ** the `resolvedGraph`
         """
-        resolvedGraph = self.unresolvedGraph.copy()
+        self.resolvedGraph = self.unresolvedGraph.copy()
         numDivisionNodes = 0
         for n in self.unresolvedGraph:
             if self.unresolvedGraph.node[n]['division'] and len(self.unresolvedGraph.out_edges(n)) == 2:
                 # create a duplicate node, make one link start from there
                 duplicate = (n[0], 'div-{}'.format(numDivisionNodes))
                 numDivisionNodes += 1
-                resolvedGraph.add_node(duplicate, division=False, count=1)
+                self.resolvedGraph.add_node(duplicate, division=False, count=1)
 
                 dest = self.unresolvedGraph.out_edges(n)[0]
-                resolvedGraph.add_edge(duplicate, dest)
-                resolvedGraph.remove_edge(n, dest)
+                self.resolvedGraph.add_edge(duplicate, dest)
+                self.resolvedGraph.remove_edge(n, dest)
 
                 # store node references
-                resolvedGraph.node[duplicate]['origin'] = n
-                resolvedGraph.node[n]['duplicate'] = duplicate
+                self.resolvedGraph.node[duplicate]['origin'] = n
+                self.resolvedGraph.node[n]['duplicate'] = duplicate
 
-        return resolvedGraph
+        return self.resolvedGraph
+
+    def _readLabelImage(self, timeframe):
+        '''
+        Should return the labelimage for the given timeframe
+        '''
+        raise NotImplementedError()
 
     def _refineSegmentation(self,
-                            resolvedGraph,
                             detectionsPerTimestep,
                             mergersPerTimestep,
-                            timesteps,
-                            pluginManager,
-                            label_image_filename,
-                            label_image_path):
+                            timesteps):
         '''
         Update segmentation of mergers (nodes in unresolvedGraph) from first timeframe to last
         and create new nodes in `resolvedGraph`. Links to merger nodes are duplicated to all new nodes.
@@ -111,8 +110,7 @@ class MergerResolver(object):
         Uses the mergerResolver plugin to update the segmentations in the labelImages.
         '''
 
-        imageProvider = pluginManager.getImageProvider()
-        mergerResolver = pluginManager.getMergerResolver()
+        mergerResolver = self.pluginManager.getMergerResolver()
 
         intTimesteps = [int(t) for t in timesteps]
         intTimesteps.sort()
@@ -122,14 +120,13 @@ class MergerResolver(object):
         for intT in intTimesteps:
             t = str(intT)
             # use image provider plugin to load labelimage
-            labelImage = imageProvider.getLabelImageForFrame(
-                label_image_filename, label_image_path, int(t))
+            labelImage = self._readLabelImage(int(t))
             labelImages[t] = labelImage
             nextObjectId = labelImage.max() + 1
 
             for idx in detectionsPerTimestep[t]:
                 node = (intT, idx)
-                if node not in resolvedGraph:
+                if node not in self.resolvedGraph:
                     continue
 
                 count = 1
@@ -151,20 +148,20 @@ class MergerResolver(object):
 
                 # split up node if count > 1, duplicate incoming and outgoing arcs
                 if count > 1:
-                    for idx, fit in zip(range(nextObjectId, nextObjectId + count), fittedObjects):
+                    for idx in range(nextObjectId, nextObjectId + count):
                         newNode = (intT, idx)
-                        resolvedGraph.add_node(newNode, division=False, count=1, origin=node)
+                        self.resolvedGraph.add_node(newNode, division=False, count=1, origin=node)
                         
                         for e in self.unresolvedGraph.out_edges(node):
-                            resolvedGraph.add_edge(newNode, e[1])
+                            self.resolvedGraph.add_edge(newNode, e[1])
                         for e in self.unresolvedGraph.in_edges(node):
                             if 'newIds' in self.unresolvedGraph.node[e[0]]:
                                 for newId in self.unresolvedGraph.node[e[0]]['newIds']:
-                                    resolvedGraph.add_edge((e[0][0], newId), newNode)
+                                    self.resolvedGraph.add_edge((e[0][0], newId), newNode)
                             else:
-                                resolvedGraph.add_edge(e[0], newNode)
+                                self.resolvedGraph.add_edge(e[0], newNode)
 
-                    resolvedGraph.remove_node(node)
+                    self.resolvedGraph.remove_node(node)
                     self.unresolvedGraph.node[node]['newIds'] = range(nextObjectId, nextObjectId + count)
                     nextObjectId += count
 
@@ -179,62 +176,7 @@ class MergerResolver(object):
 
         return labelImages
 
-    def _computeObjectFeatures(self, labelImages,
-                              pluginManager,
-                              raw_filename,
-                              raw_path,
-                              raw_axes,
-                              label_image_filename,
-                              label_image_path,
-                              resolvedGraph):
-        """
-        Computes object features for all nodes in the resolved graph because they
-        are needed for the transition classifier or to compute new distances.
-
-        **returns:** a dictionary of feature-dicts per node
-        """
-        rawImages = {}
-        for t in labelImages.keys():
-            rawImages[t] = pluginManager.getImageProvider().getImageDataAtTimeFrame(
-                raw_filename, raw_path, raw_axes, int(t))
-
-        getLogger().info("Computing object features")
-        objectFeatures = {}
-        imageShape = pluginManager.getImageProvider().getImageShape(label_image_filename, label_image_path)
-        getLogger().info("Found image of shape {}".format(imageShape))
-        # ndims = len(np.array(imageShape).squeeze()) - 1 # get rid of axes with length 1, and minus time axis
-        # there is no time axis...
-        ndims = len([i for i in imageShape if i != 1])
-        getLogger().info("Data has dimensionality {}".format(ndims))
-        for node in resolvedGraph.nodes_iter():
-            intT, idx = node
-            # mask out this object only and compute features
-            mask = labelImages[str(intT)].copy()
-            mask[mask != idx] = 0
-            mask[mask == idx] = 1
-
-            # compute features, transform to one dict for frame
-            frameFeatureDicts, ignoreNames = pluginManager.applyObjectFeatureComputationPlugins(
-                ndims, rawImages[str(intT)], mask, intT, raw_filename)
-            frameFeatureItems = []
-            for f in frameFeatureDicts:
-                frameFeatureItems = frameFeatureItems + f.items()
-            frameFeatures = dict(frameFeatureItems)
-
-            # extract all features for this one object
-            objectFeatureDict = {}
-            for k, v in frameFeatures.iteritems():
-                if k in ignoreNames:
-                    continue
-                elif 'Polygon' in k:
-                    objectFeatureDict[k] = v[1]
-                else:
-                    objectFeatureDict[k] = v[1, ...]
-            objectFeatures[node] = objectFeatureDict
-
-        return objectFeatures
-
-    def minCostMaxFlowMergerResolving(self, resolvedGraph, objectFeatures, pluginManager, transitionClassifier=None, transitionParameter=5.0):
+    def _minCostMaxFlowMergerResolving(self, objectFeatures, transitionClassifier=None, transitionParameter=5.0):
         """
         Find the optimal assignments within the `resolvedGraph` by running min-cost max-flow from the
         `dpct` module.
@@ -248,25 +190,25 @@ class MergerResolver(object):
         """
 
         trackingGraph = JsonTrackingGraph()
-        for node in resolvedGraph.nodes_iter():
+        for node in self.resolvedGraph.nodes_iter():
             additionalFeatures = {}
-            if len(resolvedGraph.in_edges(node)) == 0:
+            if len(self.resolvedGraph.in_edges(node)) == 0:
                 additionalFeatures['appearanceFeatures'] = [[0], [0]]
-            if len(resolvedGraph.out_edges(node)) == 0:
+            if len(self.resolvedGraph.out_edges(node)) == 0:
                 additionalFeatures['disappearanceFeatures'] = [[0], [0]]
             uuid = trackingGraph.addDetectionHypotheses([[0], [1]], **additionalFeatures)
-            resolvedGraph.node[node]['id'] = uuid
+            self.resolvedGraph.node[node]['id'] = uuid
 
-        for edge in resolvedGraph.edges_iter():
-            src = resolvedGraph.node[edge[0]]['id']
-            dest = resolvedGraph.node[edge[1]]['id']
+        for edge in self.resolvedGraph.edges_iter():
+            src = self.resolvedGraph.node[edge[0]]['id']
+            dest = self.resolvedGraph.node[edge[1]]['id']
 
             featuresAtSrc = objectFeatures[edge[0]]
             featuresAtDest = objectFeatures[edge[1]]
 
             if transitionClassifier is not None:
                 try:
-                    featVec = pluginManager.applyTransitionFeatureVectorConstructionPlugins(
+                    featVec = self.pluginManager.applyTransitionFeatureVectorConstructionPlugins(
                         featuresAtSrc, featuresAtDest, transitionClassifier.selectedFeatures)
                 except:
                     getLogger().error("Could not compute transition features of link {}->{}:".format(src, dest))
@@ -294,14 +236,12 @@ class MergerResolver(object):
         return nodeFlowMap, arcFlowMap
 
     def _refineModel(self,
-                     model, 
-                     resolvedGraph,
                      uuidToTraxelMap, 
                      traxelIdPerTimestepToUniqueIdMap, 
                      mergerNodeFilter, 
                      mergerLinkFilter):
         """
-        Take the `model` (JSON format) with mergers, remove the merger nodes, but add new
+        Take the `self.model` (JSON format) with mergers, remove the merger nodes, but add new
         de-merged nodes and links. Also updates `traxelIdPerTimestepToUniqueIdMap` locally and in the resulting file,
         such that the traxel IDs match the new connected component IDs in the refined images.
 
@@ -312,10 +252,10 @@ class MergerResolver(object):
         """
 
         # remove merger detections
-        model['segmentationHypotheses'] = filter(mergerNodeFilter, model['segmentationHypotheses'])
+        self.model['segmentationHypotheses'] = filter(mergerNodeFilter, self.model['segmentationHypotheses'])
 
         # remove merger links
-        model['linkingHypotheses'] = filter(mergerLinkFilter, model['linkingHypotheses'])
+        self.model['linkingHypotheses'] = filter(mergerLinkFilter, self.model['linkingHypotheses'])
 
         # insert new nodes and update UUID to traxel map
         nextUuid = max(uuidToTraxelMap.keys()) + 1
@@ -327,30 +267,28 @@ class MergerResolver(object):
                     newDetection = {}
                     newDetection['id'] = nextUuid
                     newDetection['timestep'] = [node[0], node[0]]
-                    model['segmentationHypotheses'].append(newDetection)
+                    self.model['segmentationHypotheses'].append(newDetection)
                     traxelIdPerTimestepToUniqueIdMap[str(node[0])][str(newId)] = nextUuid
                     nextUuid += 1
 
         # insert new links
-        for edge in resolvedGraph.edges_iter():
+        for edge in self.resolvedGraph.edges_iter():
             newLink = {}
             newLink['src'] = traxelIdPerTimestepToUniqueIdMap[str(edge[0][0])][str(edge[0][1])]
             newLink['dest'] = traxelIdPerTimestepToUniqueIdMap[str(edge[1][0])][str(edge[1][1])]
-            model['linkingHypotheses'].append(newLink)
+            self.model['linkingHypotheses'].append(newLink)
 
         # save
-        return model
+        return self.model
 
     def _refineResult(self,
-                      result,
                       nodeFlowMap,
                       arcFlowMap,
-                      resolvedGraph,
                       traxelIdPerTimestepToUniqueIdMap,
                       mergerNodeFilter,
                       mergerLinkFilter):
         """
-        Update a `result` dict by removing the mergers and adding the refined nodes and links.
+        Update the `self.result` dict by removing the mergers and adding the refined nodes and links.
 
         Operates on a `result` dictionary in our JSON result style with mergers,
         the resolved and unresolved graph as well as
@@ -366,8 +304,8 @@ class MergerResolver(object):
         """
 
         # filter merger edges
-        result['detectionResults'] = [r for r in result['detectionResults'] if mergerNodeFilter(r)]
-        result['linkingResults'] = [r for r in result['linkingResults'] if mergerLinkFilter(r)]
+        self.result['detectionResults'] = [r for r in self.result['detectionResults'] if mergerNodeFilter(r)]
+        self.result['linkingResults'] = [r for r in self.result['linkingResults'] if mergerLinkFilter(r)]
 
         # add new nodes
         for node in self.unresolvedGraph.nodes_iter():
@@ -376,39 +314,41 @@ class MergerResolver(object):
                 for newId in newIds:
                     uuid = traxelIdPerTimestepToUniqueIdMap[str(node[0])][str(newId)]
                     resolvedNode = (node[0], newId)
-                    resolvedResultId = resolvedGraph.node[resolvedNode]['id']
+                    resolvedResultId = self.resolvedGraph.node[resolvedNode]['id']
                     newDetection = {'id': uuid, 'value': nodeFlowMap[resolvedResultId]}
-                    result['detectionResults'].append(newDetection)
+                    self.result['detectionResults'].append(newDetection)
 
         # add new links
-        for edge in resolvedGraph.edges_iter():
+        for edge in self.resolvedGraph.edges_iter():
             newLink = {}
             newLink['src'] = traxelIdPerTimestepToUniqueIdMap[str(edge[0][0])][str(edge[0][1])]
             newLink['dest'] = traxelIdPerTimestepToUniqueIdMap[str(edge[1][0])][str(edge[1][1])]
-            srcId = resolvedGraph.node[edge[0]]['id']
-            destId = resolvedGraph.node[edge[1]]['id']
+            srcId = self.resolvedGraph.node[edge[0]]['id']
+            destId = self.resolvedGraph.node[edge[1]]['id']
             newLink['value'] = arcFlowMap[(srcId, destId)]
-            result['linkingResults'].append(newLink)
+            self.result['linkingResults'].append(newLink)
 
-        return result
+        return self.result
 
+    def _exportRefinedSegmentation(self, labelImages):
+        """
+        Store the resulting label images, if needed.
+
+        `labelImages` is a dictionary with str(timestep) as keys. 
+        """
+        pass
+
+    def _computeObjectFeatures(self, labelImages):
+        '''
+        Return the features per object as nested dictionaries:
+        { (int(Timestep), int(Id)):{ "FeatureName" : np.array(value), "NextFeature": ...} }
+        '''
+        pass
 
     # ------------------------------------------------------------
-    def run(
-            self,
-            label_image_filename,
-            label_image_path,
-            raw_filename,
-            raw_path,
-            raw_axes,
-            out_label_image,
-            pluginPaths,
-            transition_classifier_filename,
-            transition_classifier_path,
-            verbose
-        ):
+    def run(self, transition_classifier_filename=None, transition_classifier_path=None):
         """
-        Run merger resolving with the given configuration in `options`:
+        Run merger resolving
 
         1. find mergers in the given model and result
         2. build graph of the unresolved (merger) nodes and their direct neighbors
@@ -421,12 +361,8 @@ class MergerResolver(object):
         traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(self.model)
         timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
 
-        mergers, detections, links, divisions = hytra.core.jsongraph.getMergersDetectionsLinksDivisions(self.result, uuidToTraxelMap, self.withDivisions)
+        mergers, detections, links, divisions = hytra.core.jsongraph.getMergersDetectionsLinksDivisions(self.result, uuidToTraxelMap)
 
-        # ------------------------------------------------------------
-
-        pluginManager = TrackingPluginManager(verbose=verbose, pluginPaths=pluginPaths)
-        pluginManager.setImageProvider('LocalImageLoader')
 
         # ------------------------------------------------------------
 
@@ -434,41 +370,31 @@ class MergerResolver(object):
         if len(mergers) == 0:
             getLogger().info("The maximum number of objects is 1, so nothing to be done. Writing the output...")
             # segmentation
-            intTimesteps = [int(t) for t in timesteps]
-            intTimesteps.sort()
-            imageProvider = pluginManager.getImageProvider()
-            h5py.File(out_label_image, 'w').close()
-            for t in intTimesteps:
-                labelImage = imageProvider.getLabelImageForFrame(label_image_filename, label_image_path, int(t))
-                pluginManager.getImageProvider().exportLabelImage(labelImage, int(t), out_label_image, label_image_path)
+
+            labelImages = {}
+            for t in timesteps:
+                # use image provider plugin to load labelimage
+                labelImage = self._readLabelImage(int(t))
+                labelImages[t] = labelImage
+            self._exportRefinedSegmentation(labelImages)
+
         else:
             mergersPerTimestep = hytra.core.jsongraph.getMergersPerTimestep(mergers, timesteps)
             linksPerTimestep = hytra.core.jsongraph.getLinksPerTimestep(links, timesteps)
             detectionsPerTimestep = hytra.core.jsongraph.getDetectionsPerTimestep(detections, timesteps)
-            divisionsPerTimestep = hytra.core.jsongraph.getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps, self.withDivisions)
+            divisionsPerTimestep = hytra.core.jsongraph.getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps)
             mergerLinks = hytra.core.jsongraph.getMergerLinks(linksPerTimestep, mergersPerTimestep, timesteps)
             
             # set up unresolved graph and then refine the nodes to get the resolved graph
             self._createUnresolvedGraph(divisionsPerTimestep, mergersPerTimestep, mergerLinks)
-            resolvedGraph = self._prepareResolvedGraph()
-            labelImages = self._refineSegmentation(resolvedGraph,
-                                                   detectionsPerTimestep,
+            self._prepareResolvedGraph()
+            labelImages = self._refineSegmentation(detectionsPerTimestep,
                                                    mergersPerTimestep,
-                                                   timesteps,
-                                                   pluginManager,
-                                                   label_image_filename,
-                                                   label_image_path)
+                                                   timesteps)
 
             # ------------------------------------------------------------
             # compute new object features
-            objectFeatures = self._computeObjectFeatures(labelImages,
-                                                         pluginManager,
-                                                         raw_filename,
-                                                         raw_path,
-                                                         raw_axes,
-                                                         label_image_filename,
-                                                         label_image_path,
-                                                         resolvedGraph)
+            objectFeatures = self._computeObjectFeatures(labelImages)
 
             # ------------------------------------------------------------
             # load transition classifier if any
@@ -484,7 +410,7 @@ class MergerResolver(object):
             # run min-cost max-flow to find merger assignments
             getLogger().info("Running min-cost max-flow to find resolved merger assignments")
 
-            nodeFlowMap, arcFlowMap = self.minCostMaxFlowMergerResolving(resolvedGraph, objectFeatures, pluginManager, transitionClassifier)
+            nodeFlowMap, arcFlowMap = self._minCostMaxFlowMergerResolving(objectFeatures, transitionClassifier)
 
             # ------------------------------------------------------------
             # fuse results into a new solution
@@ -506,24 +432,18 @@ class MergerResolver(object):
                 destTraxels = uuidToTraxelMap[destUuid]
                 return not any((str(destT[0]), (srcT[1], destT[1])) in mergerLinks for srcT, destT in itertools.product(srcTraxels, destTraxels))
 
-            self.model = self._refineModel(self.model,
-                                           resolvedGraph,
-                                           uuidToTraxelMap,
+            self.model = self._refineModel(uuidToTraxelMap,
                                            traxelIdPerTimestepToUniqueIdMap,
                                            mergerNodeFilter,
                                            mergerLinkFilter)
 
             # 2.) new result = union(old result, resolved mergers) - old mergers
 
-            self.result = self._refineResult(self.result,
-                                             nodeFlowMap,
+            self.result = self._refineResult(nodeFlowMap,
                                              arcFlowMap,
-                                             resolvedGraph,
                                              traxelIdPerTimestepToUniqueIdMap,
                                              mergerNodeFilter,
                                              mergerLinkFilter)
 
             # 3.) export refined segmentation
-            h5py.File(out_label_image, 'w').close()
-            for t in timesteps:
-                pluginManager.getImageProvider().exportLabelImage(labelImages[t], int(t), out_label_image, label_image_path)
+            self._exportRefinedSegmentation(labelImages)

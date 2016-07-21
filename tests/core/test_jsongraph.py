@@ -419,7 +419,7 @@ def test_loading_no_divisions():
     assert(uuidToTraxelMap == {0: [(0, 1)], 1: [(3, 2)], 2: [(3, 1)], 3: [(2, 1)], 4: [(1, 1)], 5: [(0, 2)]})
 
     # get lists
-    mergers, detections, links, divisions = jg.getMergersDetectionsLinksDivisions(result, uuidToTraxelMap, False)
+    mergers, detections, links, divisions = jg.getMergersDetectionsLinksDivisions(result, uuidToTraxelMap)
     assert(divisions is None)
     assert(mergers == [(2, 1, 2), (1, 1, 2)])
     assert(detections == [(0, 1), (3, 2), (3, 1), (2, 1), (1, 1), (0, 2)])

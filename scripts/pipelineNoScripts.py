@@ -17,7 +17,7 @@ import hytra.core.ilastik_project_options
 from hytra.core.jsongraph import JsonTrackingGraph
 from hytra.core.ilastikhypothesesgraph import IlastikHypothesesGraph
 from hytra.core.fieldofview import FieldOfView
-from hytra.core.mergerresolver import MergerResolver
+from hytra.core.jsonmergerresolver import JsonMergerResolver
 
 def convertToDict(unknown):
     indicesOfParameters = [i for i,p in enumerate(unknown) if p.startswith('--')]
@@ -144,7 +144,16 @@ def run_pipeline(options, unknown):
     if options.do_merger_resolving:
         logging.info("Run merger resolving")
         trackingGraph = JsonTrackingGraph(model=model, result=result)
-        merger_resolver = MergerResolver(trackingGraph)
+        merger_resolver = JsonMergerResolver(
+            trackingGraph,
+            ilpOptions.labelImageFilename,
+            ilpOptions.labelImagePath,
+            params['out-label-image-file'],
+            ilpOptions.rawImageFilename,
+            ilpOptions.rawImagePath,
+            ilpOptions.rawImageAxes,
+            ['../hytra/plugins'],
+            True)
         ilpOptions.labelImagePath = params['label-image-path']
         ilpOptions.labelImageFilename = params['label-image-file']
         ilpOptions.rawImagePath = params['raw-data-path']
@@ -153,17 +162,7 @@ def run_pipeline(options, unknown):
             ilpOptions.rawImageAxes = params['raw-data-axes']
         except:
             ilpOptions.rawImageAxes = 'txyzc'
-        merger_resolver.run(
-            ilpOptions.labelImageFilename,
-            ilpOptions.labelImagePath,
-            ilpOptions.rawImageFilename,
-            ilpOptions.rawImagePath,
-            ilpOptions.rawImageAxes,
-            params['out-label-image-file'],
-            ['../hytra/plugins'],
-            None,
-            None,
-            True)
+        merger_resolver.run(None,  None)
 
         ## resolved model and result are now here:
         # merger_resolver.model

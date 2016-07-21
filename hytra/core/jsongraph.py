@@ -48,11 +48,11 @@ def getMappingsBetweenUUIDsAndTraxels(model):
 
     return traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap
 
-def getMergersDetectionsLinksDivisions(result, uuidToTraxelMap, withDivisions):
+def getMergersDetectionsLinksDivisions(result, uuidToTraxelMap):
     # load results and map indices
     mergers = [timestepIdTuple + (entry['value'],) for entry in result['detectionResults'] if entry['value'] > 1 for timestepIdTuple in uuidToTraxelMap[int(entry['id'])]]
     detections = [timestepIdTuple for entry in result['detectionResults'] if entry['value'] > 0 for timestepIdTuple in uuidToTraxelMap[int(entry['id'])]]
-    if withDivisions:
+    if 'divisionResults' in result and result['divisionResults'] is not None:
         divisions = [uuidToTraxelMap[int(entry['id'])][-1] for entry in result['divisionResults'] if entry['value'] == True]
     else:
         divisions = None
@@ -90,9 +90,9 @@ def getMergerLinks(linksPerTimestep, mergersPerTimestep, timesteps):
     mergerLinks = [(t,(a, b)) for t in timesteps for a, b in linksPerTimestep[t] if a in mergersPerTimestep[str(int(t)-1)] or b in mergersPerTimestep[t]]
     return mergerLinks
 
-def getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps, withDivisions):
+def getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps):
     ''' returns divisionsPerTimestep = { "<timestep>": {<parentIdx>: [<childIdx>, <childIdx>], ...}, "<timestep>": {...}, ... } '''
-    if withDivisions:
+    if divisions is not None:
         # find children of divisions by looking for the active links
         divisionsPerTimestep = {}
         for t in timesteps:

@@ -110,4 +110,8 @@ def test_noscripts_mergerResolvingTestDataset():
         assert(resultFile.read() == '1 0 3 0\n2 0 3 0\n')
 
 if __name__ == "__main__":
+    test_divisionTestDataset()
+    test_mergerResolvingTestDataset()
+    test_divisionTestDataset_withoutTracklets()
+    test_mergerResolvingTestDataset_withoutTracklets()
     test_noscripts_mergerResolvingTestDataset()

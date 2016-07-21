@@ -104,7 +104,6 @@ if __name__ == "__main__":
         result = json.load(f)
         assert(result['detectionResults'] is not None)
         assert(result['linkingResults'] is not None)
-        withDivisions = result['divisionResults'] is not None
 
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
@@ -115,13 +114,13 @@ if __name__ == "__main__":
     traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(model)
     timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
 
-    mergers, detections, links, divisions = hytra.core.jsongraph.getMergersDetectionsLinksDivisions(result, uuidToTraxelMap, withDivisions)
+    mergers, detections, links, divisions = hytra.core.jsongraph.getMergersDetectionsLinksDivisions(result, uuidToTraxelMap)
 
     # group by timestep for event creation
     mergersPerTimestep = hytra.core.jsongraph.getMergersPerTimestep(mergers, timesteps)
     linksPerTimestep = hytra.core.jsongraph.getLinksPerTimestep(links, timesteps)
     detectionsPerTimestep = hytra.core.jsongraph.getDetectionsPerTimestep(detections, timesteps)
-    divisionsPerTimestep = hytra.core.jsongraph.getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps, withDivisions)
+    divisionsPerTimestep = hytra.core.jsongraph.getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps)
     
     # save to disk in parallel
     if not os.path.exists(args.out_dir):
