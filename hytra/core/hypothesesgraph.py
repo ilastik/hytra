@@ -504,3 +504,25 @@ class HypothesesGraph(object):
                                         lineage_id,
                                         max_track_id))
                     max_track_id += 1
+    
+    def _getNodeAttribute(self, timestep, objectId, attribute):
+        '''
+        return some attribute of a certain node specified by timestep and objectId
+        '''
+        try:
+            return self._graph.node[(int(timestep), int(objectId))][attribute]
+        except KeyError:
+            getLogger().error(attribute + ' not found in graph node properties, call computeLineage() first!')
+            raise
+
+    def getLineageId(self, timestep, objectId):
+        '''
+        return the lineage Id of a certain node specified by timestep and objectId
+        '''
+        return self._getNodeAttribute(timestep, objectId, 'lineageId') 
+    
+    def getTrackId(self, timestep, objectId):
+        '''
+        return the track Id of a certain node specified by timestep and objectId
+        '''
+        return self._getNodeAttribute(timestep, objectId, 'trackId')
