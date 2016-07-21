@@ -462,7 +462,7 @@ class HypothesesGraph(object):
         numberOfOutgoingObject = 0
         numberOfOutgoingEdges = 0
         for out_edge in self._graph.out_edges(node):
-            if 'value' in self._graph.edge[node][out_edge[1]]:
+            if 'value' in self._graph.edge[node][out_edge[1]] and self._graph.edge[node][out_edge[1]]['value'] > 0:
                 numberOfOutgoingObject += self._graph.edge[node][out_edge[1]]['value']
                 numberOfOutgoingEdges += 1
         return numberOfOutgoingObject, numberOfOutgoingEdges
@@ -506,6 +506,38 @@ class HypothesesGraph(object):
                                         lineage_id,
                                         max_track_id))
                     max_track_id += 1
+
+    def pruneGraphToSolution(self, distanceToSolution=0):
+        '''
+        creates a new pruned HypothesesGraph that around the result. Assumes that value==0 corresponds
+        to unlabeled parts of the graph.
+        distanceToSolution determines how many negative examples are included
+        distanceToSolution = 0: only include negative edges that connect used objects
+        distanceToSolution = 1: additionally include edges that connect used objects with unlabeled objects
+        '''
+        prunedGraph = HypothesesGraph()
+        for n in self.nodeIterator():
+            if 'value' in self._graph.node[n] and self._graph.node[n]['value'] > 0:
+                prunedGraph._graph.add_node(n,**self._graph.node[n])
+
+        for e in self.arcIterator():
+            src = self.source(e)
+            dest = self.target(e)
+            if distanceToSolution == 0:
+                if src in prunedGraph._graph and dest in prunedGraph._graph:
+                    prunedGraph._graph.add_edge(src,dest,**self._graph.edge[src][dest])
+
+        # TODO: can be optimized by looping over the pruned graph nodes(might sacrifice readability)
+        for distance in range(1,distanceToSolution+1):
+            for e in self.arcIterator():
+                src = self.source(e)
+                dest = self.target(e)
+                if src in prunedGraph._graph or dest in prunedGraph._graph:
+                    prunedGraph._graph.add_node(src,**self._graph.node[src])
+                    prunedGraph._graph.add_node(dest,**self._graph.node[dest])
+                    prunedGraph._graph.add_edge(src,dest,**self._graph.edge[src][dest])
+
+        return prunedGraph
     
     def _getNodeAttribute(self, timestep, objectId, attribute):
         '''
