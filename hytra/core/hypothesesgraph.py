@@ -448,8 +448,9 @@ class HypothesesGraph(object):
         numberOfIncomingObject = 0
         numberOfIncomingEdges = 0
         for in_edge in self._graph.in_edges(node):
-            numberOfIncomingObject += self._graph.edge[in_edge[0]][node]['value']
-            numberOfIncomingEdges += 1
+            if 'value' in self._graph.edge[in_edge[0]][node]:
+                numberOfIncomingObject += self._graph.edge[in_edge[0]][node]['value']
+                numberOfIncomingEdges += 1
         return numberOfIncomingObject, numberOfIncomingEdges
 
     def countOutgoingObjects(self, node):
@@ -461,8 +462,9 @@ class HypothesesGraph(object):
         numberOfOutgoingObject = 0
         numberOfOutgoingEdges = 0
         for out_edge in self._graph.out_edges(node):
-            numberOfOutgoingObject += self._graph.edge[node][out_edge[1]]['value']
-            numberOfOutgoingEdges += 1
+            if 'value' in self._graph.edge[node][out_edge[1]]:
+                numberOfOutgoingObject += self._graph.edge[node][out_edge[1]]['value']
+                numberOfOutgoingEdges += 1
         return numberOfOutgoingObject, numberOfOutgoingEdges
 
     def computeLineage(self):
@@ -475,7 +477,7 @@ class HypothesesGraph(object):
         max_track_id = 0
         # find start of lineages
         for n in self.nodeIterator():
-            if self.countIncomingObjects(n)[0]==0:
+            if self.countIncomingObjects(n)[0] == 0 and 'value' in self._graph.node[n] and self._graph.node[n]['value'] > 0:
                 # found start of a track
                 update_queue.append((n,max_lineage_id,max_track_id))
                 max_lineage_id += 1
