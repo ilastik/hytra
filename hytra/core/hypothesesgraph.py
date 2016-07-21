@@ -60,9 +60,9 @@ class HypothesesGraph(object):
     Use the insertEnergies() method to populate the nodes and arcs with the energies for different
     configurations (according to DPCT's JSON style'), derived from given probability generation functions.
 
-    **Notes:** `self._graph.node`'s are indexed by tuples (int(timestep), int(id)), and contain either a 
-    single `'traxel'` attribute, or a list of traxels in `'tracklet'`. 
-    Nodes also get a unique ID assigned once they are added to the graph. 
+    **Notes:** `self._graph.node`'s are indexed by tuples (int(timestep), int(id)), and contain either a
+    single `'traxel'` attribute, or a list of traxels in `'tracklet'`.
+    Nodes also get a unique ID assigned once they are added to the graph.
     """
 
     def __init__(self):
@@ -212,7 +212,7 @@ class HypothesesGraph(object):
         '''
         getLogger().info("generating tracklet graph...")
         tracklet_graph = copy.copy(self)
-        tracklet_graph._graph = tracklet_graph._graph.copy() 
+        tracklet_graph._graph = tracklet_graph._graph.copy()
         tracklet_graph.withTracklets = True
 
         # initialize tracklet map to contain a list of only one traxel per node
@@ -286,7 +286,7 @@ class HypothesesGraph(object):
          appearance/disappearance cost that depends on the traxel's distance to the spacial and time boundary
         * `divisionProbabilityFunc`: should take a traxel and return its division probabilities ([probNoDiv, probDiv])
         '''
-        numElements = self._graph.number_of_nodes() + self._graph.number_of_edges() 
+        numElements = self._graph.number_of_nodes() + self._graph.number_of_edges()
         progressBar = ProgressBar(stop=numElements)
 
         # insert detection probabilities for all detections (and some also get a div probability)
@@ -340,7 +340,7 @@ class HypothesesGraph(object):
             self._graph.edge[a[0]][a[1]]['src'] = self._graph.node[a[0]]['id']
             self._graph.edge[a[0]][a[1]]['dest'] = self._graph.node[a[1]]['id']
             self._graph.edge[a[0]][a[1]]['features'] = features
-            
+
             progressBar.show()
         
     def getMappingsBetweenUUIDsAndTraxels(self):
@@ -356,7 +356,7 @@ class HypothesesGraph(object):
 
         uuidToTraxelMap = {}
         traxelIdPerTimestepToUniqueIdMap = {}
-        
+
         for n in self._graph.nodes_iter():
             uuid = self._graph.node[n]['id']
             traxels = []
@@ -368,7 +368,7 @@ class HypothesesGraph(object):
 
             for t in uuidToTraxelMap[uuid]:
                 traxelIdPerTimestepToUniqueIdMap.setdefault(str(t[0]), {})[str(t[1])] = uuid
-                
+
         # sort the list of traxels per UUID by their timesteps
         for v in uuidToTraxelMap.values():
             v.sort(key=lambda timestepIdTuple: timestepIdTuple[0])
@@ -390,7 +390,7 @@ class HypothesesGraph(object):
                 elif k == 'features' or k == 'id':
                     raise ValueError('Cannot use graph nodes without assigned ID and features, run insertEnergies() first')
             return result
-        
+
         def translateLinkToDict(l):
             result = {}
             attrs = self._graph.edge[l[0]][l[1]]
@@ -403,19 +403,19 @@ class HypothesesGraph(object):
 
         traxelIdPerTimestepToUniqueIdMap, _ = self.getMappingsBetweenUUIDsAndTraxels()
         model = {
-                'segmentationHypotheses':[translateNodeToDict(n) for n in self._graph.nodes_iter()],
-                'linkingHypotheses':[translateLinkToDict(e) for e in self._graph.edges_iter()],
-                'exclusions':[],
-                'divisionHypotheses':[],
-                'traxelToUniqueId':traxelIdPerTimestepToUniqueIdMap,
-                'settings':{'statesShareWeights':True,
-                            'allowPartialMergerAppearance':False,
-                            'requireSeparateChildrenOfDivision':True,
-                            'optimizerEpGap':0.01,
-                            'optimizerVerbose':True,
-                            'optimizerNumThreads':1
-                        }
-                }
+            'segmentationHypotheses':[translateNodeToDict(n) for n in self._graph.nodes_iter()],
+            'linkingHypotheses':[translateLinkToDict(e) for e in self._graph.edges_iter()],
+            'exclusions':[],
+            'divisionHypotheses':[],
+            'traxelToUniqueId':traxelIdPerTimestepToUniqueIdMap,
+            'settings':{'statesShareWeights':True,
+                        'allowPartialMergerAppearance':False,
+                        'requireSeparateChildrenOfDivision':True,
+                        'optimizerEpGap':0.01,
+                        'optimizerVerbose':True,
+                        'optimizerNumThreads':1
+                       }
+            }
         # TODO: this recomputes the uuidToTraxelMap even though we have it already...
         trackingGraph = hytra.core.jsongraph.JsonTrackingGraph(model=model)
 
@@ -439,21 +439,31 @@ class HypothesesGraph(object):
         for division in resultDictionary["divisionResults"]:
             self._graph.node[uuidToTraxelMap[division["id"]][0]]['divisionValue'] = division["value"]
 
-    def countIncomingObjects(self,node):
+    def countIncomingObjects(self, node):
+        '''
+        Once a solution was written to the graph, this returns the number of
+        incoming objects of a node, and the number of active incoming edges.
+        If the latter is greater than 1, this shows that we have a merger.
+        '''
         numberOfIncomingObject = 0
         numberOfIncomingEdges = 0
         for in_edge in self._graph.in_edges(node):
-            numberOfIncomingObject += self._graph.node[node]['value']
+            numberOfIncomingObject += self._graph.edge[in_edge[0]][node]['value']
             numberOfIncomingEdges += 1
-        return numberOfIncomingObject,numberOfIncomingEdges
+        return numberOfIncomingObject, numberOfIncomingEdges
 
-    def countOutgoingObjects(self,node):
+    def countOutgoingObjects(self, node):
+        '''
+        Once a solution was written to the graph, this returns the number of
+        outgoing objects of a node, and the number of active outgoing edges.
+        If the latter is greater than 1, this shows that we have a merger splitting up, or a division.
+        '''
         numberOfOutgoingObject = 0
         numberOfOutgoingEdges = 0
-        for in_edge in self._graph.out_edges(node):
-            numberOfOutgoingObject += self._graph.node[node]['value']
+        for out_edge in self._graph.out_edges(node):
+            numberOfOutgoingObject += self._graph.edge[node][out_edge[1]]['value']
             numberOfOutgoingEdges += 1
-        return numberOfOutgoingObject,numberOfOutgoingEdges
+        return numberOfOutgoingObject, numberOfOutgoingEdges
 
     def computeLineage(self):
         """

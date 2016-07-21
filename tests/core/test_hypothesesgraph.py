@@ -15,11 +15,12 @@ def test_trackletgraph():
     t = h.generateTrackletGraph()
     assert(t.countArcs() == 0)
     assert(t.countNodes() == 1)
+    assert('tracklet' in t._graph.node[(0,1)])
 
 def test_computeLineages():
     h = hg.HypothesesGraph()
-    h._graph.add_path([('0','0'),('1','1'),('2','2')])
-    h._graph.add_path([('1','1'),('2','3'),('3','4')])
+    h._graph.add_path([(0, 0),(1, 1),(2, 2)])
+    h._graph.add_path([(1, 1),(2, 3),(3, 4)])
 
     for n in h._graph.node:
         h._graph.node[n]['id'] = n[1]
@@ -89,8 +90,8 @@ def test_computeLineages():
 
 def test_insertSolution():
     h = hg.HypothesesGraph()
-    h._graph.add_path([('0','0'),('1','1'),('2','2')])
-    h._graph.add_path([('1','1'),('2','3'),('3','4')])
+    h._graph.add_path([(0, 0),(1, 1),(2, 2)])
+    h._graph.add_path([(1, 1),(2, 3),(3, 4)])
 
     for n in h._graph.node:
         h._graph.node[n]['id'] = n[1]
@@ -156,17 +157,17 @@ def test_insertSolution():
     }
 
     h.insertSolution(solutionDict)
-    assert(h._graph.node[('1','1')]["divisionValue"] == 1)
-    assert(h._graph.node[('2','2')]["divisionValue"] == 0)
-    assert(h._graph.node[('0','0')]["value"] == 1)
-    assert(h._graph.node[('1','1')]["value"] == 1)
-    assert(h._graph.node[('2','2')]["value"] == 1)
-    assert(h._graph.node[('2','3')]["value"] == 1)
-    assert(h._graph.node[('3','4')]["value"] == 0)
-    assert(h._graph.edge[('0','0')][('1','1')]["value"] == 1)
-    assert(h._graph.edge[('1','1')][('2','2')]["value"] == 1)
-    assert(h._graph.edge[('1','1')][('2','3')]["value"] == 1)
-    assert(h._graph.edge[('2','3')][('3','4')]["value"] == 0)
+    assert(h._graph.node[(1, 1)]["divisionValue"] == 1)
+    assert(h._graph.node[(2, 2)]["divisionValue"] == 0)
+    assert(h._graph.node[(0, 0)]["value"] == 1)
+    assert(h._graph.node[(1, 1)]["value"] == 1)
+    assert(h._graph.node[(2, 2)]["value"] == 1)
+    assert(h._graph.node[(2, 3)]["value"] == 1)
+    assert(h._graph.node[(3, 4)]["value"] == 0)
+    assert(h._graph.edge[(0, 0)][(1, 1)]["value"] == 1)
+    assert(h._graph.edge[(1, 1)][(2, 2)]["value"] == 1)
+    assert(h._graph.edge[(1, 1)][(2, 3)]["value"] == 1)
+    assert(h._graph.edge[(2, 3)][(3, 4)]["value"] == 0)
 
 if __name__ == "__main__":
     test_trackletgraph()
