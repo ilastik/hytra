@@ -136,6 +136,11 @@ def run_pipeline(options, unknown):
         result = dpct.trackFlowBased(model, weights)
         hytra.core.jsongraph.writeToFormattedJSON(options.result_filename, result)
 
+        if hypotheses_graph:
+            # insert the solution into the hypotheses graph and from that deduce the lineages
+            hypotheses_graph.insertSolution(result)
+            hypotheses_graph.computeLineage()
+
     if options.do_merger_resolving:
         logging.info("Run merger resolving")
         trackingGraph = JsonTrackingGraph(model=model, result=result)
