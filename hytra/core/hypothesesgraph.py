@@ -351,7 +351,7 @@ class HypothesesGraph(object):
 
         * `traxelIdPerTimestepToUniqueIdMap`: a dictionary of the structure `{str(timestep):{str(labelimageId):int(uuid), 
          str(labelimageId):int(uuid), ...}, str(nextTimestep):{}, ...}`
-        * `uuidToTraxelMap`: a dictionary with keys = int(uuid), values = list(of timestep-Id-tuples (str(Timestep), str(Id)))
+        * `uuidToTraxelMap`: a dictionary with keys = int(uuid), values = list(of timestep-Id-tuples (int(Timestep), int(Id)))
         '''
 
         uuidToTraxelMap = {}
@@ -364,10 +364,10 @@ class HypothesesGraph(object):
                 traxels = self._graph.node[n]['tracklet']
             else:
                 traxels = [self._graph.node[n]['traxel']]
-            uuidToTraxelMap[uuid] = [(str(t.Timestep), str(t.Id)) for t in traxels]
+            uuidToTraxelMap[uuid] = [(t.Timestep, t.Id) for t in traxels]
 
             for t in uuidToTraxelMap[uuid]:
-                traxelIdPerTimestepToUniqueIdMap.setdefault(t[0], {})[t[1]] = uuid
+                traxelIdPerTimestepToUniqueIdMap.setdefault(str(t[0]), {})[str(t[1])] = uuid
                 
         # sort the list of traxels per UUID by their timesteps
         for v in uuidToTraxelMap.values():
@@ -401,7 +401,7 @@ class HypothesesGraph(object):
                     raise ValueError('Cannot use graph links without source, target, and features, run insertEnergies() first')
             return result
 
-        traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = self.getMappingsBetweenUUIDsAndTraxels()
+        traxelIdPerTimestepToUniqueIdMap, _ = self.getMappingsBetweenUUIDsAndTraxels()
         model = {
                 'segmentationHypotheses':[translateNodeToDict(n) for n in self._graph.nodes_iter()],
                 'linkingHypotheses':[translateLinkToDict(e) for e in self._graph.edges_iter()],
@@ -427,17 +427,17 @@ class HypothesesGraph(object):
         The resulting graph (=model) gets an additional property "value" that represents the number of objects inside a detection/arc
         Additionally a division indicator is saved in the node property "divisionValue".
         '''
-        traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = self.getMappingsBetweenUUIDsAndTraxels()
+        _, uuidToTraxelMap = self.getMappingsBetweenUUIDsAndTraxels()
 
         for detection in resultDictionary["detectionResults"]:
-            self._graph.node[uuidToTraxelMap[str(detection["id"])][0]]['value'] = detection["value"]
+            self._graph.node[uuidToTraxelMap[detection["id"]][0]]['value'] = detection["value"]
 
         for link in resultDictionary["linkingResults"]:
-            source,dest = uuidToTraxelMap[str(link["src"])][0],uuidToTraxelMap[str(link["dest"])][0]
+            source, dest = uuidToTraxelMap[link["src"]][0], uuidToTraxelMap[link["dest"]][0]
             self._graph.edge[source][dest]['value'] = link["value"]
 
         for division in resultDictionary["divisionResults"]:
-            self._graph.node[uuidToTraxelMap[str(division["id"])][0]]['divisionValue'] = division["value"]
+            self._graph.node[uuidToTraxelMap[division["id"]][0]]['divisionValue'] = division["value"]
 
     def countIncomingObjects(self,node):
         numberOfIncomingObject = 0
