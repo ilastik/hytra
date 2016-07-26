@@ -54,24 +54,26 @@ def run_pipeline(options, unknown):
 
     if options.do_tracking:
         logging.info("Run tracking...")
-        import commentjson as json
-        import dpct
-        import hytra.core.jsongraph
 
-        with open(options.model_filename, 'r') as f:
-            model = json.load(f)
+        if options.tracking_executable is not None:
+            check_call([options.tracking_executable,
+                        "-m", options.model_filename,
+                        "-w", options.weight_filename,
+                        "-o", options.result_filename])
+        else:
+            import commentjson as json
+            import dpct
+            import hytra.core.jsongraph
 
-        with open(options.weight_filename, 'r') as f:
-            weights = json.load(f)
+            with open(options.model_filename, 'r') as f:
+                model = json.load(f)
 
-        result = dpct.trackFlowBased(model, weights)
+            with open(options.weight_filename, 'r') as f:
+                weights = json.load(f)
 
-        hytra.core.jsongraph.writeToFormattedJSON(options.result_filename, result)
+            result = dpct.trackFlowBased(model, weights)
+            hytra.core.jsongraph.writeToFormattedJSON(options.result_filename, result)
 
-    #     check_call([options.tracking_executable,
-    #                 "-m", options.model_filename,
-    #                 "-w", options.weight_filename,
-    #                 "-o", options.result_filename])
 
     extra_params = []
     if options.do_merger_resolving:
@@ -112,13 +114,13 @@ if __name__ == "__main__":
     parser.add_argument("--do-merger-resolving", dest='do_merger_resolving', action='store_true', default=False)
     parser.add_argument("--export-format", dest='export_format', type=str, default=None,
                         help='Export format may be one of: "ilastikH5", "ctc", "labelimage", or None')
-    parser.add_argument("--tracking-executable", dest='tracking_executable', required=True,
+    parser.add_argument("--tracking-executable", dest='tracking_executable', default=None,
                         type=str, help='executable that can run tracking based on JSON specified models')
-    parser.add_argument('--graph-json-file', required=True, type=str, dest='model_filename',
+    parser.add_argument('--graph-json-file', type=str, dest='model_filename',
                         help='Filename of the json graph description')
-    parser.add_argument('--result-json-file', required=True, type=str, dest='result_filename',
+    parser.add_argument('--result-json-file', type=str, dest='result_filename',
                         help='Filename of the json file containing results')
-    parser.add_argument('--weight-json-file', required=True, type=str, dest='weight_filename',
+    parser.add_argument('--weight-json-file', type=str, dest='weight_filename',
                         help='Filename of the weights stored in json')
     parser.add_argument("--verbose", dest='verbose', action='store_true', default=False)
 
