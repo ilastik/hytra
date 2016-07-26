@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import logging
 import hytra.core.mergerresolver
 from hytra.core.probabilitygenerator import Traxel
@@ -12,18 +13,20 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
     Specialization of merger resolving to work with the hypotheses graph given by ilastik,
     and to read/write images from/to the input/output slots of the respective operators. 
     '''
-    def __init__(self, hypothesesGraph, pluginPaths=[os.path.abspath('../hytra/plugins')], verbose=False):
+    def __init__(self, hypothesesGraph, labelVolume, pluginPaths=[os.path.abspath('../hytra/plugins')], verbose=False):
         super(IlastikMergerResolver, self).__init__(pluginPaths, verbose)
-        trackingGraph = hypothesesGraph.toTrackingGraph()
+        trackingGraph = hypothesesGraph.toTrackingGraph(noFeatures=True)
         self.model = trackingGraph.model
-        self.result = trackingGraph.result
+        self.result = hypothesesGraph.getSolutionDictionary()
         self.hypothesesGraph = hypothesesGraph
+        self.labelVolume = labelVolume
+        self.relabeledVolume = np.zeros(labelVolume.shape, dtype=np.uint32)
     
     def _readLabelImage(self, timeframe):
         '''
         Returns the labelimage for the given timeframe
         '''
-        raise NotImplementedError()
+        return self.labelVolume[timeframe, ..., 0]
     
     def _exportRefinedSegmentation(self, labelImages):
         """
@@ -31,7 +34,8 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
 
         `labelImages` is a dictionary with str(timestep) as keys. 
         """
-        raise NotImplementedError()
+        for t, image in labelImages.iteritems():
+            self.relabeledVolume[int(t), ..., 0] = image
 
     def _computeObjectFeatures(self, labelImages):
         '''
@@ -101,7 +105,7 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
                 self.hypothesesGraph.addNodeFromTraxel(traxel, value=1)
             
             # remove merger from HG, which also removes all edges that would otherwise be dangling
-            self.hypothesesGraph._graph.removeNode(n)
+            self.hypothesesGraph._graph.remove_node(n)
 
         # add new links
         for edge in self.resolvedGraph.edges_iter():

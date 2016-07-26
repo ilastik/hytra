@@ -199,6 +199,8 @@ class HypothesesGraph(object):
                     checkNodeWhileAddingLinks(frame, obj)
                     checkNodeWhileAddingLinks(frame + 1, n)
                     self._graph.add_edge((frame, obj), (frame + 1, n))
+                    self._graph.edge[frame, obj][frame + 1, n]['src'] = self._graph.node[(frame, obj)]['id']
+                    self._graph.edge[frame, obj][frame + 1, n]['dest'] = self._graph.node[(frame + 1, n)]['id']
 
             # find backward links
             if forwardBackwardCheck:
@@ -211,6 +213,8 @@ class HypothesesGraph(object):
                         checkNodeWhileAddingLinks(frame, n)
                         checkNodeWhileAddingLinks(frame + 1, obj)
                         self._graph.add_edge((frame, n), (frame + 1, obj))
+                        self._graph.edge[frame, n][frame + 1, obj]['src'] = self._graph.node[(frame, n)]['id']
+                        self._graph.edge[frame, n][frame + 1, obj]['dest'] = self._graph.node[(frame + 1, obj)]['id']
 
     def generateTrackletGraph(self):
         '''
@@ -218,7 +222,7 @@ class HypothesesGraph(object):
         incoming/outgoing transition are contracted into one node in the graph.
         The returned graph will have `withTracklets` set to `True`!
 
-        The `'tracklet'` node map contains a list of traxels that this node represents.
+        The `'tracklet'` node map contains a list of traxels that each node represents.
         '''
         getLogger().info("generating tracklet graph...")
         tracklet_graph = copy.copy(self)
@@ -386,11 +390,18 @@ class HypothesesGraph(object):
 
         return traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap
 
-    def toTrackingGraph(self):
+    def toTrackingGraph(self, noFeatures=False):
         '''
         Create a dictionary representation of this graph which can be passed to the solvers directly.
         The resulting graph (=model) is wrapped within a `hytra.jsongraph.JsonTrackingGraph` structure for convenience.
+        If `noFeatures` is `True`, then only the structure of the graph will be exported.
         '''
+        requiredNodeAttribs = ['id']
+        requiredLinkAttribs = ['src', 'dest']
+
+        if not noFeatures:
+            requiredNodeAttribs.append('features')
+            requiredLinkAttribs.append('features')
 
         def translateNodeToDict(n):
             result = {}
@@ -398,7 +409,7 @@ class HypothesesGraph(object):
             for k in ['id', 'features', 'appearanceFeatures', 'disappearanceFeatures', 'divisionFeatures', 'timestep']:
                 if k in attrs:
                     result[k] = attrs[k]
-                elif k == 'features' or k == 'id':
+                elif k in requiredNodeAttribs:
                     raise ValueError('Cannot use graph nodes without assigned ID and features, run insertEnergies() first')
             return result
 
@@ -408,7 +419,7 @@ class HypothesesGraph(object):
             for k in ['src', 'dest', 'features']:
                 if k in attrs:
                     result[k] = attrs[k]
-                else:
+                elif k in requiredLinkAttribs:
                     raise ValueError('Cannot use graph links without source, target, and features, run insertEnergies() first')
             return result
 
@@ -427,9 +438,9 @@ class HypothesesGraph(object):
                         'optimizerNumThreads':1
                        }
             }
+
         # TODO: this recomputes the uuidToTraxelMap even though we have it already...
         trackingGraph = hytra.core.jsongraph.JsonTrackingGraph(model=model)
-
         return trackingGraph
 
     def insertSolution(self, resultDictionary):
@@ -460,6 +471,10 @@ class HypothesesGraph(object):
             traxelgraph._graph.node[uuidToTraxelMap[division["id"]][-1]]['divisionValue'] = division["value"]
 
     def getSolutionDictionary(self):
+        '''
+        Return the solution encoded in the `value` and `divisionValue` attributes of nodes and edges
+        as a python dictionary in the style that can be saved to JSON or sent to our solvers as ground truths.
+        '''
         resultDictionary = {}
 
         if self.withTracklets:
@@ -531,8 +546,9 @@ class HypothesesGraph(object):
         """
 
         update_queue = []
-        max_lineage_id = 0
-        max_track_id = 0
+        # start lineages / tracks at 2, because 0 means background=black, 1 means misdetection
+        max_lineage_id = 2
+        max_track_id = 2
 
         if self.withTracklets:
             traxelgraph = self.referenceTraxelGraph
@@ -541,11 +557,17 @@ class HypothesesGraph(object):
 
         # find start of lineages
         for n in traxelgraph.nodeIterator():
-            if traxelgraph.countIncomingObjects(n)[0] == 0 and 'value' in traxelgraph._graph.node[n] and traxelgraph._graph.node[n]['value'] > 0:
+            if traxelgraph.countIncomingObjects(n)[0] == 0 \
+                and 'value' in traxelgraph._graph.node[n] \
+                and traxelgraph._graph.node[n]['value'] > 0 \
+                and traxelgraph.countOutgoingObjects(n)[0] > 0: # we do not allow tracks of length 1 for now
                 # found start of a track
                 update_queue.append((n,max_lineage_id,max_track_id))
                 max_lineage_id += 1
                 max_track_id   += 1
+            else:
+                traxelgraph._graph.node[n]["lineageId"] = None
+                traxelgraph._graph.node[n]["trackId"] = None
 
 
         while len(update_queue) > 0:
@@ -553,22 +575,29 @@ class HypothesesGraph(object):
             traxelgraph._graph.node[current_node]["lineageId"] = lineage_id
             traxelgraph._graph.node[current_node]["trackId"] = track_id
 
-            numberOfOutgoingObject,numberOfOutgoingEdges = traxelgraph.countOutgoingObjects(current_node)
+            numberOfOutgoingObject, numberOfOutgoingEdges = traxelgraph.countOutgoingObjects(current_node)
             
             if (numberOfOutgoingObject != numberOfOutgoingEdges):
-                print "WARNING: running lineage computation on unresolved graphs depends on a race condition"
+                getLogger().warning("running lineage computation on unresolved graphs depends on a race condition")
 
-            if len(traxelgraph._graph.out_edges(current_node)) == 1:
-                a = traxelgraph._graph.out_edges(current_node)[0]
-                update_queue.append((traxelgraph.target(a),
-                                    lineage_id,
-                                    track_id))
-            elif len(traxelgraph._graph.out_edges(current_node)) == 2:
+            if 'divisionValue' in traxelgraph._graph.node[current_node] and traxelgraph._graph.node[current_node]['divisionValue']:
+                assert(traxelgraph.countOutgoingObjects(current_node)[1] == 2)
                 for a in traxelgraph._graph.out_edges(current_node):
-                    update_queue.append((traxelgraph.target(a),
-                                        lineage_id,
-                                        max_track_id))
-                    max_track_id += 1
+                    if traxelgraph._graph.edge[current_node][a[1]]['value'] > 0:
+                        update_queue.append((traxelgraph.target(a),
+                                            lineage_id,
+                                            max_track_id))
+                        max_track_id += 1
+            else:
+                if traxelgraph.countOutgoingObjects(current_node)[1] > 1:
+                    getLogger().debug('Found merger splitting into several objects, propagating lineage and track to all descendants!')
+
+                for a in traxelgraph._graph.out_edges(current_node): 
+                    if traxelgraph._graph.edge[current_node][a[1]]['value'] > 0:
+                        update_queue.append((traxelgraph.target(a),
+                                            lineage_id,
+                                            track_id))
+                
 
     def pruneGraphToSolution(self, distanceToSolution=0):
         '''
@@ -609,7 +638,6 @@ class HypothesesGraph(object):
         try:
             return self._graph.node[(int(timestep), int(objectId))][attribute]
         except KeyError:
-            print self._graph.node.keys()
             getLogger().error(attribute + ' not found in graph node properties, call computeLineage() first!')
             raise
 
