@@ -555,7 +555,7 @@ def getBoundaryCostMultiplier(traxel, fov, margin, t0, t1):
         else:
             return 1.0
 
-def getHypothesesGraphAndIterators(options, shape, t0, t1, ts, probGenerator):
+def getHypothesesGraphAndIterators(options, shape, t0, t1, ts, probGenerator, transitionClassifier=None):
     """
     Build the hypotheses graph either using pgmlink, or from the python traxelstore in python
     """
@@ -576,7 +576,7 @@ def getHypothesesGraphAndIterators(options, shape, t0, t1, ts, probGenerator):
             borderAwareWidth=margin,
             maxNeighborDistance=options.mnd,
             transitionParameter=options.trans_par,
-            transitionClassifier=None)
+            transitionClassifier=transitionClassifier)
 
         if not options.without_tracklets:
             hypotheses_graph = hypotheses_graph.generateTrackletGraph()
@@ -698,7 +698,7 @@ if __name__ == "__main__":
                                                                                                        shape)
 
     # build hypotheses graph
-    hypotheses_graph, n_it, a_it, fov = getHypothesesGraphAndIterators(options, shape, t0, t1, ts, probGenerator)
+    hypotheses_graph, n_it, a_it, fov = getHypothesesGraphAndIterators(options, shape, t0, t1, ts, probGenerator, transitionClassifier)
 
     if probGenerator is None:
         import pgmlink
