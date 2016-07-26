@@ -76,7 +76,7 @@ def getConfigAndCommandLineArguments():
     parser.add_argument('--without-constraints', dest='woconstr', action='store_true', default=False)
     parser.add_argument('--trans-par', dest='trans_par', type=float, default=5.0,
                         help='alpha for the transition prior')
-    parser.add_argument('--border-width', dest='border_width', type=float, default=0.0,
+    parser.add_argument('--border-width', dest='border_width', type=float, default=10.0,
                         help='absolute border margin in which the appearance/disappearance costs are linearly decreased')
     parser.add_argument('--ext-probs', dest='ext_probs', type=str, default=None,
                         help='provide a path to hdf5 files containing detection probabilities')
