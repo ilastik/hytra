@@ -586,7 +586,7 @@ class HypothesesGraph(object):
                 assert(traxelgraph.countOutgoingObjects(current_node)[1] == 2)
                 traxelgraph._graph.node[current_node]['children'] = []
                 for a in traxelgraph._graph.out_edges(current_node):
-                    if traxelgraph._graph.edge[current_node][a[1]]['value'] > 0:
+                    if len(traxelgraph._graph.edge[current_node][a[1]]) > 0:
                         traxelgraph._graph.node[current_node]['children'].append(a[1])
                         traxelgraph._graph.node[a[1]]['parent'] = current_node
                         update_queue.append((traxelgraph.target(a),
@@ -597,8 +597,10 @@ class HypothesesGraph(object):
                 if traxelgraph.countOutgoingObjects(current_node)[1] > 1:
                     getLogger().debug('Found merger splitting into several objects, propagating lineage and track to all descendants!')
 
-                for a in traxelgraph._graph.out_edges(current_node): 
-                    if traxelgraph._graph.edge[current_node][a[1]]['value'] > 0:
+                for a in traxelgraph._graph.out_edges(current_node):
+                    print "traxelgraph._graph.edge[current_node]:", traxelgraph._graph.edge[current_node]
+                    print "traxelgraph._graph.edge[current_node][a[1]]:", traxelgraph._graph.edge[current_node][a[1]]
+                    if len(traxelgraph._graph.edge[current_node][a[1]]) > 0:
                         update_queue.append((traxelgraph.target(a),
                                             lineage_id,
                                             track_id))
