@@ -464,13 +464,13 @@ class HypothesesGraph(object):
                 traxelgraph._graph.edge[internal_edge[0]][internal_edge[1]]['value'] = detection["value"]
 
         if "linkingResults" in resultDictionary and resultDictionary["linkingResults"] is not None: 
-        for link in resultDictionary["linkingResults"]:
-            source, dest = uuidToTraxelMap[link["src"]][-1], uuidToTraxelMap[link["dest"]][0]
-            traxelgraph._graph.edge[source][dest]['value'] = link["value"]
+            for link in resultDictionary["linkingResults"]:
+                source, dest = uuidToTraxelMap[link["src"]][-1], uuidToTraxelMap[link["dest"]][0]
+                traxelgraph._graph.edge[source][dest]['value'] = link["value"]
 
         if "divisionResults" in resultDictionary and resultDictionary["divisionResults"] is not None:
-        for division in resultDictionary["divisionResults"]:
-            traxelgraph._graph.node[uuidToTraxelMap[division["id"]][-1]]['divisionValue'] = division["value"]
+            for division in resultDictionary["divisionResults"]:
+                traxelgraph._graph.node[uuidToTraxelMap[division["id"]][-1]]['divisionValue'] = division["value"]
 
     def getSolutionDictionary(self):
         '''
@@ -542,15 +542,15 @@ class HypothesesGraph(object):
                 numberOfOutgoingEdges += 1
         return numberOfOutgoingObject, numberOfOutgoingEdges
 
-    def computeLineage(self):
+    def computeLineage(self, firstTrackId=2, firstLineageId=2):
         """
         computes lineage and track id for every node in the graph
         """
 
         update_queue = []
-        # start lineages / tracks at 2, because 0 means background=black, 1 means misdetection
-        max_lineage_id = 2
-        max_track_id = 2
+        # start lineages / tracks at 2, because 0 means background=black, 1 means misdetection in ilastik
+        max_lineage_id = firstLineageId
+        max_track_id = firstTrackId
 
         if self.withTracklets:
             traxelgraph = self.referenceTraxelGraph

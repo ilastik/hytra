@@ -335,6 +335,7 @@ class JsonTrackingGraph(object):
 
         WARNING: only builds the structure of the graph at the moment, 
                  features/probabilities are not inserted!
+        WARNING: builds the trackletgraph, not the full graph!
         '''
         from hytra.core.hypothesesgraph import HypothesesGraph
         from hytra.core.probabilitygenerator import Traxel
