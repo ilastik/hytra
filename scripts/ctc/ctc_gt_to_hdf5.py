@@ -168,10 +168,10 @@ def create_label_volume(options):
         ids = out_h5.create_group('ids')
         tracking = out_h5.create_group('tracking')
         # create empty tracking group for first frame
-        tracking_frame = tracking.create_group(format(0, "04"))
+        tracking_frame = tracking.create_group(format(0, options.filename_zero_padding))
     else:
         frame = 0
-        out_h5 = h5py.File(options.output_file + format(frame, "04") + '.h5', 'w')
+        out_h5 = h5py.File(options.output_file + format(frame, options.filename_zero_padding) + '.h5', 'w')
         tracking_frame = out_h5.create_group('tracking')
     save_label_image_for_frame(options, label_volume, out_h5, 0, mapping_per_frame)
 
@@ -180,15 +180,15 @@ def create_label_volume(options):
         objects = np.unique(label_image)
         objects_per_frame.append(set(objects))
         if not options.single_frames:
-            ids.create_dataset(format(frame, "04"), data=objects, dtype='u2')
+            ids.create_dataset(format(frame, options.filename_zero_padding), data=objects, dtype='u2')
 
     # handle all further frames
     for frame in range(1, timeaxis):
         if options.single_frames:
-            out_h5 = h5py.File(options.output_file + format(frame, "04") + '.h5', 'w')
+            out_h5 = h5py.File(options.output_file + format(frame, options.filename_zero_padding) + '.h5', 'w')
             tracking_frame = out_h5.create_group('tracking')
         else:
-            tracking_frame = tracking.create_group(format(frame, "04"))
+            tracking_frame = tracking.create_group(format(frame, options.filename_zero_padding))
         save_label_image_for_frame(options, label_volume, out_h5, frame, mapping_per_frame)
 
         # intersect track id sets of both frames, and place moves in HDF5 file
@@ -254,6 +254,7 @@ if __name__ == "__main__":
                         help='First frame number (usually 0, but e.g. their rapoport starts at 150')
     parser.add_argument('--ctc-to-gt-single-frames', action='store_true', dest='single_frames',
                         help='output single frame h5 files instead of one volume. Filename is appended with numbers.')
+    parser.add_argument('--h5-filename-zero-pad-length', type=str, dest='filename_zero_padding', default='04')
     parser.add_argument('--ctc-to-gt-index-remapping', action='store_true', dest='index_remapping',
                         help='Remap indices so that the objects in each frame have continuous ascending indices.')
     parser.add_argument("--verbose", dest='verbose', action='store_true', default=False)
