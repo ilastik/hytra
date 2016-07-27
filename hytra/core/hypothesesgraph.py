@@ -584,8 +584,11 @@ class HypothesesGraph(object):
 
             if 'divisionValue' in traxelgraph._graph.node[current_node] and traxelgraph._graph.node[current_node]['divisionValue']:
                 assert(traxelgraph.countOutgoingObjects(current_node)[1] == 2)
+                traxelgraph._graph.node[current_node]['children'] = []
                 for a in traxelgraph._graph.out_edges(current_node):
                     if traxelgraph._graph.edge[current_node][a[1]]['value'] > 0:
+                        traxelgraph._graph.node[current_node]['children'].append(a[1])
+                        traxelgraph._graph.node[a[1]]['parent'] = current_node
                         update_queue.append((traxelgraph.target(a),
                                             lineage_id,
                                             max_track_id))

@@ -182,6 +182,11 @@ def test_insertAndExtractSolution():
     assert(h._graph.edge[(1, 1)][(2, 3)]["value"] == 1)
     assert(h._graph.edge[(2, 3)][(3, 4)]["value"] == 0)
 
+    h.computeLineage()
+    assert(set(h._graph.node[(1, 1)]["children"]) == set([(2, 2), (2, 3)]))
+    assert(h._graph.node[(2, 2)]["parent"] == (1, 1))
+    assert(h._graph.node[(2, 3)]["parent"] == (1, 1))
+
 def test_insertEnergies():
     h = hg.HypothesesGraph()
     h._graph.add_path([(0,1),(1,1),(2,1),(3,1)])
