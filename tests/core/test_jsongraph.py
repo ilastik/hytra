@@ -439,3 +439,28 @@ def test_loading_no_divisions():
     # merger links as triplets [("timestep", (sourceId, destId)), (), ...]
     mergerLinks = jg.getMergerLinks(linksPerTimestep, mergersPerTimestep, timesteps)
     assert(mergerLinks == [('1', (1, 1)), ('1', (2, 1)), ('3', (1, 2)), ('3', (1, 1)), ('2', (1, 1))])
+
+def test_toHypoGraph():
+    model = return_example_model()
+    result = return_example_result()
+    trackingGraph = jg.JsonTrackingGraph(model=model, result=result)
+    hypothesesGraph = trackingGraph.toHypothesesGraph()
+    assert(hypothesesGraph.countNodes() == 6)
+    assert(hypothesesGraph.countArcs() == 5)
+
+    # traxel <=> uuid mappings
+    traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = hypothesesGraph.getMappingsBetweenUUIDsAndTraxels()
+    assert(traxelIdPerTimestepToUniqueIdMap == {'0': {'1': 0, '2': 5}, '1': {'1': 4}, '2': {'1': 3}, '3': {'1': 2, '2': 1}})
+    assert(uuidToTraxelMap == {0: [(0, 1)], 1: [(3, 2)], 2: [(3, 1)], 3: [(2, 1)], 4: [(1, 1)], 5: [(0, 2)]})
+
+    for n in hypothesesGraph.nodeIterator():
+        if n in [(1, 1), (2, 1)]:
+            assert(hypothesesGraph._graph.node[n]['value'] == 2)
+        else:
+            assert(hypothesesGraph._graph.node[n]['value'] == 1)
+    
+    for a in hypothesesGraph.arcIterator():
+        if a == ((1, 1), (2, 1)):
+            assert(hypothesesGraph._graph.edge[a[0]][a[1]]['value'] == 2)
+        else:
+            assert(hypothesesGraph._graph.edge[a[0]][a[1]]['value'] == 1)

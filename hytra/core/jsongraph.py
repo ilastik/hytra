@@ -326,6 +326,41 @@ class JsonTrackingGraph(object):
 
         for division in divisionHypotheses:
             division['features'] = convexify(division['features'], epsilon)
-            progressBar.show()        
+            progressBar.show()
 
+    def toHypothesesGraph(self):
+        '''
+        From a json graph representation (and possibly a json result), 
+        set up a hypotheses graph with the respective links.
+
+        WARNING: only builds the structure of the graph at the moment, 
+                 features/probabilities are not inserted!
+        '''
+        from hytra.core.hypothesesgraph import HypothesesGraph
+        from hytra.core.probabilitygenerator import Traxel
+
+        # set up graph
+        hypothesesGraph = HypothesesGraph()
+        for s in self.model['segmentationHypotheses']:
+            tracklet = self.uuidToTraxelMap[s['id']]
+            assert(len(tracklet) > 0)
+            traxel = Traxel()
+            traxel.Timestep = tracklet[0][0]
+            traxel.Id = tracklet[0][1]
+            hypothesesGraph.addNodeFromTraxel(traxel, tracklet=tracklet)
+            # adding nodes automatically assigns UUIDs, we replace them by the loaded one
+            hypothesesGraph._graph.node[(traxel.Timestep, traxel.Id)]['id'] = s['id']
+
+        # instert edges
+        for l in self.model['linkingHypotheses']:
+            srcTracklet = self.uuidToTraxelMap[l['src']]
+            destTracklet = self.uuidToTraxelMap[l['dest']]
+            hypothesesGraph._graph.add_edge((srcTracklet[0][0], srcTracklet[0][1]), 
+                                            ((destTracklet[0][0], destTracklet[0][1])))
+
+        # insert result
+        if self.result is not None:
+            hypothesesGraph.insertSolution(self.result)
+        
+        return hypothesesGraph
 

@@ -463,10 +463,12 @@ class HypothesesGraph(object):
             for internal_edge in zip(traxels,traxels[1:]):
                 traxelgraph._graph.edge[internal_edge[0]][internal_edge[1]]['value'] = detection["value"]
 
+        if "linkingResults" in resultDictionary and resultDictionary["linkingResults"] is not None: 
         for link in resultDictionary["linkingResults"]:
             source, dest = uuidToTraxelMap[link["src"]][-1], uuidToTraxelMap[link["dest"]][0]
             traxelgraph._graph.edge[source][dest]['value'] = link["value"]
 
+        if "divisionResults" in resultDictionary and resultDictionary["divisionResults"] is not None:
         for division in resultDictionary["divisionResults"]:
             traxelgraph._graph.node[uuidToTraxelMap[division["id"]][-1]]['divisionValue'] = division["value"]
 
