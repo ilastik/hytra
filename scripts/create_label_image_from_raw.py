@@ -114,7 +114,7 @@ if __name__ == "__main__":
             labelImage = hytra.util.axesconversion.adjustOrder(labelImage, axes, 'txyzc')
 
             # save
-            h5file[args.labelImagePath % (t, t+1, shape[1], shape[2], shape[3])] = labelImage
+            h5file.create_dataset(args.labelImagePath % (t, t+1, shape[1], shape[2], shape[3]), data=labelImage, compression='gzip')
             progressBar.show()
 
 
