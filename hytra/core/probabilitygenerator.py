@@ -581,8 +581,8 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
                             self._setTraxelFeatureArray(traxel, featureValues, 'com')
                     except:
                         getLogger().error(
-                            "Could not add feature array {} of shape {} for {}".format(
-                                featureValues, featureValues.shape, key))
+                            "Could not add feature array {} for {}".format(
+                                featureValues, key))
                         raise AssertionError()
 
                 # add random forest predictions
@@ -608,13 +608,6 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
 
         if usePgmlink:
             return ts, fs
-
-    def getTransitionProbability(self, timeframeA, objectIdA, timeframeB, objectIdB):
-        """
-        Evaluate the transition classifier for the two given objects,
-        as this probability doesn't go into pgmlink's traxelstore.
-        """
-        raise NotImplementedError()
 
     def getTraxelFeatureDict(self, frame, objectId):
         """
