@@ -504,7 +504,8 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
 
     def _setTraxelFeatureArray(self, traxel, featureArray, name):
         ''' store the specified `featureArray` in a `traxel`'s feature dictionary under the specified key=`name` '''
-        featureArray = featureArray.flatten()
+        if isinstance(featureArray, np.ndarray):
+            featureArray = featureArray.flatten()
         traxel.add_feature_array(name, len(featureArray))
         for i, v in enumerate(featureArray):
             traxel.set_feature_value(name, i, float(v))
@@ -565,25 +566,30 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
 
                 # add raw features
                 for key, val in features.iteritems():
-                    try:
-                        if isinstance(val, list):  # polygon feature returns a list!
-                            featureValues = val[objectId]
-                        else:
-                            featureValues = val[objectId, ...]
-                    except:
-                        getLogger().error(
-                            "Could not get feature values of {} for key {} from matrix with shape {}".format(
-                                objectId, key, val.shape))
-                        raise AssertionError()
-                    try:
-                        self._setTraxelFeatureArray(traxel, featureValues, key)
-                        if key == 'RegionCenter':
-                            self._setTraxelFeatureArray(traxel, featureValues, 'com')
-                    except:
-                        getLogger().error(
-                            "Could not add feature array {} for {}".format(
-                                featureValues, key))
-                        raise AssertionError()
+                    if key == 'id':
+                        traxel.idInSegmentation = val[objectId]
+                    elif key == 'filename':
+                        traxel.segmentationFilename = val[objectId]
+                    else:
+                        try:
+                            if isinstance(val, list):  # polygon feature returns a list!
+                                featureValues = val[objectId]
+                            else:
+                                featureValues = val[objectId, ...]
+                        except:
+                            getLogger().error(
+                                "Could not get feature values of {} for key {} from matrix with shape {}".format(
+                                    objectId, key, val.shape))
+                            raise AssertionError()
+                        try:
+                            self._setTraxelFeatureArray(traxel, featureValues, key)
+                            if key == 'RegionCenter':
+                                self._setTraxelFeatureArray(traxel, featureValues, 'com')
+                        except:
+                            getLogger().error(
+                                "Could not add feature array {} for {}".format(
+                                    featureValues, key))
+                            raise AssertionError()
 
                 # add random forest predictions
                 if self._countClassifier is not None:
