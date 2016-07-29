@@ -13,6 +13,8 @@ if __name__ == "__main__":
     parser.add_argument('--3channel-out', type=str, dest='threeChannelOut', required=True, help='Filename of the resulting 3 channel HDF5')
     parser.add_argument('--nucleus-channel-out', type=str, dest='nucleusChannelOut', required=True, help='Filename of the resulting nucleus channel HDF5')
 
+    # TODO: save without vigra, normalize data and save as uint8, add axes ordering parameters
+
     args = parser.parse_args()
 
     sporoChannel = vigra.impex.readVolume(args.sporoFilename)
