@@ -1,6 +1,5 @@
 import logging
 import itertools
-import h5py
 import os
 import numpy as np
 import networkx as nx
@@ -9,9 +8,11 @@ import hytra.core.probabilitygenerator as probabilitygenerator
 import hytra.core.jsongraph
 from hytra.core.jsongraph import negLog, listify, JsonTrackingGraph
 
+
 def getLogger():
     ''' logger to be used in this module '''
     return logging.getLogger(__name__)
+
 
 class MergerResolver(object):
     """
@@ -22,7 +23,8 @@ class MergerResolver(object):
     def __init__(self, pluginPaths=[os.path.abspath('../hytra/plugins')], verbose=False):
         self.unresolvedGraph = None
         self.resolvedGraph = None
-        self.pluginManager = TrackingPluginManager(verbose=verbose, pluginPaths=pluginPaths)
+        self.pluginManager = TrackingPluginManager(
+            verbose=verbose, pluginPaths=pluginPaths)
 
         # should be filled by constructors of derived classes!
         self.model = None
@@ -47,8 +49,8 @@ class MergerResolver(object):
             intT, idx = node
 
             lastframe = max(divisionsPerTimestep.keys(), key=int)
-            if divisionsPerTimestep is not None and int(intT)<int(lastframe):
-                division = idx in divisionsPerTimestep[str(intT+1)] # +1 screams for lastframe condition.
+            if divisionsPerTimestep is not None and int(intT) < int(lastframe):
+                division = idx in divisionsPerTimestep[str(intT + 1)] # +1 screams for lastframe condition.
             else:
                 division = False
             count = 1
@@ -62,11 +64,11 @@ class MergerResolver(object):
             for n in [source(t, link), target(t, link)]:
                 if not self.unresolvedGraph.has_node(n):
                     addNode(n)
-            self.unresolvedGraph.add_edge(source(t, link), target(t,link))
+            self.unresolvedGraph.add_edge(source(t, link), target(t, link))
 
         return self.unresolvedGraph
 
-    def _prepareResolvedGraph(self): 
+    def _prepareResolvedGraph(self):
         """
         Split up the division nodes in the `unresolvedGraph` if they have two outgoing links
         and add the duplicates to the resolved graph, which is apart from that a copy of
@@ -138,7 +140,7 @@ class MergerResolver(object):
                 initializations = []
                 for predecessor, _ in self.unresolvedGraph.in_edges(node):
                     initializations.extend(self.unresolvedGraph.node[predecessor]['fits'])
-                # TODO: what shall we do if e.g. a 2-merger and a single object merge to 2 + 1, 
+                # TODO: what shall we do if e.g. a 2-merger and a single object merge to 2 + 1,
                 # so there are 3 initializations for the 2-merger, and two initializations for the 1 merger?
                 # What does pgmlink do in that case?
 
@@ -151,7 +153,7 @@ class MergerResolver(object):
                     for idx in range(nextObjectId, nextObjectId + count):
                         newNode = (intT, idx)
                         self.resolvedGraph.add_node(newNode, division=False, count=1, origin=node)
-                        
+
                         for e in self.unresolvedGraph.out_edges(node):
                             self.resolvedGraph.add_edge(newNode, e[1])
                         for e in self.unresolvedGraph.in_edges(node):
@@ -165,8 +167,8 @@ class MergerResolver(object):
                     self.unresolvedGraph.node[node]['newIds'] = range(nextObjectId, nextObjectId + count)
                     nextObjectId += count
 
-                # each unresolved node stores its fitted shape(s) to be used 
-                # as initialization in the next frame, this way division duplicates 
+                # each unresolved node stores its fitted shape(s) to be used
+                # as initialization in the next frame, this way division duplicates
                 # and de-merged nodes in the resolved graph do not need to store a fit as well
                 self.unresolvedGraph.node[node]['fits'] = fittedObjects
 
@@ -181,7 +183,7 @@ class MergerResolver(object):
         Find the optimal assignments within the `resolvedGraph` by running min-cost max-flow from the
         `dpct` module.
 
-        Converts the `resolvedGraph` to our JSON model structure, predicts the transition probabilities 
+        Converts the `resolvedGraph` to our JSON model structure, predicts the transition probabilities
         either using the given transitionClassifier, or using distance-based probabilities.
 
         **returns** a `nodeFlowMap` and `arcFlowMap` holding information on the usage of the respective nodes and links
@@ -236,9 +238,9 @@ class MergerResolver(object):
         return nodeFlowMap, arcFlowMap
 
     def _refineModel(self,
-                     uuidToTraxelMap, 
-                     traxelIdPerTimestepToUniqueIdMap, 
-                     mergerNodeFilter, 
+                     uuidToTraxelMap,
+                     traxelIdPerTimestepToUniqueIdMap,
+                     mergerNodeFilter,
                      mergerLinkFilter):
         """
         Take the `self.model` (JSON format) with mergers, remove the merger nodes, but add new
@@ -247,15 +249,15 @@ class MergerResolver(object):
 
         `mergerNodeFilter` and `mergerLinkFilter` are methods that can filter merger detections
         and links from the respective lists in the `model` dict.
-        
+
         **Returns** the updated `model` dictionary, which is the same as the input `model` (works in-place)
         """
 
         # remove merger detections
-        self.model['segmentationHypotheses'] = filter(mergerNodeFilter, self.model['segmentationHypotheses'])
+        self.model['segmentationHypotheses'] = [seg for seg in self.model['segmentationHypotheses'] if mergerNodeFilter(seg)]
 
         # remove merger links
-        self.model['linkingHypotheses'] = filter(mergerLinkFilter, self.model['linkingHypotheses'])
+        self.model['linkingHypotheses'] = [link for link in self.model['linkingHypotheses'] if mergerLinkFilter(link)]
 
         # insert new nodes and update UUID to traxel map
         nextUuid = max(uuidToTraxelMap.keys()) + 1
@@ -334,7 +336,7 @@ class MergerResolver(object):
         """
         Store the resulting label images, if needed.
 
-        `labelImages` is a dictionary with str(timestep) as keys. 
+        `labelImages` is a dictionary with str(timestep) as keys.
         """
         pass
 
@@ -356,6 +358,7 @@ class MergerResolver(object):
         4. run min-cost max-flow tracking to find the fate of all the de-merged objects
         5. export refined segmentation, update member variables `model` and `result`
 
+        **Returns** a nested dictionary, indexed first by time, then object Id, containing a list of new segmentIDs per merger
         """
 
         traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(self.model)
@@ -384,7 +387,7 @@ class MergerResolver(object):
             detectionsPerTimestep = hytra.core.jsongraph.getDetectionsPerTimestep(detections, timesteps)
             divisionsPerTimestep = hytra.core.jsongraph.getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps)
             mergerLinks = hytra.core.jsongraph.getMergerLinks(linksPerTimestep, mergersPerTimestep, timesteps)
-            
+
             # set up unresolved graph and then refine the nodes to get the resolved graph
             self._createUnresolvedGraph(divisionsPerTimestep, mergersPerTimestep, mergerLinks)
             self._prepareResolvedGraph()
@@ -417,7 +420,7 @@ class MergerResolver(object):
 
             # 1.) replace merger nodes in JSON graph by their replacements -> new JSON graph
             #     update UUID to traxel map.
-            #     a) how do we deal with the smaller number of states? 
+            #     a) how do we deal with the smaller number of states?
             #        Does it matter as we're done with tracking anyway..?
 
             def mergerNodeFilter(jsonNode):
@@ -447,3 +450,13 @@ class MergerResolver(object):
 
             # 3.) export refined segmentation
             self._exportRefinedSegmentation(labelImages)
+
+            # return a dictionary telling about which mergers were resolved into what
+            mergerDict = {}
+            for n in self.unresolvedGraph.nodes_iter():
+                # skip non-mergers
+                if not 'newIds' in self.unresolvedGraph.node[n] or len(self.unresolvedGraph.node[n]['newIds']) < 2:
+                    continue
+                mergerDict.setdefault(n[0], {})[n[1]] = self.unresolvedGraph.node[n]['newIds']
+
+            return mergerDict
