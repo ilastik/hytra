@@ -36,10 +36,10 @@ if __name__ == "__main__":
     parser.add_argument('--transition-classifier-file', dest='transition_classifier_filename', type=str,
                         default=None, help="Transition classifier filename, or None if distance-based energies should be used.")
     parser.add_argument('--transition-classifier-path', dest='transition_classifier_path', type=str, default='/')
-    parser.add_argument('--out-graph-json-file', type=str, dest='out_model_filename', required=True, 
-                        help='Filename of the json model containing the hypotheses graph including new nodes')
-    parser.add_argument('--out-result-json-file', type=str, dest='out_result', required=True, 
-                        help='Filename where to store the new result')
+    # parser.add_argument('--out-graph-json-file', type=str, dest='out_model_filename', required=True, 
+    #                     help='Filename of the json model containing the hypotheses graph including new nodes')
+    # parser.add_argument('--out-result-json-file', type=str, dest='out_result', required=True, 
+    #                     help='Filename where to store the new result')
     parser.add_argument('--trans-par', dest='trans_par', type=float, default=5.0,
                         help='alpha for the transition prior')
     parser.add_argument('--verbose', dest='verbose', action='store_true',

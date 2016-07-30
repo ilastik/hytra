@@ -62,7 +62,7 @@ class GapCloser(object):
             - last detection in tracks that end before the video does
             - first detection of tracks beginning in the middle of the video
 
-        ** returns ** the `unresolvedGraph`
+        ** returns ** the `unGraph`
         """
         self.Graph = nx.DiGraph()
         def source(timestep, link):
@@ -77,11 +77,12 @@ class GapCloser(object):
 
         # add nodes
         for node in lookAt:
-            addNode(node)
             # find "frame-neighbours" to add connections to them
             for neighb in lookAt:
                 # print node, neighb
                 if node != neighb and node[0] == neighb[0] - 2 and node[2] == 'ending' and neighb[2] == 'starting':
+                    addNode(node)
+                    addNode(neighb)
                     self.Graph.add_edge((node[0], node[1]), (neighb[0], neighb[1]))
                     print node, neighb, "added edges"
 
@@ -93,12 +94,12 @@ class GapCloser(object):
         '''
         raise NotImplementedError()
 
-    def _minCostMaxFlowMergerResolving(self, objectFeatures, transitionClassifier=None, transitionParameter=5.0):
+    def _minCostMaxFlowGapClosing(self, objectFeatures, transitionClassifier=None, transitionParameter=5.0):
         """
-        Find the optimal assignments within the `resolvedGraph` by running min-cost max-flow from the
+        Find the optimal assignments within the `Graph` by running min-cost max-flow from the
         `dpct` module.
 
-        Converts the `resolvedGraph` to our JSON model structure, predicts the transition probabilities 
+        Converts the `Graph` to our JSON model structure, predicts the transition probabilities 
         either using the given transitionClassifier, or using distance-based probabilities.
 
         **returns** a `nodeFlowMap` and `arcFlowMap` holding information on the usage of the respective nodes and links
@@ -107,18 +108,18 @@ class GapCloser(object):
         """
 
         trackingGraph = JsonTrackingGraph()
-        for node in self.resolvedGraph.nodes_iter():
+        for node in self.Graph.nodes_iter():
             additionalFeatures = {}
-            if len(self.resolvedGraph.in_edges(node)) == 0:
+            if len(self.Graph.in_edges(node)) == 0:
                 additionalFeatures['appearanceFeatures'] = [[0], [0]]
-            if len(self.resolvedGraph.out_edges(node)) == 0:
+            if len(self.Graph.out_edges(node)) == 0:
                 additionalFeatures['disappearanceFeatures'] = [[0], [0]]
             uuid = trackingGraph.addDetectionHypotheses([[0], [1]], **additionalFeatures)
-            self.resolvedGraph.node[node]['id'] = uuid
+            self.Graph.node[node]['id'] = uuid
 
-        for edge in self.resolvedGraph.edges_iter():
-            src = self.resolvedGraph.node[edge[0]]['id']
-            dest = self.resolvedGraph.node[edge[1]]['id']
+        for edge in self.Graph.edges_iter():
+            src = self.Graph.node[edge[0]]['id']
+            dest = self.Graph.node[edge[1]]['id']
 
             featuresAtSrc = objectFeatures[edge[0]]
             featuresAtDest = objectFeatures[edge[1]]
@@ -152,52 +153,6 @@ class GapCloser(object):
 
         return nodeFlowMap, arcFlowMap
 
-    def _refineModel(self,
-                     uuidToTraxelMap, 
-                     traxelIdPerTimestepToUniqueIdMap, 
-                     mergerNodeFilter, 
-                     mergerLinkFilter):
-        """
-        Take the `self.model` (JSON format) with mergers, remove the merger nodes, but add new
-        de-merged nodes and links. Also updates `traxelIdPerTimestepToUniqueIdMap` locally and in the resulting file,
-        such that the traxel IDs match the new connected component IDs in the refined images.
-
-        `mergerNodeFilter` and `mergerLinkFilter` are methods that can filter merger detections
-        and links from the respective lists in the `model` dict.
-        
-        **Returns** the updated `model` dictionary, which is the same as the input `model` (works in-place)
-        """
-
-        # remove merger detections
-        self.model['segmentationHypotheses'] = filter(mergerNodeFilter, self.model['segmentationHypotheses'])
-
-        # remove merger links
-        self.model['linkingHypotheses'] = filter(mergerLinkFilter, self.model['linkingHypotheses'])
-
-        # insert new nodes and update UUID to traxel map
-        nextUuid = max(uuidToTraxelMap.keys()) + 1
-        for node in self.Graph.nodes_iter():
-            if self.Graph.node[node]['count'] > 1:
-                newIds = self.Graph.node[node]['newIds']
-                del traxelIdPerTimestepToUniqueIdMap[str(node[0])][str(node[1])]
-                for newId in newIds:
-                    newDetection = {}
-                    newDetection['id'] = nextUuid
-                    newDetection['timestep'] = [node[0], node[0]]
-                    self.model['segmentationHypotheses'].append(newDetection)
-                    traxelIdPerTimestepToUniqueIdMap[str(node[0])][str(newId)] = nextUuid
-                    nextUuid += 1
-
-        # insert new links
-        for edge in self.resolvedGraph.edges_iter():
-            newLink = {}
-            newLink['src'] = traxelIdPerTimestepToUniqueIdMap[str(edge[0][0])][str(edge[0][1])]
-            newLink['dest'] = traxelIdPerTimestepToUniqueIdMap[str(edge[1][0])][str(edge[1][1])]
-            self.model['linkingHypotheses'].append(newLink)
-
-        # save
-        return self.model
-
     def _refineResult(self,
                       nodeFlowMap,
                       arcFlowMap,
@@ -209,7 +164,7 @@ class GapCloser(object):
 
         Operates on a `result` dictionary in our JSON result style with mergers,
         the resolved and unresolved graph as well as
-        the `nodeFlowMap` and `arcFlowMap` obtained by running tracking on the `resolvedGraph`.
+        the `nodeFlowMap` and `arcFlowMap` obtained by running tracking on the `Graph`.
 
         Updates the `result` dictionary so that all merger nodes are removed but the new nodes
         are contained with the appropriate links and values.
@@ -231,17 +186,17 @@ class GapCloser(object):
                 for newId in newIds:
                     uuid = traxelIdPerTimestepToUniqueIdMap[str(node[0])][str(newId)]
                     resolvedNode = (node[0], newId)
-                    resolvedResultId = self.resolvedGraph.node[resolvedNode]['id']
+                    resolvedResultId = self.Graph.node[resolvedNode]['id']
                     newDetection = {'id': uuid, 'value': nodeFlowMap[resolvedResultId]}
                     self.result['detectionResults'].append(newDetection)
 
         # add new links
-        for edge in self.resolvedGraph.edges_iter():
+        for edge in self.Graph.edges_iter():
             newLink = {}
             newLink['src'] = traxelIdPerTimestepToUniqueIdMap[str(edge[0][0])][str(edge[0][1])]
             newLink['dest'] = traxelIdPerTimestepToUniqueIdMap[str(edge[1][0])][str(edge[1][1])]
-            srcId = self.resolvedGraph.node[edge[0]]['id']
-            destId = self.resolvedGraph.node[edge[1]]['id']
+            srcId = self.Graph.node[edge[0]]['id']
+            destId = self.Graph.node[edge[1]]['id']
             newLink['value'] = arcFlowMap[(srcId, destId)]
             self.result['linkingResults'].append(newLink)
 
@@ -308,18 +263,13 @@ class GapCloser(object):
                 transitionClassifier = None
 
             # ------------------------------------------------------------
-            # run min-cost max-flow to find merger assignments
-            getLogger().info("Running min-cost max-flow to find resolved merger assignments")
+            # run min-cost max-flow to find gaps worthy to be closed
+            getLogger().info("Running min-cost max-flow to find closed gaps assignments")
 
-            nodeFlowMap, arcFlowMap = self._minCostMaxFlowMergerResolving(objectFeatures, transitionClassifier)
+            nodeFlowMap, arcFlowMap = self._minCostMaxFlowGapClosing(objectFeatures, transitionClassifier)
 
             # ------------------------------------------------------------
             # fuse results into a new solution
-
-            # 1.) replace merger nodes in JSON graph by their replacements -> new JSON graph
-            #     update UUID to traxel map.
-            #     a) how do we deal with the smaller number of states? 
-            #        Does it matter as we're done with tracking anyway..?
 
             def mergerNodeFilter(jsonNode):
                 uuid = int(jsonNode['id'])
@@ -333,12 +283,7 @@ class GapCloser(object):
                 destTraxels = uuidToTraxelMap[destUuid]
                 return not any((str(destT[0]), (srcT[1], destT[1])) in mergerLinks for srcT, destT in itertools.product(srcTraxels, destTraxels))
 
-            self.model = self._refineModel(uuidToTraxelMap,
-                                           traxelIdPerTimestepToUniqueIdMap,
-                                           mergerNodeFilter,
-                                           mergerLinkFilter)
-
-            # 2.) new result = union(old result, resolved mergers) - old mergers
+            # new result = union(old result, resolved mergers) - old mergers
 
             self.result = self._refineResult(nodeFlowMap,
                                              arcFlowMap,
