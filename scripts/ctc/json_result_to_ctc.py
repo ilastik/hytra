@@ -19,7 +19,7 @@ def getLogger():
     return logging.getLogger(__name__)
 
 def save_frame_to_tif(timestep, label_image, options):
-    if len(options.input_files) == 1:
+    if len(options.label_image_filename) == 1:
         filename = options.output_dir + '/man_track' + format(timestep, "0{}".format(options.filename_zero_padding)) + '.tif'
     else:
         filename = options.output_dir + '/mask' + format(timestep, "0{}".format(options.filename_zero_padding)) + '.tif'
@@ -44,6 +44,8 @@ def save_tracks(tracks, options):
         filename = options.output_dir + '/res_track.txt'
     with open(filename, 'wt') as f:
         for key, value in tracks.iteritems():
+            if key ==  None:
+                continue
             # our track value contains parent, begin, end
             # but here we need begin, end, parent. so swap
             f.write("{} {} {} {}\n".format(key, value[1], value[2], value[0]))
@@ -67,7 +69,7 @@ if __name__ == "__main__":
     parser.add_argument('-c', '--config', is_config_file=True, help='config file path')
 
     parser.add_argument('--ctc-output-dir', type=str, dest='output_dir', required=True,
-                        help='Folder where to save the label images starting with man_track00.tif, as well as a file man_track.txt')
+                        help='Folder where to save the label images starting with res_track00.tif, as well as a file res_track.txt')
     parser.add_argument('--ctc-filename-zero-pad-length', type=int, dest='filename_zero_padding', default='3')
     parser.add_argument('--graph-json-file', required=True, type=str, dest='model_filename',
                         help='Filename of the json model description')
@@ -79,7 +81,7 @@ if __name__ == "__main__":
                         default='/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]',
                         help='internal hdf5 path to label image')
     parser.add_argument('--plugin-paths', dest='pluginPaths', type=str, nargs='+',
-                        default=[os.path.abspath('../hytra/plugins')],
+                        default=[os.path.abspath('../../hytra/plugins')],
                         help='A list of paths to search for plugins for the tracking pipeline.')
     parser.add_argument("--is-ground-truth", dest='is_ground_truth', action='store_true', default=False)
     parser.add_argument("--verbose", dest='verbose', action='store_true', default=False)
@@ -114,7 +116,10 @@ if __name__ == "__main__":
         trackId = hypothesesGraph._graph.node[n]['trackId']
         if trackId is not None:
             frameMapping[n[1]] = trackId
-        tracks[trackId].append(n[0])
+        if trackId in tracks.keys():
+            tracks[trackId].append(n[0])
+        else:
+            tracks[trackId] = [n[0]]
         if 'parent' in hypothesesGraph._graph.node[n]:
             assert(trackId not in trackParents)
             trackParents[trackId] = hypothesesGraph._graph.node[hypothesesGraph._graph.node[n]['parent']]['trackId']
@@ -142,6 +147,3 @@ if __name__ == "__main__":
         label_image = imageProvider.getLabelImageForFrame(args.label_image_filename, args.label_image_path, timeframe)
         remapped_label_image = remap_label_image(label_image, mappings[timeframe])
         save_frame_to_tif(timeframe, remapped_label_image, args)
-
-
-
