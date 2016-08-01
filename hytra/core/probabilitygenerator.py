@@ -29,6 +29,9 @@ class Traxel(object):
         # dictionary of a np.array per feature (keys should be strings!)
         self.Features = {}
 
+        # conflicting traxel ids in the same frame
+        self.conflictingTraxelIds = None
+
     def set_x_scale(self, val):
         self._scale[0] = val
 
@@ -440,14 +443,14 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
                     jobs = []
                     for frame in range(self.timeRange[0], self.timeRange[1] - 1):
                         jobs.append(executor.submit(computeDivisionFeaturesOnCloud,
-                            frame,
-                            featuresPerFrame[frame],
-                            featuresPerFrame[frame + 1],
-                            self._pluginManager.getImageProvider(),
-                            self._options.labelImageFilename,
-                            self._options.labelImagePath,
-                            self.getNumDimensions(),
-                            self._divisionFeatureNames
+                                                    frame,
+                                                    featuresPerFrame[frame],
+                                                    featuresPerFrame[frame + 1],
+                                                    self._pluginManager.getImageProvider(),
+                                                    self._options.labelImageFilename,
+                                                    self._options.labelImagePath,
+                                                    self.getNumDimensions(),
+                                                    self._divisionFeatureNames
                         ))
 
                     for job in concurrent.futures.as_completed(jobs):
@@ -465,21 +468,21 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
             import random
             import dispy
             cluster = dispy.JobCluster(computeRegionFeaturesOnCloud,
-                                        nodes=dispyNodeIps,
-                                        loglevel=logging.DEBUG,
-                                        depends=[self._pluginManager],
-                                        secret="teamtracking")
+                                       nodes=dispyNodeIps,
+                                       loglevel=logging.DEBUG,
+                                       depends=[self._pluginManager],
+                                       secret="teamtracking")
 
             jobs = []
             for frame in range(self.timeRange[0], self.timeRange[1]):
                 job = cluster.submit(frame,
-                                    self._options.rawImageFilename,
-                                    self._options.rawImagePath,
-                                    self._options.rawImageAxes,
-                                    self._options.labelImageFilename,
-                                    self._options.labelImagePath,
-                                    turnOffFeatures,
-                                    pluginPaths=['/home/carstenhaubold/embryonic/plugins'])
+                                     self._options.rawImageFilename,
+                                     self._options.rawImagePath,
+                                     self._options.rawImageAxes,
+                                     self._options.labelImageFilename,
+                                     self._options.labelImagePath,
+                                     turnOffFeatures,
+                                     pluginPaths=['/home/carstenhaubold/embryonic/plugins'])
                 job.id = frame
                 jobs.append(job)
 

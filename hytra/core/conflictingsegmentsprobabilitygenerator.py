@@ -47,13 +47,15 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
         
         self._labelImageFilenames.insert(0, ilpOptions.labelImageFilename)
         self._labelImagePaths.insert(0, ilpOptions.labelImagePath)
+        self._labelImageFrameIdToGlobalId = {} # map from (labelImageFilename, frame, id) to (id)
         
     def fillTraxels(self, usePgmlink=True, ts=None, fs=None, dispyNodeIps=[], turnOffFeatures=[]):
         """
         Compute all the features and predict object count as well as division probabilities.
         Store the resulting information (and all other features) inside `self.TraxelsPerFrame`.
 
-        It also computes which of the segmentation hypotheses overlap and are mutually exclusive, and stores that per traxel.
+        It also computes which of the segmentation hypotheses overlap and are mutually exclusive, and stores 
+        that per traxel, in each traxel's `conflictingTraxelIds` list. (Can only conflict within the timeframe)
 
         WARNING: usePgmlink is not supported for this derived class, so must be `False`!
         WARNING: distributed computation via Dispy is not supported here, so dispyNodeIps must be an empty list!
@@ -66,10 +68,28 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
 
         # find exclusion constraints
         for frame in range(self.timeRange[0], self.timeRange[1]):
-            for indexA in range(len(self._labelImageFilenames)):
-                for indexB in range(indexA + 1, len(self._labelImageFilenames)):
-                    # check for overlaps
-                    pass
+            for labelImageIndexA in range(len(self._labelImageFilenames)):
+                labelImageA = self._pluginManager.getImageProvider().getLabelImageForFrame(self._labelImageFilenames[labelImageIndexA],
+                                                                                            self._labelImagePaths[labelImageIndexA],
+                                                                                            frame)
+                for labelImageIndexB in range(labelImageIndexA + 1, len(self._labelImageFilenames)):
+                    labelImageB = self._pluginManager.getImageProvider().getLabelImageForFrame(self._labelImageFilenames[labelImageIndexB],
+                                                                                               self._labelImagePaths[labelImageIndexB],
+                                                                                               frame)
+                    # check for overlaps - even a 1-pixel overlap is enough to be mutually exclusive!
+                    for objectIdA in np.unique(labelImageA):
+                        if objectIdA == 0:
+                            continue
+                        overlapping = set(np.unique(labelImageB[labelImageA == objectIdA])) - set([0])
+                        overlappingGlobalIds = [self._labelImageFrameIdToGlobalId[(self._labelImageFilenames[labelImageIndexB], frame, o)] for o in overlapping]
+                        globalIdA = self._labelImageFrameIdToGlobalId[(self._labelImageFilenames[labelImageIndexA], frame, objectIdA)]
+                        if self.TraxelsPerFrame[frame][globalIdA].conflictingTraxelIds is None:
+                            self.TraxelsPerFrame[frame][globalIdA].conflictingTraxelIds = []
+                        self.TraxelsPerFrame[frame][globalIdA].conflictingTraxelIds.extend(overlappingGlobalIds)
+                        for globalIdB in overlappingGlobalIds:
+                            if self.TraxelsPerFrame[frame][globalIdB].conflictingTraxelIds is None:
+                                self.TraxelsPerFrame[frame][globalIdB].conflictingTraxelIds = []
+                            self.TraxelsPerFrame[frame][globalIdB].conflictingTraxelIds.append(globalIdA)
 
     def _insertFilenameAndIdToFeatures(self, featureDict, filename):
         """
@@ -107,6 +127,14 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
                 originalDict[k] = np.concatenate((v, nextDict[k][1:]))
             else:
                 originalDict[k].extend(nextDict[k][1:])
+
+    def _storeBackwardMapping(self, featuresPerFrame):
+        """
+        populates the `self._labelImageFrameIdToGlobalId` dictionary
+        """
+        for frame, featureDict in featuresPerFrame.iteritems():
+            for newId, (filename, objectId) in enumerate(zip(featureDict['filename'], featureDict['id'])):
+                self._labelImageFrameIdToGlobalId[(filename, frame, objectId)] = newId
 
     def _extractAllFeatures(self, dispyNodeIps=[], turnOffFeatures=[]):
         """
@@ -165,20 +193,22 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
                 jobs = []
                 for frame in range(self.timeRange[0], self.timeRange[1] - 1):
                     jobs.append(executor.submit(computeDivisionFeaturesOnCloud,
-                        frame,
-                        featuresPerFrame[frame],
-                        featuresPerFrame[frame + 1],
-                        self._pluginManager.getImageProvider(),
-                        self._options.labelImageFilename,
-                        self._options.labelImagePath,
-                        self.getNumDimensions(),
-                        self._divisionFeatureNames
+                                                frame,
+                                                featuresPerFrame[frame],
+                                                featuresPerFrame[frame + 1],
+                                                self._pluginManager.getImageProvider(),
+                                                self._options.labelImageFilename,
+                                                self._options.labelImagePath,
+                                                self.getNumDimensions(),
+                                                self._divisionFeatureNames
                     ))
 
                 for job in concurrent.futures.as_completed(jobs):
                     progressBar.show()
                     frame, feats = job.result()
                     featuresPerFrame[frame].update(feats)
+
+        self._storeBackwardMapping(featuresPerFrame)
 
         t1 = time.time()
         getLogger().info("Feature computation took {} secs".format(t1 - t0))
