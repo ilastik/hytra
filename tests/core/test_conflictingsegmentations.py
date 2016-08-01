@@ -78,6 +78,17 @@ def test_twoSegmentations():
     assert(hypotheses_graph._graph.node[(1, 2)]['traxel'].conflictingTraxelIds == [1])
     assert(hypotheses_graph._graph.node[(1, 3)]['traxel'].conflictingTraxelIds == [1])
 
+    # track, but check that the right exclusion constraints are present
+    hypotheses_graph.insertEnergies()
+    trackingGraph = hypotheses_graph.toTrackingGraph()
+
+    assert(len(trackingGraph.model['exclusions']) == 10)
+    exclusionSetSizeCount = {2:0, 3:0}
+    for exclusionSet in trackingGraph.model['exclusions']:
+        exclusionSetSizeCount[len(exclusionSet)] += 1
+    assert(exclusionSetSizeCount[2] == 8)
+    assert(exclusionSetSizeCount[3] == 2)
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     test_twoSegmentations()
