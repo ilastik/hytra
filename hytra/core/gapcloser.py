@@ -167,7 +167,7 @@ class GapCloser(object):
         #     ctc_arcFlowMap[(src, dest)] = 1 # poate altfel aici, lista fara value, care oricum e unu. Sau?
 
         # # return nodeFlowMap, arcFlowMap
-        
+
         return ctc_arcFlowMap
 
     def _saveTracks(self, ctc_arcFlowMap, input_ctc, output_ctc):
@@ -220,12 +220,7 @@ class GapCloser(object):
         # ------------------------------------------------------------
         if lookAt == None:
             getLogger().info("There are no gaps to close, nothing to be done. Writing the output...")
-            # segmentation
-            labelImages = {}
-            for t in timesteps:
-                # use image provider plugin to load labelimage
-                labelImage = self._readLabelImage(int(t))
-                labelImages[t] = labelImage
+
         else:
             # set up unresolved graph and then refine the nodes to get the resolved graph
             self._createGraph(lookAt)

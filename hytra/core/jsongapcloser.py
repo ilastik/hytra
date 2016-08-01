@@ -66,7 +66,6 @@ class JsonGapCloser(hytra.core.gapcloser.GapCloser):
         getLogger().info("Data has dimensionality {}".format(ndims))
         for node in self.Graph.nodes_iter():
             intT, idx = node
-            print node, "node in graph. Here jsongapcloser.py"
             if isinstance(idx, str) and idx.startswith('div-'):
                 continue
 
