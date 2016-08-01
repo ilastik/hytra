@@ -121,6 +121,9 @@ class GapCloser(object):
             src = self.Graph.node[edge[0]]['id']
             dest = self.Graph.node[edge[1]]['id']
 
+            print src, self.Graph.node[edge[0]]
+            print dest, self.Graph.node[edge[1]]
+
             featuresAtSrc = objectFeatures[edge[0]]
             featuresAtDest = objectFeatures[edge[1]]
 
@@ -151,14 +154,13 @@ class GapCloser(object):
         nodeFlowMap = dict([(int(d['id']), int(d['value'])) for d in mergerResult['detectionResults']])
         arcFlowMap = dict([((int(l['src']), int(l['dest'])), int(l['value'])) for l in mergerResult['linkingResults']])
 
+        print nodeFlowMap, arcFlowMap
         return nodeFlowMap, arcFlowMap
 
     def _refineResult(self,
                       nodeFlowMap,
                       arcFlowMap,
-                      traxelIdPerTimestepToUniqueIdMap,
-                      mergerNodeFilter,
-                      mergerLinkFilter):
+                      traxelIdPerTimestepToUniqueIdMap):
         """
         Update the `self.result` dict by removing the mergers and adding the refined nodes and links.
 
@@ -271,22 +273,6 @@ class GapCloser(object):
             # ------------------------------------------------------------
             # fuse results into a new solution
 
-            def mergerNodeFilter(jsonNode):
-                uuid = int(jsonNode['id'])
-                traxels = uuidToTraxelMap[uuid]
-                return not any(t[1] in mergersPerTimestep[str(t[0])] for t in traxels)
-
-            def mergerLinkFilter(jsonLink):
-                srcUuid = int(jsonLink['src'])
-                destUuid = int(jsonLink['dest'])
-                srcTraxels = uuidToTraxelMap[srcUuid]
-                destTraxels = uuidToTraxelMap[destUuid]
-                return not any((str(destT[0]), (srcT[1], destT[1])) in mergerLinks for srcT, destT in itertools.product(srcTraxels, destTraxels))
-
-            # new result = union(old result, resolved mergers) - old mergers
-
             self.result = self._refineResult(nodeFlowMap,
                                              arcFlowMap,
-                                             traxelIdPerTimestepToUniqueIdMap,
-                                             mergerNodeFilter,
-                                             mergerLinkFilter)
+                                             traxelIdPerTimestepToUniqueIdMap)

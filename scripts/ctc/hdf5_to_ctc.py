@@ -182,7 +182,9 @@ def convert_label_volume(options):
         # find all tracks that ended (so not in a move or split (-> is parent))
         disappeared_indices = set(old_mapping.values()) - set(mapping.values())
         for idx in disappeared_indices:
-            tracks[idx].append(frame - 1)
+            try:
+                tracks[idx].append(frame - 1)
+            except: continue
 
         # create a new label image with remapped indices (only those of tracks) and save it
         remapped_label_image = remap_label_image(label_image, mapping)
