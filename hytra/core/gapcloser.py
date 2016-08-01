@@ -93,7 +93,7 @@ class GapCloser(object):
         '''
         raise NotImplementedError()
 
-    def _minCostMaxFlowGapClosing(self, objectFeatures, transitionClassifier=None, transitionParameter=5.0, treshold=0.05):
+    def _minCostMaxFlowGapClosing(self, objectFeatures, transitionClassifier=None, transitionParameter=5.0, threshold=0.05):
         """
         Find the optimal assignments within the `Graph` by looking at the transition porbability and
         deciding wheter it is above the `threshold` or not.
@@ -142,7 +142,7 @@ class GapCloser(object):
 
             print probs, edge
 
-            if probs[1] > treshold:
+            if probs[1] > threshold:
                 ctc_arcFlowMap[edge] = 1
             else:
                 ctc_arcFlowMap[edge] = 0
