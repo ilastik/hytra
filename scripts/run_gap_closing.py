@@ -36,6 +36,8 @@ if __name__ == "__main__":
     parser.add_argument('--transition-classifier-file', dest='transition_classifier_filename', type=str,
                         default=None, help="Transition classifier filename, or None if distance-based energies should be used.")
     parser.add_argument('--transition-classifier-path', dest='transition_classifier_path', type=str, default='/')
+    parser.add_argument('--out-ctc-file', type=str, dest='output_ctc', required=True, 
+                        help='Filename of the new ctc res_track.txt')
     # parser.add_argument('--out-graph-json-file', type=str, dest='out_model_filename', required=True, 
     #                     help='Filename of the json model containing the hypotheses graph including new nodes')
     # parser.add_argument('--out-result-json-file', type=str, dest='out_result', required=True, 
@@ -66,9 +68,7 @@ if __name__ == "__main__":
         args.verbose)
     gap_closer.run(
         args.input_ctc,
+        args.output_ctc,
         args.transition_classifier_filename,
         args.transition_classifier_path)
 
-    # save
-    writeToFormattedJSON(args.out_model_filename, gap_closer.model)
-    writeToFormattedJSON(args.out_result, gap_closer.result)

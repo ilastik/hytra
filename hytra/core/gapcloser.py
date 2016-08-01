@@ -107,6 +107,7 @@ class GapCloser(object):
         **Note:** cannot use `networkx` flow methods because they don't work with floating point weights.
         """
 
+        map_uuid_to_ctc = {}
         trackingGraph = JsonTrackingGraph()
         for node in self.Graph.nodes_iter():
             additionalFeatures = {}
@@ -116,13 +117,11 @@ class GapCloser(object):
                 additionalFeatures['disappearanceFeatures'] = [[0], [0]]
             uuid = trackingGraph.addDetectionHypotheses([[0], [1]], **additionalFeatures)
             self.Graph.node[node]['id'] = uuid
+            map_uuid_to_ctc[uuid] = node
 
         for edge in self.Graph.edges_iter():
             src = self.Graph.node[edge[0]]['id']
             dest = self.Graph.node[edge[1]]['id']
-
-            print src, self.Graph.node[edge[0]]
-            print dest, self.Graph.node[edge[1]]
 
             featuresAtSrc = objectFeatures[edge[0]]
             featuresAtDest = objectFeatures[edge[1]]
@@ -154,55 +153,39 @@ class GapCloser(object):
         nodeFlowMap = dict([(int(d['id']), int(d['value'])) for d in mergerResult['detectionResults']])
         arcFlowMap = dict([((int(l['src']), int(l['dest'])), int(l['value'])) for l in mergerResult['linkingResults']])
 
-        print nodeFlowMap, arcFlowMap
-        return nodeFlowMap, arcFlowMap
+        ctc_arcFlowMap = {}
+        # translate edges back to ctc format
+        for edge in arcFlowMap.keys():
+            src = map_uuid_to_ctc[edge[0]]
+            dest = map_uuid_to_ctc[edge[1]]
+            ctc_arcFlowMap[(src, dest)] = 1 # poate altfel aici, lista fara value, care oricum e unu. Sau?
 
-    def _refineResult(self,
-                      nodeFlowMap,
-                      arcFlowMap,
-                      traxelIdPerTimestepToUniqueIdMap):
+        # return nodeFlowMap, arcFlowMap
+        return ctc_arcFlowMap
+
+    def _saveTracks(self, ctc_arcFlowMap, input_ctc, output_ctc):
         """
-        Update the `self.result` dict by removing the mergers and adding the refined nodes and links.
-
-        Operates on a `result` dictionary in our JSON result style with mergers,
-        the resolved and unresolved graph as well as
-        the `nodeFlowMap` and `arcFlowMap` obtained by running tracking on the `Graph`.
-
-        Updates the `result` dictionary so that all merger nodes are removed but the new nodes
-        are contained with the appropriate links and values.
-
-        `mergerNodeFilter` and `mergerLinkFilter` are methods that can filter merger detections
-        and links from the respective lists in the `result` dict.
-
-        **Returns** the updated `result` dict, which is the same as the input `result` (works in-place)
+        Update the ctc result format (res_track.txt) by adding the right parents to the closed gaps.
+        So read in the old sresult txtx file and write a new one.
         """
 
-        # filter merger edges
-        self.result['detectionResults'] = [r for r in self.result['detectionResults'] if mergerNodeFilter(r)]
-        self.result['linkingResults'] = [r for r in self.result['linkingResults'] if mergerLinkFilter(r)]
+        with open(input_ctc) as input_txt:
+            content = input_txt.readlines()
 
-        # add new nodes
-        for node in self.Graph.nodes_iter():
-            if self.Graph.node[node]['count'] > 1:
-                newIds = self.Graph.node[node]['newIds']
-                for newId in newIds:
-                    uuid = traxelIdPerTimestepToUniqueIdMap[str(node[0])][str(newId)]
-                    resolvedNode = (node[0], newId)
-                    resolvedResultId = self.Graph.node[resolvedNode]['id']
-                    newDetection = {'id': uuid, 'value': nodeFlowMap[resolvedResultId]}
-                    self.result['detectionResults'].append(newDetection)
-
-        # add new links
-        for edge in self.Graph.edges_iter():
-            newLink = {}
-            newLink['src'] = traxelIdPerTimestepToUniqueIdMap[str(edge[0][0])][str(edge[0][1])]
-            newLink['dest'] = traxelIdPerTimestepToUniqueIdMap[str(edge[1][0])][str(edge[1][1])]
-            srcId = self.Graph.node[edge[0]]['id']
-            destId = self.Graph.node[edge[1]]['id']
-            newLink['value'] = arcFlowMap[(srcId, destId)]
-            self.result['linkingResults'].append(newLink)
-
-        return self.result
+        with open(output_ctc, 'wt') as f:
+            for line in content:
+                for edge in ctc_arcFlowMap:
+                    strings = line.strip('\n').split()
+                    track_info = tuple([int(t) for t in strings])
+                    idx, start_frame, end_frame, parent_id = track_info
+                    if edge[1][1] == idx:
+                        # if idx == 13: # 10
+                        #     continue
+                        print line
+                        parent_id = edge[0][1]
+                        line ="{} {} {} {}\n".format(idx, start_frame, end_frame, parent_id)
+                        print line
+                f.write(line)
 
     def _computeObjectFeatures(self, labelImages):
         '''
@@ -212,7 +195,7 @@ class GapCloser(object):
         pass
 
     # ------------------------------------------------------------
-    def run(self, input_ctc, transition_classifier_filename=None, transition_classifier_path=None):
+    def run(self, input_ctc, output_ctc, transition_classifier_filename=None, transition_classifier_path=None):
         """
         Run merger resolving
 
@@ -268,11 +251,9 @@ class GapCloser(object):
             # run min-cost max-flow to find gaps worthy to be closed
             getLogger().info("Running min-cost max-flow to find closed gaps assignments")
 
-            nodeFlowMap, arcFlowMap = self._minCostMaxFlowGapClosing(objectFeatures, transitionClassifier)
+            ctcArcFlowMap = self._minCostMaxFlowGapClosing(objectFeatures, transitionClassifier)
 
             # ------------------------------------------------------------
             # fuse results into a new solution
 
-            self.result = self._refineResult(nodeFlowMap,
-                                             arcFlowMap,
-                                             traxelIdPerTimestepToUniqueIdMap)
+            self.result = self._saveTracks(ctcArcFlowMap, input_ctc, output_ctc)
