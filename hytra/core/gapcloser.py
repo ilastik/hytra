@@ -94,7 +94,7 @@ class GapCloser(object):
         '''
         raise NotImplementedError()
 
-    def _minCostMaxFlowGapClosing(self, objectFeatures, transitionClassifier=None, transitionParameter=5.0):
+    def _minCostMaxFlowGapClosing(self, objectFeatures, transitionClassifier=None, transitionParameter=5.0, treshold=0.15):
         """
         Find the optimal assignments within the `Graph` by running min-cost max-flow from the
         `dpct` module.
@@ -119,6 +119,7 @@ class GapCloser(object):
             self.Graph.node[node]['id'] = uuid
             map_uuid_to_ctc[uuid] = node
 
+        ctc_arcFlowMap = {}
         for edge in self.Graph.edges_iter():
             src = self.Graph.node[edge[0]]['id']
             dest = self.Graph.node[edge[1]]['id']
@@ -142,25 +143,34 @@ class GapCloser(object):
                 prob = np.exp(-dist / transitionParameter)
                 probs = [1.0 - prob, prob]
 
-            trackingGraph.addLinkingHypotheses(src, dest, listify(negLog(probs)))
+            print probs, edge
 
-        # track
-        import dpct
-        weights = {"weights": [1, 1, 1, 1]}
-        mergerResult = dpct.trackMaxFlow(trackingGraph.model, weights)
+            if probs[1] > treshold:
+                ctc_arcFlowMap[edge] = 1
+            else:
+                ctc_arcFlowMap[edge] = 0
 
-        # transform results to dictionaries that can be indexed by id or (src,dest)
-        nodeFlowMap = dict([(int(d['id']), int(d['value'])) for d in mergerResult['detectionResults']])
-        arcFlowMap = dict([((int(l['src']), int(l['dest'])), int(l['value'])) for l in mergerResult['linkingResults']])
+            # trackingGraph.addLinkingHypotheses(src, dest, listify(negLog(probs)))
 
-        ctc_arcFlowMap = {}
-        # translate edges back to ctc format
-        for edge in arcFlowMap.keys():
-            src = map_uuid_to_ctc[edge[0]]
-            dest = map_uuid_to_ctc[edge[1]]
-            ctc_arcFlowMap[(src, dest)] = 1 # poate altfel aici, lista fara value, care oricum e unu. Sau?
+        # # track
+        # import dpct
+        # weights = {"weights": [1, 1, 1, 1]}
+        # # mergerResult = dpct.trackMaxFlow(trackingGraph.model, weights)
+        # mergerResult = dpct.trackFlowBased(trackingGraph.model, weights)
 
-        # return nodeFlowMap, arcFlowMap
+        # # transform results to dictionaries that can be indexed by id or (src,dest)
+        # nodeFlowMap = dict([(int(d['id']), int(d['value'])) for d in mergerResult['detectionResults']])
+        # arcFlowMap = dict([((int(l['src']), int(l['dest'])), int(l['value'])) for l in mergerResult['linkingResults']])
+
+        # ctc_arcFlowMap = {}
+        # # translate edges back to ctc format
+        # for edge in arcFlowMap.keys():
+        #     src = map_uuid_to_ctc[edge[0]]
+        #     dest = map_uuid_to_ctc[edge[1]]
+        #     ctc_arcFlowMap[(src, dest)] = 1 # poate altfel aici, lista fara value, care oricum e unu. Sau?
+
+        # # return nodeFlowMap, arcFlowMap
+        # print arcFlowMap
         return ctc_arcFlowMap
 
     def _saveTracks(self, ctc_arcFlowMap, input_ctc, output_ctc):
@@ -169,23 +179,20 @@ class GapCloser(object):
         So read in the old sresult txtx file and write a new one.
         """
 
-        with open(input_ctc) as input_txt:
-            content = input_txt.readlines()
+        if ctc_arcFlowMap is not None:
+            with open(input_ctc) as input_txt:
+                content = input_txt.readlines()
 
-        with open(output_ctc, 'wt') as f:
-            for line in content:
-                for edge in ctc_arcFlowMap:
-                    strings = line.strip('\n').split()
-                    track_info = tuple([int(t) for t in strings])
-                    idx, start_frame, end_frame, parent_id = track_info
-                    if edge[1][1] == idx:
-                        # if idx == 13: # 10
-                        #     continue
-                        print line
-                        parent_id = edge[0][1]
-                        line ="{} {} {} {}\n".format(idx, start_frame, end_frame, parent_id)
-                        print line
-                f.write(line)
+            with open(output_ctc, 'wt') as f:
+                for line in content:
+                    for edge in ctc_arcFlowMap:
+                        strings = line.strip('\n').split()
+                        track_info = tuple([int(t) for t in strings])
+                        idx, start_frame, end_frame, parent_id = track_info
+                        if edge[1][1] == idx and ctc_arcFlowMap[edge] == 1:
+                            parent_id = edge[0][1]
+                            line ="{} {} {} {}\n".format(idx, start_frame, end_frame, parent_id)
+                    f.write(line)
 
     def _computeObjectFeatures(self, labelImages):
         '''
@@ -212,8 +219,6 @@ class GapCloser(object):
 
         mergers, detections, links, divisions = hytra.core.jsongraph.getMergersDetectionsLinksDivisions(self.result, uuidToTraxelMap)
         lookAt = self._determineTerminatingStartingTracks(input_ctc)
-        print "LOOK AT", lookAt
-
 
         # ------------------------------------------------------------
         if lookAt == None:
@@ -247,13 +252,10 @@ class GapCloser(object):
                 getLogger().info("\tUsing distance based transition energies")
                 transitionClassifier = None
 
-            # ------------------------------------------------------------
             # run min-cost max-flow to find gaps worthy to be closed
             getLogger().info("Running min-cost max-flow to find closed gaps assignments")
 
             ctcArcFlowMap = self._minCostMaxFlowGapClosing(objectFeatures, transitionClassifier)
 
-            # ------------------------------------------------------------
             # fuse results into a new solution
-
             self.result = self._saveTracks(ctcArcFlowMap, input_ctc, output_ctc)
