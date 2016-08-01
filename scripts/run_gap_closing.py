@@ -38,12 +38,10 @@ if __name__ == "__main__":
     parser.add_argument('--transition-classifier-path', dest='transition_classifier_path', type=str, default='/')
     parser.add_argument('--out-ctc-file', type=str, dest='output_ctc', required=True, 
                         help='Filename of the new ctc res_track.txt')
-    # parser.add_argument('--out-graph-json-file', type=str, dest='out_model_filename', required=True, 
-    #                     help='Filename of the json model containing the hypotheses graph including new nodes')
-    # parser.add_argument('--out-result-json-file', type=str, dest='out_result', required=True, 
-    #                     help='Filename where to store the new result')
     parser.add_argument('--trans-par', dest='trans_par', type=float, default=5.0,
                         help='alpha for the transition prior')
+    parser.add_argument('--gap-treshold', dest='gap_treshold', type=float, default=0.05,
+                        help='Threshold for the gap closing probability.')
     parser.add_argument('--verbose', dest='verbose', action='store_true',
                         help='Turn on verbose logging', default=False)
     parser.add_argument('--plugin-paths', dest='pluginPaths', type=str, nargs='+',
@@ -70,5 +68,6 @@ if __name__ == "__main__":
         args.input_ctc,
         args.output_ctc,
         args.transition_classifier_filename,
-        args.transition_classifier_path)
+        args.transition_classifier_path
+        args.gap_treshold)
 

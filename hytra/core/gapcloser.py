@@ -93,7 +93,7 @@ class GapCloser(object):
         '''
         raise NotImplementedError()
 
-    def _minCostMaxFlowGapClosing(self, objectFeatures, transitionClassifier=None, transitionParameter=5.0, treshold=0.15):
+    def _minCostMaxFlowGapClosing(self, objectFeatures, transitionClassifier=None, transitionParameter=5.0, treshold=0.05):
         """
         Find the optimal assignments within the `Graph` by looking at the transition porbability and
         deciding wheter it is above the `threshold` or not.
@@ -188,6 +188,7 @@ class GapCloser(object):
                         idx, start_frame, end_frame, parent_id = track_info
                         if edge[1][1] == idx and ctc_arcFlowMap[edge] == 1:
                             parent_id = edge[0][1]
+                            print line, "Ligne"
                             line ="{} {} {} {}\n".format(idx, start_frame, end_frame, parent_id)
                     f.write(line)
 
@@ -199,7 +200,7 @@ class GapCloser(object):
         pass
 
     # ------------------------------------------------------------
-    def run(self, input_ctc, output_ctc, transition_classifier_filename=None, transition_classifier_path=None):
+    def run(self, input_ctc, output_ctc, transition_classifier_filename=None, transition_classifier_path=None, treshold=0.05):
         """
         Run merger resolving
 
@@ -220,7 +221,6 @@ class GapCloser(object):
         # ------------------------------------------------------------
         if lookAt == None:
             getLogger().info("There are no gaps to close, nothing to be done. Writing the output...")
-
         else:
             # set up unresolved graph and then refine the nodes to get the resolved graph
             self._createGraph(lookAt)
@@ -230,11 +230,9 @@ class GapCloser(object):
                 labelImage = self._readLabelImage(int(t))
                 labelImages[t] = labelImage
 
-            # ------------------------------------------------------------
             # compute new object features
             objectFeatures = self._computeObjectFeatures(labelImages)
 
-            # ------------------------------------------------------------
             # load transition classifier if any
             if transition_classifier_filename is not None:
                 getLogger().info("\tLoading transition classifier")
@@ -247,7 +245,7 @@ class GapCloser(object):
             # run min-cost max-flow to find gaps worthy to be closed
             getLogger().info("Running min-cost max-flow to find closed gaps assignments")
 
-            ctcArcFlowMap = self._minCostMaxFlowGapClosing(objectFeatures, transitionClassifier)
+            ctcArcFlowMap = self._minCostMaxFlowGapClosing(objectFeatures, transitionClassifier, treshold)
 
             # fuse results into a new solution
             self.result = self._saveTracks(ctcArcFlowMap, input_ctc, output_ctc)
