@@ -9,7 +9,6 @@ import hytra.core.probabilitygenerator as probabilitygenerator
 import hytra.core.jsongraph
 from hytra.core.jsongraph import negLog, listify, JsonTrackingGraph
 
-"Anpassen aller DOOOOCS"
 
 def getLogger():
     ''' logger to be used in this module '''
@@ -96,15 +95,13 @@ class GapCloser(object):
 
     def _minCostMaxFlowGapClosing(self, objectFeatures, transitionClassifier=None, transitionParameter=5.0, treshold=0.15):
         """
-        Find the optimal assignments within the `Graph` by running min-cost max-flow from the
-        `dpct` module.
+        Find the optimal assignments within the `Graph` by looking at the transition porbability and
+        deciding wheter it is above the `threshold` or not.
 
         Converts the `Graph` to our JSON model structure, predicts the transition probabilities 
         either using the given transitionClassifier, or using distance-based probabilities.
 
-        **returns** a `nodeFlowMap` and `arcFlowMap` holding information on the usage of the respective nodes and links
-
-        **Note:** cannot use `networkx` flow methods because they don't work with floating point weights.
+        **returns** a `ctc_arcFlowMap` holding information on the usage of the respective nodes and links
         """
 
         map_uuid_to_ctc = {}
@@ -170,7 +167,7 @@ class GapCloser(object):
         #     ctc_arcFlowMap[(src, dest)] = 1 # poate altfel aici, lista fara value, care oricum e unu. Sau?
 
         # # return nodeFlowMap, arcFlowMap
-        # print arcFlowMap
+        
         return ctc_arcFlowMap
 
     def _saveTracks(self, ctc_arcFlowMap, input_ctc, output_ctc):
