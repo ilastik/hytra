@@ -455,7 +455,7 @@ class HypothesesGraph(object):
                 conflictingIds.sort()
                 exclusions.add(tuple(conflictingIds))
 
-        model['exclusions'] = list(exclusions)
+        model['exclusions'] = [list(t) for t in exclusions]
 
         # TODO: this recomputes the uuidToTraxelMap even though we have it already...
         trackingGraph = hytra.core.jsongraph.JsonTrackingGraph(model=model)
