@@ -4,7 +4,15 @@ from hytra.core.ilastik_project_options import IlastikProjectOptions
 from hytra.core.conflictingsegmentsprobabilitygenerator import ConflictingSegmentsProbabilityGenerator
 from hytra.core.ilastikhypothesesgraph import IlastikHypothesesGraph
 from hytra.core.fieldofview import FieldOfView
-import dpct
+
+try:
+    import multiHypoTracking_with_cplex as mht
+except ImportError:
+    try:
+        import multiHypoTracking_with_gurobi as mht
+    except ImportError:
+        mht = None
+
 
 def constructFov(shape, t0, t1, scale=[1, 1, 1]):
     [xshape, yshape, zshape] = shape
@@ -88,6 +96,25 @@ def test_twoSegmentations():
         exclusionSetSizeCount[len(exclusionSet)] += 1
     assert(exclusionSetSizeCount[2] == 8)
     assert(exclusionSetSizeCount[3] == 2)
+
+    # use multiHypoTracking, insert exclusion constraints!
+    if mht is not None:
+        result = mht.track(trackingGraph.model, {"weights": [10, 10, 500, 500]})
+        hypotheses_graph.insertSolution(result)
+        # hypotheses_graph.computeLineage()
+
+        numActivePerFrame = {}
+
+        for node in hypotheses_graph.nodeIterator():
+            timeframe = node[0]
+            if 'value' in hypotheses_graph._graph.node[node]: 
+                value = hypotheses_graph._graph.node[node]['value']
+            else:
+                value = 0 
+            numActivePerFrame.setdefault(timeframe, []).append(value) 
+
+        for _, v in numActivePerFrame.iteritems():
+            assert(sum(v) == 2)        
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
