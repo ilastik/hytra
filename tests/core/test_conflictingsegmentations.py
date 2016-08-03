@@ -12,6 +12,7 @@ except ImportError:
         import multiHypoTracking_with_gurobi as mht
     except ImportError:
         mht = None
+        import dpct
 
 
 def constructFov(shape, t0, t1, scale=[1, 1, 1]):
@@ -97,21 +98,24 @@ def test_twoSegmentations():
     # use multiHypoTracking, insert exclusion constraints!
     if mht is not None:
         result = mht.track(trackingGraph.model, {"weights": [10, 10, 500, 500]})
-        hypotheses_graph.insertSolution(result)
-        # hypotheses_graph.computeLineage()
+    else:
+        result = dpct.trackFlowBased(trackingGraph.model, {"weights": [10, 10, 500, 500]})
 
-        numActivePerFrame = {}
+    hypotheses_graph.insertSolution(result)
+    # hypotheses_graph.computeLineage()
 
-        for node in hypotheses_graph.nodeIterator():
-            timeframe = node[0]
-            if 'value' in hypotheses_graph._graph.node[node]: 
-                value = hypotheses_graph._graph.node[node]['value']
-            else:
-                value = 0 
-            numActivePerFrame.setdefault(timeframe, []).append(value) 
+    numActivePerFrame = {}
 
-        for _, v in numActivePerFrame.iteritems():
-            assert(sum(v) == 2)        
+    for node in hypotheses_graph.nodeIterator():
+        timeframe = node[0]
+        if 'value' in hypotheses_graph._graph.node[node]: 
+            value = hypotheses_graph._graph.node[node]['value']
+        else:
+            value = 0 
+        numActivePerFrame.setdefault(timeframe, []).append(value) 
+
+    for _, v in numActivePerFrame.iteritems():
+        assert(sum(v) == 2)        
 
     edgeFlow = 0
     for edge in hypotheses_graph.arcIterator():
