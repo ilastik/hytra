@@ -90,8 +90,6 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
                             if self.TraxelsPerFrame[frame][globalIdB].conflictingTraxelIds is None:
                                 self.TraxelsPerFrame[frame][globalIdB].conflictingTraxelIds = []
                             self.TraxelsPerFrame[frame][globalIdB].conflictingTraxelIds.append(globalIdA)
-        # FIXME: right now an object that overlaps with two objects in an alternative segmentation
-        #        adds a constraint that the triplet cannot be active at once, but actually the two others could be active at once!
 
     def _insertFilenameAndIdToFeatures(self, featureDict, filename):
         """

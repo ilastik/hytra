@@ -451,9 +451,13 @@ class HypothesesGraph(object):
                     getLogger().error("Exclusion constraints do not work with tracklets yet!")
                 
                 conflictingIds = [traxelIdPerTimestepToUniqueIdMap[str(traxel.Timestep)][str(i)] for i in traxel.conflictingTraxelIds]
-                conflictingIds.append(traxelIdPerTimestepToUniqueIdMap[str(traxel.Timestep)][str(traxel.Id)])
-                conflictingIds.sort()
-                exclusions.add(tuple(conflictingIds))
+                myId = traxelIdPerTimestepToUniqueIdMap[str(traxel.Timestep)][str(traxel.Id)]
+                for ci in conflictingIds:
+                    # insert pairwise exclusion constraints only, and always put the lower id first
+                    if ci < myId:
+                        exclusions.add((ci, myId))
+                    else:
+                        exclusions.add((myId, ci))
 
         model['exclusions'] = [list(t) for t in exclusions]
 

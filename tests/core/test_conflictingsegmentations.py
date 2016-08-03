@@ -82,7 +82,7 @@ def test_twoSegmentations():
     assert(hypotheses_graph._graph.node[(0, 3)]['traxel'].conflictingTraxelIds == [1])
     assert(hypotheses_graph._graph.node[(0, 2)]['traxel'].conflictingTraxelIds == [4])
     assert(hypotheses_graph._graph.node[(0, 4)]['traxel'].conflictingTraxelIds == [2])
-    assert(hypotheses_graph._graph.node[(1, 1)]['traxel'].conflictingTraxelIds == [2,3])
+    assert(hypotheses_graph._graph.node[(1, 1)]['traxel'].conflictingTraxelIds == [2, 3])
     assert(hypotheses_graph._graph.node[(1, 2)]['traxel'].conflictingTraxelIds == [1])
     assert(hypotheses_graph._graph.node[(1, 3)]['traxel'].conflictingTraxelIds == [1])
 
@@ -90,12 +90,9 @@ def test_twoSegmentations():
     hypotheses_graph.insertEnergies()
     trackingGraph = hypotheses_graph.toTrackingGraph()
 
-    assert(len(trackingGraph.model['exclusions']) == 10)
-    exclusionSetSizeCount = {2:0, 3:0}
+    assert(len(trackingGraph.model['exclusions']) == 8)
     for exclusionSet in trackingGraph.model['exclusions']:
-        exclusionSetSizeCount[len(exclusionSet)] += 1
-    assert(exclusionSetSizeCount[2] == 8)
-    assert(exclusionSetSizeCount[3] == 2)
+        assert(len(exclusionSet) == 2)
 
     # use multiHypoTracking, insert exclusion constraints!
     if mht is not None:
@@ -115,6 +112,12 @@ def test_twoSegmentations():
 
         for _, v in numActivePerFrame.iteritems():
             assert(sum(v) == 2)        
+
+    edgeFlow = 0
+    for edge in hypotheses_graph.arcIterator():
+        if 'value' in hypotheses_graph._graph.edge[edge[0]][edge[1]]:
+            edgeFlow += hypotheses_graph._graph.edge[edge[0]][edge[1]]['value']
+    assert(edgeFlow == 6)
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
