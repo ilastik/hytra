@@ -23,8 +23,11 @@ class MergerResolver(object):
     def __init__(self, pluginPaths=[os.path.abspath('../hytra/plugins')], verbose=False):
         self.unresolvedGraph = None
         self.resolvedGraph = None
+        self.mergersPerTimestep = None
+        self.detectionsPerTimestep = None
         self.pluginManager = TrackingPluginManager(
             verbose=verbose, pluginPaths=pluginPaths)
+        self.mergerResolverPlugin = self.pluginManager.getMergerResolver()
 
         # should be filled by constructors of derived classes!
         self.model = None
@@ -112,8 +115,6 @@ class MergerResolver(object):
         Uses the mergerResolver plugin to update the segmentations in the labelImages.
         '''
 
-        mergerResolver = self.pluginManager.getMergerResolver()
-
         intTimesteps = [int(t) for t in timesteps]
         intTimesteps.sort()
 
@@ -145,7 +146,7 @@ class MergerResolver(object):
                 # What does pgmlink do in that case?
 
                 # use merger resolving plugin to fit `count` objects, also updates labelimage!
-                fittedObjects = mergerResolver.resolveMerger(labelImage, idx, nextObjectId, count, initializations)
+                fittedObjects = self.mergerResolverPlugin.resolveMerger(labelImage, idx, nextObjectId, count, initializations)
                 assert(len(fittedObjects) == count)
 
                 # split up node if count > 1, duplicate incoming and outgoing arcs
@@ -382,17 +383,18 @@ class MergerResolver(object):
             self._exportRefinedSegmentation(labelImages)
 
         else:
-            mergersPerTimestep = hytra.core.jsongraph.getMergersPerTimestep(mergers, timesteps)
+            self.mergersPerTimestep = hytra.core.jsongraph.getMergersPerTimestep(mergers, timesteps)
+            self.detectionsPerTimestep = hytra.core.jsongraph.getDetectionsPerTimestep(detections, timesteps)
+            
             linksPerTimestep = hytra.core.jsongraph.getLinksPerTimestep(links, timesteps)
-            detectionsPerTimestep = hytra.core.jsongraph.getDetectionsPerTimestep(detections, timesteps)
             divisionsPerTimestep = hytra.core.jsongraph.getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps)
-            mergerLinks = hytra.core.jsongraph.getMergerLinks(linksPerTimestep, mergersPerTimestep, timesteps)
+            mergerLinks = hytra.core.jsongraph.getMergerLinks(linksPerTimestep, self.mergersPerTimestep, timesteps)
 
             # set up unresolved graph and then refine the nodes to get the resolved graph
-            self._createUnresolvedGraph(divisionsPerTimestep, mergersPerTimestep, mergerLinks)
+            self._createUnresolvedGraph(divisionsPerTimestep, self.mergersPerTimestep, mergerLinks)
             self._prepareResolvedGraph()
-            labelImages = self._refineSegmentation(detectionsPerTimestep,
-                                                   mergersPerTimestep,
+            labelImages = self._refineSegmentation(self.detectionsPerTimestep,
+                                                   self.mergersPerTimestep,
                                                    timesteps)
 
             # ------------------------------------------------------------
@@ -426,7 +428,7 @@ class MergerResolver(object):
             def mergerNodeFilter(jsonNode):
                 uuid = int(jsonNode['id'])
                 traxels = uuidToTraxelMap[uuid]
-                return not any(t[1] in mergersPerTimestep[str(t[0])] for t in traxels)
+                return not any(t[1] in self.mergersPerTimestep[str(t[0])] for t in traxels)
 
             def mergerLinkFilter(jsonLink):
                 srcUuid = int(jsonLink['src'])
