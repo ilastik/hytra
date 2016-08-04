@@ -40,7 +40,7 @@ def constructFov(shape, t0, t1, scale=[1, 1, 1]):
 
 def run_pipeline(options, unknown):
     """
-    Run the complete tracking pipeline by invoking the scripts as subprocesses.
+    Run the complete tracking pipeline by invoking the different steps.
     Using the `do-SOMETHING` switches one can configure which parts of the pipeline are run.
 
     **Params:**
