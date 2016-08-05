@@ -462,17 +462,14 @@ class MergerResolver(object):
             for idx in self.detectionsPerTimestep[t]:
                 node = (time, idx)
 
-                if idx in self.mergersPerTimestep[t]:
-                    count = self.mergersPerTimestep[t][idx]
-                else:
+                if idx not in self.mergersPerTimestep[t]:
                     continue
-                getLogger().debug("Looking at node {} in timestep {} with count {}".format(idx, t, count))
                 
                 # use fits stored in graph
                 fits = self.unresolvedGraph.node[node]['fits']
                 newIds = self.unresolvedGraph.node[node]['newIds']
                 
-                # use merger resolving plugin to fit `count` objects, also updates labelimage!
+                # use merger resolving plugin to update labelImage with merger IDs
                 self.mergerResolverPlugin.updateLabelImage(labelImage, idx, fits, newIds)
           
         return labelImage
