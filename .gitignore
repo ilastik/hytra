@@ -15,6 +15,7 @@ randomforest_test.cpp
 tracking/
 .idea
 tests/mergerResolvingTestDataset/*
+tests/multiSegmentationHypothesesTestDataset/ctc_out/*
 
 # Compiled source #
 ###################

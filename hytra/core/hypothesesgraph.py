@@ -427,7 +427,6 @@ class HypothesesGraph(object):
         model = {
             'segmentationHypotheses':[translateNodeToDict(n) for n in self._graph.nodes_iter()],
             'linkingHypotheses':[translateLinkToDict(e) for e in self._graph.edges_iter()],
-            'exclusions':[],
             'divisionHypotheses':[],
             'traxelToUniqueId':traxelIdPerTimestepToUniqueIdMap,
             'settings':{'statesShareWeights':True,
@@ -438,6 +437,29 @@ class HypothesesGraph(object):
                         'optimizerNumThreads':1
                        }
             }
+
+        # extract exclusion sets:
+        exclusions = set([])
+        for n in self._graph.nodes_iter():
+            if self.withTracklets:
+                traxel = self._graph.node[n]['tracklet'][0]
+            else:
+                traxel = self._graph.node[n]['traxel']
+            
+            if traxel.conflictingTraxelIds is not None:
+                if self.withTracklets:
+                    getLogger().error("Exclusion constraints do not work with tracklets yet!")
+                
+                conflictingIds = [traxelIdPerTimestepToUniqueIdMap[str(traxel.Timestep)][str(i)] for i in traxel.conflictingTraxelIds]
+                myId = traxelIdPerTimestepToUniqueIdMap[str(traxel.Timestep)][str(traxel.Id)]
+                for ci in conflictingIds:
+                    # insert pairwise exclusion constraints only, and always put the lower id first
+                    if ci < myId:
+                        exclusions.add((ci, myId))
+                    else:
+                        exclusions.add((myId, ci))
+
+        model['exclusions'] = [list(t) for t in exclusions]
 
         # TODO: this recomputes the uuidToTraxelMap even though we have it already...
         trackingGraph = hytra.core.jsongraph.JsonTrackingGraph(model=model)
