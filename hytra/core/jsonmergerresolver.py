@@ -47,7 +47,7 @@ class JsonMergerResolver(hytra.core.mergerresolver.MergerResolver):
         self.imageProvider = self.pluginManager.getImageProvider()
     
 
-    def _computeObjectFeatures(self, labelImages):
+    def _computeObjectFeatures(self, timesteps):
         """
         Computes object features for all nodes in the resolved graph because they
         are needed for the transition classifier or to compute new distances.
@@ -55,8 +55,11 @@ class JsonMergerResolver(hytra.core.mergerresolver.MergerResolver):
         **returns:** a dictionary of feature-dicts per node
         """
         rawImages = {}
-        for t in labelImages.keys():
+        labelImages = {}
+        for t in timesteps:
             rawImages[t] = self.imageProvider.getImageDataAtTimeFrame(self.raw_filename, self.raw_path, self.raw_axes, int(t))
+            labelImages[t] = self.imageProvider.getLabelImageForFrame(self.label_image_filename, self.label_image_path, int(t))
+            self.relabelMergers(labelImages[t], int(t))
 
         getLogger().info("Computing object features")
         objectFeatures = {}
@@ -103,7 +106,9 @@ class JsonMergerResolver(hytra.core.mergerresolver.MergerResolver):
         '''
         return self.imageProvider.getLabelImageForFrame(self.label_image_filename, self.label_image_path, timeframe)
 
-    def _exportRefinedSegmentation(self, labelImages):
+    def _exportRefinedSegmentation(self, timesteps):
         h5py.File(self.out_label_image, 'w').close()
-        for t in labelImages.keys():
-            self.imageProvider.exportLabelImage(labelImages[t], int(t), self.out_label_image, self.label_image_path)
+        for t in timesteps:
+            labelImage = self._readLabelImage(int(t))
+            self.relabelMergers(labelImage, int(t))
+            self.imageProvider.exportLabelImage(labelImage, int(t), self.out_label_image, self.label_image_path)

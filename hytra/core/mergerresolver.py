@@ -104,7 +104,7 @@ class MergerResolver(object):
         '''
         raise NotImplementedError()
 
-    def _refineSegmentation(self,
+    def _fitAndRefineNodes(self,
                             detectionsPerTimestep,
                             mergersPerTimestep,
                             timesteps):
@@ -118,13 +118,10 @@ class MergerResolver(object):
         intTimesteps = [int(t) for t in timesteps]
         intTimesteps.sort()
 
-        labelImages = {}
-
         for intT in intTimesteps:
             t = str(intT)
             # use image provider plugin to load labelimage
             labelImage = self._readLabelImage(int(t))
-            labelImages[t] = labelImage
             nextObjectId = labelImage.max() + 1
 
             for idx in detectionsPerTimestep[t]:
@@ -176,8 +173,6 @@ class MergerResolver(object):
         # import matplotlib.pyplot as plt
         # nx.draw_networkx(resolvedGraph)
         # plt.savefig("/Users/chaubold/test.pdf")
-
-        return labelImages
 
     def _minCostMaxFlowMergerResolving(self, objectFeatures, transitionClassifier=None, transitionParameter=5.0):
         """
@@ -333,7 +328,7 @@ class MergerResolver(object):
 
         return self.result
 
-    def _exportRefinedSegmentation(self, labelImages):
+    def _exportRefinedSegmentation(self, timesteps):
         """
         Store the resulting label images, if needed.
 
@@ -341,7 +336,7 @@ class MergerResolver(object):
         """
         pass
 
-    def _computeObjectFeatures(self, labelImages):
+    def _computeObjectFeatures(self, timesteps):
         '''
         Return the features per object as nested dictionaries:
         { (int(Timestep), int(Id)):{ "FeatureName" : np.array(value), "NextFeature": ...} }
@@ -373,14 +368,7 @@ class MergerResolver(object):
         # it may be, that there are no mergers, so do basically nothing, just copy all the ingoing data
         if len(mergers) == 0:
             getLogger().info("The maximum number of objects is 1, so nothing to be done. Writing the output...")
-            # segmentation
-
-            labelImages = {}
-            for t in timesteps:
-                # use image provider plugin to load labelimage
-                labelImage = self._readLabelImage(int(t))
-                labelImages[t] = labelImage
-            self._exportRefinedSegmentation(labelImages)
+            self._exportRefinedSegmentation(timesteps)
 
         else:
             self.mergersPerTimestep = hytra.core.jsongraph.getMergersPerTimestep(mergers, timesteps)
@@ -393,13 +381,13 @@ class MergerResolver(object):
             # set up unresolved graph and then refine the nodes to get the resolved graph
             self._createUnresolvedGraph(divisionsPerTimestep, self.mergersPerTimestep, mergerLinks)
             self._prepareResolvedGraph()
-            labelImages = self._refineSegmentation(self.detectionsPerTimestep,
-                                                   self.mergersPerTimestep,
-                                                   timesteps)
+            self._fitAndRefineNodes(self.detectionsPerTimestep,
+                                    self.mergersPerTimestep,
+                                    timesteps)
 
             # ------------------------------------------------------------
             # compute new object features
-            objectFeatures = self._computeObjectFeatures(labelImages)
+            objectFeatures = self._computeObjectFeatures(timesteps)
 
             # ------------------------------------------------------------
             # load transition classifier if any
@@ -451,7 +439,7 @@ class MergerResolver(object):
                                              mergerLinkFilter)
 
             # 3.) export refined segmentation
-            self._exportRefinedSegmentation(labelImages)
+            self._exportRefinedSegmentation(timesteps)
 
             # return a dictionary telling about which mergers were resolved into what
             mergerDict = {}
@@ -462,3 +450,29 @@ class MergerResolver(object):
                 mergerDict.setdefault(n[0], {})[n[1]] = self.unresolvedGraph.node[n]['newIds']
 
             return mergerDict
+    
+    def relabelMergers(self, labelImage, time):
+        """
+        Calls the merger resolving plugin to relabel the mergers based on a previously found fit,
+        which is stored in the hypotheses graph node
+        """
+        t = str(time)
+        
+        if self.detectionsPerTimestep is not None and t in self.detectionsPerTimestep:
+            for idx in self.detectionsPerTimestep[t]:
+                node = (time, idx)
+
+                if idx in self.mergersPerTimestep[t]:
+                    count = self.mergersPerTimestep[t][idx]
+                else:
+                    continue
+                getLogger().debug("Looking at node {} in timestep {} with count {}".format(idx, t, count))
+                
+                # use fits stored in graph
+                fits = self.unresolvedGraph.node[node]['fits']
+                newIds = self.unresolvedGraph.node[node]['newIds']
+                
+                # use merger resolving plugin to fit `count` objects, also updates labelimage!
+                self.mergerResolverPlugin.updateLabelImage(labelImage, idx, fits, newIds)
+          
+        return labelImage

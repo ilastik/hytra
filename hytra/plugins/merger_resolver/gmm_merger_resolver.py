@@ -23,12 +23,11 @@ class GMMMergerResolver(merger_resolver_plugin.MergerResolverPlugin):
     def resolveMerger(self, labelImage, objectId, nextId, mergerCount, initializations=[]):
         """
         Resolve the object with the ID `objectId` in the `labelImage` into `mergerCount`
-        new segments by fitting a Gaussian Mixture Model. The `initializations` provide fits
+        new segments by fitting some kind of model. The `initializations` provide fits
         in the preceding frame of all possible incomings (list may be empty, but could
         also be more than `mergerCount`).
 
-        `labelImage` should be updated by replacing all pixels that were labelled with `objectId`
-        to get a new Id depending on the fit, starting from `nextId`.
+        `labelImage` is used read-only, use `updateLabelImage` to refine the segmentation
 
         **returns** a list of fitted objects
         """
@@ -39,12 +38,22 @@ class GMMMergerResolver(merger_resolver_plugin.MergerResolverPlugin):
         gmm.fit(coordinates)
         assert(gmm.converged_)
 
-        if mergerCount > 1:
-            # edit labelimage in-place
-            responsibilities = gmm.predict(coordinates)
-            assert(len(np.unique(responsibilities)) == mergerCount)
-            newObjectIds = responsibilities + nextId
-            labelImage[labelImage == objectId] = newObjectIds
-
         return self.getObjectInitializationList(gmm)
 
+    def updateLabelImage(self, labelImage, objectId, fits, newIds):
+        """
+        Resolve the object with the ID `objectId` in the `labelImage` into the fitted models with the given new IDs.
+        `labelImage` should be updated by replacing all pixels that were labelled with `objectId`
+        to get a new Id depending on the fit.
+        """
+        
+        if len(fits) > 1:
+            assert(len(fits) == len(newIds))
+            # edit labelimage in-place
+            coordinates = np.transpose(np.vstack(np.where(labelImage == objectId)))
+            gmm = self.initGMM(len(fits), fits)
+            responsibilities = gmm.predict(coordinates)
+            assert(len(np.unique(responsibilities)) == len(fits))
+            newIds = np.array(newIds)
+            newObjectIds = newIds[responsibilities]
+            labelImage[labelImage == objectId] = newObjectIds
