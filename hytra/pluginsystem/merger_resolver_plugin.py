@@ -27,11 +27,18 @@ class MergerResolverPlugin(IPlugin):
         in the preceding frame of all possible incomings (list may be empty, but could
         also be more than `mergerCount`).
 
-        `labelImage` should be updated by replacing all pixels that were labelled with `objectId`
-        to get a new Id depending on the fit, starting from `nextId`.
+        `labelImage` is used read-only, use `updateLabelImage` to refine the segmentation
 
         **returns** a list of fitted objects
         """
         raise NotImplementedError()
 
         return []
+    
+    def updateLabelImage(self, labelImage, objectId, fits, newIds):
+        """
+        Resolve the object with the ID `objectId` in the `labelImage` into the fitted models with the given new IDs.
+        `labelImage` should be updated by replacing all pixels that were labelled with `objectId`
+        to get a new Id depending on the fit.
+        """
+        raise NotImplementedError()
