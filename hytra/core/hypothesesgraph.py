@@ -105,13 +105,13 @@ class HypothesesGraph(object):
 
     def _extractCenter(self, traxel):
         try:
-            # python traxelstore
+            # python probabilityGenerator
             if 'com' in traxel.Features:
                 return traxel.Features['com']
             else:
                 return traxel.Features['RegionCenter']
         except:
-            # C++ pgmlink traxelstore
+            # C++ pgmlink probabilityGenerator
             try:
                 return getTraxelFeatureVector(traxel, 'com')
             except:
@@ -162,9 +162,9 @@ class HypothesesGraph(object):
         self._nextNodeUuid += 1
 
     def buildFromProbabilityGenerator(self, probabilityGenerator, maxNeighborDist=200, numNearestNeighbors=1,
-                                      forwardBackwardCheck=True, withDivisions=True, divisionThreshold=0.1):
+                                      forwardBackwardCheck=True, withDivisions=True, divisionThreshold=0.1, additionalFrames=2):
         """
-        Takes a python traxelstore containing traxel features and finds probable links between frames.
+        Takes a python probabilityGenerator containing traxel features and finds probable links between frames.
         """
         assert (probabilityGenerator is not None)
         assert (len(probabilityGenerator.TraxelsPerFrame) > 0)
@@ -173,16 +173,21 @@ class HypothesesGraph(object):
             if (frame, obj) not in self._graph:
                 getLogger().warning("Adding node ({}, {}) when setting up links".format(frame, obj))
 
-        kdTreeNextFrame = None
+        kdTreeFrames = [None]*(additionalFrames+1)
+        # kdTreeNextFrame = None
         for frame in range(len(probabilityGenerator.TraxelsPerFrame.keys()) - 1):
             if frame > 0:
-                kdTreeThisFrame = kdTreeNextFrame
+                del kdTreeFrames[0] # this is the current frame
+                if frame + additionalFrames < len(probabilityGenerator.TraxelsPerFrame.keys()):
+                    kdTreeFrames.append(self._buildFrameKdTree(probabilityGenerator.TraxelsPerFrame[frame + additionalFrames]))
+                    self._addNodesForFrame(frame + additionalFrames, probabilityGenerator.TraxelsPerFrame[frame + additionalFrames])
+                else:
+                    kdTreeFrames.append(self._buildFrameKdTree(probabilityGenerator.TraxelsPerFrame[2*frame - additionalFrames - len(probabilityGenerator.TraxelsPerFrame.keys()) + 1]))
+                    self._addNodesForFrame(2*frame - additionalFrames - len(probabilityGenerator.TraxelsPerFrame.keys()) + 1, probabilityGenerator.TraxelsPerFrame[2*frame - additionalFrames - len(probabilityGenerator.TraxelsPerFrame.keys()) + 1])
             else:
-                kdTreeThisFrame = self._buildFrameKdTree(probabilityGenerator.TraxelsPerFrame[frame])
-                self._addNodesForFrame(frame, probabilityGenerator.TraxelsPerFrame[frame])
-
-            kdTreeNextFrame = self._buildFrameKdTree(probabilityGenerator.TraxelsPerFrame[frame + 1])
-            self._addNodesForFrame(frame + 1, probabilityGenerator.TraxelsPerFrame[frame + 1])
+                for i in range(0, additionalFrames+1):
+                    kdTreeFrames[i] = self._buildFrameKdTree(probabilityGenerator.TraxelsPerFrame[frame + i])
+                    self._addNodesForFrame(frame + i, probabilityGenerator.TraxelsPerFrame[frame + i])
 
             # find forward links
             for obj, traxel in probabilityGenerator.TraxelsPerFrame[frame].iteritems():
@@ -191,30 +196,38 @@ class HypothesesGraph(object):
                         and withDivisions \
                         and self._traxelMightDivide(traxel, divisionThreshold):
                     divisionPreservingNumNearestNeighbors = 2
-                neighbors = self._findNearestNeighbors(kdTreeNextFrame,
-                                                       traxel,
-                                                       divisionPreservingNumNearestNeighbors,
-                                                       maxNeighborDist)
-                for n in neighbors:
-                    checkNodeWhileAddingLinks(frame, obj)
-                    checkNodeWhileAddingLinks(frame + 1, n)
-                    self._graph.add_edge((frame, obj), (frame + 1, n))
-                    self._graph.edge[frame, obj][frame + 1, n]['src'] = self._graph.node[(frame, obj)]['id']
-                    self._graph.edge[frame, obj][frame + 1, n]['dest'] = self._graph.node[(frame + 1, n)]['id']
+                for i in range(1, additionalFrames+1):
+                    if frame + i < len(probabilityGenerator.TraxelsPerFrame.keys()):
+                        # print i, frame + i, len(probabilityGenerator.TraxelsPerFrame.keys()), "forward"
+                        neighbors = (self._findNearestNeighbors(kdTreeFrames[i],
+                                                           traxel,
+                                                           divisionPreservingNumNearestNeighbors,
+                                                           maxNeighborDist))
+                        # type(neighbors) is list
+                        for n in neighbors:
+                            checkNodeWhileAddingLinks(frame, obj)
+                            checkNodeWhileAddingLinks(frame + i, n)
+                            self._graph.add_edge((frame, obj), (frame + i, n))
+                            self._graph.edge[frame, obj][frame + i, n]['src'] = self._graph.node[(frame, obj)]['id']
+                            self._graph.edge[frame, obj][frame + i, n]['dest'] = self._graph.node[(frame + i, n)]['id']
 
             # find backward links
             if forwardBackwardCheck:
-                for obj, traxel in probabilityGenerator.TraxelsPerFrame[frame + 1].iteritems():
-                    neighbors = self._findNearestNeighbors(kdTreeThisFrame,
-                                                           traxel,
-                                                           numNearestNeighbors,
-                                                           maxNeighborDist)
-                    for n in neighbors:
-                        checkNodeWhileAddingLinks(frame, n)
-                        checkNodeWhileAddingLinks(frame + 1, obj)
-                        self._graph.add_edge((frame, n), (frame + 1, obj))
-                        self._graph.edge[frame, n][frame + 1, obj]['src'] = self._graph.node[(frame, n)]['id']
-                        self._graph.edge[frame, n][frame + 1, obj]['dest'] = self._graph.node[(frame + 1, obj)]['id']
+                for i in range(1, additionalFrames+1):
+                    if frame + i < len(probabilityGenerator.TraxelsPerFrame.keys()):
+                        for obj, traxel in probabilityGenerator.TraxelsPerFrame[frame + i].iteritems():
+                            # print i, frame + i, len(probabilityGenerator.TraxelsPerFrame.keys()), 'backward'
+                            neighbors = (self._findNearestNeighbors(kdTreeFrames[0],
+                                                               traxel,
+                                                               numNearestNeighbors,
+                                                               maxNeighborDist))
+                            for n in neighbors:
+                                # print frame, n, "in BACKWARD"
+                                checkNodeWhileAddingLinks(frame, n)
+                                checkNodeWhileAddingLinks(frame + i, obj)
+                                self._graph.add_edge((frame, n), (frame + i, obj))
+                                self._graph.edge[frame, n][frame + i, obj]['src'] = self._graph.node[(frame, n)]['id']
+                                self._graph.edge[frame, n][frame + i, obj]['dest'] = self._graph.node[(frame + i, obj)]['id']
 
     def generateTrackletGraph(self):
         '''
@@ -350,7 +363,21 @@ class HypothesesGraph(object):
                 srcTraxel = self._graph.node[self.source(a)]['tracklet'][-1]  # src is last of the traxels in source tracklet
                 destTraxel = self._graph.node[self.target(a)]['tracklet'][0]  # dest is first of traxels in destination tracklet
 
-            features = listify(negLog(transitionProbabilityFunc(srcTraxel, destTraxel)))
+            try:
+                features = listify(negLog(transitionProbabilityFunc(srcTraxel, destTraxel)))
+            except:
+                print srcTraxel, destTraxel  # TC debugging
+
+            # additional Frames add feature
+            frame_gap = destTraxel.Timestep - srcTraxel.Timestep
+            for feat in features:
+                feat.append(negLog([0.0])[0])
+                feat[frame_gap - 1], feat[0] = feat[0], feat[frame_gap - 1]
+                # divisions should not go beyond the next frame
+                divisionFeatures = divisionProbabilityFunc(srcTraxel)
+                # print divisionProbabilityFunc(srcTraxel)
+                if divisionFeatures is not None and divisionFeatures[1] > 0.4 and frame_gap - 1 != 0:
+                    feat[frame_gap - 1] = negLog([0.0])[0]
 
             self._graph.edge[a[0]][a[1]]['src'] = self._graph.node[a[0]]['id']
             self._graph.edge[a[0]][a[1]]['dest'] = self._graph.node[a[1]]['id']

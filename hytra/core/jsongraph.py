@@ -101,6 +101,7 @@ def getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps):
                 if div_timestep == int(t) - 1:
                     # we have an active division of the mother cell "div_idx" in the previous frame
                     children = [b for a,b in linksPerTimestep[t] if a == div_idx]
+                    # linksperTimestep + addFrames
                     assert(len(children) == 2)
                     divisionsPerTimestep[t][div_idx] = children
     else:
@@ -340,6 +341,9 @@ class JsonTrackingGraph(object):
         from hytra.core.hypothesesgraph import HypothesesGraph
         from hytra.core.probabilitygenerator import Traxel
 
+        # # unnecessary, already done in constructor!
+        # traxelIdPerTimestepToUniqueIdMap, self.uuidToTraxelMap = getMappingsBetweenUUIDsAndTraxels(self.model)
+
         # set up graph
         hypothesesGraph = HypothesesGraph()
         for s in self.model['segmentationHypotheses']:
@@ -352,10 +356,13 @@ class JsonTrackingGraph(object):
             # adding nodes automatically assigns UUIDs, we replace them by the loaded one
             hypothesesGraph._graph.node[(traxel.Timestep, traxel.Id)]['id'] = s['id']
 
-        # instert edges
+        # insert edges
         for l in self.model['linkingHypotheses']:
-            srcTracklet = self.uuidToTraxelMap[l['src']]
-            destTracklet = self.uuidToTraxelMap[l['dest']]
+            try:
+                srcTracklet = self.uuidToTraxelMap[l['src']]
+                destTracklet = self.uuidToTraxelMap[l['dest']]
+            except:
+                getLogger().warning("Failed finding {} from JSON['linkingHypotheses'] in uuidToTraxelMap".format((l['dest'], l['src'])))
             hypothesesGraph._graph.add_edge((srcTracklet[0][0], srcTracklet[0][1]), 
                                             ((destTracklet[0][0], destTracklet[0][1])))
 
