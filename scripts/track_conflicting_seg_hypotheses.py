@@ -49,11 +49,11 @@ def remap_label_image(label_images, mapping):
     return remapped_label_image
 
 def save_frame_to_tif(timestep, label_image, options):
-    if not options.is_groundtruth:
+    if options.is_groundtruth:
         filename = options.output_dir + '/man_track' + format(timestep, "0{}".format(options.filename_zero_padding)) + '.tif'
     else:
         filename = options.output_dir + '/mask' + format(timestep, "0{}".format(options.filename_zero_padding)) + '.tif'
-    label_image = np.swapaxes(label_image, 0, 1)
+    # label_image = np.swapaxes(label_image, 0, 1)
     if len(label_image.shape) == 2: # 2d
         vigra.impex.writeImage(label_image.astype('uint16'), filename)
     else: # 3D
@@ -73,6 +73,8 @@ def save_tracks(tracks, options):
         filename = options.output_dir + '/res_track.txt'
     with open(filename, 'wt') as f:
         for key, value in tracks.iteritems():
+            if key ==  None:
+                continue
             # our track value contains parent, begin, end
             # but here we need begin, end, parent. so swap
             f.write("{} {} {} {}\n".format(key, value[1], value[2], value[0]))
@@ -133,14 +135,13 @@ def run_pipeline(options):
     hypotheses_graph.insertEnergies()
     trackingGraph = hypotheses_graph.toTrackingGraph()
     
-    # if options.do_convexify:
-    #     logging.info("Convexifying graph energies...")
-    #     trackingGraph.convexifyCosts()
- 
+    if options.do_convexify:
+        logging.info("Convexifying graph energies...")
+        trackingGraph.convexifyCosts()
 
     # track
     logging.info("Run tracking...")
-    result = mht.track(trackingGraph.model, {"weights" : [10, 10, 500, 500]})
+    result = mht.track(trackingGraph.model, {"weights" : [10, 10, 10, 500, 500]})
 
     # insert the solution into the hypotheses graph and from that deduce the lineages
     hypotheses_graph.insertSolution(result)
@@ -217,15 +218,15 @@ if __name__ == "__main__":
                         help="axes ordering of the produced raw image, e.g. xyztc.")
 
     # Label images:
-    parser.add_argument('--label-image-file', type=str, dest='label_image_files', nargs='+',
+    parser.add_argument('--label-image-file', type=str, dest='label_image_files', action='append',
                       help='Label image filenames of the different segmentation hypotheses')
-    parser.add_argument('--label-image-path', dest='label_image_paths', type=str, nargs='+',
-                        default=['/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]'],
+    parser.add_argument('--label-image-path', dest='label_image_paths', type=str, action='append',
                         help='''internal hdf5 path to label image. If only exactly one argument is given, it will be used for all label images,
-                        otherwise there need to be as many label image paths as filenames''')
+                        otherwise there need to be as many label image paths as filenames.
+                        Defaults to "/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]" for all images if not specified''')
 
     # Output
-    parser.add_argument('--output-folder', type=str, dest='output_dir', default=None, required=True,
+    parser.add_argument('--ctc-output-dir', type=str, dest='output_dir', default=None, required=True,
                       help='foldername in which all the output is stored')
     parser.add_argument('--is-gt', dest='is_groundtruth', action='store_true')
     parser.add_argument('--ctc-filename-zero-pad-length', type=int, dest='filename_zero_padding', default='3')
@@ -239,7 +240,9 @@ if __name__ == "__main__":
         logging.basicConfig(level=logging.INFO)
     logging.debug("Ignoring unknown parameters: {}".format(unknown))
 
-    assert(len(options.label_image_files) > 1)
+    # assert(len(options.label_image_files) > 1)
+    if options.label_image_paths is None or len(options.label_image_paths) == 0:
+        options.label_image_paths = ['/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]']
     if len(options.label_image_paths) < len(options.label_image_files) and len(options.label_image_paths) == 1:
         options.label_image_paths = options.label_image_paths * len(options.label_image_files)   
     assert(len(options.label_image_paths) == len(options.label_image_files) )
