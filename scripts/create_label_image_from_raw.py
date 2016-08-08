@@ -51,6 +51,8 @@ if __name__ == "__main__":
     parser.add_argument("--prediction-axes", dest='prediction_axes', required=True, type=str,
                         help="axes ordering of the prediction map, e.g. txyzc")
     parser.add_argument('--label-image-file', type=str, dest='out', required=True, help='Filename of the resulting HDF5 labelimage')
+    parser.add_argument('--overwrite-threshold', type=float, dest='overwrite_threshold', default=None,
+                        help='By default, the threshold from the tracking project is used, but you can specify your own value if you want.')
     
     args, _ = parser.parse_known_args()
     
@@ -76,6 +78,13 @@ if __name__ == "__main__":
     print("Found PredictionMaps of shape {} (txyzc), using channel {}".format(
         predictionMaps.shape, 
         threshold_channel))
+    
+    if args.overwrite_threshold is not None:
+        assert(0 < args.overwrite_threshold < 1.0)
+        threshold_level = args.overwrite_threshold
+        print("Using user-provided threshold: {}".format(threshold_level))
+    else:
+        print("Using threshold from project-file: {}".format(threshold_level))
 
     progressBar = ProgressBar(stop=shape[0])
     progressBar.show(0)
