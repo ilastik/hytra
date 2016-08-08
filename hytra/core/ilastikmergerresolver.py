@@ -20,7 +20,6 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
         self.result = hypothesesGraph.getSolutionDictionary()
         self.hypothesesGraph = hypothesesGraph
         self.labelVolume = labelVolume
-        self.relabeledVolume = np.zeros(labelVolume.shape, dtype=np.uint32)
     
     def _readLabelImage(self, timeframe):
         '''
@@ -28,16 +27,13 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
         '''
         return self.labelVolume[timeframe, ..., 0]
     
-    def _exportRefinedSegmentation(self, labelImages):
+    def _exportRefinedSegmentation(self, timesteps):
         """
-        Store the resulting label images, if needed.
-
-        `labelImages` is a dictionary with str(timestep) as keys. 
+        nothing to be done here, ilastik requests these images lazily 
         """
-        for t, image in labelImages.iteritems():
-            self.relabeledVolume[int(t), ..., 0] = image
+        pass
 
-    def _computeObjectFeatures(self, labelImages):
+    def _computeObjectFeatures(self, timesteps):
         '''
         Return the features per object as nested dictionaries:
         { (int(Timestep), int(Id)):{ "FeatureName" : np.array(value), "NextFeature": ...} }
