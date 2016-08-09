@@ -554,7 +554,7 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
             for objectId in range(1, features.values()[0].shape[0]):
                 # print("Frame {} Object {}".format(frame, objectId))
                 pixelSize = features['Count'][objectId]
-                if pixelSize > 0 or (self._options.sizeFilter is not None \
+                if pixelSize == 0 or (self._options.sizeFilter is not None \
                         and (pixelSize < self._options.sizeFilter[0] \
                                      or pixelSize > self._options.sizeFilter[1])):
                     continue
