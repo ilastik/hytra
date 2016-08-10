@@ -162,7 +162,7 @@ class HypothesesGraph(object):
         self._nextNodeUuid += 1
 
     def buildFromProbabilityGenerator(self, probabilityGenerator, maxNeighborDist=200, numNearestNeighbors=1,
-                                      forwardBackwardCheck=True, withDivisions=True, divisionThreshold=0.1, additionalFrames=2):
+                                      forwardBackwardCheck=True, withDivisions=True, divisionThreshold=0.1, additionalFrames=1):
         """
         Takes a python probabilityGenerator containing traxel features and finds probable links between frames.
         """
@@ -368,16 +368,21 @@ class HypothesesGraph(object):
             except:
                 print srcTraxel, destTraxel  # TC debugging
 
-            # additional Frames add feature
+            # additional Frames add feature. iciii
             frame_gap = destTraxel.Timestep - srcTraxel.Timestep
-            for feat in features:
-                feat.append(negLog([0.0])[0])
-                feat[frame_gap - 1], feat[0] = feat[0], feat[frame_gap - 1]
-                # divisions should not go beyond the next frame
-                divisionFeatures = divisionProbabilityFunc(srcTraxel)
-                # print divisionProbabilityFunc(srcTraxel)
-                if divisionFeatures is not None and divisionFeatures[1] > 0.4 and frame_gap - 1 != 0:
-                    feat[frame_gap - 1] = negLog([0.0])[0]
+            if frame_gap > 1:
+                features[1][0] = features[1][0] + 11
+            print features
+
+            # weight version. CH
+            # frame_gap = destTraxel.Timestep - srcTraxel.Timestep
+            # # features[0].append(0+negLog([1.0])[0])
+            # # features[1].append(negLog([0.0])[0])
+            # for feat in features:
+            #     feat.append(negLog([0.0])[0])
+            #     feat[frame_gap - 1], feat[0] = feat[0], feat[frame_gap - 1]
+            #     # feat[1] = 10**3 +feat[1]
+            # print "gap", frame_gap, features
 
             self._graph.edge[a[0]][a[1]]['src'] = self._graph.node[a[0]]['id']
             self._graph.edge[a[0]][a[1]]['dest'] = self._graph.node[a[1]]['id']
@@ -475,6 +480,7 @@ class HypothesesGraph(object):
         Add solution values to nodes and arcs from dictionary representation of solution.
         The resulting graph (=model) gets an additional property "value" that represents the number of objects inside a detection/arc
         Additionally a division indicator is saved in the node property "divisionValue".
+        The link also gets a new attribute: the gap that is covered. E.g. 1, if consecutive timeframes, 2 if link skipping one timeframe.
         '''
         _, uuidToTraxelMap = self.getMappingsBetweenUUIDsAndTraxels()
 
@@ -494,6 +500,7 @@ class HypothesesGraph(object):
             for link in resultDictionary["linkingResults"]:
                 source, dest = uuidToTraxelMap[link["src"]][-1], uuidToTraxelMap[link["dest"]][0]
                 traxelgraph._graph.edge[source][dest]['value'] = link["value"]
+                traxelgraph._graph.edge[source][dest]['gap'] = dest[0] - source[0]
 
         if "divisionResults" in resultDictionary and resultDictionary["divisionResults"] is not None:
             for division in resultDictionary["divisionResults"]:
@@ -533,6 +540,7 @@ class HypothesesGraph(object):
             newLink['src'] = traxelgraph._graph.node[src]['id']
             newLink['dest'] = traxelgraph._graph.node[dest]['id']
             newLink['value'] = traxelgraph._graph.edge[src][dest]['value']
+            newLink['gap'] = traxelgraph._graph.edge[src][dest]['gap']
             linkList.append(newLink)
 
         resultDictionary["detectionResults"] = detectionList
@@ -614,6 +622,13 @@ class HypothesesGraph(object):
                 traxelgraph._graph.node[current_node]['children'] = []
                 for a in traxelgraph._graph.out_edges(current_node):
                     if 'value' in traxelgraph._graph.edge[current_node][a[1]] and traxelgraph._graph.edge[current_node][a[1]]['value'] > 0:
+                        if 'gap' in traxelgraph._graph.edge[current_node][a[1]] and traxelgraph._graph.edge[current_node][a[1]]['gap'] == 1:
+                            traxelgraph._graph.node[a[1]]['gap'] = 1
+                        if 'gap' in traxelgraph._graph.edge[current_node][a[1]] and traxelgraph._graph.edge[current_node][a[1]]['gap'] > 1:
+                            # print traxelgraph._graph.edge[current_node]
+                            # print current_node, [a[1]]
+                            traxelgraph._graph.node[a[1]]['gap'] = 2
+
                         traxelgraph._graph.node[current_node]['children'].append(a[1])
                         traxelgraph._graph.node[a[1]]['parent'] = current_node
                         update_queue.append((traxelgraph.target(a),
@@ -626,9 +641,20 @@ class HypothesesGraph(object):
 
                 for a in traxelgraph._graph.out_edges(current_node):
                     if 'value' in traxelgraph._graph.edge[current_node][a[1]] and traxelgraph._graph.edge[current_node][a[1]]['value'] > 0:
-                        update_queue.append((traxelgraph.target(a),
+                        if 'gap' in traxelgraph._graph.edge[current_node][a[1]] and traxelgraph._graph.edge[current_node][a[1]]['gap'] == 1:
+                            traxelgraph._graph.node[a[1]]['gap'] = 1
+                            update_queue.append((traxelgraph.target(a),
                                             lineage_id,
                                             track_id))
+                        if 'gap' in traxelgraph._graph.edge[current_node][a[1]] and traxelgraph._graph.edge[current_node][a[1]]['gap'] > 1:
+                            # print traxelgraph._graph.edge[current_node]
+                            # print current_node, [a[1]]
+                            traxelgraph._graph.node[a[1]]['gap'] = 2
+                            traxelgraph._graph.node[a[1]]['gap_parent'] = current_node
+                            update_queue.append((traxelgraph.target(a),
+                                            lineage_id,
+                                            max_track_id))
+                            max_track_id += 1
                 
 
     def pruneGraphToSolution(self, distanceToSolution=0):

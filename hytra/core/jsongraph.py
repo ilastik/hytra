@@ -101,7 +101,6 @@ def getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps):
                 if div_timestep == int(t) - 1:
                     # we have an active division of the mother cell "div_idx" in the previous frame
                     children = [b for a,b in linksPerTimestep[t] if a == div_idx]
-                    # linksperTimestep + addFrames
                     assert(len(children) == 2)
                     divisionsPerTimestep[t][div_idx] = children
     else:
