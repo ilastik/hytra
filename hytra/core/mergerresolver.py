@@ -431,6 +431,7 @@ class MergerResolver(object):
                 srcTraxels = uuidToTraxelMap[srcUuid]
                 destTraxels = uuidToTraxelMap[destUuid]
                 return not any((str(destT[0]), (srcT[1], destT[1])) in mergerLinks for srcT, destT in itertools.product(srcTraxels, destTraxels))
+                # return not any(t[1] in mergersPerTimestep[str(t[0])] for t in srcTraxels) and not any(t[1] in mergersPerTimestep[str(t[0])] for t in destTraxels)
 
             self.model = self._refineModel(uuidToTraxelMap,
                                            traxelIdPerTimestepToUniqueIdMap,
