@@ -53,6 +53,8 @@ if __name__ == "__main__":
     parser.add_argument('--label-image-file', type=str, dest='out', required=True, help='Filename of the resulting HDF5 labelimage')
     parser.add_argument('--overwrite-threshold', type=float, dest='overwrite_threshold', default=None,
                         help='By default, the threshold from the tracking project is used, but you can specify your own value if you want.')
+    parser.add_argument('--overwrite-channel', type=int, dest='overwrite_channel', default=None,
+                        help='By default, the channel from the tracking project is used, but you can specify your own value if you want.')
     
     args, _ = parser.parse_known_args()
     
@@ -75,10 +77,7 @@ if __name__ == "__main__":
     predictionMaps = hytra.util.axesconversion.adjustOrder(predictionMaps, args.prediction_axes, 'txyzc')
     shape = predictionMaps.shape
 
-    print("Found PredictionMaps of shape {} (txyzc), using channel {}".format(
-        predictionMaps.shape, 
-        threshold_channel))
-    
+    # is the threshold overwritten on the command line? 
     if args.overwrite_threshold is not None:
         assert(0 < args.overwrite_threshold < 1.0)
         threshold_level = args.overwrite_threshold
@@ -86,6 +85,18 @@ if __name__ == "__main__":
     else:
         print("Using threshold from project-file: {}".format(threshold_level))
 
+    # is the channel overwritten on the command line?
+    if args.overwrite_channel is not None:
+        assert(0 < args.overwrite_channel < 1.0)
+        threshold_channel = args.overwrite_channel
+        print("Using user-provided channel: {}".format(threshold_channel))
+    else:
+        print("Using channel from project-file: {}".format(threshold_channel))
+
+    print("Found PredictionMaps of shape {} (txyzc), using channel {}".format(
+        predictionMaps.shape, 
+        threshold_channel))
+        
     progressBar = ProgressBar(stop=shape[0])
     progressBar.show(0)
 
