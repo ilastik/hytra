@@ -198,7 +198,6 @@ class HypothesesGraph(object):
                     divisionPreservingNumNearestNeighbors = 2
                 for i in range(1, linksToNumNextFrames+1):
                     if frame + i < len(probabilityGenerator.TraxelsPerFrame.keys()):
-                        # print i, frame + i, len(probabilityGenerator.TraxelsPerFrame.keys()), "forward"
                         neighbors = (self._findNearestNeighbors(kdTreeFrames[i],
                                                            traxel,
                                                            divisionPreservingNumNearestNeighbors,
@@ -216,13 +215,11 @@ class HypothesesGraph(object):
                 for i in range(1, linksToNumNextFrames+1):
                     if frame + i < len(probabilityGenerator.TraxelsPerFrame.keys()):
                         for obj, traxel in probabilityGenerator.TraxelsPerFrame[frame + i].iteritems():
-                            # print i, frame + i, len(probabilityGenerator.TraxelsPerFrame.keys()), 'backward'
                             neighbors = (self._findNearestNeighbors(kdTreeFrames[0],
                                                                traxel,
                                                                numNearestNeighbors,
                                                                maxNeighborDist))
                             for n in neighbors:
-                                # print frame, n, "in BACKWARD"
                                 checkNodeWhileAddingLinks(frame, n)
                                 checkNodeWhileAddingLinks(frame + i, obj)
                                 self._graph.add_edge((frame, n), (frame + i, obj))
@@ -363,16 +360,13 @@ class HypothesesGraph(object):
                 srcTraxel = self._graph.node[self.source(a)]['tracklet'][-1]  # src is last of the traxels in source tracklet
                 destTraxel = self._graph.node[self.target(a)]['tracklet'][0]  # dest is first of traxels in destination tracklet
 
-            try:
-                features = listify(negLog(transitionProbabilityFunc(srcTraxel, destTraxel)))
-            except:
-                print srcTraxel, destTraxel  # TC debugging
+            features = listify(negLog(transitionProbabilityFunc(srcTraxel, destTraxel)))
 
             # additional Frames add feature. iciii
             frame_gap = destTraxel.Timestep - srcTraxel.Timestep
             if frame_gap > 1:
                 features[1][0] = features[1][0] + 11
-            print features
+            # print features
 
             # weight version. CH
             # frame_gap = destTraxel.Timestep - srcTraxel.Timestep
@@ -625,8 +619,6 @@ class HypothesesGraph(object):
                         if 'gap' in traxelgraph._graph.edge[current_node][a[1]] and traxelgraph._graph.edge[current_node][a[1]]['gap'] == 1:
                             traxelgraph._graph.node[a[1]]['gap'] = 1
                         if 'gap' in traxelgraph._graph.edge[current_node][a[1]] and traxelgraph._graph.edge[current_node][a[1]]['gap'] > 1:
-                            # print traxelgraph._graph.edge[current_node]
-                            # print current_node, [a[1]]
                             traxelgraph._graph.node[a[1]]['gap'] = 2
 
                         traxelgraph._graph.node[current_node]['children'].append(a[1])
@@ -647,8 +639,6 @@ class HypothesesGraph(object):
                                             lineage_id,
                                             track_id))
                         if 'gap' in traxelgraph._graph.edge[current_node][a[1]] and traxelgraph._graph.edge[current_node][a[1]]['gap'] > 1:
-                            # print traxelgraph._graph.edge[current_node]
-                            # print current_node, [a[1]]
                             traxelgraph._graph.node[a[1]]['gap'] = 2
                             traxelgraph._graph.node[a[1]]['gap_parent'] = current_node
                             update_queue.append((traxelgraph.target(a),
