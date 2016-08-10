@@ -17,14 +17,6 @@ from hytra.core.ilastikhypothesesgraph import IlastikHypothesesGraph
 from hytra.core.fieldofview import FieldOfView
 from hytra.pluginsystem.plugin_manager import TrackingPluginManager
 
-try:
-    import multiHypoTracking_with_cplex as mht
-except ImportError:
-    try:
-        import multiHypoTracking_with_gurobi as mht
-    except ImportError:
-        raise ImportError("No version of ILP solver found")
-
 def getLogger():
     return logging.getLogger("track_conflicting_seg_hypotheses")
 
@@ -141,7 +133,23 @@ def run_pipeline(options):
 
     # track
     logging.info("Run tracking...")
-    result = mht.track(trackingGraph.model, {"weights" : [10, 10, 10, 500, 500]})
+    if withDivisions:
+        weights = {"weights" : [10, 10, 10, 500, 500]}
+    else:
+        weights = {"weights" : [10, 10, 500, 500]}
+
+    if options.use_flow_solver:
+        import dpct
+        result = dpct.trackFlowBased(trackingGraph.model, weights)
+    else:
+        try:
+            import multiHypoTracking_with_cplex as mht
+        except ImportError:
+            try:
+                import multiHypoTracking_with_gurobi as mht
+            except ImportError:
+                raise ImportError("No version of ILP solver found")
+        result = mht.track(trackingGraph.model, weights)
 
     # insert the solution into the hypotheses graph and from that deduce the lineages
     hypotheses_graph.insertSolution(result)
@@ -208,6 +216,9 @@ if __name__ == "__main__":
                         help='A list of paths to search for plugins for the tracking pipeline.')
     parser.add_argument("--verbose", dest='verbose', action='store_true', default=False)
     parser.add_argument('--with-divisions', dest='with_divisions', action='store_true')
+
+    parser.add_argument("--use-flow-solver", dest='use_flow_solver', action='store_true',
+                        help='Switch to non-optimal solver instead of ILP solver')
 
     # Raw Data:
     parser.add_argument('--raw-data-file', type=str, dest='raw_data_file', default=None,
