@@ -73,9 +73,11 @@ if __name__ == "__main__":
     with h5py.File(args.predictionMapFilename) as f:
         predictionMaps = f[args.predictionPath].value
 
-    ndim = len(predictionMaps.squeeze().shape) - 2
     predictionMaps = hytra.util.axesconversion.adjustOrder(predictionMaps, args.prediction_axes, 'txyzc')
     shape = predictionMaps.shape
+    ndim = 2
+    if shape[3] > 1:
+        ndim == 3
 
     # is the threshold overwritten on the command line? 
     if args.overwrite_threshold is not None:
