@@ -87,7 +87,6 @@ if __name__ == "__main__":
 
     # is the channel overwritten on the command line?
     if args.overwrite_channel is not None:
-        assert(0 < args.overwrite_channel < 1.0)
         threshold_channel = args.overwrite_channel
         print("Using user-provided channel: {}".format(threshold_channel))
     else:
@@ -96,7 +95,7 @@ if __name__ == "__main__":
     print("Found PredictionMaps of shape {} (txyzc), using channel {}".format(
         predictionMaps.shape, 
         threshold_channel))
-        
+
     progressBar = ProgressBar(stop=shape[0])
     progressBar.show(0)
 
