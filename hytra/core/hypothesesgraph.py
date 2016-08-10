@@ -162,7 +162,7 @@ class HypothesesGraph(object):
         self._nextNodeUuid += 1
 
     def buildFromProbabilityGenerator(self, probabilityGenerator, maxNeighborDist=200, numNearestNeighbors=1,
-                                      forwardBackwardCheck=True, withDivisions=True, divisionThreshold=0.1, additionalFrames=1):
+                                      forwardBackwardCheck=True, withDivisions=True, divisionThreshold=0.1, linksToNumNextFrames=1):
         """
         Takes a python probabilityGenerator containing traxel features and finds probable links between frames.
         """
@@ -173,19 +173,19 @@ class HypothesesGraph(object):
             if (frame, obj) not in self._graph:
                 getLogger().warning("Adding node ({}, {}) when setting up links".format(frame, obj))
 
-        kdTreeFrames = [None]*(additionalFrames+1)
+        kdTreeFrames = [None]*(linksToNumNextFrames+1)
         # kdTreeNextFrame = None
         for frame in range(len(probabilityGenerator.TraxelsPerFrame.keys()) - 1):
             if frame > 0:
                 del kdTreeFrames[0] # this is the current frame
-                if frame + additionalFrames < len(probabilityGenerator.TraxelsPerFrame.keys()):
-                    kdTreeFrames.append(self._buildFrameKdTree(probabilityGenerator.TraxelsPerFrame[frame + additionalFrames]))
-                    self._addNodesForFrame(frame + additionalFrames, probabilityGenerator.TraxelsPerFrame[frame + additionalFrames])
+                if frame + linksToNumNextFrames < len(probabilityGenerator.TraxelsPerFrame.keys()):
+                    kdTreeFrames.append(self._buildFrameKdTree(probabilityGenerator.TraxelsPerFrame[frame + linksToNumNextFrames]))
+                    self._addNodesForFrame(frame + linksToNumNextFrames, probabilityGenerator.TraxelsPerFrame[frame + linksToNumNextFrames])
                 else:
-                    kdTreeFrames.append(self._buildFrameKdTree(probabilityGenerator.TraxelsPerFrame[2*frame - additionalFrames - len(probabilityGenerator.TraxelsPerFrame.keys()) + 1]))
-                    self._addNodesForFrame(2*frame - additionalFrames - len(probabilityGenerator.TraxelsPerFrame.keys()) + 1, probabilityGenerator.TraxelsPerFrame[2*frame - additionalFrames - len(probabilityGenerator.TraxelsPerFrame.keys()) + 1])
+                    kdTreeFrames.append(self._buildFrameKdTree(probabilityGenerator.TraxelsPerFrame[2*frame - linksToNumNextFrames - len(probabilityGenerator.TraxelsPerFrame.keys()) + 1]))
+                    self._addNodesForFrame(2*frame - linksToNumNextFrames - len(probabilityGenerator.TraxelsPerFrame.keys()) + 1, probabilityGenerator.TraxelsPerFrame[2*frame - linksToNumNextFrames - len(probabilityGenerator.TraxelsPerFrame.keys()) + 1])
             else:
-                for i in range(0, additionalFrames+1):
+                for i in range(0, linksToNumNextFrames+1):
                     kdTreeFrames[i] = self._buildFrameKdTree(probabilityGenerator.TraxelsPerFrame[frame + i])
                     self._addNodesForFrame(frame + i, probabilityGenerator.TraxelsPerFrame[frame + i])
 
@@ -196,7 +196,7 @@ class HypothesesGraph(object):
                         and withDivisions \
                         and self._traxelMightDivide(traxel, divisionThreshold):
                     divisionPreservingNumNearestNeighbors = 2
-                for i in range(1, additionalFrames+1):
+                for i in range(1, linksToNumNextFrames+1):
                     if frame + i < len(probabilityGenerator.TraxelsPerFrame.keys()):
                         # print i, frame + i, len(probabilityGenerator.TraxelsPerFrame.keys()), "forward"
                         neighbors = (self._findNearestNeighbors(kdTreeFrames[i],
@@ -213,7 +213,7 @@ class HypothesesGraph(object):
 
             # find backward links
             if forwardBackwardCheck:
-                for i in range(1, additionalFrames+1):
+                for i in range(1, linksToNumNextFrames+1):
                     if frame + i < len(probabilityGenerator.TraxelsPerFrame.keys()):
                         for obj, traxel in probabilityGenerator.TraxelsPerFrame[frame + i].iteritems():
                             # print i, frame + i, len(probabilityGenerator.TraxelsPerFrame.keys()), 'backward'

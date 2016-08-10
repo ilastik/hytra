@@ -24,7 +24,8 @@ class IlastikHypothesesGraph(HypothesesGraph):
                  borderAwareWidth=10,
                  maxNeighborDistance=200,
                  transitionParameter=5.0,
-                 transitionClassifier=None):
+                 transitionClassifier=None,
+                 linksToNumNextFrames=1):
         '''
         Constructor
         '''
@@ -42,13 +43,15 @@ class IlastikHypothesesGraph(HypothesesGraph):
         self.maxNeighborDistance = maxNeighborDistance
         self.transitionClassifier = transitionClassifier
         self.transitionParameter = transitionParameter
+        self.linksToNumNextFrames = linksToNumNextFrames
 
         # build hypotheses graph
         self.buildFromProbabilityGenerator(probabilityGenerator,
                                            numNearestNeighbors=numNearestNeighbors,
                                            maxNeighborDist=maxNeighborDistance,
                                            withDivisions=withDivisions,
-                                           divisionThreshold=0.1)
+                                           divisionThreshold=divisionThreshold,
+                                           linksToNumNextFrames=linksToNumNextFrames)
 
     def insertEnergies(self):
         """
