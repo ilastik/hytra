@@ -423,7 +423,8 @@ class MergerResolver(object):
                 destUuid = int(jsonLink['dest'])
                 srcTraxels = uuidToTraxelMap[srcUuid]
                 destTraxels = uuidToTraxelMap[destUuid]
-                return not any((str(destT[0]), (srcT[1], destT[1])) in mergerLinks for srcT, destT in itertools.product(srcTraxels, destTraxels))
+                # return True if there was no traxel in either source or target node that was a merger.
+                return not (any(t[1] in self.mergersPerTimestep[str(t[0])] for t in srcTraxels) or any(t[1] in self.mergersPerTimestep[str(t[0])] for t in destTraxels))
 
             self.model = self._refineModel(uuidToTraxelMap,
                                            traxelIdPerTimestepToUniqueIdMap,
