@@ -101,7 +101,7 @@ def run_pipeline(options):
         options.label_image_files[1:],
         options.label_image_paths[1:],
         pluginPaths=['../hytra/plugins'],
-        useMultiprocessing=False)
+        useMultiprocessing=not options.disableMultiprocessing)
 
     probGenerator.fillTraxels(usePgmlink=False)
     fieldOfView = constructFov(probGenerator.shape,
@@ -219,6 +219,9 @@ if __name__ == "__main__":
 
     parser.add_argument("--use-flow-solver", dest='use_flow_solver', action='store_true',
                         help='Switch to non-optimal solver instead of ILP solver')
+    parser.add_argument('--disable-multiprocessing', dest='disableMultiprocessing', action='store_true',
+                        help='Do not use multiprocessing to speed up computation',
+                        default=False)
 
     # Raw Data:
     parser.add_argument('--raw-data-file', type=str, dest='raw_data_file', default=None,
