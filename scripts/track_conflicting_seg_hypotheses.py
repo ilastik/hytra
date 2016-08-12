@@ -88,11 +88,13 @@ def run_pipeline(options):
     ilpOptions.rawImageAxes = options.raw_data_axes
     
     ilpOptions.sizeFilter = [10, 100000]
-    ilpOptions.objectCountClassifierFilename = options.ilastik_tracking_project
-
+    ilpOptions.objectCountClassifierFilename = options.obj_count_classifier_file
+    ilpOptions.objectCountClassifierPath = options.obj_count_classifier_path
+    
     withDivisions = options.with_divisions
     if withDivisions:
-        ilpOptions.divisionClassifierFilename = options.ilastik_tracking_project
+        ilpOptions.divisionClassifierFilename = options.div_classifier_file
+        ilpOptions.divisionClassifierPath = options.div_classifier_path
     else:
         ilpOptions.divisionClassifierFilename = None
 
@@ -209,8 +211,6 @@ if __name__ == "__main__":
     parser.add_argument('-c', '--config', is_config_file=True, help='config file path', dest='config_file', required=False)
 
     parser.add_argument("--do-convexify", dest='do_convexify', action='store_true', default=False)
-    parser.add_argument("--ilastik-tracking-project", dest='ilastik_tracking_project', required=True,
-                        type=str, help='ilastik tracking project file that contains the chosen weights')
     parser.add_argument('--plugin-paths', dest='pluginPaths', type=str, nargs='+',
                         default=[os.path.abspath('../hytra/plugins')],
                         help='A list of paths to search for plugins for the tracking pipeline.')
@@ -238,6 +238,20 @@ if __name__ == "__main__":
                         help='''internal hdf5 path to label image. If only exactly one argument is given, it will be used for all label images,
                         otherwise there need to be as many label image paths as filenames.
                         Defaults to "/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]" for all images if not specified''')
+    
+    # classifiers:
+    parser.add_argument('--object-count-classifier-path', dest='obj_count_classifier_path', type=str,
+                        default='/CountClassification/Probabilities/0/',
+                        help='internal hdf5 path to object count probabilities')
+    parser.add_argument('--object-count-classifier-file', dest='obj_count_classifier_file', type=str, required=True,
+                        help='Filename of the HDF file containing the object count classifier.')
+    parser.add_argument('--division-classifier-path', dest='div_classifier_path', type=str, default='/DivisionDetection/Probabilities/0/',
+                        help='internal hdf5 path to division probabilities')
+    parser.add_argument('--division-classifier-file', dest='div_classifier_file', type=str, default=None,
+                        help='Filename of the HDF file containing the division classifier.')
+    parser.add_argument('--transition-classifier-file', dest='transition_classifier_filename', type=str,
+                        default=None)
+    parser.add_argument('--transition-classifier-path', dest='transition_classifier_path', type=str, default='/')
 
     # Output
     parser.add_argument('--ctc-output-dir', type=str, dest='output_dir', default=None, required=True,
