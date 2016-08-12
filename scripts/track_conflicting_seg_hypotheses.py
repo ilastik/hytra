@@ -17,14 +17,6 @@ from hytra.core.ilastikhypothesesgraph import IlastikHypothesesGraph
 from hytra.core.fieldofview import FieldOfView
 from hytra.pluginsystem.plugin_manager import TrackingPluginManager
 
-try:
-    import multiHypoTracking_with_cplex as mht
-except ImportError:
-    try:
-        import multiHypoTracking_with_gurobi as mht
-    except ImportError:
-        raise ImportError("No version of ILP solver found")
-
 def getLogger():
     return logging.getLogger("track_conflicting_seg_hypotheses")
 
@@ -96,11 +88,13 @@ def run_pipeline(options):
     ilpOptions.rawImageAxes = options.raw_data_axes
     
     ilpOptions.sizeFilter = [10, 100000]
-    ilpOptions.objectCountClassifierFilename = options.ilastik_tracking_project
-
+    ilpOptions.objectCountClassifierFilename = options.obj_count_classifier_file
+    ilpOptions.objectCountClassifierPath = options.obj_count_classifier_path
+    
     withDivisions = options.with_divisions
     if withDivisions:
-        ilpOptions.divisionClassifierFilename = options.ilastik_tracking_project
+        ilpOptions.divisionClassifierFilename = options.div_classifier_file
+        ilpOptions.divisionClassifierPath = options.div_classifier_path
     else:
         ilpOptions.divisionClassifierFilename = None
 
@@ -109,7 +103,7 @@ def run_pipeline(options):
         options.label_image_files[1:],
         options.label_image_paths[1:],
         pluginPaths=['../hytra/plugins'],
-        useMultiprocessing=False)
+        useMultiprocessing=not options.disableMultiprocessing)
 
     probGenerator.fillTraxels(usePgmlink=False)
     fieldOfView = constructFov(probGenerator.shape,
@@ -119,6 +113,7 @@ def run_pipeline(options):
                                 probGenerator.y_scale,
                                 probGenerator.z_scale])
 
+    getLogger().info("Building hypotheses graph")
     hypotheses_graph = IlastikHypothesesGraph(
         probabilityGenerator=probGenerator,
         timeRange=probGenerator.timeRange,
@@ -132,18 +127,36 @@ def run_pipeline(options):
     # if options.with_tracklets:
     #     hypotheses_graph = hypotheses_graph.generateTrackletGraph()
 
+    getLogger().info("Preparing for tracking")
     hypotheses_graph.insertEnergies()
     trackingGraph = hypotheses_graph.toTrackingGraph()
     
     if options.do_convexify:
-        logging.info("Convexifying graph energies...")
+        getLogger().info("Convexifying graph energies...")
         trackingGraph.convexifyCosts()
 
     # track
-    logging.info("Run tracking...")
-    result = mht.track(trackingGraph.model, {"weights" : [10, 10, 10, 500, 500]})
+    getLogger().info("Run tracking...")
+    if withDivisions:
+        weights = {"weights" : [10, 10, 10, 500, 500]}
+    else:
+        weights = {"weights" : [10, 10, 500, 500]}
+
+    if options.use_flow_solver:
+        import dpct
+        result = dpct.trackFlowBased(trackingGraph.model, weights)
+    else:
+        try:
+            import multiHypoTracking_with_cplex as mht
+        except ImportError:
+            try:
+                import multiHypoTracking_with_gurobi as mht
+            except ImportError:
+                raise ImportError("No version of ILP solver found")
+        result = mht.track(trackingGraph.model, weights)
 
     # insert the solution into the hypotheses graph and from that deduce the lineages
+    getLogger().info("Inserting solution into graph")
     hypotheses_graph.insertSolution(result)
     hypotheses_graph.computeLineage()
 
@@ -168,7 +181,7 @@ def run_pipeline(options):
             trackParents[trackId] = hypotheses_graph._graph.node[hypotheses_graph._graph.node[n]['parent']]['trackId']
 
     # write res_track.txt
-    getLogger().debug("Writing track text file")
+    getLogger().info("Writing track text file")
     trackDict = {}
     for trackId, timestepList in tracks.iteritems():
         timestepList.sort()
@@ -180,7 +193,7 @@ def run_pipeline(options):
     save_tracks(trackDict, options) 
 
     # export results
-    getLogger().debug("Saving relabeled images")
+    getLogger().info("Saving relabeled images")
     pluginManager = TrackingPluginManager(verbose=options.verbose, pluginPaths=options.pluginPaths)
     pluginManager.setImageProvider('LocalImageLoader')
     imageProvider = pluginManager.getImageProvider()
@@ -201,13 +214,17 @@ if __name__ == "__main__":
     parser.add_argument('-c', '--config', is_config_file=True, help='config file path', dest='config_file', required=False)
 
     parser.add_argument("--do-convexify", dest='do_convexify', action='store_true', default=False)
-    parser.add_argument("--ilastik-tracking-project", dest='ilastik_tracking_project', required=True,
-                        type=str, help='ilastik tracking project file that contains the chosen weights')
     parser.add_argument('--plugin-paths', dest='pluginPaths', type=str, nargs='+',
                         default=[os.path.abspath('../hytra/plugins')],
                         help='A list of paths to search for plugins for the tracking pipeline.')
     parser.add_argument("--verbose", dest='verbose', action='store_true', default=False)
     parser.add_argument('--with-divisions', dest='with_divisions', action='store_true')
+
+    parser.add_argument("--use-flow-solver", dest='use_flow_solver', action='store_true',
+                        help='Switch to non-optimal solver instead of ILP solver')
+    parser.add_argument('--disable-multiprocessing', dest='disableMultiprocessing', action='store_true',
+                        help='Do not use multiprocessing to speed up computation',
+                        default=False)
 
     # Raw Data:
     parser.add_argument('--raw-data-file', type=str, dest='raw_data_file', default=None,
@@ -224,6 +241,20 @@ if __name__ == "__main__":
                         help='''internal hdf5 path to label image. If only exactly one argument is given, it will be used for all label images,
                         otherwise there need to be as many label image paths as filenames.
                         Defaults to "/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]" for all images if not specified''')
+    
+    # classifiers:
+    parser.add_argument('--object-count-classifier-path', dest='obj_count_classifier_path', type=str,
+                        default='/CountClassification/Probabilities/0/',
+                        help='internal hdf5 path to object count probabilities')
+    parser.add_argument('--object-count-classifier-file', dest='obj_count_classifier_file', type=str, required=True,
+                        help='Filename of the HDF file containing the object count classifier.')
+    parser.add_argument('--division-classifier-path', dest='div_classifier_path', type=str, default='/DivisionDetection/Probabilities/0/',
+                        help='internal hdf5 path to division probabilities')
+    parser.add_argument('--division-classifier-file', dest='div_classifier_file', type=str, default=None,
+                        help='Filename of the HDF file containing the division classifier.')
+    parser.add_argument('--transition-classifier-file', dest='transition_classifier_filename', type=str,
+                        default=None)
+    parser.add_argument('--transition-classifier-path', dest='transition_classifier_path', type=str, default='/')
 
     # Output
     parser.add_argument('--ctc-output-dir', type=str, dest='output_dir', default=None, required=True,

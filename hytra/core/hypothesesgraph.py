@@ -177,7 +177,10 @@ class HypothesesGraph(object):
                 getLogger().warning("Adding node ({}, {}) when setting up links".format(frame, obj))
 
         kdTreeNextFrame = None
-        for frame in range(len(probabilityGenerator.TraxelsPerFrame.keys()) - 1):
+        numFrames = len(probabilityGenerator.TraxelsPerFrame.keys())
+        progressBar = ProgressBar(stop=numFrames)
+        progressBar.show(0)
+        for frame in range(numFrames - 1):
             if frame > 0:
                 kdTreeThisFrame = kdTreeNextFrame
             else:
@@ -218,6 +221,8 @@ class HypothesesGraph(object):
                         self._graph.add_edge((frame, n), (frame + 1, obj))
                         self._graph.edge[frame, n][frame + 1, obj]['src'] = self._graph.node[(frame, n)]['id']
                         self._graph.edge[frame, n][frame + 1, obj]['dest'] = self._graph.node[(frame + 1, obj)]['id']
+            progressBar.show()
+        progressBar.show()
 
     def generateTrackletGraph(self):
         '''
