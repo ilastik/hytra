@@ -113,6 +113,7 @@ def run_pipeline(options):
                                 probGenerator.y_scale,
                                 probGenerator.z_scale])
 
+    getLogger().info("Building hypotheses graph")
     hypotheses_graph = IlastikHypothesesGraph(
         probabilityGenerator=probGenerator,
         timeRange=probGenerator.timeRange,
@@ -126,15 +127,16 @@ def run_pipeline(options):
     # if options.with_tracklets:
     #     hypotheses_graph = hypotheses_graph.generateTrackletGraph()
 
+    getLogger().info("Preparing for tracking")
     hypotheses_graph.insertEnergies()
     trackingGraph = hypotheses_graph.toTrackingGraph()
     
     if options.do_convexify:
-        logging.info("Convexifying graph energies...")
+        getLogger().info("Convexifying graph energies...")
         trackingGraph.convexifyCosts()
 
     # track
-    logging.info("Run tracking...")
+    getLogger().info("Run tracking...")
     if withDivisions:
         weights = {"weights" : [10, 10, 10, 500, 500]}
     else:
@@ -154,6 +156,7 @@ def run_pipeline(options):
         result = mht.track(trackingGraph.model, weights)
 
     # insert the solution into the hypotheses graph and from that deduce the lineages
+    getLogger().info("Inserting solution into graph")
     hypotheses_graph.insertSolution(result)
     hypotheses_graph.computeLineage()
 
@@ -178,7 +181,7 @@ def run_pipeline(options):
             trackParents[trackId] = hypotheses_graph._graph.node[hypotheses_graph._graph.node[n]['parent']]['trackId']
 
     # write res_track.txt
-    getLogger().debug("Writing track text file")
+    getLogger().info("Writing track text file")
     trackDict = {}
     for trackId, timestepList in tracks.iteritems():
         timestepList.sort()
@@ -190,7 +193,7 @@ def run_pipeline(options):
     save_tracks(trackDict, options) 
 
     # export results
-    getLogger().debug("Saving relabeled images")
+    getLogger().info("Saving relabeled images")
     pluginManager = TrackingPluginManager(verbose=options.verbose, pluginPaths=options.pluginPaths)
     pluginManager.setImageProvider('LocalImageLoader')
     imageProvider = pluginManager.getImageProvider()
