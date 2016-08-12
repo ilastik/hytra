@@ -45,6 +45,8 @@ if __name__ == "__main__":
                         help='Filename of the hdf5 file containing the prediction maps output by ilastik')
     parser.add_argument('--prediction-path', type=str, dest='predictionPath', default='exported_data',
                         help='Path inside HDF5 file to prediction map')
+    parser.add_argument('--single-volume', action='store_true', dest='single_volume',
+                        help='Specify this if you do not want (old) ilastik style labelimages, but a single HDF5 volume')
     parser.add_argument('--label-image-path', type=str, dest='labelImagePath',
                         help='Path inside result file to the label image',
                         default='/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]')
@@ -102,40 +104,79 @@ if __name__ == "__main__":
     progressBar.show(0)
 
     with h5py.File(args.out, 'w') as h5file:
-        # loop over timesteps
-        for t in range(shape[0]):
-            # smooth, threshold, and size filter from prediction map
-            framePrediction = predictionMaps[t, ..., threshold_channel].squeeze()
-            assert ndim == len(framePrediction.shape)
+        if args.single_volume:
+            # loop over timesteps
+            fullLabelImage = np.zeros([shape[0], shape[3], shape[2], shape[1], 1], dtype='uint32')
+            for t in range(shape[0]):
+                # smooth, threshold, and size filter from prediction map
+                framePrediction = predictionMaps[t, ..., threshold_channel].squeeze()
+                assert ndim == len(framePrediction.shape)
 
-            smoothedFramePrediction = vigra.filters.gaussianSmoothing(framePrediction.astype('float32'), threshold_sigmas[:ndim])
-            foreground = np.zeros(smoothedFramePrediction.shape, dtype='uint32')
-            foreground[smoothedFramePrediction > threshold_level] = 1
+                smoothedFramePrediction = vigra.filters.gaussianSmoothing(framePrediction.astype('float32'), threshold_sigmas[:ndim])
+                foreground = np.zeros(smoothedFramePrediction.shape, dtype='uint32')
+                foreground[smoothedFramePrediction > threshold_level] = 1
 
-            if ndim == 2:
-                labelImage = vigra.analysis.labelImageWithBackground(foreground)
-            else:
-                labelImage = vigra.analysis.labelVolumeWithBackground(foreground)
+                if ndim == 2:
+                    labelImage = vigra.analysis.labelImageWithBackground(foreground)
+                else:
+                    labelImage = vigra.analysis.labelVolumeWithBackground(foreground)
 
-            # filter too small / too large objects out
-            filter_labels(labelImage, threshold_min_size, threshold_max_size)
+                # filter too small / too large objects out
+                filter_labels(labelImage, threshold_min_size, threshold_max_size)
 
-            # run labelImage again to get consecutive IDs
-            if ndim == 2:
-                labelImage = vigra.analysis.labelImageWithBackground(labelImage)
-            else:
-                labelImage = vigra.analysis.labelVolumeWithBackground(labelImage)
+                # run labelImage again to get consecutive IDs
+                if ndim == 2:
+                    labelImage = vigra.analysis.labelImageWithBackground(labelImage)
+                else:
+                    labelImage = vigra.analysis.labelVolumeWithBackground(labelImage)
 
-            # bring to right size
-            if ndim == 2:
-                axes = 'xy'
-            else:
-                axes = 'xyz'
+                # bring to right size
+                if ndim == 2:
+                    axes = 'xy'
+                else:
+                    axes = 'xyz'
 
-            labelImage = hytra.util.axesconversion.adjustOrder(labelImage, axes, 'txyzc')
+                labelImage = hytra.util.axesconversion.adjustOrder(labelImage, axes, 'zyxc')
+                fullLabelImage[t,...] = labelImage
+                progressBar.show()
 
             # save
-            h5file.create_dataset(args.labelImagePath % (t, t+1, shape[1], shape[2], shape[3]), data=labelImage, compression='gzip')
-            progressBar.show()
+            h5file.create_dataset(args.labelImagePath, data=fullLabelImage, compression='gzip')
+        else:
+            # loop over timesteps
+            for t in range(shape[0]):
+                # smooth, threshold, and size filter from prediction map
+                framePrediction = predictionMaps[t, ..., threshold_channel].squeeze()
+                assert ndim == len(framePrediction.shape)
+
+                smoothedFramePrediction = vigra.filters.gaussianSmoothing(framePrediction.astype('float32'), threshold_sigmas[:ndim])
+                foreground = np.zeros(smoothedFramePrediction.shape, dtype='uint32')
+                foreground[smoothedFramePrediction > threshold_level] = 1
+
+                if ndim == 2:
+                    labelImage = vigra.analysis.labelImageWithBackground(foreground)
+                else:
+                    labelImage = vigra.analysis.labelVolumeWithBackground(foreground)
+
+                # filter too small / too large objects out
+                filter_labels(labelImage, threshold_min_size, threshold_max_size)
+
+                # run labelImage again to get consecutive IDs
+                if ndim == 2:
+                    labelImage = vigra.analysis.labelImageWithBackground(labelImage)
+                else:
+                    labelImage = vigra.analysis.labelVolumeWithBackground(labelImage)
+
+                # bring to right size
+                if ndim == 2:
+                    axes = 'xy'
+                else:
+                    axes = 'xyz'
+
+                labelImage = hytra.util.axesconversion.adjustOrder(labelImage, axes, 'txyzc')
+
+                # save
+                h5file.create_dataset(args.labelImagePath % (t, t+1, shape[1], shape[2], shape[3]), data=labelImage, compression='gzip')
+                progressBar.show()
 
 
