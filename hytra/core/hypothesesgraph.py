@@ -81,6 +81,9 @@ class HypothesesGraph(object):
 
     def countArcs(self):
         return self._graph.number_of_edges()
+    
+    def hasNode(self, node):
+        return self._graph.has_node(node)
 
     @staticmethod
     def source(edge):
