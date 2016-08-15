@@ -101,8 +101,8 @@ class HypothesesGraph(object):
         kdtree, objectIdList = kdtreeObjectPair
         if len(objectIdList) <= numNeighbors:
             return objectIdList
-        distances, neighbors = kdtree.query(self._extractCenter(
-            traxel), k=numNeighbors, return_distance=True)
+        distances, neighbors = kdtree.query([self._extractCenter(
+            traxel)], k=numNeighbors, return_distance=True)
         return [objectIdList[index] for distance, index in zip(distances[0], neighbors[0]) if
                 distance < maxNeighborDist]
 
