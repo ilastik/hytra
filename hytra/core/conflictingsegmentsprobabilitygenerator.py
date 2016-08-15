@@ -9,6 +9,42 @@ from hytra.util.progressbar import ProgressBar
 def getLogger():
     return logging.getLogger(__name__)
 
+def findConflictingHypothesesInSeparateProcess(frame,
+                                               labelImageFilenames,
+                                               labelImagePaths,
+                                               labelImageFrameIdToGlobalId,
+                                               turnOffFeatures,
+                                               pluginPaths=['hytra/plugins'],
+                                               imageProviderPluginName='LocalImageLoader'):
+    # set up plugin manager
+    from hytra.pluginsystem.plugin_manager import TrackingPluginManager
+    pluginManager = TrackingPluginManager(pluginPaths=pluginPaths, turnOffFeatures=turnOffFeatures, verbose=False)
+    pluginManager.setImageProvider(imageProviderPluginName)
+
+    overlaps = {} # overlap dict: key=globalId, value=[list of globalIds]
+
+    for labelImageIndexA in range(len(labelImageFilenames)):
+        labelImageA = pluginManager.getImageProvider().getLabelImageForFrame(labelImageFilenames[labelImageIndexA],
+                                                                                    labelImagePaths[labelImageIndexA],
+                                                                                    frame)
+        for labelImageIndexB in range(labelImageIndexA + 1, len(labelImageFilenames)):
+            labelImageB = pluginManager.getImageProvider().getLabelImageForFrame(labelImageFilenames[labelImageIndexB],
+                                                                                        labelImagePaths[labelImageIndexB],
+                                                                                        frame)
+            # check for overlaps - even a 1-pixel overlap is enough to be mutually exclusive!
+            for objectIdA in np.unique(labelImageA):
+                if objectIdA == 0:
+                    continue
+                overlapping = set(np.unique(labelImageB[labelImageA == objectIdA])) - set([0])
+                overlappingGlobalIds = [labelImageFrameIdToGlobalId[(labelImageFilenames[labelImageIndexB], frame, o)] for o in overlapping]
+                globalIdA = labelImageFrameIdToGlobalId[(labelImageFilenames[labelImageIndexA], frame, objectIdA)]
+                overlaps.setdefault(globalIdA, []).extend(overlappingGlobalIds)
+                for globalIdB in overlappingGlobalIds:
+                    overlaps.setdefault(globalIdB, []).append(globalIdA)
+
+    return frame, overlaps
+
+
 class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
     """
     Specialization of the probability generator that computes all the features on its own,
@@ -66,30 +102,43 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
 
         super(ConflictingSegmentsProbabilityGenerator, self).fillTraxels(usePgmlink, ts, fs, dispyNodeIps, turnOffFeatures)
 
+        getLogger().info("Checking for overlapping segmentation hypotheses...")
+        t0 = time.time()
+
         # find exclusion constraints
-        for frame in range(self.timeRange[0], self.timeRange[1]):
-            for labelImageIndexA in range(len(self._labelImageFilenames)):
-                labelImageA = self._pluginManager.getImageProvider().getLabelImageForFrame(self._labelImageFilenames[labelImageIndexA],
-                                                                                            self._labelImagePaths[labelImageIndexA],
-                                                                                            frame)
-                for labelImageIndexB in range(labelImageIndexA + 1, len(self._labelImageFilenames)):
-                    labelImageB = self._pluginManager.getImageProvider().getLabelImageForFrame(self._labelImageFilenames[labelImageIndexB],
-                                                                                               self._labelImagePaths[labelImageIndexB],
-                                                                                               frame)
-                    # check for overlaps - even a 1-pixel overlap is enough to be mutually exclusive!
-                    for objectIdA in np.unique(labelImageA):
-                        if objectIdA == 0:
-                            continue
-                        overlapping = set(np.unique(labelImageB[labelImageA == objectIdA])) - set([0])
-                        overlappingGlobalIds = [self._labelImageFrameIdToGlobalId[(self._labelImageFilenames[labelImageIndexB], frame, o)] for o in overlapping]
-                        globalIdA = self._labelImageFrameIdToGlobalId[(self._labelImageFilenames[labelImageIndexA], frame, objectIdA)]
-                        if self.TraxelsPerFrame[frame][globalIdA].conflictingTraxelIds is None:
-                            self.TraxelsPerFrame[frame][globalIdA].conflictingTraxelIds = []
-                        self.TraxelsPerFrame[frame][globalIdA].conflictingTraxelIds.extend(overlappingGlobalIds)
-                        for globalIdB in overlappingGlobalIds:
-                            if self.TraxelsPerFrame[frame][globalIdB].conflictingTraxelIds is None:
-                                self.TraxelsPerFrame[frame][globalIdB].conflictingTraxelIds = []
-                            self.TraxelsPerFrame[frame][globalIdB].conflictingTraxelIds.append(globalIdA)
+        if self._useMultiprocessing:
+            # use ProcessPoolExecutor, which instanciates as many processes as there CPU cores by default
+            ExecutorType = concurrent.futures.ProcessPoolExecutor
+            getLogger().info('Parallelizing via multiprocessing on all cores!')
+        else:
+            ExecutorType = DummyExecutor
+            getLogger().info('Running on single core!')
+
+        jobs = []
+        progressBar = ProgressBar(stop=self.timeRange[1] - self.timeRange[0])
+        progressBar.show(increase=0)
+
+        with ExecutorType() as executor:
+            for frame in range(self.timeRange[0], self.timeRange[1]):
+                jobs.append(executor.submit(findConflictingHypothesesInSeparateProcess,
+                                            frame,
+                                            self._labelImageFilenames,
+                                            self._labelImagePaths,
+                                            self._labelImageFrameIdToGlobalId,
+                                            turnOffFeatures,
+                                            self._pluginPaths
+                ))
+            for job in concurrent.futures.as_completed(jobs):
+                progressBar.show()
+                frame, overlaps = job.result()
+                for objectId, overlapIds in overlaps.iteritems():
+                    if self.TraxelsPerFrame[frame][objectId].conflictingTraxelIds is None:
+                        self.TraxelsPerFrame[frame][objectId].conflictingTraxelIds = []
+                    self.TraxelsPerFrame[frame][objectId].conflictingTraxelIds.extend(overlapIds)
+        
+        t1 = time.time()
+        getLogger().info("Finding overlaps took {} secs".format(t1 - t0))
+                
 
     def _insertFilenameAndIdToFeatures(self, featureDict, filename):
         """
