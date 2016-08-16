@@ -75,8 +75,8 @@ def run_pipeline(options):
     """
     Run the complete tracking pipeline with competing segmentation hypotheses
     """
-    logging.info("Create hypotheses graph...")
 
+    # set up probabilitygenerator (aka traxelstore) and hypothesesgraph
     import hytra.core.conflictingsegmentsprobabilitygenerator as probabilitygenerator
     from hytra.core.ilastik_project_options import IlastikProjectOptions
     ilpOptions = IlastikProjectOptions()
@@ -98,6 +98,7 @@ def run_pipeline(options):
     else:
         ilpOptions.divisionClassifierFilename = None
 
+    getLogger().info("Extracting traxels from images")
     probGenerator = probabilitygenerator.ConflictingSegmentsProbabilityGenerator(
         ilpOptions, 
         options.label_image_files[1:],
@@ -107,11 +108,11 @@ def run_pipeline(options):
 
     probGenerator.fillTraxels(usePgmlink=False)
     fieldOfView = constructFov(probGenerator.shape,
-                                probGenerator.timeRange[0],
-                                probGenerator.timeRange[1],
-                                [probGenerator.x_scale,
-                                probGenerator.y_scale,
-                                probGenerator.z_scale])
+                               probGenerator.timeRange[0],
+                               probGenerator.timeRange[1],
+                               [probGenerator.x_scale,
+                               probGenerator.y_scale,
+                               probGenerator.z_scale])
 
     getLogger().info("Building hypotheses graph")
     hypotheses_graph = IlastikHypothesesGraph(
@@ -135,12 +136,40 @@ def run_pipeline(options):
         getLogger().info("Convexifying graph energies...")
         trackingGraph.convexifyCosts()
 
+    # map groundtruth to hypothesesgraph if all required variables are specified
+    weights = None
+    if options.gt_label_image_file is not None and options.gt_label_image_path is not None \
+        and options.gt_text_file is not None and options.gt_jaccard_threshold is not None:
+        getLogger().info("Map ground truth")
+        jsonGT = probGenerator.findGroundTruthJaccardScoreAndMapping(
+            hypotheses_graph,
+            options.gt_label_image_file,
+            options.gt_label_image_path,
+            options.gt_text_file,
+            options.gt_jaccard_threshold
+        )
+
+        try:
+            import multiHypoTracking_with_cplex as mht
+        except ImportError:
+            try:
+                import multiHypoTracking_with_gurobi as mht
+            except ImportError:
+                pass
+        if mht:
+            getLogger().info("Learn weights")
+            weights = mht.train(trackingGraph.model, jsonGT)
+
     # track
     getLogger().info("Run tracking...")
-    if withDivisions:
-        weights = {"weights" : [10, 10, 10, 500, 500]}
+    if weights is None:
+        getLogger().info("Using default weights...")
+        if withDivisions:
+            weights = {"weights" : [10, 10, 10, 500, 500]}
+        else:
+            weights = {"weights" : [10, 10, 500, 500]}
     else:
-        weights = {"weights" : [10, 10, 500, 500]}
+        getLogger().info("Using learned weights!")
 
     if options.use_flow_solver:
         import dpct
@@ -242,6 +271,17 @@ if __name__ == "__main__":
                         otherwise there need to be as many label image paths as filenames.
                         Defaults to "/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]" for all images if not specified''')
     
+    # Ground Truth (if available):
+    parser.add_argument('--gt-label-image-file', type=str, dest='gt_label_image_file', default=None,
+                      help='Ground Truth Label image filename')
+    parser.add_argument('--gt-label-image-path', dest='gt_label_image_path', type=str,
+                        help="internal hdf5 path to gt label image.",
+                        default="/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]")
+    parser.add_argument('--gt-text-file', type=str, dest='gt_text_file', default=None,
+                      help='Ground Truth text path+filename (/path/to/res_track.txt)')
+    parser.add_argument('--gt-jaccard-threshold', type=float, dest='gt_jaccard_threshold', default=0.3,
+                      help='Minimum jaccard score of a segmentation hypotheses with the GT to be used as a match')
+
     # classifiers:
     parser.add_argument('--object-count-classifier-path', dest='obj_count_classifier_path', type=str,
                         default='/CountClassification/Probabilities/0/',
@@ -255,6 +295,12 @@ if __name__ == "__main__":
     parser.add_argument('--transition-classifier-file', dest='transition_classifier_filename', type=str,
                         default=None)
     parser.add_argument('--transition-classifier-path', dest='transition_classifier_path', type=str, default='/')
+
+    # Intermediate output
+    parser.add_argument('--graph-json-file', type=str, dest='graph_json_filename', default=None,
+                      help='filename where to save the generated JSON graph to')
+    parser.add_argument('--result-json-file', type=str, dest='result_json_filename', default=None,
+                      help='filename where to save the results to in JSON format')
 
     # Output
     parser.add_argument('--ctc-output-dir', type=str, dest='output_dir', default=None, required=True,

@@ -13,12 +13,18 @@ def findConflictingHypothesesInSeparateProcess(frame,
                                                labelImageFilenames,
                                                labelImagePaths,
                                                labelImageFrameIdToGlobalId,
-                                               turnOffFeatures,
                                                pluginPaths=['hytra/plugins'],
                                                imageProviderPluginName='LocalImageLoader'):
+    """
+    Look which objects between different segmentation hypotheses (given as different labelImages)
+    overlap, and return a dictionary of those overlapping situations.
+
+    Meant to be run in its own process using `concurrent.futures.ProcessPoolExecutor`
+    """
+
     # set up plugin manager
     from hytra.pluginsystem.plugin_manager import TrackingPluginManager
-    pluginManager = TrackingPluginManager(pluginPaths=pluginPaths, turnOffFeatures=turnOffFeatures, verbose=False)
+    pluginManager = TrackingPluginManager(pluginPaths=pluginPaths, verbose=False)
     pluginManager.setImageProvider(imageProviderPluginName)
 
     overlaps = {} # overlap dict: key=globalId, value=[list of globalIds]
@@ -44,6 +50,61 @@ def findConflictingHypothesesInSeparateProcess(frame,
 
     return frame, overlaps
 
+def computeJaccardScoresOnCloud(frame,
+                                labelImageFilenames,
+                                labelImagePaths,
+                                labelImageFrameIdToGlobalId,
+                                groundTruthFilename,
+                                groundTruthPath,
+                                groundTruthMinJaccardScore,
+                                pluginPaths=['hytra/plugins'],
+                                imageProviderPluginName='LocalImageLoader'):
+    """
+    Compute jaccard scores of all objects in the different segmentations with the ground truth for that frame.
+    Returns a dictionary of overlapping GT labels and the score per globalId in that frame, as well as 
+    a dictionary specifying the best matching globalId and score for every GT label.
+
+    Meant to be run in its own process using `concurrent.futures.ProcessPoolExecutor`
+    """
+
+    # set up plugin manager
+    from hytra.pluginsystem.plugin_manager import TrackingPluginManager
+    pluginManager = TrackingPluginManager(pluginPaths=pluginPaths, verbose=False)
+    pluginManager.setImageProvider(imageProviderPluginName)
+
+    scores = {}
+    gtToGlobalIdMap = {}
+
+    groundTruthLabelImage = pluginManager.getImageProvider().getLabelImageForFrame(groundTruthFilename, groundTruthPath, frame)
+
+    for labelImageIndexA in range(len(labelImageFilenames)):
+        labelImageA = pluginManager.getImageProvider().getLabelImageForFrame(labelImageFilenames[labelImageIndexA],
+                                                                                    labelImagePaths[labelImageIndexA],
+                                                                                    frame)
+        # check for overlaps - even a 1-pixel overlap is enough to be mutually exclusive!
+        for objectIdA in np.unique(labelImageA):
+            if objectIdA == 0:
+                continue
+            globalIdA = labelImageFrameIdToGlobalId[(labelImageFilenames[labelImageIndexA], frame, objectIdA)]
+            overlap = groundTruthLabelImage[labelImageA == objectIdA]
+            overlappingGtElements = set(np.unique(overlap)) - set([0])
+            
+            for gtLabel in overlappingGtElements:
+                # compute Jaccard scores
+                intersectingPixels = np.sum(overlap == gtLabel)
+                unionPixels = np.sum(np.logical_or(groundTruthLabelImage == gtLabel, labelImageA == objectIdA))
+                jaccardScore = float(intersectingPixels) / float(unionPixels) 
+
+                # append to object's score list
+                scores.setdefault(objectIdA, []).append( (gtLabel, jaccardScore) )
+
+                # store this as GT mapping if there was no better object for this GT label yet
+                if jaccardScore > groundTruthMinJaccardScore and \
+                    (gtLabel not in gtToGlobalIdMap or gtToGlobalIdMap[gtLabel][1] < jaccardScore):
+                    gtToGlobalIdMap[(frame, gtLabel)] = (globalIdA, jaccardScore)
+
+    return frame, scores, gtToGlobalIdMap
+
 
 class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
     """
@@ -53,7 +114,8 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
     First step: make sure that objects from different hypotheses have different IDs
 
     * do that by adding the maxId of the "previous" segmentation hypothesis for that frame
-    * store reference which hypothesis this segment comes from in Traxel, so that we can reconstruct a result from the graph and images
+    * store reference which hypothesis this segment comes from in Traxel, so that we can 
+      reconstruct a result from the graph and images
 
     """
 
@@ -101,7 +163,13 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
         assert(len(dispyNodeIps) == 0)
 
         super(ConflictingSegmentsProbabilityGenerator, self).fillTraxels(usePgmlink, ts, fs, dispyNodeIps, turnOffFeatures)
+        self._findOverlaps()
 
+    def _findOverlaps(self):
+        """
+        Check which objects are overlapping between the different segmentation hypotheses,
+        and store that information in every traxel.
+        """
         getLogger().info("Checking for overlapping segmentation hypotheses...")
         t0 = time.time()
 
@@ -125,7 +193,6 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
                                             self._labelImageFilenames,
                                             self._labelImagePaths,
                                             self._labelImageFrameIdToGlobalId,
-                                            turnOffFeatures,
                                             self._pluginPaths
                 ))
             for job in concurrent.futures.as_completed(jobs):
@@ -138,7 +205,177 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
         
         t1 = time.time()
         getLogger().info("Finding overlaps took {} secs".format(t1 - t0))
-                
+
+    def findGroundTruthJaccardScoreAndMapping(self, 
+                                              hypothesesGraph,
+                                              groundTruthSegmentationFilename=None,
+                                              groundTruthSegmentationPath=None,
+                                              groundTruthTextFilename=None,
+                                              groundTruthMinJaccardScore=0.5):
+        """
+        Find the overlap between all objects in the given segmentations with the groundtruth,
+        and store that jaccard score in each traxel's features.
+
+        **Returns** a solution dictionary in our JSON format, which fits to the given hypotheses graph.
+
+        TODO: simplify this method! 
+        Currently there are 4 different sets of IDs to reference nodes:
+        * the ground truth trackId
+        * a corresponding globalId (which is unique within a frame across different segmentation hypotheses)
+        * an objectId (which equals the labelId within one segmentation hypotheses)
+        * a globally unique UUID as used in the JSON files
+
+        The nodes in the hypotheses graph are indexed by (frame, globalId), the resulting dict must use UUIDs.
+        """
+
+        getLogger().info("Computing Jaccard scores w.r.t. GroundTruth ...")
+        t0 = time.time()
+
+        # find exclusion constraints
+        if self._useMultiprocessing:
+            # use ProcessPoolExecutor, which instanciates as many processes as there CPU cores by default
+            ExecutorType = concurrent.futures.ProcessPoolExecutor
+            getLogger().info('Parallelizing via multiprocessing on all cores!')
+        else:
+            ExecutorType = DummyExecutor
+            getLogger().info('Running on single core!')
+
+        jobs = []
+        progressBar = ProgressBar(stop=self.timeRange[1] - self.timeRange[0])
+        progressBar.show(increase=0)
+        gtFrameIdToGlobalIdWithScoreMap = {}
+
+        with ExecutorType() as executor:
+            for frame in range(self.timeRange[0], self.timeRange[1]):
+                jobs.append(executor.submit(computeJaccardScoresOnCloud,
+                                            frame,
+                                            self._labelImageFilenames,
+                                            self._labelImagePaths,
+                                            self._labelImageFrameIdToGlobalId,
+                                            groundTruthSegmentationFilename,
+                                            groundTruthSegmentationPath,
+                                            groundTruthMinJaccardScore,
+                                            self._pluginPaths
+                ))
+            for job in concurrent.futures.as_completed(jobs):
+                progressBar.show()
+                frame, scores, frameGtToGlobalIdMap = job.result()
+                for objectId, individualScores in scores.iteritems():
+                    self.TraxelsPerFrame[frame][objectId].Features['JaccardScores'] = individualScores
+                gtFrameIdToGlobalIdWithScoreMap.update(frameGtToGlobalIdMap)
+        
+        t1 = time.time()
+        getLogger().info("Finding jaccard scores took {} secs".format(t1 - t0))
+
+        # create JSON result by mapping it to the hypotheses graph
+        detectionResults = []
+        for _, globalIdAndScore in gtFrameIdToGlobalIdWithScoreMap.iteritems():
+            detectionResults.append({"id": globalIdAndScore[0], "value":1})
+        
+        # read tracks from textfile
+        with open(groundTruthTextFilename, 'r') as tracksFile:
+            lines = tracksFile.readlines()
+        tracks = [[int(x) for x in line.strip().split(" ")] for line in lines]
+
+        # order them by track start time and process track by track
+        tracks.sort(key=lambda x: x[1])
+
+        linkingResults = []
+        descendants = {}
+        missingLinks = 0
+
+        def checkLinkExists(gtSrc, gtDest):
+            # first check that both GT nodes have been mapped to a hypotheses
+            if gtSrc in gtFrameIdToGlobalIdWithScoreMap:
+                src = (gtSrc[0], gtFrameIdToGlobalIdWithScoreMap[gtSrc][0])
+            else:
+                getLogger().warning("GT link's source node {} has no match in the segmentation hypotheses".format(gtSrc))
+                return False
+
+            if gtDest in gtFrameIdToGlobalIdWithScoreMap:
+                dest = (gtDest[0], gtFrameIdToGlobalIdWithScoreMap[gtDest][0])
+            else:
+                getLogger().warning("GT link's destination node {} has no match in the segmentation hypotheses".format(gtDest))
+                return False
+            
+            # then map them to the hypotheses graph
+            if not hypothesesGraph.hasNode(src):
+                getLogger().warning("Source node of GT link {} was not found in graph".format((gtSrc, gtDest)))
+                return False
+            if not hypothesesGraph.hasNode(dest):
+                getLogger().warning("Destination node of GTlink {} was not found in graph".format((gtSrc, gtDest)))
+                return False
+            if not hypothesesGraph.hasEdge(src, dest):
+                getLogger().warning("Nodes are present, but GT link {} was not found in graph".format((gtSrc, gtDest)))
+                return False
+            return True
+
+        traxelIdPerTimestepToUniqueIdMap, _ = hypothesesGraph.getMappingsBetweenUUIDsAndTraxels()
+
+        def gtIdPerFrameToUuid(frame, gtId):
+            return traxelIdPerTimestepToUniqueIdMap[str(frame)][str(gtFrameIdToGlobalIdWithScoreMap[(frame, gtId)][0])]
+
+        # add links of all tracks
+        for track in tracks:
+            trackId, startFrame, endFrame, parent = track
+
+            if parent != 0:
+                descendants.setdefault(parent, []).append((startFrame, trackId))
+
+            # add transitions along track
+            for frame in range(startFrame, endFrame):
+                if not checkLinkExists((frame, trackId), (frame + 1, trackId)):
+                    getLogger().warning("Ignoring GT link from {} to {}".format((frame, trackId), (frame + 1, trackId)))
+                    missingLinks += 1
+                    continue
+
+                link = {
+                    "src":gtIdPerFrameToUuid(frame, trackId),
+                    "dest":gtIdPerFrameToUuid(frame + 1, trackId),
+                    "value":1
+                }
+                linkingResults.append(link)
+
+        # construct divisions
+        divisionResults = []
+        for parent, childrenFrameIds in descendants.iteritems():
+            if len(childrenFrameIds) != 2:
+                getLogger().warning("Found track {} that had descendants, but not exactly two. Ignoring it".format(parent))
+                continue
+            if childrenFrameIds[0][0] != childrenFrameIds[1][0]:
+                getLogger().warning("Track {} divided, but children are not in same timeframe. Ignoring it".format(parent))
+                continue
+
+            # all good, found a proper division. Make sure the mother-daughter-links are available in the hypotheses graph 
+            foundAllLinks = True
+            divisionFrame = childrenFrameIds[0][0] - 1
+            for i in [0, 1]:
+                foundAllLinks = foundAllLinks and checkLinkExists((divisionFrame, parent), (childrenFrameIds[i][0], childrenFrameIds[i][1]))
+
+            if foundAllLinks:
+                divisionResults.append({"id": gtIdPerFrameToUuid(divisionFrame, parent), "value": 1})
+                for i in [0, 1]:
+                    if not checkLinkExists((divisionFrame, parent), (childrenFrameIds[i][0], childrenFrameIds[i][1])):
+                        getLogger().warning("Ignoring GT link from {} to {}".format((frame, trackId), (frame + 1, trackId)))
+                        continue
+                    link = {
+                        "src":gtIdPerFrameToUuid(divisionFrame, parent),
+                        "dest":gtIdPerFrameToUuid(childrenFrameIds[i][0], childrenFrameIds[i][1]),
+                        "value":1
+                    }
+                    linkingResults.append(link)
+            else:
+                getLogger().warning("Division of {} ignored, could not find the links to the children, or not all participating GT nodes found a mapping".format(parent))
+                missingLinks += 1
+
+        getLogger().info("Ground Truth mapping could not find an equivalent for {} links, {} links projected.".format(missingLinks, len(linkingResults)))
+
+        result = {}
+        result['detectionResults'] = detectionResults
+        result['linkingResults'] = linkingResults
+        result['divisionResults'] = divisionResults
+        return result
+
 
     def _insertFilenameAndIdToFeatures(self, featureDict, filename):
         """
@@ -194,7 +431,7 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
         """
 
         # configure progress bar
-        numSteps = self.timeRange[1] - self.timeRange[0]
+        numSteps = (self.timeRange[1] - self.timeRange[0]) * len(self._labelImageFilenames)
         if self._divisionClassifier is not None:
             numSteps *= 2
 

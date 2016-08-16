@@ -84,6 +84,9 @@ class HypothesesGraph(object):
     
     def hasNode(self, node):
         return self._graph.has_node(node)
+    
+    def hasEdge(self, u, v):
+        return self._graph.has_edge(u, v)
 
     @staticmethod
     def source(edge):
