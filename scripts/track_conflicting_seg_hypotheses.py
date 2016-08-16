@@ -11,11 +11,13 @@ import numpy as np
 import logging
 from skimage.external import tifffile
 import vigra
+import commentjson as json
 import configargparse as argparse
 sys.path.insert(0, os.path.abspath('..'))
 from hytra.core.ilastikhypothesesgraph import IlastikHypothesesGraph
 from hytra.core.fieldofview import FieldOfView
 from hytra.pluginsystem.plugin_manager import TrackingPluginManager
+from hytra.core.jsongraph import writeToFormattedJSON
 
 def getLogger():
     return logging.getLogger("track_conflicting_seg_hypotheses")
@@ -135,6 +137,9 @@ def run_pipeline(options):
     if options.do_convexify:
         getLogger().info("Convexifying graph energies...")
         trackingGraph.convexifyCosts()
+    
+    if options.graph_json_filename is not None:
+        writeToFormattedJSON(options.graph_json_filename, trackingGraph.model)
 
     # map groundtruth to hypothesesgraph if all required variables are specified
     weights = None
@@ -160,14 +165,20 @@ def run_pipeline(options):
             getLogger().info("Learn weights")
             weights = mht.train(trackingGraph.model, jsonGT)
 
+            if options.learned_weights_json_filename is not None:
+                writeToFormattedJSON(options.learned_weights_json_filename, weights)
+
     # track
     getLogger().info("Run tracking...")
     if weights is None:
-        getLogger().info("Using default weights...")
-        if withDivisions:
-            weights = {"weights" : [10, 10, 10, 500, 500]}
-        else:
-            weights = {"weights" : [10, 10, 500, 500]}
+        getLogger().info("Loading weights from " + options.weights_json_filename)
+        with open(options.weight_json_filename, 'r') as f:
+            weights = json.load(f)
+
+        # if withDivisions:
+        #     weights = {"weights" : [10, 10, 10, 500, 500]}
+        # else:
+        #     weights = {"weights" : [10, 10, 500, 500]}
     else:
         getLogger().info("Using learned weights!")
 
@@ -183,6 +194,9 @@ def run_pipeline(options):
             except ImportError:
                 raise ImportError("No version of ILP solver found")
         result = mht.track(trackingGraph.model, weights)
+        
+    if options.result_json_filename is not None:
+        writeToFormattedJSON(options.result_json_filename, result)
 
     # insert the solution into the hypotheses graph and from that deduce the lineages
     getLogger().info("Inserting solution into graph")
@@ -301,6 +315,12 @@ if __name__ == "__main__":
                       help='filename where to save the generated JSON graph to')
     parser.add_argument('--result-json-file', type=str, dest='result_json_filename', default=None,
                       help='filename where to save the results to in JSON format')
+    parser.add_argument('--learned-weight-json-file', type=str, dest='learned_weights_json_filename', default=None,
+                      help='filename where to save the weights to in JSON format')
+
+    # Tracking:
+    parser.add_argument('--weight-json-file', type=str, dest='weight_json_filename', default=None,
+                      help='filename where to load the weights from JSON - if no GT is given')
 
     # Output
     parser.add_argument('--ctc-output-dir', type=str, dest='output_dir', default=None, required=True,
