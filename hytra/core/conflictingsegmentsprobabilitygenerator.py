@@ -268,9 +268,10 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
         getLogger().info("Finding jaccard scores took {} secs".format(t1 - t0))
 
         # create JSON result by mapping it to the hypotheses graph
+        traxelIdPerTimestepToUniqueIdMap, _ = hypothesesGraph.getMappingsBetweenUUIDsAndTraxels()
         detectionResults = []
-        for _, globalIdAndScore in gtFrameIdToGlobalIdWithScoreMap.iteritems():
-            detectionResults.append({"id": globalIdAndScore[0], "value":1})
+        for gtFrameAndId, globalIdAndScore in gtFrameIdToGlobalIdWithScoreMap.iteritems():
+            detectionResults.append({"id": traxelIdPerTimestepToUniqueIdMap[str(gtFrameAndId[0])][str(globalIdAndScore[0])], "value":1})
         
         # read tracks from textfile
         with open(groundTruthTextFilename, 'r') as tracksFile:
@@ -309,8 +310,6 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
                 getLogger().warning("Nodes are present, but GT link {} was not found in graph".format((gtSrc, gtDest)))
                 return False
             return True
-
-        traxelIdPerTimestepToUniqueIdMap, _ = hypothesesGraph.getMappingsBetweenUUIDsAndTraxels()
 
         def gtIdPerFrameToUuid(frame, gtId):
             return traxelIdPerTimestepToUniqueIdMap[str(frame)][str(gtFrameIdToGlobalIdWithScoreMap[(frame, gtId)][0])]
