@@ -16,6 +16,7 @@ tracking/
 .idea
 tests/mergerResolvingTestDataset/*
 tests/multiSegmentationHypothesesTestDataset/ctc_out/*
+*.dump
 
 # Compiled source #
 ###################
