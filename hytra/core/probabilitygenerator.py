@@ -181,7 +181,7 @@ def computeDivisionFeaturesOnCloud(frameT,
 
     # compute features
     fm = hytra.core.divisionfeatures.FeatureManager(ndim=numDimensions)
-    feats = fm.computeFeatures_at(featuresAtT, featuresAtTPlus1, labelImageAtTPlus1, divisionFeatureNames)
+    feats = fm.computeFeatures_at(featuresAtT, featuresAtTPlus1, labelImageAtTPlus1, divisionFeatureNames, labelImageFilename)
 
     return frameT, feats
 

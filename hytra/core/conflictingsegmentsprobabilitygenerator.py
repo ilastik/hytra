@@ -406,12 +406,12 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
 
         Ignores the 0th element in each feature vector of nextDict
         """
-        for k, v in originalDict.iteritems():
-            assert(k in nextDict) # all frames should have the same features
+        for k, v in nextDict.iteritems():
+            assert(k in originalDict) # all frames should have the same features
             if isinstance(v, np.ndarray):
-                originalDict[k] = np.concatenate((v, nextDict[k][1:]))
+                originalDict[k] = np.concatenate((originalDict[k], v[1:]))
             else:
-                originalDict[k].extend(nextDict[k][1:])
+                originalDict[k].extend(v[1:])
 
     def _storeBackwardMapping(self, featuresPerFrame):
         """
@@ -473,25 +473,30 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
                         self._mergeFrameFeatures(featuresPerFrame[frame], feats)
 
             # 2nd pass for division features
-            # TODO: the division feature manager should see the child candidates in all segmentation hypotheses
-            if self._divisionClassifier is not None:
-                jobs = []
-                for frame in range(self.timeRange[0], self.timeRange[1] - 1):
-                    jobs.append(executor.submit(computeDivisionFeaturesOnCloud,
-                                                frame,
-                                                featuresPerFrame[frame],
-                                                featuresPerFrame[frame + 1],
-                                                self._pluginManager.getImageProvider(),
-                                                self._options.labelImageFilename,
-                                                self._options.labelImagePath,
-                                                self.getNumDimensions(),
-                                                self._divisionFeatureNames
-                    ))
+            # TODO: the division feature manager should also see the child candidates in all segmentation hypotheses
+            for filename, path in zip(self._labelImageFilenames, self._labelImagePaths):
+                if self._divisionClassifier is not None:
+                    jobs = []
+                    for frame in range(self.timeRange[0], self.timeRange[1] - 1):
+                        jobs.append(executor.submit(computeDivisionFeaturesOnCloud,
+                                                    frame,
+                                                    featuresPerFrame[frame],
+                                                    featuresPerFrame[frame + 1],
+                                                    self._pluginManager.getImageProvider(),
+                                                    filename,
+                                                    path,
+                                                    self.getNumDimensions(),
+                                                    self._divisionFeatureNames
+                        ))
 
-                for job in concurrent.futures.as_completed(jobs):
-                    progressBar.show()
-                    frame, feats = job.result()
-                    featuresPerFrame[frame].update(feats)
+                    for job in concurrent.futures.as_completed(jobs):
+                        progressBar.show()
+                        frame, feats = job.result()
+                        # add division features to the dictionary for the first set, and then merge the new features in
+                        if feats.keys()[0] not in featuresPerFrame[frame]:
+                            featuresPerFrame[frame].update(feats)
+                        else:
+                            self._mergeFrameFeatures(featuresPerFrame[frame], feats)
 
         self._storeBackwardMapping(featuresPerFrame)
 
