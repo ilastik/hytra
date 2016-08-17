@@ -251,16 +251,7 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
         self._divisionClassifier = None
         self._transitionClassifier = None
 
-        if ilpOptions.objectCountClassifierPath != None and ilpOptions.objectCountClassifierFilename != None:
-            self._countClassifier = RandomForestClassifier(ilpOptions.objectCountClassifierPath,
-                                                           ilpOptions.objectCountClassifierFilename, ilpOptions)
-        print ilpOptions.divisionClassifierPath
-        if ilpOptions.divisionClassifierPath != None and ilpOptions.divisionClassifierFilename != None:
-            self._divisionClassifier = RandomForestClassifier(ilpOptions.divisionClassifierPath,
-                                                              ilpOptions.divisionClassifierFilename, ilpOptions)
-        if ilpOptions.transitionClassifierPath != None and ilpOptions.transitionClassifierFilename != None:
-            self._transitionClassifier = RandomForestClassifier(ilpOptions.transitionClassifierPath,
-                                                                ilpOptions.transitionClassifierFilename, ilpOptions)
+        self._loadClassifiers()
 
         self.shape, self.timeRange = self._getShapeAndTimeRange()
 
@@ -281,6 +272,40 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
 
         self.TraxelsPerFrame = {}
         ''' this public variable contains all traxels if we're not using pgmlink '''
+    
+    def _loadClassifiers(self):
+        if self._options.objectCountClassifierPath != None and self._options.objectCountClassifierFilename != None:
+            self._countClassifier = RandomForestClassifier(self._options.objectCountClassifierPath,
+                                                           self._options.objectCountClassifierFilename, self._options)
+        if self._options.divisionClassifierPath != None and self._options.divisionClassifierFilename != None:
+            self._divisionClassifier = RandomForestClassifier(self._options.divisionClassifierPath,
+                                                              self._options.divisionClassifierFilename, self._options)
+        if self._options.transitionClassifierPath != None and self._options.transitionClassifierFilename != None:
+            self._transitionClassifier = RandomForestClassifier(self._options.transitionClassifierPath,
+                                                                self._options.transitionClassifierFilename, self._options)
+    
+    def __getstate__(self):
+        '''
+        We define __getstate__ and __setstate__ to exclude the random forests from being pickled,
+        as that is not allowed.
+
+        See https://docs.python.org/3/library/pickle.html#pickle-state for more details.
+        '''
+        # Copy the object's state from self.__dict__ which contains
+        # all our instance attributes. Always use the dict.copy()
+        # method to avoid modifying the original state.
+        state = self.__dict__.copy()
+        # Remove the unpicklable entries.
+        del state['_countClassifier']
+        del state['_divisionClassifier']
+        del state['_transitionClassifier']
+        return state
+
+    def __setstate__(self, state):
+        # Restore instance attributes
+        self.__dict__.update(state)
+        # Restore the random forests by reading them from scratch
+        self._loadClassifiers()
 
     def computeRegionFeatures(self, rawImage, labelImage, frameNumber):
         """
