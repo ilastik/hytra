@@ -7,6 +7,8 @@ track them, and create a final result by cherry-picking the segments that were p
 # for import without requiring it to be installed
 import os
 import sys
+import gzip
+import pickle
 import numpy as np
 import logging
 from skimage.external import tifffile
@@ -78,69 +80,89 @@ def run_pipeline(options):
     Run the complete tracking pipeline with competing segmentation hypotheses
     """
 
-    # set up probabilitygenerator (aka traxelstore) and hypothesesgraph
-    import hytra.core.conflictingsegmentsprobabilitygenerator as probabilitygenerator
-    from hytra.core.ilastik_project_options import IlastikProjectOptions
-    ilpOptions = IlastikProjectOptions()
-    ilpOptions.labelImagePath = options.label_image_paths[0]
-    ilpOptions.labelImageFilename = options.label_image_files[0]
-
-    ilpOptions.rawImagePath = options.raw_data_path
-    ilpOptions.rawImageFilename = options.raw_data_file
-    ilpOptions.rawImageAxes = options.raw_data_axes
-    
-    ilpOptions.sizeFilter = [10, 100000]
-    ilpOptions.objectCountClassifierFilename = options.obj_count_classifier_file
-    ilpOptions.objectCountClassifierPath = options.obj_count_classifier_path
-    
-    withDivisions = options.with_divisions
-    if withDivisions:
-        ilpOptions.divisionClassifierFilename = options.div_classifier_file
-        ilpOptions.divisionClassifierPath = options.div_classifier_path
+    if options.load_graph_filename is not None:
+        getLogger().info("Loading state from file: " + options.load_graph_filename)
+        with gzip.open(options.load_graph_filename, 'r') as graphDump:
+            ilpOptions = pickle.load(graphDump)
+            probGenerator = pickle.load(graphDump)
+            fieldOfView = pickle.load(graphDump)
+            hypotheses_graph = pickle.load(graphDump)
+            trackingGraph = pickle.load(graphDump)
+        getLogger().info("Done loading state from file")
     else:
-        ilpOptions.divisionClassifierFilename = None
+        # set up probabilitygenerator (aka traxelstore) and hypothesesgraph
+        import hytra.core.conflictingsegmentsprobabilitygenerator as probabilitygenerator
+        from hytra.core.ilastik_project_options import IlastikProjectOptions
+        ilpOptions = IlastikProjectOptions()
+        ilpOptions.labelImagePath = options.label_image_paths[0]
+        ilpOptions.labelImageFilename = options.label_image_files[0]
 
-    getLogger().info("Extracting traxels from images")
-    probGenerator = probabilitygenerator.ConflictingSegmentsProbabilityGenerator(
-        ilpOptions, 
-        options.label_image_files[1:],
-        options.label_image_paths[1:],
-        pluginPaths=['../hytra/plugins'],
-        useMultiprocessing=not options.disableMultiprocessing)
+        ilpOptions.rawImagePath = options.raw_data_path
+        ilpOptions.rawImageFilename = options.raw_data_file
+        ilpOptions.rawImageAxes = options.raw_data_axes
+        
+        ilpOptions.sizeFilter = [10, 100000]
+        ilpOptions.objectCountClassifierFilename = options.obj_count_classifier_file
+        ilpOptions.objectCountClassifierPath = options.obj_count_classifier_path
+        
+        withDivisions = options.with_divisions
+        if withDivisions:
+            ilpOptions.divisionClassifierFilename = options.div_classifier_file
+            ilpOptions.divisionClassifierPath = options.div_classifier_path
+        else:
+            ilpOptions.divisionClassifierFilename = None
 
-    probGenerator.fillTraxels(usePgmlink=False)
-    fieldOfView = constructFov(probGenerator.shape,
-                               probGenerator.timeRange[0],
-                               probGenerator.timeRange[1],
-                               [probGenerator.x_scale,
-                               probGenerator.y_scale,
-                               probGenerator.z_scale])
+        getLogger().info("Extracting traxels from images")
+        probGenerator = probabilitygenerator.ConflictingSegmentsProbabilityGenerator(
+            ilpOptions, 
+            options.label_image_files[1:],
+            options.label_image_paths[1:],
+            pluginPaths=['../hytra/plugins'],
+            useMultiprocessing=not options.disableMultiprocessing)
 
-    getLogger().info("Building hypotheses graph")
-    hypotheses_graph = IlastikHypothesesGraph(
-        probabilityGenerator=probGenerator,
-        timeRange=probGenerator.timeRange,
-        maxNumObjects=1,
-        numNearestNeighbors=options.max_nearest_neighbors,
-        fieldOfView=fieldOfView,
-        withDivisions=withDivisions,
-        divisionThreshold=0.1,
-        maxNeighborDistance=options.max_neighbor_distance
-    )
+        probGenerator.fillTraxels(usePgmlink=False)
+        fieldOfView = constructFov(probGenerator.shape,
+                                probGenerator.timeRange[0],
+                                probGenerator.timeRange[1],
+                                [probGenerator.x_scale,
+                                probGenerator.y_scale,
+                                probGenerator.z_scale])
 
-    # if options.with_tracklets:
-    #     hypotheses_graph = hypotheses_graph.generateTrackletGraph()
+        getLogger().info("Building hypotheses graph")
+        hypotheses_graph = IlastikHypothesesGraph(
+            probabilityGenerator=probGenerator,
+            timeRange=probGenerator.timeRange,
+            maxNumObjects=1,
+            numNearestNeighbors=options.max_nearest_neighbors,
+            fieldOfView=fieldOfView,
+            withDivisions=withDivisions,
+            divisionThreshold=0.1,
+            maxNeighborDistance=options.max_neighbor_distance
+        )
 
-    getLogger().info("Preparing for tracking")
-    hypotheses_graph.insertEnergies()
-    trackingGraph = hypotheses_graph.toTrackingGraph()
-    
-    if options.do_convexify:
-        getLogger().info("Convexifying graph energies...")
-        trackingGraph.convexifyCosts()
-    
-    if options.graph_json_filename is not None:
-        writeToFormattedJSON(options.graph_json_filename, trackingGraph.model)
+        # if options.with_tracklets:
+        #     hypotheses_graph = hypotheses_graph.generateTrackletGraph()
+
+        getLogger().info("Preparing for tracking")
+        hypotheses_graph.insertEnergies()
+        trackingGraph = hypotheses_graph.toTrackingGraph()
+        
+        if options.do_convexify:
+            getLogger().info("Convexifying graph energies...")
+            trackingGraph.convexifyCosts()
+        
+        if options.graph_json_filename is not None:
+            writeToFormattedJSON(options.graph_json_filename, trackingGraph.model)
+        
+        if options.dump_graph_filename is not None:
+            getLogger().info("Saving state to file: " + options.dump_graph_filename)
+            with gzip.open(options.dump_graph_filename, 'w') as graphDump:
+                pickle.dump(ilpOptions, graphDump)
+                pickle.dump(probGenerator, graphDump)
+                pickle.dump(fieldOfView, graphDump)
+                pickle.dump(hypotheses_graph, graphDump)
+                pickle.dump(trackingGraph, graphDump)
+            getLogger().info("Done saving state to file")
 
     # map groundtruth to hypothesesgraph if all required variables are specified
     weights = None
@@ -316,19 +338,25 @@ if __name__ == "__main__":
 
     # Intermediate output
     parser.add_argument('--graph-json-file', type=str, dest='graph_json_filename', default=None,
-                      help='filename where to save the generated JSON graph to')
+                        help='filename where to save the generated JSON graph to')
     parser.add_argument('--result-json-file', type=str, dest='result_json_filename', default=None,
-                      help='filename where to save the results to in JSON format')
+                        help='filename where to save the results to in JSON format')
     parser.add_argument('--learned-weight-json-file', type=str, dest='learned_weights_json_filename', default=None,
-                      help='filename where to save the weights to in JSON format')
+                        help='filename where to save the weights to in JSON format')
+
+    # pickle graph in between so we don't have to recompute features etc?
+    parser.add_argument('--dump-graph-to', type=str, dest='dump_graph_filename', default=None,
+                        help='filename where to dump the graph etc to')
+    parser.add_argument('--load-graph-from', type=str, dest='load_graph_filename', default=None,
+                        help='filename where to load a dumped graph from')
 
     # Tracking:
     parser.add_argument('--weight-json-file', type=str, dest='weight_json_filename', default=None,
-                      help='filename where to load the weights from JSON - if no GT is given')
+                        help='filename where to load the weights from JSON - if no GT is given')
 
     # Output
     parser.add_argument('--ctc-output-dir', type=str, dest='output_dir', default=None, required=True,
-                      help='foldername in which all the output is stored')
+                        help='foldername in which all the output is stored')
     parser.add_argument('--is-gt', dest='is_groundtruth', action='store_true')
     parser.add_argument('--ctc-filename-zero-pad-length', type=int, dest='filename_zero_padding', default='3')
 
