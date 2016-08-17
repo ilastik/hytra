@@ -121,10 +121,11 @@ def run_pipeline(options):
         probabilityGenerator=probGenerator,
         timeRange=probGenerator.timeRange,
         maxNumObjects=1,
-        numNearestNeighbors=4,
+        numNearestNeighbors=options.max_nearest_neighbors,
         fieldOfView=fieldOfView,
         withDivisions=withDivisions,
-        divisionThreshold=0.1
+        divisionThreshold=0.1,
+        maxNeighborDistance=options.max_neighbor_distance
     )
 
     # if options.with_tracklets:
@@ -268,6 +269,9 @@ if __name__ == "__main__":
     parser.add_argument('--disable-multiprocessing', dest='disableMultiprocessing', action='store_true',
                         help='Do not use multiprocessing to speed up computation',
                         default=False)
+
+    parser.add_argument('--max-neighbor-distance', dest='max_neighbor_distance', type=float, default=200)
+    parser.add_argument('--max-nearest-neighbors', dest='max_nearest_neighbors', type=int, default=4)
 
     # Raw Data:
     parser.add_argument('--raw-data-file', type=str, dest='raw_data_file', default=None,
