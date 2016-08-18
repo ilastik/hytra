@@ -607,6 +607,16 @@ class HypothesesGraph(object):
 
         while len(update_queue) > 0:
             current_node,lineage_id,track_id = update_queue.pop()
+
+            # if we did not run merger resolving, it can happen that we reach a node several times,
+            # and would propagate the new lineage+track IDs to all descendants again! We simply
+            # stop propagating in that case and just use the lineageID that reached the node first.
+            if traxelgraph._graph.node[current_node].get("lineageId", None) is not None and \
+                traxelgraph._graph.node[current_node].get("trackId", None) is not None:
+                getLogger().debug("Several tracks are merging here, stopping a later one")
+                continue
+
+            # set a new trackID
             traxelgraph._graph.node[current_node]["lineageId"] = lineage_id
             traxelgraph._graph.node[current_node]["trackId"] = track_id
 

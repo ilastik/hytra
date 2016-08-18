@@ -91,6 +91,94 @@ def test_computeLineagesAndPrune():
     h.pruneGraphToSolution(0)
     h.pruneGraphToSolution(1)
 
+def test_computeLineagesWithMergers():
+    h = hg.HypothesesGraph()
+    h._graph.add_path([(0, 0),(1, 1),(2, 2)])
+    h._graph.add_path([(0, 5),(1, 1),(2, 3),(3, 4)])
+
+    for n in h._graph.node:
+        h._graph.node[n]['id'] = n[1]
+        h._graph.node[n]['traxel'] = pg.Traxel()
+        h._graph.node[n]['traxel'].Id = n[1]
+        h._graph.node[n]['traxel'].Timestep = n[0]
+
+    solutionDict = {
+    "detectionResults": [
+        {
+            "id": 0,
+            "value": 1
+        },
+        {
+            "id": 1,
+            "value": 2
+        },
+        {
+            "id": 2,
+            "value": 1
+        },
+        {
+            "id": 3,
+            "value": 1
+        },
+        {
+            "id": 4,
+            "value": 1
+        },
+        {
+            "id": 5,
+            "value": 1
+        }
+    ],
+    "linkingResults": [
+        {
+            "dest": 1,
+            "src": 0,
+            "value": 1
+        },
+        {
+            "dest": 1,
+            "src": 5,
+            "value": 1
+        },
+        {
+            "dest": 2,
+            "src": 1,
+            "value": 1
+        },
+        {
+            "dest": 3,
+            "src": 1,
+            "value": 1
+        },
+        {
+            "dest": 4,
+            "src": 3,
+            "value": 1
+        }
+    ],
+    "divisionResults": [
+        {
+            "id": 1,
+            "value": False
+        },
+        {
+            "id": 2,
+            "value": False
+        }
+    ]
+    }
+
+    h.insertSolution(solutionDict)
+    h.computeLineage()
+
+    assert(h._graph.node[(0,0)]['lineageId'] == 2)
+    assert(h._graph.node[(0,5)]['lineageId'] == 3)
+    assert(h._graph.node[(1,1)]['lineageId'] == 3)
+    assert(h._graph.node[(1,1)]['lineageId'] == 3)
+    assert(h._graph.node[(2,3)]['lineageId'] == 3)
+    assert(h._graph.node[(3,4)]['lineageId'] == 3)
+
+
 def test_insertAndExtractSolution():
     h = hg.HypothesesGraph()
     h._graph.add_path([(0, 0),(1, 1),(2, 2)])
@@ -236,4 +324,5 @@ if __name__ == "__main__":
     test_trackletgraph()
     test_insertAndExtractSolution()
     test_computeLineagesAndPrune()
+    test_computeLineagesWithMergers()
     test_insertEnergies()
