@@ -120,6 +120,13 @@ def run_pipeline(options):
             pluginPaths=['../hytra/plugins'],
             useMultiprocessing=not options.disableMultiprocessing)
 
+        # restrict range of timeframes used for learning and tracking
+        if options.end_frame < 0:
+            options.end_frame += probGenerator.timeRange[1]
+        assert(options.init_frame < probGenerator.timeRange[1])
+        assert(options.end_frame <= probGenerator.timeRange[1])
+        probGenerator.timeRange = (options.init_frame, options.end_frame)
+
         probGenerator.fillTraxels(usePgmlink=False)
         fieldOfView = constructFov(probGenerator.shape,
                                 probGenerator.timeRange[0],
@@ -263,7 +270,7 @@ def run_pipeline(options):
     pluginManager = TrackingPluginManager(verbose=options.verbose, pluginPaths=options.pluginPaths)
     pluginManager.setImageProvider('LocalImageLoader')
     imageProvider = pluginManager.getImageProvider()
-    timeRange = imageProvider.getTimeRange(options.label_image_files[0], options.label_image_paths[0])
+    timeRange = probGenerator.timeRange
 
     for timeframe in range(timeRange[0], timeRange[1]):
         label_images = {}
@@ -353,6 +360,10 @@ if __name__ == "__main__":
     # Tracking:
     parser.add_argument('--weight-json-file', type=str, dest='weight_json_filename', default=None,
                         help='filename where to load the weights from JSON - if no GT is given')
+    parser.add_argument("--init-frame", default=0, type=int, dest='init_frame',
+                        help="where to begin reading the frames")
+    parser.add_argument("--end-frame", default=-1, type=int, dest='end_frame',
+                        help="where to end frames")
 
     # Output
     parser.add_argument('--ctc-output-dir', type=str, dest='output_dir', default=None, required=True,

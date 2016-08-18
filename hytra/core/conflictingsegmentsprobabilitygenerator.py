@@ -322,7 +322,7 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
                 descendants.setdefault(parent, []).append((startFrame, trackId))
 
             # add transitions along track
-            for frame in range(startFrame, endFrame):
+            for frame in range(startFrame, min(endFrame, self.timeRange[1])):
                 if not checkLinkExists((frame, trackId), (frame + 1, trackId)):
                     getLogger().warning("Ignoring GT link from {} to {}".format((frame, trackId), (frame + 1, trackId)))
                     missingLinks += 1
@@ -348,6 +348,8 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
             # all good, found a proper division. Make sure the mother-daughter-links are available in the hypotheses graph 
             foundAllLinks = True
             divisionFrame = childrenFrameIds[0][0] - 1
+            if divisionFrame >= self.timeRange[1]:
+                continue
             for i in [0, 1]:
                 foundAllLinks = foundAllLinks and checkLinkExists((divisionFrame, parent), (childrenFrameIds[i][0], childrenFrameIds[i][1]))
 
