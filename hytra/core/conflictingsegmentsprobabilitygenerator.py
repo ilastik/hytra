@@ -62,7 +62,7 @@ def computeJaccardScoresOnCloud(frame,
     """
     Compute jaccard scores of all objects in the different segmentations with the ground truth for that frame.
     Returns a dictionary of overlapping GT labels and the score per globalId in that frame, as well as 
-    a dictionary specifying the best matching globalId and score for every GT label.
+    a dictionary specifying the matching globalId and score for every GT label (as a list ordered by score, best match last).
 
     Meant to be run in its own process using `concurrent.futures.ProcessPoolExecutor`
     """
@@ -100,8 +100,12 @@ def computeJaccardScoresOnCloud(frame,
 
                 # store this as GT mapping if there was no better object for this GT label yet
                 if jaccardScore > groundTruthMinJaccardScore and \
-                    (gtLabel not in gtToGlobalIdMap or gtToGlobalIdMap[gtLabel][1] < jaccardScore):
-                    gtToGlobalIdMap[(frame, gtLabel)] = (globalIdA, jaccardScore)
+                    ((frame, gtLabel) not in gtToGlobalIdMap or gtToGlobalIdMap[(frame, gtLabel)][-1][1] < jaccardScore):
+                    gtToGlobalIdMap.setdefault((frame, gtLabel), []).append((globalIdA, jaccardScore))
+
+    # sort all gt mappings by ascending jaccard score
+    for _, v in gtToGlobalIdMap.iteritems():
+        v.sort(key=lambda x: x[1]) 
 
     return frame, scores, gtToGlobalIdMap
 
@@ -243,7 +247,7 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
         jobs = []
         progressBar = ProgressBar(stop=self.timeRange[1] - self.timeRange[0])
         progressBar.show(increase=0)
-        gtFrameIdToGlobalIdWithScoreMap = {}
+        gtFrameIdToGlobalIdsWithScoresMap = {}
 
         with ExecutorType() as executor:
             for frame in range(self.timeRange[0], self.timeRange[1]):
@@ -262,7 +266,7 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
                 frame, scores, frameGtToGlobalIdMap = job.result()
                 for objectId, individualScores in scores.iteritems():
                     self.TraxelsPerFrame[frame][objectId].Features['JaccardScores'] = individualScores
-                gtFrameIdToGlobalIdWithScoreMap.update(frameGtToGlobalIdMap)
+                gtFrameIdToGlobalIdsWithScoresMap.update(frameGtToGlobalIdMap)
         
         t1 = time.time()
         getLogger().info("Finding jaccard scores took {} secs".format(t1 - t0))
@@ -270,8 +274,8 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
         # create JSON result by mapping it to the hypotheses graph
         traxelIdPerTimestepToUniqueIdMap, _ = hypothesesGraph.getMappingsBetweenUUIDsAndTraxels()
         detectionResults = []
-        for gtFrameAndId, globalIdAndScore in gtFrameIdToGlobalIdWithScoreMap.iteritems():
-            detectionResults.append({"id": traxelIdPerTimestepToUniqueIdMap[str(gtFrameAndId[0])][str(globalIdAndScore[0])], "value":1})
+        for gtFrameAndId, globalIdsAndScores in gtFrameIdToGlobalIdsWithScoresMap.iteritems():
+            detectionResults.append({"id": traxelIdPerTimestepToUniqueIdMap[str(gtFrameAndId[0])][str(globalIdsAndScores[-1][0])], "value":1})
         
         # read tracks from textfile
         with open(groundTruthTextFilename, 'r') as tracksFile:
@@ -287,14 +291,14 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
 
         def checkLinkExists(gtSrc, gtDest):
             # first check that both GT nodes have been mapped to a hypotheses
-            if gtSrc in gtFrameIdToGlobalIdWithScoreMap:
-                src = (gtSrc[0], gtFrameIdToGlobalIdWithScoreMap[gtSrc][0])
+            if gtSrc in gtFrameIdToGlobalIdsWithScoresMap:
+                src = (gtSrc[0], gtFrameIdToGlobalIdsWithScoresMap[gtSrc][-1][0])
             else:
                 getLogger().warning("GT link's source node {} has no match in the segmentation hypotheses".format(gtSrc))
                 return False
 
-            if gtDest in gtFrameIdToGlobalIdWithScoreMap:
-                dest = (gtDest[0], gtFrameIdToGlobalIdWithScoreMap[gtDest][0])
+            if gtDest in gtFrameIdToGlobalIdsWithScoresMap:
+                dest = (gtDest[0], gtFrameIdToGlobalIdsWithScoresMap[gtDest][-1][0])
             else:
                 getLogger().warning("GT link's destination node {} has no match in the segmentation hypotheses".format(gtDest))
                 return False
@@ -312,7 +316,7 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
             return True
 
         def gtIdPerFrameToUuid(frame, gtId):
-            return traxelIdPerTimestepToUniqueIdMap[str(frame)][str(gtFrameIdToGlobalIdWithScoreMap[(frame, gtId)][0])]
+            return traxelIdPerTimestepToUniqueIdMap[str(frame)][str(gtFrameIdToGlobalIdsWithScoresMap[(frame, gtId)][-1][0])]
 
         # add links of all tracks
         for track in tracks:
