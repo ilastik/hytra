@@ -36,8 +36,8 @@ if __name__ == "__main__":
 
     if args.normalize:
         # normalize to range 0-1
-        sporoChannel = (sporoChannel-np.min(sporoChannel))/(np.max(sporoChannel)-np.min(sporoChannel))
-        nucleusChannel = (nucleusChannel-np.min(sporoChannel))/(np.max(nucleusChannel)-np.min(sporoChannel))
+        sporoChannel = float(sporoChannel-np.min(sporoChannel))/float(np.max(sporoChannel)-np.min(sporoChannel))
+        nucleusChannel = float(nucleusChannel-np.min(sporoChannel))/float(np.max(nucleusChannel)-np.min(sporoChannel))
 
     # adjust axes
     sporoChannel = hytra.util.axesconversion.adjustOrder(sporoChannel, args.inputAxes, args.outputAxes)
