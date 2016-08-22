@@ -20,6 +20,8 @@ from hytra.core.ilastikhypothesesgraph import IlastikHypothesesGraph
 from hytra.core.fieldofview import FieldOfView
 from hytra.pluginsystem.plugin_manager import TrackingPluginManager
 from hytra.core.jsongraph import writeToFormattedJSON
+import hytra.jst.conflictingsegmentsprobabilitygenerator as probabilitygenerator
+from hytra.core.ilastik_project_options import IlastikProjectOptions
 
 def getLogger():
     return logging.getLogger("track_conflicting_seg_hypotheses")
@@ -91,8 +93,6 @@ def run_pipeline(options):
         getLogger().info("Done loading state from file")
     else:
         # set up probabilitygenerator (aka traxelstore) and hypothesesgraph
-        import hytra.core.conflictingsegmentsprobabilitygenerator as probabilitygenerator
-        from hytra.core.ilastik_project_options import IlastikProjectOptions
         ilpOptions = IlastikProjectOptions()
         ilpOptions.labelImagePath = options.label_image_paths[0]
         ilpOptions.labelImageFilename = options.label_image_files[0]
