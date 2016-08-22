@@ -1,7 +1,7 @@
 import logging
 
 from hytra.core.ilastik_project_options import IlastikProjectOptions
-from hytra.core.conflictingsegmentsprobabilitygenerator import ConflictingSegmentsProbabilityGenerator
+from hytra.jst.conflictingsegmentsprobabilitygenerator import ConflictingSegmentsProbabilityGenerator
 from hytra.core.ilastikhypothesesgraph import IlastikHypothesesGraph
 from hytra.core.fieldofview import FieldOfView
 
