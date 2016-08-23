@@ -5,18 +5,30 @@ import logging
 from hytra.pluginsystem.plugin_manager import TrackingPluginManager
 from hytra.core.ilastik_project_options import IlastikProjectOptions
 
+def getLogger():
+    ''' logger to be used in this module '''
+    return logging.getLogger(__name__)
+
 class RandomForestClassifier:
     """
     A random forest (RF) classifier wraps a list of RFs as used in ilastik,
     and allows to read the RFs trained by ilastik, as well as which features were selected.
     """
 
-    def __init__(self, classifierPath, ilpFilename, ilpOptions=IlastikProjectOptions()):
+    def __init__(self, classifierPath=None, ilpFilename=None, ilpOptions=IlastikProjectOptions(), selectedFeatures=[]):
+        """
+        Construct a random forest by either loading it from file (`classifierPath` and `ilpFilename` must be given),
+        or an empty untrained random forest with specified `selectedFeatures`
+        """
         self._options = ilpOptions
         self._classifierPath = classifierPath
         self._ilpFilename = ilpFilename
-        self._randomForests = self._readRandomForests()
-        self.selectedFeatures = self._readSelectedFeatures()
+        if ilpFilename is not None and classifierPath is not None:
+            self._randomForests = self._readRandomForests()
+            self.selectedFeatures = self._readSelectedFeatures()
+        else:
+            self._randomForests = []
+            self.selectedFeatures = selectedFeatures
 
     def _readRandomForests(self):
         """
@@ -28,12 +40,12 @@ class RandomForestClassifier:
             else:
                 fullPath = '/'.join([self._classifierPath, self._options.classifierForestsGroupName])
             randomForests = []
-            logging.getLogger("RandomForestClassifier").info(" Attempting to read {} classifier(s) in {} from {}".format(
+            getLogger().info(" Attempting to read {} classifier(s) in {} from {}".format(
                 len([key for key in h5file[fullPath].keys() if 'Forest' in key]), self._ilpFilename, fullPath))
 
             for k in h5file[fullPath].keys():
                 if 'Forest' in k:
-                    logging.getLogger("RandomForestClassifier").info(" Reading forest: {}".format( str('/'.join([fullPath, k])) ) )
+                    getLogger().info(" Reading forest: {}".format( str('/'.join([fullPath, k])) ) )
                     rf = vigra.learning.RandomForest(str(self._ilpFilename), str('/'.join([fullPath, k])))
                     randomForests.append(rf)
             return randomForests
@@ -104,7 +116,7 @@ class RandomForestClassifier:
         assert (len(features.shape) == 2)
         # assert(features.shape[1] == self._randomForests[0].featureCount())
         if not features.shape[1] == self._randomForests[0].featureCount():
-            logging.getLogger("RandomForestClassifier").error(
+            getLogger().error(
                 "Cannot predict from features of shape {} if {} features are expected".format(features.shape,
                       self._randomForests[0].featureCount()))
             print(features)
@@ -116,3 +128,45 @@ class RandomForestClassifier:
             probabilities += rf.predictProbabilities(features.astype('float32'))
 
         return probabilities
+
+    def train(self, featureMatrix, labels):
+        """
+        Train the random forest given feature matrix and labels
+        """
+        getLogger().info(
+            "Training classifier from {} positive and {} negative labels".format(
+                np.count_nonzero(np.asarray(labels)), len(labels) - np.count_nonzero(np.asarray(labels))))
+        getLogger().info("Training classifier from a feature vector of length {}".format(featureMatrix.shape))
+
+        self._randomForests = [vigra.learning.RandomForest()]
+        oob = self._randomForests[0].learnRF(
+            np.asarray(featureMatrix).astype("float32"),
+            (np.asarray(labels)).astype("uint32").reshape(-1, 1))
+        getLogger().info("RF trained with OOB Error {}".format(oob))
+    
+    def save(self, outputFilename=None, classifierPath='/'):
+        """
+        Save the random forest to a HDF5 file into a specified path inside the HDF5 file.
+
+        Pass in `None` for both parameters to use the values specified in the constructor.
+
+        """
+        if outputFilename is None:
+            outputFilename = self._ilpFilename
+        assert(outputFilename is not None)
+
+        if classifierPath is None:
+            classifierPath = self._classifierPath
+
+        if classifierPath == '/':
+            fullPath = '/' + self._options.classifierForestsGroupName + '/Forest0000' 
+        else:
+            fullPath = '/'.join([classifierPath, self._options.classifierForestsGroupName, 'Forest0000'])
+        self._randomForests[0].writeHDF5(outputFilename, pathInFile=fullPath)
+
+        # write selected features
+        with h5py.File(outputFilename, 'r+') as f:
+            featureNamesH5 = f.create_group('SelectedFeatures')
+            featureNamesH5 = featureNamesH5.create_group('Standard Object Features')
+            for feature in self.selectedFeatures:
+                featureNamesH5.create_group(feature)
