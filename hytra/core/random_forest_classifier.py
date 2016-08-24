@@ -77,7 +77,7 @@ class RandomForestClassifier:
                     featureNameList.append(feature)
             return featureNameList
 
-    def extractFeatureVector(self, featureDict):
+    def extractFeatureVector(self, featureDict, singleObject=False):
         """
         Extract the vector(s) of required features from the given feature dictionary,
         by concatenating the columns of the selected features into a matrix of new features, one row per object
@@ -88,7 +88,10 @@ class RandomForestClassifier:
                 raise AssertionError("Feature '{}' not present in object features!".format(f))
             vec = featureDict[f]
             if len(vec.shape) == 1:
-                vec = np.expand_dims(vec, axis=1)
+                if singleObject:
+                    vec = np.expand_dims(vec, axis=0)
+                else:
+                    vec = np.expand_dims(vec, axis=1)
             if featureVectors is None:
                 featureVectors = vec
             else:
