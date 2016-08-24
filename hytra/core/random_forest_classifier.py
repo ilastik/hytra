@@ -1,6 +1,7 @@
 import vigra
 import numpy as np
 import h5py
+import os
 import logging
 from hytra.pluginsystem.plugin_manager import TrackingPluginManager
 from hytra.core.ilastik_project_options import IlastikProjectOptions
@@ -159,14 +160,21 @@ class RandomForestClassifier:
             classifierPath = self._classifierPath
 
         if classifierPath == '/':
-            fullPath = '/' + self._options.classifierForestsGroupName + '/Forest0000' 
+            fullPath = '/' + os.path.join(self._options.classifierForestsGroupName, 'Forest0000') 
         else:
-            fullPath = '/'.join([classifierPath, self._options.classifierForestsGroupName, 'Forest0000'])
+            fullPath = os.path.join(classifierPath, self._options.classifierForestsGroupName, 'Forest0000')
         self._randomForests[0].writeHDF5(outputFilename, pathInFile=fullPath)
+
+        if classifierPath == '/':
+            selectedFeaturesPath = 'SelectedFeatures' 
+        else:
+            selectedFeaturesPath = os.path.join(classifierPath, 'SelectedFeatures')
 
         # write selected features
         with h5py.File(outputFilename, 'r+') as f:
-            featureNamesH5 = f.create_group('SelectedFeatures')
+            if selectedFeaturesPath in f:
+                del f[selectedFeaturesPath]
+            featureNamesH5 = f.create_group(selectedFeaturesPath)
             featureNamesH5 = featureNamesH5.create_group('Standard Object Features')
             for feature in self.selectedFeatures:
                 featureNamesH5.create_group(feature)
