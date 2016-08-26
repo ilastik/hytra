@@ -199,7 +199,7 @@ def runTracking(options, trackingGraph, weights=None):
 
     getLogger().info("Run tracking...")
     if weights is None:
-        getLogger().info("Loading weights from " + options.weights_json_filename)
+        getLogger().info("Loading weights from " + options.weight_json_filename)
         with open(options.weight_json_filename, 'r') as f:
             weights = json.load(f)
 
