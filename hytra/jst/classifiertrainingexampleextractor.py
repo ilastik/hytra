@@ -40,6 +40,7 @@ def trainDetectionClassifier(hypothesesGraph, gtFrameIdToGlobalIdsWithScoresMap,
             globalIdsAndScores = sorted(globalIdsAndScores, key=lambda x: x[1])
             bestScore = globalIdsAndScores[-1][1]
             candidates.append(Candidate(node, bestScore))
+
     
     assert(len(candidates) >= numSamples)
     candidates.sort(key=lambda x: x.score)
@@ -48,6 +49,7 @@ def trainDetectionClassifier(hypothesesGraph, gtFrameIdToGlobalIdsWithScoresMap,
     # use RandomForestClassifier's method "extractFeatureVector"
     selectedSamples = candidates[0:numSamples//2] + candidates[-numSamples//2-1:-1]
     labels = np.hstack([np.zeros(numSamples//2), np.ones(numSamples//2)])
+    getLogger().info("Using {} of {} available training examples".format(numSamples, len(candidates)))
 
     # TODO: make sure that the positive examples were all selected in the GT mapping
 

@@ -96,7 +96,7 @@ def computeJaccardScoresOnCloud(frame,
                 jaccardScore = float(intersectingPixels) / float(unionPixels) 
 
                 # append to object's score list
-                scores.setdefault(objectIdA, []).append( (gtLabel, jaccardScore) )
+                scores.setdefault(globalIdA, []).append( (gtLabel, jaccardScore) )
 
                 # store this as GT mapping if there was no better object for this GT label yet
                 if jaccardScore > groundTruthMinJaccardScore and \
