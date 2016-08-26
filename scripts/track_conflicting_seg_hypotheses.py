@@ -150,7 +150,7 @@ def setupGraph(options):
 
     # restrict range of timeframes used for learning and tracking
     if options.end_frame < 0:
-        options.end_frame += probGenerator.timeRange[1]
+        options.end_frame += probGenerator.timeRange[1] + 1
     assert(options.init_frame < probGenerator.timeRange[1])
     assert(options.end_frame <= probGenerator.timeRange[1])
     probGenerator.timeRange = (options.init_frame, options.end_frame)
