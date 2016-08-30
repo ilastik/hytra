@@ -39,7 +39,7 @@ def writeEvents(timestep, activeLinks, activeDivisions, mergers, detections, fn,
                 li_name = labelImagePath % (timestep, timestep + 1, shape[0], shape[1], shape[2])
                 label_img = np.array(src_file[li_name][0, ..., 0]).squeeze()
                 seg = dest_file.create_group('segmentation')
-                seg.create_dataset("labels", data=label_img)
+                seg.create_dataset("labels", data=label_img, compression='gzip')
                 meta = dest_file.create_group('objects/meta')
                 ids = np.unique(label_img)
                 ids = ids[ids > 0]
