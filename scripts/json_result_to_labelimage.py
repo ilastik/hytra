@@ -161,5 +161,5 @@ if __name__ == "__main__":
     # save to disk
     if os.path.exists(args.out):
         os.remove(args.out)
-    vigra.impex.writeHDF5(resultVolume, args.out, 'exported_data')
+    vigra.impex.writeHDF5(resultVolume, args.out, 'exported_data', compression='gzip', chunks=True)
 
