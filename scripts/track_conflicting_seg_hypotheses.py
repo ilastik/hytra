@@ -318,9 +318,59 @@ def run_pipeline(options):
 
 
 if __name__ == "__main__":
+    class Formatter( argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter): 
+        pass
+
     parser = argparse.ArgumentParser(
-        description='Multi-Segmentation-Hypotheses Tracking Pipeline',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        description='''Multi-Segmentation-Hypotheses Tracking Pipeline.
+        
+        ============================
+        General usage
+        ============================
+        
+        This pipeline can take not only one segmentation, but several label images, finds conflicting hypotheses,
+        builds a tracking graph for all of them, tracks them, and constructs a result in the Cell Tracking Challenge format.
+
+        Raw data has to be provided as a single HDF5 volume, and can be configured with the parameters
+        --raw-data-file, --raw-data-path and --raw-data-axes.
+
+        To specify several segmentation label images, add the --label-image-file option several times, everytime adding another label image file.
+        Label images are required to have the old ilastik-internal style where each time frame is saved as different group.
+        Use the "ctc/segmentation_to_hdf5.py" script to convert a series of tiff files into that format, or
+        "segmentation_to_labelimage.py" to convert a single HDF5 label volume.
+
+        Tracking:
+        ---------
+
+        For tracking, the pipeline needs an object-count-classifier and, if divisions are present a division-classifier (then also pass "--with-divisions"!). 
+        Optionally also a transition-classifier, otherwise euclidean center distance will be used.
+        You have to pass in the respective filenames and paths inside the HDF5 files.
+
+        Tracking can be run either with an ILP solver (multiHypothesesTracking must be available), or with the flow based solver.
+        To use the flow-solver, pass "--use-flow-solver". Additionally, you can influence in which spatial neighborhood a transition may happen (--max-neighbor-distance),
+        and how many links are added (--max-nearest-neighbors). Remember that this number refers to the neighbors either in forward or backwards direction, and the graph will contain
+        the union of both, so probably edges more than this number per node.         
+
+        Tracking needs weights (to configure the importance of the individual classifiers etc), these can be loaded from a JSON encoded file (--weight-json-file),
+        or learned (see the Ground Truth section below).
+        
+        The result will be given in the cell tracking challenge format, so you only need to configure the folder where to put this result (--ctc-output-dir).
+
+        ============================
+        Training from a Ground Truth
+        ============================
+
+        To learn the weight of the respective classifiers using structured learning, you can pass in a ground truth (GT) solution. 
+        The ground truth is given as a cell tracking challenge text file (--gt-text-file), and an ilastik-style label image of the GT segmentation 
+        (e.g. convert the CTC GT with "ctc/segmentation_to_hdf5.py") --gt-label-image-*. 
+        Additionally you can specify the minimum jaccard score of any segmentation hypotheses with a GT object to be considered as "matching" (--gt-jaccard-threshold).
+
+        You can save the learned weights to a file by specifying "-learned-weight-json-file".
+
+        If you want to train an object count classifier given the ground truth INSTEAD of running structured learning, specify the "--out-object-count-classifier*" parameters. 
+        The script will stop after training, because you probably want to pass in this newly trained classifier into "--object-count-classifier-*" for tracking and structured learning. 
+        ''',
+        formatter_class=Formatter)
     parser.add_argument('-c', '--config', is_config_file=True, help='config file path', dest='config_file', required=False)
 
     parser.add_argument("--do-convexify", dest='do_convexify', action='store_true', default=False)
