@@ -111,32 +111,43 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
             mergerDict.setdefault(n[0], {})[n[1]] = self.unresolvedGraph.node[n]['newIds']
 
         return mergerDict
-
-    def fitAndRefineNodesForTimestep(self, labelImage, timestep):
+ 
+    def getCoordinatesForObjectId(self, coordinatesForObjectIds, labelImage, objectId):
+        '''
+        Get coordinate for object IDs in labelImage.
+        '''
+        coordinatesForObjectIds[objectId] = np.transpose(np.vstack(np.where(labelImage == objectId)))
+ 
+    def fitAndRefineNodesForTimestep(self, coordinatesForObjectIds, timestep):
         '''
         Update segmentation of mergers (nodes in unresolvedGraph) for each frame
         and create new nodes in `resolvedGraph`. Links to merger nodes are duplicated to all new nodes.
-
+ 
         Uses the mergerResolver plugin to update the segmentations in the labelImages.
-        
+         
         This function is used by Ilastik to fit and refine nodes per frame instead of
         loading the full volume in _fitAndRefineNodes()
         '''
-
-        t = str(timestep)
+ 
         # use image provider plugin to load labelimage
-        nextObjectId = labelImage.max() + 1
-
-        for idx in self.detectionsPerTimestep[t]:
+        nextObjectId = max(coordinatesForObjectIds.keys()) + 1
+ 
+        t = str(timestep)
+        detections = self.detectionsPerTimestep[t]
+ 
+        for idx, coordinates in coordinatesForObjectIds.items():
+            if idx not in detections:
+                continue
+            
             node = (timestep, idx)
             if node not in self.resolvedGraph:
                 continue
-
+ 
             count = 1
             if idx in self.mergersPerTimestep[t]:
                 count = self.mergersPerTimestep[t][idx]
             getLogger().debug("Looking at node {} in timestep {} with count {}".format(idx, t, count))
-            
+             
             # collect initializations from incoming
             initializations = []
             for predecessor, _ in self.unresolvedGraph.in_edges(node):
@@ -144,17 +155,18 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
             # TODO: what shall we do if e.g. a 2-merger and a single object merge to 2 + 1,
             # so there are 3 initializations for the 2-merger, and two initializations for the 1 merger?
             # What does pgmlink do in that case?
-
-            # use merger resolving plugin to fit `count` objects, also updates labelimage!
-            fittedObjects = self.mergerResolverPlugin.resolveMerger(labelImage, idx, nextObjectId, count, initializations)
+ 
+            # use merger resolving plugin to fit `count` objects
+            fittedObjects = self.mergerResolverPlugin.resolveMergerForCoords(coordinates, count, initializations)
+            
             assert(len(fittedObjects) == count)
-
+ 
             # split up node if count > 1, duplicate incoming and outgoing arcs
             if count > 1:
                 for idx in range(nextObjectId, nextObjectId + count):
                     newNode = (timestep, idx)
                     self.resolvedGraph.add_node(newNode, division=False, count=1, origin=node)
-
+ 
                     for e in self.unresolvedGraph.out_edges(node):
                         self.resolvedGraph.add_edge(newNode, e[1])
                     for e in self.unresolvedGraph.in_edges(node):
@@ -163,11 +175,11 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
                                 self.resolvedGraph.add_edge((e[0][0], newId), newNode)
                         else:
                             self.resolvedGraph.add_edge(e[0], newNode)
-
+ 
                 self.resolvedGraph.remove_node(node)
                 self.unresolvedGraph.node[node]['newIds'] = range(nextObjectId, nextObjectId + count)
                 nextObjectId += count
-
+ 
             # each unresolved node stores its fitted shape(s) to be used
             # as initialization in the next frame, this way division duplicates
             # and de-merged nodes in the resolved graph do not need to store a fit as well
