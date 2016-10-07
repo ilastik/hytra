@@ -14,7 +14,7 @@ def segmentation_to_hdf5(options):
     The generated segmentation is one HDF5 dataset per timestep,
     and each of these datasets has shape 1(t),x,y,z,1(c).
     """
-    in_h5 = h5py.File(options.segmentation_file, 'w')
+    in_h5 = h5py.File(options.segmentation_file, 'r')
     out_h5 = h5py.File(options.hdf5Path, 'w')
     
     data = in_h5[options.segmentation_path].value
