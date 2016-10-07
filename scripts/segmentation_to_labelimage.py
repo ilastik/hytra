@@ -27,7 +27,10 @@ def segmentation_to_hdf5(options):
     for timeframe in range(data.shape[0]):
         logging.getLogger('segmentation_to_labelimage.py').info("Working on timestep {}".format(timeframe))
         internalPath = options.hdf5ImagePath % (timeframe, timeframe + 1, data.shape[1], data.shape[2], data.shape[3])
-        frame = np.expand_dims(vigra.analysis.labelMultiArrayWithBackground(data[timeframe, ...].astype(np.uint32)), axis=0)
+        if options.find_connected_components:
+            frame = np.expand_dims(vigra.analysis.labelMultiArrayWithBackground(data[timeframe, ...].astype(np.uint32)), axis=0)
+        else:
+            frame = np.expand_dims(data[timeframe, ...].astype(np.uint32), axis=0)
         out_h5.create_dataset(internalPath, data=frame, compression='gzip')
 
     logging.getLogger('segmentation_to_labelimage.py').info("Saved {} timeframes".format(data.shape[0]))
@@ -53,6 +56,7 @@ if __name__ == '__main__':
     parser.add_argument('--label-image-path', type=str, dest='hdf5ImagePath',
                         help='Path inside ilastik project file to the label image',
                         default='/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]')
+    parser.add_argument('--find-connected-components', dest='find_connected_components', action='store_true')
     parser.add_argument("--verbose", dest='verbose', action='store_true', default=False)
 
     # parse command line
