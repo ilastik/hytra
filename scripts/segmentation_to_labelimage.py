@@ -8,6 +8,8 @@ import h5py
 import configargparse as argparse
 import logging
 import hytra.util.axesconversion
+import vigra 
+import numpy as np
 
 def segmentation_to_hdf5(options):
     """
@@ -23,8 +25,10 @@ def segmentation_to_hdf5(options):
     logging.getLogger('segmentation_to_labelimage.py').info("Changed into shape {}".format(data.shape))
 
     for timeframe in range(data.shape[0]):
+        logging.getLogger('segmentation_to_labelimage.py').info("Working on timestep {}".format(timeframe))
         internalPath = options.hdf5ImagePath % (timeframe, timeframe + 1, data.shape[1], data.shape[2], data.shape[3])
-        out_h5.create_dataset(internalPath, data=data, dtype='u2', compression='gzip')
+        frame = np.expand_dims(vigra.analysis.labelMultiArrayWithBackground(data[timeframe, ...].astype(np.uint32)), axis=0)
+        out_h5.create_dataset(internalPath, data=frame, compression='gzip')
 
     logging.getLogger('segmentation_to_labelimage.py').info("Saved {} timeframes".format(data.shape[0]))
 
