@@ -5,7 +5,7 @@ import colorsys
 
 
 class HypothesesGraphDiagram(object):
-    def __init__(self, hypothesesGraph, timeRange=(0, 10), width=4000, height=2000, radius=20, withNodeValue=True, withArcValue=True, withActiveArcs=False, fileName='HypothesesGraph.png', csvFileName=None):         
+    def __init__(self, hypothesesGraph, timeRange=(0, 10), width=4000, height=2000, radius=20, withNodeValue=True, withArcValue=True, withArcFeatures=False, fileName='HypothesesGraph.png', csvFileName=None):         
         # Initalize and configure plt plot
         plt.clf()
         fig=plt.figure(1)
@@ -40,7 +40,7 @@ class HypothesesGraphDiagram(object):
         nodeCoordsMap = {}
          
         # Draw nodes 
-        for node in hypothesesGraph.nodeIterator():
+        for node in hypothesesGraph.nodes_iter():#hypothesesGraph.nodeIterator():
             time = node[0]
             id = node[1]
             
@@ -51,12 +51,12 @@ class HypothesesGraphDiagram(object):
                 
                 # Set the color of active nodes
                 faceColor = colors[1]
-                nodeLabel = str(id)
+                nodeLabel = str('')#id)
                 edgeColor = 'k'
                 
-                if withNodeValue: #and hypothesesGraph._graph.node[(time,objectId)]['value'] > 1:
-                    faceColor = colors[hypothesesGraph._graph.node[node]['value']] 
-                    nodeLabel = str(hypothesesGraph._graph.node[node]['value']) 
+                if withNodeValue and 'value' in hypothesesGraph.node[node]: #and hypothesesGraph._graph.node[(time,objectId)]['value'] > 1:
+                    faceColor = colors[hypothesesGraph.node[node]['value']] 
+                    nodeLabel = str(hypothesesGraph.node[node]['value']) 
                     
                 circle=plt.Circle(nodeCoordsMap[node], radius=radius, edgecolor=edgeColor, facecolor=faceColor, fill=True, zorder=2)
                 ax.add_patch(circle)
@@ -68,10 +68,8 @@ class HypothesesGraphDiagram(object):
                 verticalalignment='center',
                 zorder=10)           
          
-        # Draw arcs
-        arcCoordsMap = {}
-                  
-        for arc in hypothesesGraph.arcIterator():
+        # Draw arcs           
+        for arc in hypothesesGraph.edges_iter():#hypothesesGraph.arcIterator():
             sourceNode = arc[0]
             targetNode = arc[1]
             
@@ -82,10 +80,16 @@ class HypothesesGraphDiagram(object):
             if sourceTime >= timeRange[0] and sourceTime < timeRange[1] and targetTime >= timeRange[0] and targetTime < timeRange[1]:  
                 color = 'k'
                 linestyle = 'solid'
-                linewidth = 0.5
+                linewidth = 0.1
                 
-                if withArcValue:
-                   linewidth += 1.5*float( hypothesesGraph._graph.edge[sourceNode][targetNode]['value'] ) 
+                if withArcValue and 'value' in hypothesesGraph.edge[sourceNode][targetNode]:
+                    linewidth += 1.5*float( hypothesesGraph.edge[sourceNode][targetNode]['value'] )
+                    if hypothesesGraph.edge[sourceNode][targetNode]['value'] == 0:
+                        color = 'g'
+                elif withArcFeatures and 'features' in hypothesesGraph.edge[sourceNode][targetNode]:
+                    linewidth += 10.0*float( hypothesesGraph.edge[sourceNode][targetNode]['features'][0][0] ) 
+                else:
+                    linewidth=1.0                 
 
                 xArcCoords = [ nodeCoordsMap[sourceNode][0], nodeCoordsMap[targetNode][0] ]
                 yArcCoords = [ nodeCoordsMap[sourceNode][1], nodeCoordsMap[targetNode][1] ]
@@ -109,7 +113,7 @@ class HypothesesGraphDiagram(object):
                 targetTime = targetNode[0] 
                                          
                 if sourceTime >= timeRange[0] and sourceTime < timeRange[1] and  targetTime >= timeRange[0] and targetTime < timeRange[1]:
-                    if timeTarget - sourceTime == 1:
+                    if targetTime - sourceTime == 1:
                         arc=(sourceNode,targetNode)
                         
                         # Set arc weight based on the number of times that we have walked this path 
@@ -118,7 +122,7 @@ class HypothesesGraphDiagram(object):
                         else: 
                             arcsWeight[arc] = 0.3    
                     
-                    circle=plt.Circle(nodeCoordsMap[(sourceTime,idSource)], radius=radius, edgecolor='k', facecolor='r', fill=True, zorder=9)
+                    circle=plt.Circle(nodeCoordsMap[sourceNode], radius=radius, edgecolor='k', facecolor='r', fill=True, zorder=9)
                     ax.add_patch(circle)
                      
             # Plot the arcs     

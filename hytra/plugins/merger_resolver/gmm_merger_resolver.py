@@ -20,24 +20,46 @@ class GMMMergerResolver(merger_resolver_plugin.MergerResolverPlugin):
     def getObjectInitializationList(self, gmm):
         return zip(gmm.weights_, gmm.covars_, gmm.means_)
 
+    def resolveMergerForCoords(self, coordinates, mergerCount, initializations=[]):
+        """
+        Resolve the pixel coordinates belonging to an object ID, into `mergerCount`
+        new segments by fitting some kind of model. The `initializations` provide fits
+        in the preceding frame of all possible incomings (list may be empty, but could
+        also be more than `mergerCount`).
+  
+        `coordinates` pixel coordinates that belong to a merger ID in labelImage
+        
+        `mergerCount` number of gaussians to fit
+  
+        **returns** a list of fitted objects
+        """
+  
+        # fit GMM to label image data
+        gmm = self.initGMM(mergerCount, initializations)
+        gmm.fit(coordinates)
+        assert(gmm.converged_)
+  
+        return self.getObjectInitializationList(gmm)
+
+
     def resolveMerger(self, labelImage, objectId, nextId, mergerCount, initializations=[]):
         """
         Resolve the object with the ID `objectId` in the `labelImage` into `mergerCount`
         new segments by fitting some kind of model. The `initializations` provide fits
         in the preceding frame of all possible incomings (list may be empty, but could
         also be more than `mergerCount`).
-
+  
         `labelImage` is used read-only, use `updateLabelImage` to refine the segmentation
-
+  
         **returns** a list of fitted objects
         """
-
+  
         # fit GMM to label image data
         coordinates = np.transpose(np.vstack(np.where(labelImage == objectId)))
         gmm = self.initGMM(mergerCount, initializations)
         gmm.fit(coordinates)
         assert(gmm.converged_)
-
+  
         return self.getObjectInitializationList(gmm)
 
     def updateLabelImage(self, labelImage, objectId, fits, newIds):
