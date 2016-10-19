@@ -111,7 +111,6 @@ if __name__ == "__main__":
     gapTrackParents = {}
 
     for n in hypothesesGraph.nodeIterator():
-        # print hypothesesGraph._graph.node[n]
         frameMapping = mappings.setdefault(n[0], {})
         if 'trackId' not in hypothesesGraph._graph.node[n]:
             raise ValueError("You need to compute the Lineage of every node before accessing the trackId!")
@@ -126,11 +125,9 @@ if __name__ == "__main__":
             assert(trackId not in trackParents)
             trackParents[trackId] = hypothesesGraph._graph.node[hypothesesGraph._graph.node[n]['parent']]['trackId']
         if 'gap_parent' in hypothesesGraph._graph.node[n]:
-            # assert(trackId not in trackParents)
+            assert(trackId not in trackParents)
             gapTrackParents[trackId] = hypothesesGraph._graph.node[hypothesesGraph._graph.node[n]['gap_parent']]['trackId']
 
-    print trackParents
-    print gapTrackParents
     # write res_track.txt
     getLogger().debug("Writing track text file")
     trackDict = {}
@@ -143,8 +140,8 @@ if __name__ == "__main__":
         # jumping over time frames, so creating 
         if trackId in gapTrackParents.keys():
             if gapTrackParents[trackId] != trackId:
-                getLogger().warning("Jumping over one time frame in this link")
                 parent = gapTrackParents[trackId]
+                getLogger().warning("Jumping over one time frame in this link: trackid: {}, parent: {}, time: {}".format(trackId, parent, min(timestepList)))
         trackDict[trackId] = [parent, min(timestepList), max(timestepList)]
     save_tracks(trackDict, args) 
 
