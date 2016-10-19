@@ -78,12 +78,11 @@ class GapCloser(object):
         for node in lookAt:
             # find "frame-neighbours" to add connections to them
             for neighb in lookAt:
-                # print node, neighb
                 if node != neighb and node[0] == neighb[0] - 2 and node[2] == 'ending' and neighb[2] == 'starting':
                     addNode(node)
                     addNode(neighb)
                     self.Graph.add_edge((node[0], node[1]), (neighb[0], neighb[1]))
-                    print node, neighb, "added edges"
+                    getLogger().debug("Adding edges {}->{}".format(node, neighb))
 
         return self.Graph
 
@@ -93,7 +92,7 @@ class GapCloser(object):
         '''
         raise NotImplementedError()
 
-    def _minCostMaxFlowGapClosing(self, objectFeatures, transitionClassifier=None, transitionParameter=5.0, threshold=0.05):
+    def _thresholdGapClosing(self, objectFeatures, transitionClassifier=None, transitionParameter=5.0, threshold=0.05):
         """
         Find the optimal assignments within the `Graph` by looking at the transition porbability and
         deciding wheter it is above the `threshold` or not.
@@ -140,33 +139,12 @@ class GapCloser(object):
                 prob = np.exp(-dist / transitionParameter)
                 probs = [1.0 - prob, prob]
 
-            print probs, edge
+            getLogger().debug("Looking at probabilities {} on edge {}:".format(probs, edge))
 
             if probs[1] > threshold:
                 ctc_arcFlowMap[edge] = 1
             else:
                 ctc_arcFlowMap[edge] = 0
-
-            # trackingGraph.addLinkingHypotheses(src, dest, listify(negLog(probs)))
-
-        # # track
-        # import dpct
-        # weights = {"weights": [1, 1, 1, 1]}
-        # # mergerResult = dpct.trackMaxFlow(trackingGraph.model, weights)
-        # mergerResult = dpct.trackFlowBased(trackingGraph.model, weights)
-
-        # # transform results to dictionaries that can be indexed by id or (src,dest)
-        # nodeFlowMap = dict([(int(d['id']), int(d['value'])) for d in mergerResult['detectionResults']])
-        # arcFlowMap = dict([((int(l['src']), int(l['dest'])), int(l['value'])) for l in mergerResult['linkingResults']])
-
-        # ctc_arcFlowMap = {}
-        # # translate edges back to ctc format
-        # for edge in arcFlowMap.keys():
-        #     src = map_uuid_to_ctc[edge[0]]
-        #     dest = map_uuid_to_ctc[edge[1]]
-        #     ctc_arcFlowMap[(src, dest)] = 1 # poate altfel aici, lista fara value, care oricum e unu. Sau?
-
-        # # return nodeFlowMap, arcFlowMap
 
         return ctc_arcFlowMap
 
@@ -188,7 +166,6 @@ class GapCloser(object):
                         idx, start_frame, end_frame, parent_id = track_info
                         if edge[1][1] == idx and ctc_arcFlowMap[edge] == 1:
                             parent_id = edge[0][1]
-                            print line, "Ligne"
                             line ="{} {} {} {}\n".format(idx, start_frame, end_frame, parent_id)
                     f.write(line)
 
@@ -200,7 +177,7 @@ class GapCloser(object):
         pass
 
     # ------------------------------------------------------------
-    def run(self, input_ctc, output_ctc, transition_classifier_filename=None, transition_classifier_path=None, treshold=0.05):
+    def run(self, input_ctc, output_ctc, transition_classifier_filename=None, transition_classifier_path=None, threshold=0.05):
         """
         Run merger resolving
 
@@ -243,9 +220,9 @@ class GapCloser(object):
                 transitionClassifier = None
 
             # run min-cost max-flow to find gaps worthy to be closed
-            getLogger().info("Running min-cost max-flow to find closed gaps assignments")
+            getLogger().info("Running close gaps on a thresholding based method")
 
-            ctcArcFlowMap = self._minCostMaxFlowGapClosing(objectFeatures, transitionClassifier, treshold)
+            ctcArcFlowMap = self._thresholdGapClosing(objectFeatures, transitionClassifier, threshold)
 
             # fuse results into a new solution
             self.result = self._saveTracks(ctcArcFlowMap, input_ctc, output_ctc)
