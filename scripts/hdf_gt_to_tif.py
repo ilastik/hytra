@@ -36,6 +36,7 @@ def get_frame_label_image(timestep, options):
     if len(options.input_files) == 1:
         with h5py.File(options.input_files[0], 'r') as in_h5:
             return np.array(in_h5[options.label_image_path][timestep, ..., 0]).squeeze()
+            # return np.array(in_h5[options.label_image_path][timestep, 0, ...]).squeeze()
     else:
         with h5py.File(options.input_files[timestep], 'r') as in_h5:
             return np.array(in_h5[options.label_image_path]).squeeze()
