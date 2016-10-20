@@ -362,21 +362,10 @@ class HypothesesGraph(object):
 
             features = listify(negLog(transitionProbabilityFunc(srcTraxel, destTraxel)))
 
-            # additional Frames add feature. iciii
+            # add feature for additional Frames. Since we do not these edges to be primarily taken, we add a bias to the edge. Now: hard coded, future: parameter
             frame_gap = destTraxel.Timestep - srcTraxel.Timestep
             if frame_gap > 1:
-                features[1][0] = features[1][0] + 11
-            # print features
-
-            # weight version. CH
-            # frame_gap = destTraxel.Timestep - srcTraxel.Timestep
-            # # features[0].append(0+negLog([1.0])[0])
-            # # features[1].append(negLog([0.0])[0])
-            # for feat in features:
-            #     feat.append(negLog([0.0])[0])
-            #     feat[frame_gap - 1], feat[0] = feat[0], feat[frame_gap - 1]
-            #     # feat[1] = 10**3 +feat[1]
-            # print "gap", frame_gap, features
+                features[1][0] = features[1][0] + 20
 
             self._graph.edge[a[0]][a[1]]['src'] = self._graph.node[a[0]]['id']
             self._graph.edge[a[0]][a[1]]['dest'] = self._graph.node[a[1]]['id']
