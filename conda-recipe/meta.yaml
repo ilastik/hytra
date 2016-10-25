@@ -33,5 +33,5 @@ test:
 
 about:
   home: https://github.com/chaubold/hytra
-  license: BSD License
+  license: MIT
   summary: 'Python tracking framework developed at the IAL lab @ University of Heidelberg'
