@@ -12,7 +12,7 @@ package:
 
 source:
   git_url: https://github.com/chaubold/hytra
-  git_tag: ilastik-integration
+  git_tag: master
 
 build:
   {% set build_num = 0 %}
