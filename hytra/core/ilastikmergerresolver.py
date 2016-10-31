@@ -25,17 +25,21 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
         timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
 
         mergers, detections, links, divisions = hytra.core.jsongraph.getMergersDetectionsLinksDivisions(self.result, uuidToTraxelMap)
-
-        self.mergersPerTimestep = hytra.core.jsongraph.getMergersPerTimestep(mergers, timesteps)
-        self.detectionsPerTimestep = hytra.core.jsongraph.getDetectionsPerTimestep(detections, timesteps)
         
-        linksPerTimestep = hytra.core.jsongraph.getLinksPerTimestep(links, timesteps)
-        divisionsPerTimestep = hytra.core.jsongraph.getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps)
-        mergerLinks = hytra.core.jsongraph.getMergerLinks(linksPerTimestep, self.mergersPerTimestep, timesteps)
-
-        # Build graph of the unresolved (merger) nodes and their direct neighbors
-        self._createUnresolvedGraph(divisionsPerTimestep, self.mergersPerTimestep, mergerLinks, withFullGraph)
-        self._prepareResolvedGraph()
+        self.mergerNum = len(mergers)
+        
+        # Check that graph contains mergers
+        if self.mergerNum > 0:
+            self.mergersPerTimestep = hytra.core.jsongraph.getMergersPerTimestep(mergers, timesteps)
+            self.detectionsPerTimestep = hytra.core.jsongraph.getDetectionsPerTimestep(detections, timesteps)
+            
+            linksPerTimestep = hytra.core.jsongraph.getLinksPerTimestep(links, timesteps)
+            divisionsPerTimestep = hytra.core.jsongraph.getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps)
+            mergerLinks = hytra.core.jsongraph.getMergerLinks(linksPerTimestep, self.mergersPerTimestep, timesteps)
+    
+            # Build graph of the unresolved (merger) nodes and their direct neighbors
+            self._createUnresolvedGraph(divisionsPerTimestep, self.mergersPerTimestep, mergerLinks, withFullGraph)
+            self._prepareResolvedGraph()
 
     def run(self, transition_classifier_filename=None, transition_classifier_path=None):
         """
@@ -51,10 +55,7 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
         """
         traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(self.model)
         timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
-
-        # TODO: We're already doing this in the constructor
-        mergers, detections, links, divisions = hytra.core.jsongraph.getMergersDetectionsLinksDivisions(self.result, uuidToTraxelMap)
-        
+                
         # compute new object features
         objectFeatures = self._computeObjectFeatures(timesteps)
 
