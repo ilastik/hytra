@@ -33,41 +33,69 @@ class MergerResolver(object):
         self.model = None
         self.result = None
 
-    def _createUnresolvedGraph(self, divisionsPerTimestep, mergersPerTimestep, mergerLinks):
+    def _createUnresolvedGraph(self, divisionsPerTimestep, mergersPerTimestep, mergerLinks, withFullGraph=False):
         """
         Set up a networkx graph consisting of mergers that need to be resolved (not resolved yet!)
         and their direct neighbors.
 
         ** returns ** the `unresolvedGraph`
         """
+        
         self.unresolvedGraph = nx.DiGraph()
         def source(timestep, link):
             return int(timestep) - 1, link[0]
 
         def target(timestep, link):
             return int(timestep), link[1]
-
-        def addNode(node):
-            ''' add a node to the unresolved graph and fill in the properties `division` and `count` '''
-            intT, idx = node
-
+        
+        # Recompute full graph
+        if withFullGraph:
+            self.unresolvedGraph = self.hypothesesGraph._graph.copy()
+            
+            # Add division parameter to nodes
+            # TODO: Add the division parameter only to nodes that contain divisions (we're already doing these with 'count')
             lastframe = max(divisionsPerTimestep.keys(), key=int)
-            if divisionsPerTimestep is not None and int(intT) < int(lastframe):
-                division = idx in divisionsPerTimestep[str(intT + 1)] # +1 screams for lastframe condition.
-            else:
-                division = False
-            count = 1
-            if idx in mergersPerTimestep[str(intT)]:
-                assert(not division)
-                count = mergersPerTimestep[str(intT)][idx]
-            self.unresolvedGraph.add_node(node, division=division, count=count)
+            for node in self.unresolvedGraph.nodes_iter(): 
+                timestep, idx = node
 
-        # add nodes
-        for t, link in mergerLinks:
-            for n in [source(t, link), target(t, link)]:
-                if not self.unresolvedGraph.has_node(n):
-                    addNode(n)
-            self.unresolvedGraph.add_edge(source(t, link), target(t, link))
+                if divisionsPerTimestep is not None and int(timestep) < int(lastframe):
+                    division = idx in divisionsPerTimestep[str(timestep + 1)] # +1 screams for lastframe condition.
+                else:
+                    division = False  
+                    
+                self.unresolvedGraph.node[node]['division'] = division          
+            
+            # Add count parameter to nodes 
+            for t, link in mergerLinks:
+                for node in [source(t, link), target(t, link)]:
+                    timestep, idx = node
+                    if idx in mergersPerTimestep[str(timestep)]:
+                        count = mergersPerTimestep[str(timestep)][idx]
+                        self.unresolvedGraph.node[node]['count'] = count
+        
+        # Recompute graph only with merger nodes and neighbors                
+        else:      
+            def addNode(node):
+                ''' add a node to the unresolved graph and fill in the properties `division` and `count` '''
+                intT, idx = node
+    
+                lastframe = max(divisionsPerTimestep.keys(), key=int)
+                if divisionsPerTimestep is not None and int(intT) < int(lastframe):
+                    division = idx in divisionsPerTimestep[str(intT + 1)] # +1 screams for lastframe condition.
+                else:
+                    division = False
+                count = 1
+                if idx in mergersPerTimestep[str(intT)]:
+                    assert(not division)
+                    count = mergersPerTimestep[str(intT)][idx]
+                self.unresolvedGraph.add_node(node, division=division, count=count)
+    
+            # add nodes
+            for t, link in mergerLinks:
+                for n in [source(t, link), target(t, link)]:
+                    if not self.unresolvedGraph.has_node(n):
+                        addNode(n)
+                self.unresolvedGraph.add_edge(source(t, link), target(t, link))
 
         return self.unresolvedGraph
 
@@ -258,7 +286,7 @@ class MergerResolver(object):
         # insert new nodes and update UUID to traxel map
         nextUuid = max(uuidToTraxelMap.keys()) + 1
         for node in self.unresolvedGraph.nodes_iter():
-            if self.unresolvedGraph.node[node]['count'] > 1:
+            if 'count' in self.unresolvedGraph.node[node] and self.unresolvedGraph.node[node]['count'] > 1:
                 newIds = self.unresolvedGraph.node[node]['newIds']
                 del traxelIdPerTimestepToUniqueIdMap[str(node[0])][str(node[1])]
                 for newId in newIds:
@@ -307,7 +335,7 @@ class MergerResolver(object):
 
         # add new nodes
         for node in self.unresolvedGraph.nodes_iter():
-            if self.unresolvedGraph.node[node]['count'] > 1:
+            if 'count' in self.unresolvedGraph.node[node] and self.unresolvedGraph.node[node]['count'] > 1:
                 newIds = self.unresolvedGraph.node[node]['newIds']
                 for newId in newIds:
                     uuid = traxelIdPerTimestepToUniqueIdMap[str(node[0])][str(newId)]

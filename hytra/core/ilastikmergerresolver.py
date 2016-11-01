@@ -13,7 +13,7 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
     Specialization of merger resolving to work with the hypotheses graph given by ilastik,
     and to read/write images from/to the input/output slots of the respective operators. 
     '''
-    def __init__(self, hypothesesGraph, pluginPaths=[os.path.abspath('../hytra/plugins')], verbose=False):
+    def __init__(self, hypothesesGraph, pluginPaths=[os.path.abspath('../hytra/plugins')], withFullGraph=False, verbose=False):
         super(IlastikMergerResolver, self).__init__(pluginPaths, verbose)
         trackingGraph = hypothesesGraph.toTrackingGraph(noFeatures=True)
         self.model = trackingGraph.model
@@ -25,17 +25,21 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
         timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
 
         mergers, detections, links, divisions = hytra.core.jsongraph.getMergersDetectionsLinksDivisions(self.result, uuidToTraxelMap)
-
-        self.mergersPerTimestep = hytra.core.jsongraph.getMergersPerTimestep(mergers, timesteps)
-        self.detectionsPerTimestep = hytra.core.jsongraph.getDetectionsPerTimestep(detections, timesteps)
         
-        linksPerTimestep = hytra.core.jsongraph.getLinksPerTimestep(links, timesteps)
-        divisionsPerTimestep = hytra.core.jsongraph.getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps)
-        mergerLinks = hytra.core.jsongraph.getMergerLinks(linksPerTimestep, self.mergersPerTimestep, timesteps)
-
-        # Build graph of the unresolved (merger) nodes and their direct neighbors
-        self._createUnresolvedGraph(divisionsPerTimestep, self.mergersPerTimestep, mergerLinks)
-        self._prepareResolvedGraph()
+        self.mergerNum = len(mergers)
+        
+        # Check that graph contains mergers
+        if self.mergerNum > 0:
+            self.mergersPerTimestep = hytra.core.jsongraph.getMergersPerTimestep(mergers, timesteps)
+            self.detectionsPerTimestep = hytra.core.jsongraph.getDetectionsPerTimestep(detections, timesteps)
+            
+            linksPerTimestep = hytra.core.jsongraph.getLinksPerTimestep(links, timesteps)
+            divisionsPerTimestep = hytra.core.jsongraph.getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps)
+            mergerLinks = hytra.core.jsongraph.getMergerLinks(linksPerTimestep, self.mergersPerTimestep, timesteps)
+    
+            # Build graph of the unresolved (merger) nodes and their direct neighbors
+            self._createUnresolvedGraph(divisionsPerTimestep, self.mergersPerTimestep, mergerLinks, withFullGraph)
+            self._prepareResolvedGraph()
 
     def run(self, transition_classifier_filename=None, transition_classifier_path=None):
         """
@@ -51,9 +55,7 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
         """
         traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(self.model)
         timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
-
-        mergers, detections, links, divisions = hytra.core.jsongraph.getMergersDetectionsLinksDivisions(self.result, uuidToTraxelMap)
-        
+                
         # compute new object features
         objectFeatures = self._computeObjectFeatures(timesteps)
 
@@ -135,10 +137,7 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
         t = str(timestep)
         detections = self.detectionsPerTimestep[t]
  
-        for idx, coordinates in coordinatesForObjectIds.items():
-            if idx not in detections:
-                continue
-            
+        for idx, coordinates in coordinatesForObjectIds.items():            
             node = (timestep, idx)
             if node not in self.resolvedGraph:
                 continue
@@ -150,6 +149,7 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
              
             # collect initializations from incoming
             initializations = []
+            
             for predecessor, _ in self.unresolvedGraph.in_edges(node):
                 initializations.extend(self.unresolvedGraph.node[predecessor]['fits'])
             # TODO: what shall we do if e.g. a 2-merger and a single object merge to 2 + 1,
