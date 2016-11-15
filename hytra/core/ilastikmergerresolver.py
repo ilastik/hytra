@@ -110,7 +110,9 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
             # skip non-mergers
             if not 'newIds' in self.unresolvedGraph.node[n] or len(self.unresolvedGraph.node[n]['newIds']) < 2:
                 continue
-            mergerDict.setdefault(n[0], {})[n[1]] = self.unresolvedGraph.node[n]['newIds']
+            
+            # Save merger node info in merger dict (used from within Ilastik)
+            mergerDict[n] = self.unresolvedGraph.node[n]
 
         return mergerDict
  
