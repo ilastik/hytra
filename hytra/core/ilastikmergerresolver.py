@@ -106,13 +106,15 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
 
         # return a dictionary telling about which mergers were resolved into what
         mergerDict = {}
-        for n in self.unresolvedGraph.nodes_iter():
+        for node in self.unresolvedGraph.nodes_iter():
             # skip non-mergers
-            if not 'newIds' in self.unresolvedGraph.node[n] or len(self.unresolvedGraph.node[n]['newIds']) < 2:
+            if not 'newIds' in self.unresolvedGraph.node[node] or len(self.unresolvedGraph.node[node]['newIds']) < 2:
                 continue
             
-            # Save merger node info in merger dict (used from within Ilastik)
-            mergerDict[n] = self.unresolvedGraph.node[n]
+            # Save merger node info in merger dict (fits and new IDs used from within Ilastik)
+            time = node[0]
+            idx = node[1]
+            mergerDict.setdefault(time, {})[idx] = self.unresolvedGraph.node[node]
 
         return mergerDict
  
