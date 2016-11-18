@@ -62,7 +62,7 @@ class GMMMergerResolver(merger_resolver_plugin.MergerResolverPlugin):
   
         return self.getObjectInitializationList(gmm)
 
-    def updateLabelImage(self, labelImage, objectId, fits, newIds):
+    def updateLabelImage(self, labelImage, objectId, fits, newIds, offset=[0,0,0]):
         """
         Resolve the object with the ID `objectId` in the `labelImage` into the fitted models with the given new IDs.
         `labelImage` should be updated by replacing all pixels that were labelled with `objectId`
@@ -73,9 +73,9 @@ class GMMMergerResolver(merger_resolver_plugin.MergerResolverPlugin):
             assert(len(fits) == len(newIds))
             # edit labelimage in-place
             coordinates = np.transpose(np.vstack(np.where(labelImage == objectId)))
+            coordinates = coordinates + offset
             gmm = self.initGMM(len(fits), fits)
             responsibilities = gmm.predict(coordinates)
-            assert(len(np.unique(responsibilities)) == len(fits))
             newIds = np.array(newIds)
             newObjectIds = newIds[responsibilities]
             labelImage[labelImage == objectId] = newObjectIds
