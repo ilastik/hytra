@@ -199,15 +199,21 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
         # populate the dictionaries only with the Region Centers of the fit for the distance based
         # transitions in ilastik
         # TODO: in the future, this should recompute the object features from the relabeled image!
-        for n in self.unresolvedGraph.nodes_iter():
-            fits = self.unresolvedGraph.node[n]['fits']
-            timestepIdTuples = [n]
-            if 'newIds' in self.unresolvedGraph.node[n]:
-                timestepIdTuples = [(n[0], i) for i in self.unresolvedGraph.node[n]['newIds']]
-                assert(len(self.unresolvedGraph.node[n]['newIds']) == len(fits))
-
-            for tidt, fit in zip(timestepIdTuples, fits):
-                objectFeatures[tidt] = {'RegionCenter' : self._fitToRegionCenter(fit)}
+        for node in self.unresolvedGraph.nodes_iter():
+            # Add region centers for new nodes (based on GMM fits)
+            if 'newIds' in self.unresolvedGraph.node[node] and 'fits' in self.unresolvedGraph.node[node]:
+                assert(len(self.unresolvedGraph.node[node]['newIds']) == len(self.unresolvedGraph.node[node]['fits']))
+                 
+                time = node[0]
+                newNodes = [(time, idx) for idx in self.unresolvedGraph.node[node]['newIds']]
+                fits = self.unresolvedGraph.node[node]['fits']
+                 
+                for newNode, fit in zip(newNodes, fits):
+                    objectFeatures[newNode] = {'RegionCenter' : self._fitToRegionCenter(fit)}
+            
+            # Otherwise, get the region centers from the traxel com feature     
+            else:
+                 objectFeatures[node] = {'RegionCenter' : self.hypothesesGraph._graph.node[node]['traxel'].Features['com']}  
 
         return objectFeatures
     
