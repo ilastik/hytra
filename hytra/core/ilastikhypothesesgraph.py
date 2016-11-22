@@ -136,8 +136,6 @@ class IlastikHypothesesGraph(HypothesesGraph):
 
         dist_border = self.fieldOfView.spatial_distance_to_border(traxelA.Timestep, traxelA.X(), traxelA.Y(), traxelA.Z(), False)
 
-        
-
         # find the objects crossing the image border and return the distance based probability instead
         if np.isclose(coordsMax, boundMax).any() or np.isclose(coordsMin, boundMin).any():
             return self.getTransitionFeaturesDist(traxelA, traxelB, self.transitionParameter, self.maxNumObjects + 1)

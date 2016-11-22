@@ -362,10 +362,10 @@ class HypothesesGraph(object):
 
             features = listify(negLog(transitionProbabilityFunc(srcTraxel, destTraxel)))
 
-            # add feature for additional Frames. Since we do not these edges to be primarily taken, we add a bias to the edge. Now: hard coded, future: parameter
+            # add feature for additional Frames. Since we do not want these edges to be primarily taken, we add a bias to the edge. Now: hard coded, future: parameter
             frame_gap = destTraxel.Timestep - srcTraxel.Timestep
             if frame_gap > 1:
-                features[1][0] = features[1][0] + 20
+                features[1][0] = features[1][0] + 20*frame_gap
 
             self._graph.edge[a[0]][a[1]]['src'] = self._graph.node[a[0]]['id']
             self._graph.edge[a[0]][a[1]]['dest'] = self._graph.node[a[1]]['id']
@@ -560,7 +560,7 @@ class HypothesesGraph(object):
                 numberOfOutgoingEdges += 1
         return numberOfOutgoingObject, numberOfOutgoingEdges
 
-    def computeLineage(self, firstTrackId=2, firstLineageId=2):
+    def computeLineage(self, firstTrackId=2, firstLineageId=2, linksToNumNextFrames=1):
         """
         computes lineage and track id for every node in the graph
         """
@@ -605,10 +605,7 @@ class HypothesesGraph(object):
                 traxelgraph._graph.node[current_node]['children'] = []
                 for a in traxelgraph._graph.out_edges(current_node):
                     if 'value' in traxelgraph._graph.edge[current_node][a[1]] and traxelgraph._graph.edge[current_node][a[1]]['value'] > 0:
-                        if 'gap' in traxelgraph._graph.edge[current_node][a[1]] and traxelgraph._graph.edge[current_node][a[1]]['gap'] == 1:
-                            traxelgraph._graph.node[a[1]]['gap'] = 1
-                        if 'gap' in traxelgraph._graph.edge[current_node][a[1]] and traxelgraph._graph.edge[current_node][a[1]]['gap'] > 1:
-                            traxelgraph._graph.node[a[1]]['gap'] = 2
+                        traxelgraph._graph.node[a[1]]['gap'] = linksToNumNextFrames
 
                         traxelgraph._graph.node[current_node]['children'].append(a[1])
                         traxelgraph._graph.node[a[1]]['parent'] = current_node
@@ -628,7 +625,7 @@ class HypothesesGraph(object):
                                             lineage_id,
                                             track_id))
                         if 'gap' in traxelgraph._graph.edge[current_node][a[1]] and traxelgraph._graph.edge[current_node][a[1]]['gap'] > 1:
-                            traxelgraph._graph.node[a[1]]['gap'] = 2
+                            traxelgraph._graph.node[a[1]]['gap'] = linksToNumNextFrames
                             traxelgraph._graph.node[a[1]]['gap_parent'] = current_node
                             update_queue.append((traxelgraph.target(a),
                                             lineage_id,

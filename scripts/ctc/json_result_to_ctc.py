@@ -84,6 +84,8 @@ if __name__ == "__main__":
                         default=[os.path.abspath('../../hytra/plugins')],
                         help='A list of paths to search for plugins for the tracking pipeline.')
     parser.add_argument("--is-ground-truth", dest='is_ground_truth', action='store_true', default=False)
+    parser.add_argument('--links-to-num-next-frames', dest='linksToNumNextFrames', type=int, default=1)
+
     parser.add_argument("--verbose", dest='verbose', action='store_true', default=False)
 
     # parse command line
@@ -103,7 +105,7 @@ if __name__ == "__main__":
     getLogger().debug("Loading graph and result")
     trackingGraph = JsonTrackingGraph(model_filename=args.model_filename, result_filename=args.result_filename)
     hypothesesGraph = trackingGraph.toHypothesesGraph()
-    hypothesesGraph.computeLineage(1, 1)
+    hypothesesGraph.computeLineage(1, 1, args.linksToNumNextFrames)
 
     mappings = {} # dictionary over timeframes, containing another dict objectId -> trackId per frame
     tracks = {} # stores a list of timeframes per track, so that we can find from<->to per track
@@ -141,7 +143,7 @@ if __name__ == "__main__":
         if trackId in gapTrackParents.keys():
             if gapTrackParents[trackId] != trackId:
                 parent = gapTrackParents[trackId]
-                getLogger().warning("Jumping over one time frame in this link: trackid: {}, parent: {}, time: {}".format(trackId, parent, min(timestepList)))
+                getLogger().info("Jumping over one time frame in this link: trackid: {}, parent: {}, time: {}".format(trackId, parent, min(timestepList)))
         trackDict[trackId] = [parent, min(timestepList), max(timestepList)]
     save_tracks(trackDict, args) 
 
