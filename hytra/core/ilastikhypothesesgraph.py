@@ -114,12 +114,6 @@ class IlastikHypothesesGraph(HypothesesGraph):
         dist = np.linalg.norm(positions[0] - positions[1])
         prob = np.exp(-dist / transitionParam)
 
-        # if bla:
-        # to be deleted!!
-        # dist_border = fov.spatial_distance_to_border(traxel.Timestep, traxel.X(), traxel.Y(), traxel.Z(), False)
-        # x = np.load('/mnt/data1/letip/optimize_alpha_probsDIST.npy')
-        # x = np.append(x, np.array([prob, dist_border]))
-        # np.save('/mnt/data1/letip/optimize_alpha_probsDIST', x)
         return [1.0 - prob] + [prob] * (max_state - 1)
 
 
@@ -130,11 +124,6 @@ class IlastikHypothesesGraph(HypothesesGraph):
         feats = [probabilityGenerator.getTraxelFeatureDict(obj.Timestep, obj.Id) for obj in [traxelA, traxelB]]
         featVec = probabilityGenerator.getTransitionFeatureVector(feats[0], feats[1], transitionClassifier.selectedFeatures)
         probs = transitionClassifier.predictProbabilities(featVec)[0]
-
-
-        # x = np.load('/mnt/data1/letip/optimize_alpha_probsRF.npy')
-        # x = np.append(x, probs[1])
-        # np.save('/mnt/data1/letip/optimize_alpha_probsRF', x)
 
         # or image borders, so predict probability just by distance
         upperBound = self.fieldOfView._FieldOfView__upperBound
@@ -149,55 +138,11 @@ class IlastikHypothesesGraph(HypothesesGraph):
 
         
 
-        # # find the objects crossing the image border:
+        # find the objects crossing the image border and return the distance based probability instead
         if np.isclose(coordsMax, boundMax).any() or np.isclose(coordsMin, boundMin).any():
-            if traxelA.Timestep == 10: # Rapoport is so big, that unfeasible for all frames
-                # care ar fi rezultatul la distanta
-                positions = [np.array([t.X(), t.Y(), t.Z()]) for t in [traxelA, traxelB]]
-                dist = np.linalg.norm(positions[0] - positions[1])
-                prob = np.exp(-dist / 5.0)
-                x = np.load('/mnt/data1/letip/optimize_alphaTC/optimize_alpha_probsDISTgood.npy')
-                x = np.vstack((x, np.array([prob, dist_border])))
-                np.save('/mnt/data1/letip/optimize_alphaTC/optimize_alpha_probsDISTgood', x)
-
-                # care ar fi rezultatul la distanta
-                positions = [np.array([t.X(), t.Y(), t.Z()]) for t in [traxelA, traxelB]]
-                dist = np.linalg.norm(positions[0] - positions[1])
-                prob = np.exp(-dist / self.transitionParameter)
-                x = np.load('/mnt/data1/letip/optimize_alphaTC/optimize_alpha_probsDIST.npy')
-                x = np.vstack((x, np.array([prob, dist_border])))
-                np.save('/mnt/data1/letip/optimize_alphaTC/optimize_alpha_probsDIST', x)
-
-                # care e rezultatul de fapt
-                x = np.load('/mnt/data1/letip/optimize_alphaTC/optimize_alpha_probsRF.npy')
-                x = np.vstack((x, np.array([probs[1], dist_border])))
-                np.save('/mnt/data1/letip/optimize_alphaTC/optimize_alpha_probsRF', x)
             return self.getTransitionFeaturesDist(traxelA, traxelB, self.transitionParameter, self.maxNumObjects + 1)
         else:
-            if traxelA.Timestep == 10:
-                # care ar fi rezultatul la distanta
-                positions = [np.array([t.X(), t.Y(), t.Z()]) for t in [traxelA, traxelB]]
-                dist = np.linalg.norm(positions[0] - positions[1])
-                prob = np.exp(-dist / 5.0)
-                x = np.load('/mnt/data1/letip/optimize_alphaTC/optimize_alpha_probsDISTgood.npy')
-                x = np.vstack((x, np.array([prob, dist_border])))
-                np.save('/mnt/data1/letip/optimize_alphaTC/optimize_alpha_probsDISTgood', x)
-
-                # care ar fi rezultatul la distanta
-                positions = [np.array([t.X(), t.Y(), t.Z()]) for t in [traxelA, traxelB]]
-                dist = np.linalg.norm(positions[0] - positions[1])
-                prob = np.exp(-dist / self.transitionParameter)
-                x = np.load('/mnt/data1/letip/optimize_alphaTC/optimize_alpha_probsDIST.npy')
-                x = np.vstack((x, np.array([prob, dist_border])))
-                np.save('/mnt/data1/letip/optimize_alphaTC/optimize_alpha_probsDIST', x)
-
-                # care e rezultatul de fapt
-                x = np.load('/mnt/data1/letip/optimize_alphaTC/optimize_alpha_probsRF.npy')
-                x = np.vstack((x, np.array([probs[1], dist_border])))
-                np.save('/mnt/data1/letip/optimize_alphaTC/optimize_alpha_probsRF', x)
-
-
-        return [probs[0]] + [probs[1]] * (max_state - 1)
+            return [probs[0]] + [probs[1]] * (max_state - 1)
 
 
 
