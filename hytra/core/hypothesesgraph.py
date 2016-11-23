@@ -364,8 +364,23 @@ class HypothesesGraph(object):
 
             # add feature for additional Frames. Since we do not want these edges to be primarily taken, we add a bias to the edge. Now: hard coded, future: parameter
             frame_gap = destTraxel.Timestep - srcTraxel.Timestep
+
+            # 1. method
+            bias = 20 # to be transferred out
             if frame_gap > 1:
-                features[1][0] = features[1][0] + 20*frame_gap
+                features[1][0] = features[1][0] + bias*frame_gap
+
+            # # 2. method
+            # # introduce a new energies like: [[6], [15]] -> [[6, 23], [15, 23]] for first links and
+            # # [[6], [15]] -> [[23, 6], [23, 15]] for second links, and so on for 3rd order links
+            # # !!! this will introduce a new weight in the weight.json file. For the 2nd link, comes in 2nd row and so on.
+            # # drawback: did not manage to adjust parameter to get sensible results.
+            # for feat in features:
+            #     for i in range(frame_gap):
+            #         feat.append(23)
+            #     if frame_gap > 1:
+            #         feat[frame_gap-1], feat[0] = feat[0], feat[frame_gap-1]
+
 
             self._graph.edge[a[0]][a[1]]['src'] = self._graph.node[a[0]]['id']
             self._graph.edge[a[0]][a[1]]['dest'] = self._graph.node[a[1]]['id']
