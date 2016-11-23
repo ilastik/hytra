@@ -25,7 +25,8 @@ class IlastikHypothesesGraph(HypothesesGraph):
                  maxNeighborDistance=200,
                  transitionParameter=5.0,
                  transitionClassifier=None,
-                 linksToNumNextFrames=1):
+                 skipLinks=1,
+                 skipLinksBias=20):
         '''
         Constructor
         '''
@@ -43,7 +44,8 @@ class IlastikHypothesesGraph(HypothesesGraph):
         self.maxNeighborDistance = maxNeighborDistance
         self.transitionClassifier = transitionClassifier
         self.transitionParameter = transitionParameter
-        self.linksToNumNextFrames = linksToNumNextFrames
+        self.skipLinks = skipLinks
+        self.skipLinksBias = skipLinksBias
 
         # build hypotheses graph
         self.buildFromProbabilityGenerator(probabilityGenerator,
@@ -51,7 +53,7 @@ class IlastikHypothesesGraph(HypothesesGraph):
                                            maxNeighborDist=maxNeighborDistance,
                                            withDivisions=withDivisions,
                                            divisionThreshold=divisionThreshold,
-                                           linksToNumNextFrames=linksToNumNextFrames)
+                                           skipLinks=skipLinks)
 
     def insertEnergies(self):
         """
@@ -89,7 +91,8 @@ class IlastikHypothesesGraph(HypothesesGraph):
             detectionProbabilityFunc,
             transitionProbabilityFunc,
             boundaryCostMultiplierFunc,
-            divisionProbabilityFunc)
+            divisionProbabilityFunc,
+            self.skipLinksBias)
 
     def getDetectionFeatures(self, traxel, max_state):
         """

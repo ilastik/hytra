@@ -99,7 +99,8 @@ def getConfigAndCommandLineArguments():
                         help='Do not use multiprocessing to speed up computation',
                         default=False)
     parser.add_argument('--turn-off-features', dest='turnOffFeatures', type=str, nargs='+', default=[])
-    parser.add_argument('--links-to-num-next-frames', dest='linksToNumNextFrames', type=int, default=1)
+    parser.add_argument('--skip-links', dest='skipLinks', type=int, default=1)
+    parser.add_argument('--skip-links-bias', dest='skipLinksBias', type=int, default=20)
     parser.add_argument('--verbose', dest='verbose', action='store_true',
                         help='Turn on verbose logging', default=False)
     parser.add_argument('--plugin-paths', dest='pluginPaths', type=str, nargs='+',
@@ -556,7 +557,7 @@ def getBoundaryCostMultiplier(traxel, fov, margin, t0, t1):
         else:
             return 1.0
 
-def getHypothesesGraphAndIterators(options, shape, t0, t1, ts, probGenerator, transitionClassifier=None, linksToNumNextFrames=1):
+def getHypothesesGraphAndIterators(options, shape, t0, t1, ts, probGenerator, transitionClassifier=None, skipLinks=1, skipLinksBias=20):
     """
     Build the hypotheses graph either using pgmlink, or from the python traxelstore in python
     """
@@ -577,7 +578,8 @@ def getHypothesesGraphAndIterators(options, shape, t0, t1, ts, probGenerator, tr
             maxNeighborDistance=options.mnd,
             transitionParameter=options.trans_par,
             transitionClassifier=transitionClassifier,
-            linksToNumNextFrames=linksToNumNextFrames)
+            skipLinks=skipLinks,
+            skipLinksBias=skipLinksBias)
 
         if not options.without_tracklets:
             hypotheses_graph = hypotheses_graph.generateTrackletGraph()
@@ -699,7 +701,7 @@ if __name__ == "__main__":
                                                                                                        shape)
 
     # build hypotheses graph
-    hypotheses_graph, n_it, a_it, fov = getHypothesesGraphAndIterators(options, shape, t0, t1, ts, probGenerator, transitionClassifier, options.linksToNumNextFrames)
+    hypotheses_graph, n_it, a_it, fov = getHypothesesGraphAndIterators(options, shape, t0, t1, ts, probGenerator, transitionClassifier, options.skipLinks)
 
     if probGenerator is None:
         import pgmlink
