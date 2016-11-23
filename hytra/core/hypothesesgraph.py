@@ -367,9 +367,8 @@ class HypothesesGraph(object):
             frame_gap = destTraxel.Timestep - srcTraxel.Timestep
 
             # 1. method
-            bias = 20 # to be transferred out
             if frame_gap > 1:
-                features[1][0] = features[1][0] + bias*frame_gap
+                features[1][0] = features[1][0] + skipLinksBias*frame_gap
 
             # # 2. method
             # # introduce a new energies like: [[6], [15]] -> [[6, 23], [15, 23]] for first links and
