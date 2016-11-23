@@ -1,8 +1,12 @@
 from hytra.pluginsystem import merger_resolver_plugin
 import numpy as np
 
-from sklearn import mixture
-
+try:
+    import pyximport
+    pyximport.install(setup_args={'include_dirs':[np.get_include()]})
+    from hytra.util.skimage_gmm_cython import GMM
+except:
+    from sklearn.mixture import GMM
 
 class GMMMergerResolver(merger_resolver_plugin.MergerResolverPlugin):
     """
@@ -10,7 +14,7 @@ class GMMMergerResolver(merger_resolver_plugin.MergerResolverPlugin):
     """
 
     def initGMM(self, mergerCount, object_init_list):
-        gmm = mixture.GMM(n_components=mergerCount)
+        gmm = GMM(n_components=mergerCount, covariance_type='full')
         if len(object_init_list) > 0:
             gmm.weights_ = np.array([o[0] for o in object_init_list])
             gmm.covars_ = np.array([o[1] for o in object_init_list])
