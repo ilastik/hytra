@@ -129,8 +129,8 @@ class IlastikHypothesesGraph(HypothesesGraph):
         probs = transitionClassifier.predictProbabilities(featVec)[0]
 
         # or image borders, so predict probability just by distance
-        upperBound = self.fieldOfView._FieldOfView__upperBound
-        lowerBound = self.fieldOfView._FieldOfView__lowerBound
+        upperBound = self.fieldOfView.getUpperBound()
+        lowerBound = self.fieldOfView.getLowerBound()
 
         coordsMax = feats[0]['Coord<Maximum >']
         boundMax = np.array(upperBound[1:len(coordsMax)+1])
