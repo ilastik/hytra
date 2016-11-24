@@ -181,9 +181,6 @@ class HypothesesGraph(object):
                 if frame + skipLinks < len(probabilityGenerator.TraxelsPerFrame.keys()):
                     kdTreeFrames.append(self._buildFrameKdTree(probabilityGenerator.TraxelsPerFrame[frame + skipLinks]))
                     self._addNodesForFrame(frame + skipLinks, probabilityGenerator.TraxelsPerFrame[frame + skipLinks])
-                else:
-                    kdTreeFrames.append(self._buildFrameKdTree(probabilityGenerator.TraxelsPerFrame[2*frame - skipLinks - len(probabilityGenerator.TraxelsPerFrame.keys()) + 1]))
-                    self._addNodesForFrame(2*frame - skipLinks - len(probabilityGenerator.TraxelsPerFrame.keys()) + 1, probabilityGenerator.TraxelsPerFrame[2*frame - skipLinks - len(probabilityGenerator.TraxelsPerFrame.keys()) + 1])
             else:
                 for i in range(0, skipLinks+1):
                     kdTreeFrames[i] = self._buildFrameKdTree(probabilityGenerator.TraxelsPerFrame[frame + i])
