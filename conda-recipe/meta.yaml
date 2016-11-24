@@ -14,11 +14,8 @@ source:
   path: ../
 
 build:
-  {% set build_num = 0 %}
-  number: {{ build_num }}
-  detect_binary_files_with_prefix: true
-
-  string: py{{CONDA_PY}}_{{build_num}}_g{{GIT_FULL_HASH[:7]}}
+  number: 0
+  string: py{{CONDA_PY}}_{{PKG_BUILDNUM}}_g{{GIT_FULL_HASH[:7]}}
 
 requirements:
   build:
