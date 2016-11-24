@@ -20,7 +20,7 @@ class MergerResolverPlugin(IPlugin):
         """
         pass
 
-    def resolveMergerForCoords(self, coordinates, mergerCount, initializations=[]):
+    def resolveMergerForCoords(self, coordinates, mergerCount, initializations=None):
         """
         Resolve the pixel coordinates belonging to an object ID, into `mergerCount`
         new segments by fitting some kind of model. The `initializations` provide fits
@@ -37,7 +37,7 @@ class MergerResolverPlugin(IPlugin):
 
         return []
 
-    def resolveMerger(self, labelImage, objectId, nextId, mergerCount, initializations=[]):
+    def resolveMerger(self, labelImage, objectId, nextId, mergerCount, initializations=None):
         """
         Resolve the object with the ID `objectId` in the `labelImage` into `mergerCount`
         new segments by fitting some kind of model. The `initializations` provide fits
@@ -52,7 +52,7 @@ class MergerResolverPlugin(IPlugin):
 
         return []
     
-    def updateLabelImage(self, labelImage, objectId, fits, newIds):
+    def updateLabelImage(self, labelImage, objectId, fits, newIds, offset=None):
         """
         Resolve the object with the ID `objectId` in the `labelImage` into the fitted models with the given new IDs.
         `labelImage` should be updated by replacing all pixels that were labelled with `objectId`
