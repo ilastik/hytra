@@ -249,15 +249,30 @@ def test_insertAndExtractSolution():
 
     h.insertSolution(solutionDict)
     outSolutionDict = h.getSolutionDictionary()
-    for k in (["detectionResults","divisionResults"]):
-        for cat_dict in solutionDict[k]:
-            ref = [m for m in outSolutionDict[k] if m['id'] == cat_dict['id']]
-            assert(len(ref)==1)
-            for c,v in ref[0].items():
-                assert(v==cat_dict[c])
 
-    assert(len([i for k in solutionDict for i in solutionDict[k] ]) 
-        == len([i for k in outSolutionDict for i in outSolutionDict[k] ]))
+    # from solution to outSolution
+    for group in (["detectionResults","divisionResults"]):
+        for entry in solutionDict[group]:
+            ref = [m for m in outSolutionDict[group] if m['id'] == entry['id']]
+            assert(len(ref)<=1)
+            if len(ref) == 1:
+                for k,v in ref[0].items():
+                    assert(v==entry[k])
+            else:
+                assert(entry['value'] == 0)
+    
+    # from outSolution to Solution
+    for group in (["detectionResults","divisionResults"]):
+        for entry in outSolutionDict[group]:
+            ref = [m for m in solutionDict[group] if m['id'] == entry['id']]
+            assert(len(ref)<=1)
+            if len(ref) == 1:
+                for k,v in ref[0].items():
+                    assert(v==entry[k])
+            else:
+                assert(entry['value'] == 0)
+
+
     assert(h._graph.node[(1, 1)]["divisionValue"] == 1)
     assert(h._graph.node[(2, 2)]["divisionValue"] == 0)
     assert(h._graph.node[(0, 0)]["value"] == 1)
