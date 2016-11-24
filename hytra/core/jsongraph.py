@@ -340,9 +340,6 @@ class JsonTrackingGraph(object):
         from hytra.core.hypothesesgraph import HypothesesGraph
         from hytra.core.probabilitygenerator import Traxel
 
-        # # unnecessary, already done in constructor!
-        # traxelIdPerTimestepToUniqueIdMap, self.uuidToTraxelMap = getMappingsBetweenUUIDsAndTraxels(self.model)
-
         # set up graph
         hypothesesGraph = HypothesesGraph()
         for s in self.model['segmentationHypotheses']:
