@@ -234,9 +234,22 @@ class GMM(BaseEstimator):
     array([ 0.5,  0.5])
 
     """
+    # cdef int n_components
+    # cdef char* covariance_type
+    # cdef float thresh
+    # cdef float min_covar
+    # cdef int n_iter
+    # cdef int n_init
+    # cdef bint verbose
+    # cdef char* params
+    # cdef char* init_params
+    # cdef bint converged_
+    # cdef public np.ndarray weights_
+    # cdef public np.ndarray means_
+    # cdef public np.ndarray covars_ 
 
-    def __init__(self, n_components=1, covariance_type='diag',
-                 random_state=None, thresh=None, tol=1e-3, min_covar=1e-3,
+    def __init__(self, n_components=1, covariance_type='full',
+                 thresh=None, tol=1e-3, min_covar=1e-3, random_state=None,
                  n_iter=100, n_init=1, params='wmc', init_params='wmc',
                  verbose=0):
         if thresh is not None:
@@ -255,7 +268,7 @@ class GMM(BaseEstimator):
         self.init_params = init_params
         self.verbose = verbose
 
-        if covariance_type not in ['spherical', 'tied', 'diag', 'full']:
+        if covariance_type not in ['full']:
             raise ValueError('Invalid value for covariance_type: %s' %
                              covariance_type)
 
@@ -266,7 +279,7 @@ class GMM(BaseEstimator):
 
         # flag to indicate exit status of fit() method: converged (True) or
         # n_iter reached (False)
-        self.converged_ = False
+        self.converged_ = 0
 
     def _get_covars(self):
         """Covariance parameters for each mixture component.
@@ -294,7 +307,7 @@ class GMM(BaseEstimator):
         _validate_covars(covars, self.covariance_type, self.n_components)
         self.covars_ = covars
 
-    def score_samples(self, X):
+    def score_samples(self, np.ndarray X):
         """Return the per-sample likelihood of the data under the model.
 
         Compute the log probability of X under the model and
