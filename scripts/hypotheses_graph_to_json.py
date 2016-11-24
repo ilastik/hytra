@@ -701,7 +701,7 @@ if __name__ == "__main__":
                                                                                                        shape)
 
     # build hypotheses graph
-    hypotheses_graph, n_it, a_it, fov = getHypothesesGraphAndIterators(options, shape, t0, t1, ts, probGenerator, transitionClassifier, options.skipLinks)
+    hypotheses_graph, n_it, a_it, fov = getHypothesesGraphAndIterators(options, shape, t0, t1, ts, probGenerator, transitionClassifier, options.skipLinks, options.skipLinksBias)
 
     if probGenerator is None:
         import pgmlink
