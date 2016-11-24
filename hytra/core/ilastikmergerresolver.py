@@ -140,7 +140,7 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
  
         t = str(timestep)
         detections = self.detectionsPerTimestep[t]
- 
+        print("Fitting {} objects".format(len(coordinatesForObjectIds)))
         for idx, coordinates in coordinatesForObjectIds.items():            
             node = (timestep, idx)
             if node not in self.resolvedGraph:

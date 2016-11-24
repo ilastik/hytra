@@ -1,12 +1,12 @@
 from hytra.pluginsystem import merger_resolver_plugin
 import numpy as np
 
-try:
-    import pyximport
-    pyximport.install(setup_args={'include_dirs':[np.get_include()]})
-    from hytra.util.skimage_gmm_cython import GMM
-except:
-    from sklearn.mixture import GMM
+# try:
+    # import pyximport
+    # pyximport.install(setup_args={'include_dirs':[np.get_include()]})
+    # from hytra.util.skimage_gmm_cython import GMM
+# except:
+from sklearn.mixture import GMM
 
 class GMMMergerResolver(merger_resolver_plugin.MergerResolverPlugin):
     """
@@ -39,6 +39,13 @@ class GMMMergerResolver(merger_resolver_plugin.MergerResolverPlugin):
         """
   
         # fit GMM to label image data
+        # if coordinates.size > 100:
+        #     import pickle
+        #     with open('/Users/chaubold/Desktop/pickledGMM.dump','w') as f:
+        #         pickle.dump(mergerCount, f)
+        #         pickle.dump(coordinates, f)
+        #     print("Done pickling")
+        #     blabla
         gmm = self.initGMM(mergerCount, initializations)
         gmm.fit(coordinates)
         assert(gmm.converged_)

@@ -25,7 +25,7 @@ from sklearn.externals.six.moves import zip
 
 EPS = np.finfo(float).eps
 
-def log_multivariate_normal_density(X, means, covars, covariance_type='diag'):
+def log_multivariate_normal_density(X, means, covars, covariance_type='full'):
     """Compute the log probability under a multivariate Gaussian distribution.
 
     Parameters
@@ -56,13 +56,8 @@ def log_multivariate_normal_density(X, means, covars, covariance_type='diag'):
         Array containing the log probabilities of each data point in
         X under each of the n_components multivariate Gaussian distributions.
     """
-    log_multivariate_normal_density_dict = {
-        'spherical': _log_multivariate_normal_density_spherical,
-        'tied': _log_multivariate_normal_density_tied,
-        'diag': _log_multivariate_normal_density_diag,
-        'full': _log_multivariate_normal_density_full}
-    return log_multivariate_normal_density_dict[covariance_type](
-        X, means, covars)
+    assert(covariance_type=='full')
+    return _log_multivariate_normal_density_full(X, means, covars)
 
 
 def sample_gaussian(mean, covar, covariance_type='diag', n_samples=1,
@@ -623,8 +618,7 @@ class GMM(BaseEstimator):
         if 'm' in params:
             self.means_ = weighted_X_sum * inverse_weights
         if 'c' in params:
-            covar_mstep_func = _covar_mstep_funcs[self.covariance_type]
-            self.covars_ = covar_mstep_func(
+            self.covars_ = _covar_mstep_full(
                 self, X, responsibilities, weighted_X_sum, inverse_weights,
                 min_covar)
         return weights
@@ -632,14 +626,8 @@ class GMM(BaseEstimator):
     def _n_parameters(self):
         """Return the number of free parameters in the model."""
         ndim = self.means_.shape[1]
-        if self.covariance_type == 'full':
-            cov_params = self.n_components * ndim * (ndim + 1) / 2.
-        elif self.covariance_type == 'diag':
-            cov_params = self.n_components * ndim
-        elif self.covariance_type == 'tied':
-            cov_params = ndim * (ndim + 1) / 2.
-        elif self.covariance_type == 'spherical':
-            cov_params = self.n_components
+        assert(self.covariance_type == 'full')
+        cov_params = self.n_components * ndim * (ndim + 1) / 2.
         mean_params = ndim * self.n_components
         return int(cov_params + mean_params + self.n_components - 1)
 
@@ -677,39 +665,19 @@ class GMM(BaseEstimator):
 # some helper routines
 #########################################################################
 
-
-def _log_multivariate_normal_density_diag(X, means, covars):
-    """Compute Gaussian log-density at X for a diagonal model"""
-    n_samples, n_dim = X.shape
-    lpr = -0.5 * (n_dim * np.log(2 * np.pi) + np.sum(np.log(covars), 1)
-                  + np.sum((means ** 2) / covars, 1)
-                  - 2 * np.dot(X, (means / covars).T)
-                  + np.dot(X ** 2, (1.0 / covars).T))
-    return lpr
-
-
-def _log_multivariate_normal_density_spherical(X, means, covars):
-    """Compute Gaussian log-density at X for a spherical model"""
-    cv = covars.copy()
-    if covars.ndim == 1:
-        cv = cv[:, np.newaxis]
-    if covars.shape[1] == 1:
-        cv = np.tile(cv, (1, X.shape[-1]))
-    return _log_multivariate_normal_density_diag(X, means, cv)
-
-
-def _log_multivariate_normal_density_tied(X, means, covars):
-    """Compute Gaussian log-density at X for a tied model"""
-    cv = np.tile(covars, (means.shape[0], 1, 1))
-    return _log_multivariate_normal_density_full(X, means, cv)
-
-
-def _log_multivariate_normal_density_full(X, means, covars, min_covar=1.e-7):
+def _log_multivariate_normal_density_full(np.ndarray X, np.ndarray means, np.ndarray covars, float min_covar=1.e-7):
     """Log probability for full covariance matrices."""
-    n_samples, n_dim = X.shape
-    nmix = len(means)
-    log_prob = np.empty((n_samples, nmix))
-    for c, (mu, cv) in enumerate(zip(means, covars)):
+    cdef int n_samples = X.shape[0]
+    cdef int n_dim = X.shape[1]
+    cdef int nmix = len(means)
+    cdef np.ndarray log_prob = np.empty((n_samples, nmix))
+    cdef int c
+    cdef np.ndarray mu, cv, cv_chol, cv_sol
+    cdef float cv_log_det
+    # for c, (mu, cv) in enumerate(zip(means, covars)):
+    for c in range(nmix):
+        mu = np.asarray(means[c])
+        cv = covars[c]
         try:
             cv_chol = linalg.cholesky(cv, lower=True)
         except linalg.LinAlgError:
@@ -734,76 +702,29 @@ def _validate_covars(covars, covariance_type, n_components):
     """Do basic checks on matrix covariance sizes and values
     """
     from scipy import linalg
-    if covariance_type == 'spherical':
-        if len(covars) != n_components:
-            raise ValueError("'spherical' covars have length n_components")
-        elif np.any(covars <= 0):
-            raise ValueError("'spherical' covars must be non-negative")
-    elif covariance_type == 'tied':
-        if covars.shape[0] != covars.shape[1]:
-            raise ValueError("'tied' covars must have shape (n_dim, n_dim)")
-        elif (not np.allclose(covars, covars.T)
-              or np.any(linalg.eigvalsh(covars) <= 0)):
-            raise ValueError("'tied' covars must be symmetric, "
-                             "positive-definite")
-    elif covariance_type == 'diag':
-        if len(covars.shape) != 2:
-            raise ValueError("'diag' covars must have shape "
-                             "(n_components, n_dim)")
-        elif np.any(covars <= 0):
-            raise ValueError("'diag' covars must be non-negative")
-    elif covariance_type == 'full':
-        if len(covars.shape) != 3:
-            raise ValueError("'full' covars must have shape "
-                             "(n_components, n_dim, n_dim)")
-        elif covars.shape[1] != covars.shape[2]:
-            raise ValueError("'full' covars must have shape "
-                             "(n_components, n_dim, n_dim)")
-        for n, cv in enumerate(covars):
-            if (not np.allclose(cv, cv.T)
-                    or np.any(linalg.eigvalsh(cv) <= 0)):
-                raise ValueError("component %d of 'full' covars must be "
-                                 "symmetric, positive-definite" % n)
-    else:
-        raise ValueError("covariance_type must be one of " +
-                         "'spherical', 'tied', 'diag', 'full'")
-
+    assert(covariance_type=='full')
+    
+    if len(covars.shape) != 3:
+        raise ValueError("'full' covars must have shape "
+                            "(n_components, n_dim, n_dim)")
+    elif covars.shape[1] != covars.shape[2]:
+        raise ValueError("'full' covars must have shape "
+                            "(n_components, n_dim, n_dim)")
+    for n, cv in enumerate(covars):
+        if (not np.allclose(cv, cv.T)
+                or np.any(linalg.eigvalsh(cv) <= 0)):
+            raise ValueError("component %d of 'full' covars must be "
+                                "symmetric, positive-definite" % n)
 
 def distribute_covar_matrix_to_match_covariance_type(
         tied_cv, covariance_type, n_components):
     """Create all the covariance matrices from a given template"""
-    if covariance_type == 'spherical':
-        cv = np.tile(tied_cv.mean() * np.ones(tied_cv.shape[1]),
-                     (n_components, 1))
-    elif covariance_type == 'tied':
-        cv = tied_cv
-    elif covariance_type == 'diag':
-        cv = np.tile(np.diag(tied_cv), (n_components, 1))
-    elif covariance_type == 'full':
-        cv = np.tile(tied_cv, (n_components, 1, 1))
-    else:
-        raise ValueError("covariance_type must be one of " +
-                         "'spherical', 'tied', 'diag', 'full'")
+    assert(covariance_type=='full')
+    cv = np.tile(tied_cv, (n_components, 1, 1))
     return cv
 
-
-def _covar_mstep_diag(gmm, X, responsibilities, weighted_X_sum, norm,
-                      min_covar):
-    """Performing the covariance M step for diagonal cases"""
-    avg_X2 = np.dot(responsibilities.T, X * X) * norm
-    avg_means2 = gmm.means_ ** 2
-    avg_X_means = gmm.means_ * weighted_X_sum * norm
-    return avg_X2 - 2 * avg_X_means + avg_means2 + min_covar
-
-
-def _covar_mstep_spherical(*args):
-    """Performing the covariance M step for spherical cases"""
-    cv = _covar_mstep_diag(*args)
-    return np.tile(cv.mean(axis=1)[:, np.newaxis], (1, cv.shape[1]))
-
-
-def _covar_mstep_full(gmm, X, responsibilities, weighted_X_sum, norm,
-                      min_covar):
+def _covar_mstep_full(gmm, np.ndarray X, responsibilities, weighted_X_sum, norm,
+                      float min_covar):
     """Performing the covariance M step for full cases"""
     # Eq. 12 from K. Murphy, "Fitting a Conditional Linear Gaussian
     # Distribution"
@@ -823,20 +744,3 @@ def _covar_mstep_full(gmm, X, responsibilities, weighted_X_sum, norm,
         cv[c] = avg_cv + min_covar * np.eye(n_features)
     return cv
 
-
-def _covar_mstep_tied(gmm, X, responsibilities, weighted_X_sum, norm,
-                      min_covar):
-    # Eq. 15 from K. Murphy, "Fitting a Conditional Linear Gaussian
-    # Distribution"
-    avg_X2 = np.dot(X.T, X)
-    avg_means2 = np.dot(gmm.means_.T, weighted_X_sum)
-    out = avg_X2 - avg_means2
-    out *= 1. / X.shape[0]
-    out.flat[::len(out) + 1] += min_covar
-    return out
-
-_covar_mstep_funcs = {'spherical': _covar_mstep_spherical,
-                      'diag': _covar_mstep_diag,
-                      'tied': _covar_mstep_tied,
-                      'full': _covar_mstep_full,
-                      }

@@ -14,9 +14,11 @@ from sklearn.utils.testing import assert_raise_message
 from sklearn.metrics.cluster import adjusted_rand_score
 from sklearn.externals.six.moves import cStringIO as StringIO
 
-import pyximport
-pyximport.install(setup_args={'include_dirs':[np.get_include()]})
-from hytra.util.skimage_gmm_cython import GMM, log_multivariate_normal_density
+# import pyximport
+# pyximport.install(setup_args={'include_dirs':[np.get_include()]})
+# from hytra.util.skimage_gmm_cython import GMM, log_multivariate_normal_density
+# from hytra.util.skimage_gmm_python import GMM, log_multivariate_normal_density
+from sklearn.mixture import GMM, log_multivariate_normal_density
 
 rng = np.random.RandomState(0)
 
@@ -430,3 +432,38 @@ def test_verbose_second_level():
         g.fit(X)
     finally:
         sys.stdout = old_stdout
+
+def test_merger_resolving():
+    import pickle
+    import time
+    with open('/Users/chaubold/Desktop/pickledGMM.dump','r') as f:
+        mergerCount = pickle.load(f)
+        coordinates = pickle.load(f)
+    
+    print("Any nonzero 3rd coordinate? {}".format(np.any(coordinates[:,2] != 0)))
+    coordinates = coordinates[:,:-1]
+    print("Fitting gmm to a {}-merger with coords of shape {}".format(mergerCount, coordinates.shape))
+    times = []
+    for _ in range(100):
+        t0 = time.time()
+        gmm = GMM(n_components=mergerCount, random_state=rng)
+        gmm.fit(coordinates)
+        t1 = time.time()
+        assert(gmm.converged_)
+        times.append(t1-t0)
+    print("GMM fitting took {} secs on average in {} runs".format(sum(times)/len(times), len(times)))
+
+# def test_merger_resolving_profile():
+#     import pickle
+#     import time
+#     with open('/Users/chaubold/Desktop/pickledGMM.dump','r') as f:
+#         mergerCount = pickle.load(f)
+#         coordinates = pickle.load(f)
+    
+#     from pycallgraph import PyCallGraph
+#     from pycallgraph.output import GraphvizOutput
+
+#     with PyCallGraph(output=GraphvizOutput(output_file='/Users/chaubold/Desktop/gmm-profiling.png')):
+#         gmm = GMM(n_components=mergerCount, random_state=rng)
+#         gmm.fit(coordinates)
+#         assert(gmm.converged_)
