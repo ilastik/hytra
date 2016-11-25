@@ -188,6 +188,7 @@ def test_insertAndExtractSolution():
     assert(h._graph.node[(2, 3)]["parent"] == (1, 1))
 
 def test_insertEnergies():
+    skipLinkBias = 20
     h = hg.HypothesesGraph()
     h._graph.add_path([(0,1),(1,1),(2,1),(3,1)])
     for uuid, i in enumerate([(0,1),(1,1),(2,1),(3,1)]):
@@ -216,7 +217,7 @@ def test_insertEnergies():
         dist = np.linalg.norm(np.array(traxelA.Features['com']) - np.array(traxelB.Features['com']))
         return [1.0 - np.exp(-dist), np.exp(-dist)]
 
-    h.insertEnergies(1, detProbFunc, transProbFunc, boundaryCostFunc, divProbFunc)
+    h.insertEnergies(1, detProbFunc, transProbFunc, boundaryCostFunc, divProbFunc, skipLinkBias)
     
     for n in h.nodeIterator():
         assert('features' in h._graph.node[n])
@@ -230,7 +231,10 @@ def test_insertEnergies():
     
     for a in h.arcIterator():
         assert('features' in h._graph.edge[a[0]][a[1]])
-        assert(h._graph.edge[a[0]][a[1]]['features'] == [[0.45867514538708193], [1.0]])
+        srcTraxel = h._graph.node[h.source(a)]['traxel']
+        destTraxel = h._graph.node[h.target(a)]['traxel']
+        frame_gap = destTraxel.Timestep - srcTraxel.Timestep
+        assert(h._graph.edge[a[0]][a[1]]['features'] == [[0.45867514538708193], [1.0 + skipLinkBias*(frame_gap-1)]])
 
 if __name__ == "__main__":
     test_trackletgraph()
