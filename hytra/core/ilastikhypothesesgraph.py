@@ -140,6 +140,20 @@ class IlastikHypothesesGraph(HypothesesGraph):
         dist_border = self.fieldOfView.spatial_distance_to_border(traxelA.Timestep, traxelA.X(), traxelA.Y(), traxelA.Z(), False)
 
         # find the objects crossing the image border and return the distance based probability instead
+        # REASON: The TC classifier gets confused by the feature values at the image border.
+        # experiments on Fluo-N2DH-SIM 01:
+        # TC no border treatment: TRA measure 0.9888
+        # TC with border treatment: 0.991302
+        # pure distance: 0.993
+        # from all links: used distance 340 times, TC prob 3088 times used
+
+
+        # experiments on Rapoport:
+        # TC no border treatment: TRA measure 0.952467
+        # TC with border treatment: 0.95267
+        # pure distance: 0.951674
+        # from all links: used distance 13598 times, TC prob 271502 times
+
         if np.isclose(coordsMax, boundMax).any() or np.isclose(coordsMin, boundMin).any():
             return self.getTransitionFeaturesDist(traxelA, traxelB, self.transitionParameter, self.maxNumObjects + 1)
         else:
