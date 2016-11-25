@@ -165,6 +165,8 @@ class HypothesesGraph(object):
                                       forwardBackwardCheck=True, withDivisions=True, divisionThreshold=0.1, skipLinks=1):
         """
         Takes a python probabilityGenerator containing traxel features and finds probable links between frames.
+        Builds a kdTree with the 'numNearestneighbors' for each frame and adds the nodes. In the same iteration, it adds
+        a number of 'skipLinks' between the nodes separated by 'skipLinks' frames.
         """
         assert (probabilityGenerator is not None)
         assert (len(probabilityGenerator.TraxelsPerFrame) > 0)
@@ -174,7 +176,6 @@ class HypothesesGraph(object):
                 getLogger().warning("Adding node ({}, {}) when setting up links".format(frame, obj))
 
         kdTreeFrames = [None]*(skipLinks+1)
-        # kdTreeNextFrame = None
         for frame in range(len(probabilityGenerator.TraxelsPerFrame.keys()) - 1):
             if frame > 0:
                 del kdTreeFrames[0] # this is the current frame
