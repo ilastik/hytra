@@ -163,19 +163,20 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
             if node not in self.resolvedGraph:
                 continue
  
+            # Get merger count and initializations (only for merger nodes)
             count = 1
-            if idx in self.mergersPerTimestep[t]:
-                count = self.mergersPerTimestep[t][idx]
-            getLogger().debug("Looking at node {} in timestep {} with count {}".format(idx, t, count))
-             
-            # collect initializations from incoming
             initializations = []
             
-            for predecessor, _ in self.unresolvedGraph.in_edges(node):
-                initializations.extend(self.unresolvedGraph.node[predecessor]['fits'])
-            # TODO: what shall we do if e.g. a 2-merger and a single object merge to 2 + 1,
-            # so there are 3 initializations for the 2-merger, and two initializations for the 1 merger?
-            # What does pgmlink do in that case?
+            if idx in self.mergersPerTimestep[t]:
+                count = self.mergersPerTimestep[t][idx]
+                
+                for predecessor, _ in self.unresolvedGraph.in_edges(node):
+                    initializations.extend(self.unresolvedGraph.node[predecessor]['fits'])
+                # TODO: what shall we do if e.g. a 2-merger and a single object merge to 2 + 1,
+                # so there are 3 initializations for the 2-merger, and two initializations for the 1 merger?
+                # What does pgmlink do in that case?
+                
+            getLogger().debug("Looking at node {} in timestep {} with count {}".format(idx, t, count))         
  
             # use merger resolving plugin to fit `count` objects
             fittedObjects = self.mergerResolverPlugin.resolveMergerForCoords(coordinates, count, initializations)
