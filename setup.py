@@ -11,7 +11,9 @@ setup(
     license="BSD",
     keywords="cell tracking divisions ilastik",
     url="http://github.com/chaubold/hytra",
-    packages=['hytra', 'hytra.core', 'hytra.util', 'hytra.pluginsystem', 'hytra.plugins', 'hytra.dvid'],
+    packages=['hytra', 'hytra.core', 'hytra.util', 'hytra.pluginsystem', 'hytra.dvid'],
+    package_data={'hytra': ['plugins/*/*']},
+    include_package_data = True,
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Topic :: Utilities",
