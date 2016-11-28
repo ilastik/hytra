@@ -14,7 +14,9 @@ doxygenconfig*
 randomforest_test.cpp
 tracking/
 .idea
+tests/divisionTestDataset/*
 tests/mergerResolvingTestDataset/*
+tests/mergerResolvingTestDatasetNewLabelImage/*
 tests/multiSegmentationHypothesesTestDataset/ctc_out/*
 *.dump
 
