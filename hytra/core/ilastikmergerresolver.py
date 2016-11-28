@@ -118,13 +118,30 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
 
         return mergerDict
  
-    def getCoordinatesForObjectId(self, coordinatesForObjectIds, labelImage, objectId):
+    def getCoordinatesForObjectId(self, coordinatesForObjectIds, labelImage, timestep, objectId):
         '''
         Get coordinate for object IDs in labelImage.
         '''
-        coordinatesForObjectIds[objectId] = np.transpose(np.vstack(np.where(labelImage == objectId)))
+        
+        node = (timestep, objectId)
+        
+        mergerIsPresent = False
+        
+        # Check if node is merger
+        if self.hypothesesGraph.hasNode(node) and 'value' in self.hypothesesGraph._graph.node[node] and self.hypothesesGraph._graph.node[node]['value'] > 1:
+            mergerIsPresent = True
+        
+        # Check if node is connected to merger
+        for edge in self.hypothesesGraph._graph.out_edges(node):
+            neighbor = edge[1]                        
+            if  not mergerIsPresent and self.hypothesesGraph.hasNode(neighbor) and 'value' in self.hypothesesGraph._graph.node[neighbor] and  self.hypothesesGraph._graph.node[neighbor]['value'] > 1:
+                mergerIsPresent = True
+        
+        # Compute coordinate for object ID
+        if mergerIsPresent:
+            coordinatesForObjectIds[objectId] = np.transpose(np.vstack(np.where(labelImage == objectId)))
  
-    def fitAndRefineNodesForTimestep(self, coordinatesForObjectIds, timestep):
+    def fitAndRefineNodesForTimestep(self, coordinatesForObjectIds, maxObjectId, timestep):
         '''
         Update segmentation of mergers (nodes in unresolvedGraph) for each frame
         and create new nodes in `resolvedGraph`. Links to merger nodes are duplicated to all new nodes.
@@ -136,7 +153,7 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
         '''
  
         # use image provider plugin to load labelimage
-        nextObjectId = max(coordinatesForObjectIds.keys()) + 1
+        nextObjectId = maxObjectId + 1
  
         t = str(timestep)
         detections = self.detectionsPerTimestep[t]
