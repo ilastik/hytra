@@ -129,7 +129,7 @@ if __name__ == "__main__":
         os.makedirs(args.out_dir)
 
     processing_pool = Pool()
-    for timestep in traxelIdPerTimestepToUniqueIdMap.keys():
+    for timestep in timesteps:
         fn = os.path.join(args.out_dir, "{0:05d}.h5".format(int(timestep)))
         processing_pool.apply_async(writeEvents,
                                     (int(timestep),
