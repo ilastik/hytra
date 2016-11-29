@@ -106,21 +106,43 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
 
         # return a dictionary telling about which mergers were resolved into what
         mergerDict = {}
-        for n in self.unresolvedGraph.nodes_iter():
+        for node in self.unresolvedGraph.nodes_iter():
             # skip non-mergers
-            if not 'newIds' in self.unresolvedGraph.node[n] or len(self.unresolvedGraph.node[n]['newIds']) < 2:
+            if not 'newIds' in self.unresolvedGraph.node[node] or len(self.unresolvedGraph.node[node]['newIds']) < 2:
                 continue
-            mergerDict.setdefault(n[0], {})[n[1]] = self.unresolvedGraph.node[n]['newIds']
+            
+            # Save merger node info in merger dict (fits and new IDs used from within Ilastik)
+            time = node[0]
+            idx = node[1]
+            mergerDict.setdefault(time, {})[idx] = self.unresolvedGraph.node[node]
 
         return mergerDict
  
-    def getCoordinatesForObjectId(self, coordinatesForObjectIds, labelImage, objectId):
+    def getCoordinatesForObjectId(self, coordinatesForObjectIds, labelImage, timestep, objectId):
         '''
         Get coordinate for object IDs in labelImage.
         '''
-        coordinatesForObjectIds[objectId] = np.transpose(np.vstack(np.where(labelImage == objectId)))
+        
+        node = (timestep, objectId)
+        
+        mergerIsPresent = False
+        if self.hypothesesGraph.hasNode(node):
+            # Check if node is merger
+            if 'value' in self.hypothesesGraph._graph.node[node] and self.hypothesesGraph._graph.node[node]['value'] > 1:
+                mergerIsPresent = True
+        
+            # Check if node is connected to merger
+            if  not mergerIsPresent:
+                for edge in self.hypothesesGraph._graph.out_edges(node):
+                    neighbor = edge[1]                        
+                    if 'value' in self.hypothesesGraph._graph.node[neighbor] and  self.hypothesesGraph._graph.node[neighbor]['value'] > 1:
+                        mergerIsPresent = True
+        
+        # Compute coordinate for object ID
+        if mergerIsPresent:
+            coordinatesForObjectIds[objectId] = np.transpose(np.vstack(np.where(labelImage == objectId)))
  
-    def fitAndRefineNodesForTimestep(self, coordinatesForObjectIds, timestep):
+    def fitAndRefineNodesForTimestep(self, coordinatesForObjectIds, maxObjectId, timestep):
         '''
         Update segmentation of mergers (nodes in unresolvedGraph) for each frame
         and create new nodes in `resolvedGraph`. Links to merger nodes are duplicated to all new nodes.
@@ -132,7 +154,7 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
         '''
  
         # use image provider plugin to load labelimage
-        nextObjectId = max(coordinatesForObjectIds.keys()) + 1
+        nextObjectId = maxObjectId + 1
  
         t = str(timestep)
         detections = self.detectionsPerTimestep[t]
@@ -142,19 +164,20 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
             if node not in self.resolvedGraph:
                 continue
  
+            # Get merger count and initializations (only for merger nodes)
             count = 1
-            if idx in self.mergersPerTimestep[t]:
-                count = self.mergersPerTimestep[t][idx]
-            getLogger().debug("Looking at node {} in timestep {} with count {}".format(idx, t, count))
-             
-            # collect initializations from incoming
             initializations = []
             
-            for predecessor, _ in self.unresolvedGraph.in_edges(node):
-                initializations.extend(self.unresolvedGraph.node[predecessor]['fits'])
-            # TODO: what shall we do if e.g. a 2-merger and a single object merge to 2 + 1,
-            # so there are 3 initializations for the 2-merger, and two initializations for the 1 merger?
-            # What does pgmlink do in that case?
+            if idx in self.mergersPerTimestep[t]:
+                count = self.mergersPerTimestep[t][idx]
+                
+                for predecessor, _ in self.unresolvedGraph.in_edges(node):
+                    initializations.extend(self.unresolvedGraph.node[predecessor]['fits'])
+                # TODO: what shall we do if e.g. a 2-merger and a single object merge to 2 + 1,
+                # so there are 3 initializations for the 2-merger, and two initializations for the 1 merger?
+                # What does pgmlink do in that case?
+                
+            getLogger().debug("Looking at node {} in timestep {} with count {}".format(idx, t, count))         
  
             # use merger resolving plugin to fit `count` objects
             fittedObjects = self.mergerResolverPlugin.resolveMergerForCoords(coordinates, count, initializations)
@@ -195,15 +218,21 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
         # populate the dictionaries only with the Region Centers of the fit for the distance based
         # transitions in ilastik
         # TODO: in the future, this should recompute the object features from the relabeled image!
-        for n in self.unresolvedGraph.nodes_iter():
-            fits = self.unresolvedGraph.node[n]['fits']
-            timestepIdTuples = [n]
-            if 'newIds' in self.unresolvedGraph.node[n]:
-                timestepIdTuples = [(n[0], i) for i in self.unresolvedGraph.node[n]['newIds']]
-                assert(len(self.unresolvedGraph.node[n]['newIds']) == len(fits))
-
-            for tidt, fit in zip(timestepIdTuples, fits):
-                objectFeatures[tidt] = {'RegionCenter' : self._fitToRegionCenter(fit)}
+        for node in self.unresolvedGraph.nodes_iter():
+            # Add region centers for new nodes (based on GMM fits)
+            if 'newIds' in self.unresolvedGraph.node[node] and 'fits' in self.unresolvedGraph.node[node]:
+                assert(len(self.unresolvedGraph.node[node]['newIds']) == len(self.unresolvedGraph.node[node]['fits']))
+                 
+                time = node[0]
+                newNodes = [(time, idx) for idx in self.unresolvedGraph.node[node]['newIds']]
+                fits = self.unresolvedGraph.node[node]['fits']
+                 
+                for newNode, fit in zip(newNodes, fits):
+                    objectFeatures[newNode] = {'RegionCenter' : self._fitToRegionCenter(fit)}
+            
+            # Otherwise, get the region centers from the traxel com feature     
+            else:
+                 objectFeatures[node] = {'RegionCenter' : self.hypothesesGraph._graph.node[node]['traxel'].Features['com']}  
 
         return objectFeatures
     

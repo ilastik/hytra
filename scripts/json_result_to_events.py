@@ -11,14 +11,17 @@ import numpy as np
 import h5py
 from multiprocessing import Pool
 import hytra.core.jsongraph
+from hytra.pluginsystem.plugin_manager import TrackingPluginManager
 
-def writeEvents(timestep, activeLinks, activeDivisions, mergers, detections, fn, labelImagePath, ilpFilename):
+def writeEvents(timestep, activeLinks, activeDivisions, mergers, detections, fn, labelImagePath, ilpFilename, verbose, pluginPaths):
     dis = []
     app = []
     div = []
     mov = []
     mer = []
     mul = []
+
+    pluginManager = TrackingPluginManager(verbose=verbose, pluginPaths=pluginPaths)
     
     logging.getLogger('json_result_to_events.py').debug("-- Writing results to {}".format(fn))
     try:
@@ -30,49 +33,46 @@ def writeEvents(timestep, activeLinks, activeDivisions, mergers, detections, fn,
         mer = np.asarray([[k,v] for k,v in mergers.iteritems()])
         mul = np.asarray(mul)
 
-        with h5py.File(ilpFilename, 'r') as src_file:
-            # find shape of dataset
-            shape = src_file['/'.join(labelImagePath.split('/')[:-1])].values()[0].shape[1:4]
+        shape = pluginManager.getImageProvider().getImageShape(ilpFilename, labelImagePath)
+        label_img = pluginManager.getImageProvider().getLabelImageForFrame(ilpFilename, labelImagePath, timestep)
+        
+        with h5py.File(fn, 'w') as dest_file:
+            # write meta fields and copy segmentation from project
+            seg = dest_file.create_group('segmentation')
+            seg.create_dataset("labels", data=label_img, compression='gzip')
+            meta = dest_file.create_group('objects/meta')
+            ids = np.unique(label_img)
+            ids = ids[ids > 0]
+            valid = np.ones(ids.shape)
+            meta.create_dataset("id", data=ids, dtype=np.uint32)
+            meta.create_dataset("valid", data=valid, dtype=np.uint32)
 
-            with h5py.File(fn, 'w') as dest_file:
-                # write meta fields and copy segmentation from project
-                li_name = labelImagePath % (timestep, timestep + 1, shape[0], shape[1], shape[2])
-                label_img = np.array(src_file[li_name][0, ..., 0]).squeeze()
-                seg = dest_file.create_group('segmentation')
-                seg.create_dataset("labels", data=label_img, compression='gzip')
-                meta = dest_file.create_group('objects/meta')
-                ids = np.unique(label_img)
-                ids = ids[ids > 0]
-                valid = np.ones(ids.shape)
-                meta.create_dataset("id", data=ids, dtype=np.uint32)
-                meta.create_dataset("valid", data=valid, dtype=np.uint32)
+            tg = dest_file.create_group("tracking")
 
-                tg = dest_file.create_group("tracking")
+            # write associations
+            if app is not None and len(app) > 0:
+                ds = tg.create_dataset("Appearances", data=app, dtype=np.int32)
+                ds.attrs["Format"] = "cell label appeared in current file"
 
-                # write associations
-                if app is not None and len(app) > 0:
-                    ds = tg.create_dataset("Appearances", data=app, dtype=np.int32)
-                    ds.attrs["Format"] = "cell label appeared in current file"
+            if dis is not None and len(dis) > 0:
+                ds = tg.create_dataset("Disappearances", data=dis, dtype=np.int32)
+                ds.attrs["Format"] = "cell label disappeared in current file"
 
-                if dis is not None and len(dis) > 0:
-                    ds = tg.create_dataset("Disappearances", data=dis, dtype=np.int32)
-                    ds.attrs["Format"] = "cell label disappeared in current file"
+            if mov is not None and len(mov) > 0:
+                ds = tg.create_dataset("Moves", data=mov, dtype=np.int32)
+                ds.attrs["Format"] = "from (previous file), to (current file)"
 
-                if mov is not None and len(mov) > 0:
-                    ds = tg.create_dataset("Moves", data=mov, dtype=np.int32)
-                    ds.attrs["Format"] = "from (previous file), to (current file)"
+            if div is not None and len(div) > 0:
+                ds = tg.create_dataset("Splits", data=div, dtype=np.int32)
+                ds.attrs["Format"] = "ancestor (previous file), descendant (current file), descendant (current file)"
 
-                if div is not None and len(div) > 0:
-                    ds = tg.create_dataset("Splits", data=div, dtype=np.int32)
-                    ds.attrs["Format"] = "ancestor (previous file), descendant (current file), descendant (current file)"
+            if mer is not None and len(mer) > 0:
+                ds = tg.create_dataset("Mergers", data=mer, dtype=np.int32)
+                ds.attrs["Format"] = "descendant (current file), number of objects"
 
-                if mer is not None and len(mer) > 0:
-                    ds = tg.create_dataset("Mergers", data=mer, dtype=np.int32)
-                    ds.attrs["Format"] = "descendant (current file), number of objects"
-
-                if mul is not None and len(mul) > 0:
-                    ds = tg.create_dataset("MultiFrameMoves", data=mul, dtype=np.int32)
-                    ds.attrs["Format"] = "from (given by timestep), to (current file), timestep"
+            if mul is not None and len(mul) > 0:
+                ds = tg.create_dataset("MultiFrameMoves", data=mul, dtype=np.int32)
+                ds.attrs["Format"] = "from (given by timestep), to (current file), timestep"
 
         logging.getLogger('json_result_to_events.py').debug("-> results successfully written")
     except Exception as e:
@@ -92,6 +92,9 @@ if __name__ == "__main__":
     parser.add_argument('--label-image-path', dest='label_img_path', type=str,
                         default='/ObjectExtraction/LabelImage/0/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]',
                         help='internal hdf5 path to label image')
+    parser.add_argument('--plugin-paths', dest='pluginPaths', type=str, nargs='+',
+                        default=[os.path.abspath('../hytra/plugins')],
+                        help='A list of paths to search for plugins for the tracking pipeline.')
     parser.add_argument('--h5-event-out-dir', type=str, dest='out_dir', default='.', help='Output directory for HDF5 files')
     parser.add_argument("--verbose", dest='verbose', action='store_true', default=False)
     
@@ -137,7 +140,9 @@ if __name__ == "__main__":
                                      detectionsPerTimestep[timestep], 
                                      fn, 
                                      args.label_img_path, 
-                                     args.ilp_filename))
+                                     args.ilp_filename,
+                                     args.verbose,
+                                     args.pluginPaths))
 
     processing_pool.close()
     processing_pool.join()

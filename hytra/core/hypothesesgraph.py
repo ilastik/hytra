@@ -489,6 +489,15 @@ class HypothesesGraph(object):
         else:
             traxelgraph = self
 
+        # reset all values
+        for n in traxelgraph._graph.nodes_iter():
+            traxelgraph._graph.node[n]['value'] = 0
+            traxelgraph._graph.node[n]['divisionValue'] = False
+
+        for e in traxelgraph._graph.edges_iter():
+            traxelgraph._graph.edge[e[0]][e[1]]['value'] = 0
+
+        # store values from dict
         for detection in resultDictionary["detectionResults"]:
             traxels = uuidToTraxelMap[detection["id"]]
             for traxel in traxels:
@@ -521,15 +530,21 @@ class HypothesesGraph(object):
         divisionList = []
         linkList = []
 
+        def checkAttributeValue(element, attribName, default):
+            if attribName in element:
+                return element[attribName]
+            else:
+                return default
+
         for n in traxelgraph._graph.nodes_iter():
             newDetection = {}
             newDetection['id'] = traxelgraph._graph.node[n]['id']
-            newDetection['value'] = traxelgraph._graph.node[n]['value']
+            newDetection['value'] = checkAttributeValue(traxelgraph._graph.node[n], 'value', 0)
             detectionList.append(newDetection)
             if 'divisionValue' in traxelgraph._graph.node[n]:
                 newDivsion = {}
                 newDivsion['id'] = traxelgraph._graph.node[n]['id']
-                newDivsion['value'] = traxelgraph._graph.node[n]['divisionValue']
+                newDivsion['value'] = checkAttributeValue(traxelgraph._graph.node[n], 'divisionValue', False)
                 divisionList.append(newDivsion)
                 
         for a in traxelgraph.arcIterator():
@@ -538,7 +553,7 @@ class HypothesesGraph(object):
             dest = self.target(a)
             newLink['src'] = traxelgraph._graph.node[src]['id']
             newLink['dest'] = traxelgraph._graph.node[dest]['id']
-            newLink['value'] = traxelgraph._graph.edge[src][dest]['value']
+            newLink['value'] = checkAttributeValue(traxelgraph._graph.edge[src][dest], 'value', 0)
             linkList.append(newLink)
 
         resultDictionary["detectionResults"] = detectionList
