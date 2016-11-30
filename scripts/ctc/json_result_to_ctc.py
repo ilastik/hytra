@@ -81,7 +81,7 @@ if __name__ == "__main__":
                         default='/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]',
                         help='internal hdf5 path to label image')
     parser.add_argument('--plugin-paths', dest='pluginPaths', type=str, nargs='+',
-                        default=[os.path.abspath('../../hytra/plugins')],
+                        default=[os.path.abspath('../hytra/plugins')],
                         help='A list of paths to search for plugins for the tracking pipeline.')
     parser.add_argument("--is-ground-truth", dest='is_ground_truth', action='store_true', default=False)
     parser.add_argument('--links-to-num-next-frames', dest='linksToNumNextFrames', type=int, default=1)
@@ -156,8 +156,12 @@ if __name__ == "__main__":
 
     for timeframe in range(timeRange[0], timeRange[1]):
         label_image = imageProvider.getLabelImageForFrame(args.label_image_filename, args.label_image_path, timeframe)
-        remapped_label_image = remap_label_image(label_image, mappings[timeframe])
-        save_frame_to_tif(timeframe, remapped_label_image, args)
+        # check if frame is empty
+        if timeframe in mappings.keys():
+            remapped_label_image = remap_label_image(label_image, mappings[timeframe])
+            save_frame_to_tif(timeframe, remapped_label_image, args)
+        else:
+            save_frame_to_tif(timeframe, label_image, args)
 
 
 
