@@ -15,8 +15,10 @@ if __name__ == "__main__":
     parser.add_argument('--ilastik-tracking-project', required=True, type=str, dest='ilpFilename',
                         help='Filename of the ilastik tracking project')
     parser.add_argument('--weight-json-file', type=str, dest='out', required=True, help='Filename of the resulting weights JSON file')
+    parser.add_argument('--param-path', type=str, dest='param_path', default='/ConservationTracking/Parameters',
+                        help='Path inside ilastik project that stores the parameters. Old ilastik projects used "/ConservationTracking/Parameters/0000"')
 
     args, _ = parser.parse_known_args()
 
-    weightsDict = hytra.core.ilastik_project_options.extractWeightDictFromIlastikProject(args.ilpFilename)
+    weightsDict = hytra.core.ilastik_project_options.extractWeightDictFromIlastikProject(args.ilpFilename, args.param_path)
     hytra.core.jsongraph.writeToFormattedJSON(args.out, weightsDict)
