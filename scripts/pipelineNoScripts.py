@@ -20,7 +20,7 @@ from hytra.core.fieldofview import FieldOfView
 from hytra.core.jsonmergerresolver import JsonMergerResolver
 
 def convertToDict(unknown):
-    indicesOfParameters = [i for i,p in enumerate(unknown) if p.startswith('--')]
+    indicesOfParameters = [i for i, p in enumerate(unknown) if p.startswith('--')]
     keys = [u.replace('--', '') for u in [unknown[i] for i in indicesOfParameters]]
     values = []
     for i in indicesOfParameters:

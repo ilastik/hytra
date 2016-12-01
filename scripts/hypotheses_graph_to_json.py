@@ -11,6 +11,7 @@ import numpy as np
 import configargparse
 import hytra.core.hypothesesgraph as hypothesesgraph
 import hytra.core.ilastikhypothesesgraph as ilastikhypothesesgraph
+from hytra.pluginsystem.plugin_manager import TrackingPluginManager
 import hytra.core.jsongraph
 
 def getConfigAndCommandLineArguments():
@@ -627,7 +628,7 @@ def loadTraxelstoreAndTransitionClassifier(options, ilp_fn, time_range, shape):
     if options.raw_filename != None:
         if foundDetectionProbabilities:
             probGenerator, _, _ = loadProbabilityGenerator(options, ilp_fn, time_range=time_range, usePgmlink=False, featuresOnly=True)
-            insertProbsIntoprobabilityGenerator(options, probGenerator, ts)
+            insertProbsIntoProbabilityGenerator(options, probGenerator, ts)
         else:
             # warning: assuming that the classifiers are top-level groups in HDF5
             objectCountClassifierPath = '/' + [t for t in options.obj_count_path.split('/') if len(t) > 0][0]
@@ -689,9 +690,9 @@ if __name__ == "__main__":
         options.avg_obj_size = obj_size
 
     # find shape of dataset
-    with h5py.File(ilp_fn, 'r') as h5file:
-        shape = h5file['/'.join(options.label_img_path.split('/')[:-1])].values()[0].shape[1:4]
-
+    pluginManager = TrackingPluginManager(verbose=options.verbose, pluginPaths=options.pluginPaths)
+    shape = pluginManager.getImageProvider().getImageShape(ilp_fn, options.label_img_path)
+    
     # load traxelstore
     ts, fs, ndim, t0, t1, probGenerator, transitionClassifier = loadTraxelstoreAndTransitionClassifier(options, ilp_fn,
                                                                                                        time_range,
