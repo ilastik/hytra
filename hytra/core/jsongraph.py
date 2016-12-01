@@ -5,7 +5,10 @@ hypotheses graphs stored in our json (or python dictionary) format.
 import copy
 import logging
 import numpy as np
-import commentjson as json
+try:
+    import commentjson as json
+except ImportError:
+    import json
 from hytra.util.progressbar import ProgressBar
 
 # ----------------------------------------------------------------------------

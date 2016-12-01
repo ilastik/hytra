@@ -8,7 +8,10 @@ import glob
 import h5py
 import numpy as np
 import configargparse as argparse
-import commentjson as json
+try:
+    import commentjson as json
+except ImportError:
+    import json
 import networkx as nx
 import hytra.core.jsongraph
 

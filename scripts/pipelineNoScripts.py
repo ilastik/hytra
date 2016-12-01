@@ -9,7 +9,10 @@ import sys
 sys.path.insert(0, os.path.abspath('..'))
 
 import logging
-import commentjson as json
+try:
+    import commentjson as json
+except ImportError:
+    import json
 import dpct
 from subprocess import check_call
 import configargparse as argparse

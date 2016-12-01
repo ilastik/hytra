@@ -61,7 +61,10 @@ def run_pipeline(options, unknown):
                         "-w", options.weight_filename,
                         "-o", options.result_filename])
         else:
-            import commentjson as json
+            try:
+                import commentjson as json
+            except ImportError:
+                import json
             import dpct
             import hytra.core.jsongraph
 

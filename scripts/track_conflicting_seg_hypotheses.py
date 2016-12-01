@@ -13,7 +13,10 @@ import numpy as np
 import logging
 from skimage.external import tifffile
 import vigra
-import commentjson as json
+try:
+    import commentjson as json
+except ImportError:
+    import json
 import configargparse as argparse
 sys.path.insert(0, os.path.abspath('..'))
 from hytra.core.ilastikhypothesesgraph import IlastikHypothesesGraph
