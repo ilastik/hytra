@@ -2,7 +2,7 @@
 Utilities that help with loading / saving as well as constructing and parsing
 hypotheses graphs stored in our json (or python dictionary) format.
 '''
-
+import copy
 import logging
 import numpy as np
 import commentjson as json
@@ -256,6 +256,8 @@ class JsonTrackingGraph(object):
                         }
                 }
         else:
+            assert('segmentationHypotheses' in model)
+            assert('linkingHypotheses' in model)
             self.model = model
         self.weights = weights
         self.result = result
@@ -308,6 +310,39 @@ class JsonTrackingGraph(object):
                                            appearanceFeatures=appearanceFeatures,
                                            disappearanceFeatures=disappearanceFeatures)
 
+    def hasDivisions(self):
+        '''
+        check all division and segmentation hypotheses whether there is any possible division present,
+        because only then we need the division weight to be passed in. 
+        '''
+        if 'divisionHypotheses' in self.model and len(self.model['divisionHypotheses']) > 0:
+            return True
+
+        for s in self.model['segmentationHypotheses']:
+            if 'divisionFeatures' in s and len(s['divisionFeatures']) > 0:
+                return True
+        return False
+
+    def weightsListToDict(self, listOfWeights):
+        '''
+        Given a list of 5 weights for `[transWeight, detWeight, divWeight, appearance_cost, disappearance_cost]`,
+        **return** a weight dict that matches the current tracking model.
+        '''
+        assert(len(listOfWeights) == 5)
+        w = copy.deepcopy(listOfWeights)
+        if not self.hasDivisions():
+            del w[2]
+        return {'weights': w}
+
+    def weightsDictToList(self, weightsDict):
+        '''
+        **return** a 5-element list for [transWeight, detWeight, divWeight, appearance_cost, disappearance_cost], given a dict of weights. 
+        '''
+        assert('weights' in weightsDict)
+        w = copy.deepcopy(weightsDict['weights'])
+        if not self.hasDivisions():
+            w.insert(2, 0)
+        return w
 
     def addDetectionHypotheses(self, features, **kwargs):
         '''
