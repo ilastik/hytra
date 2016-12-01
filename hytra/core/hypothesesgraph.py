@@ -260,6 +260,11 @@ class HypothesesGraph(object):
         for edge in links_to_be_contracted:
             src = node_remapping[edge[0]]
             dest = node_remapping[edge[1]]
+            if tracklet_graph._graph.in_degree(src) == 0 and tracklet_graph._graph.out_degree(dest) == 0:
+                # if this tracklet would contract to a single node without incoming or outgoing edges,
+                # then do NOT contract, as our tracking cannot handle length-one-tracks
+                continue
+            
             tracklet_graph._graph.node[src]['tracklet'].extend(tracklet_graph._graph.node[dest]['tracklet'])
             # duplicate out arcs with new source
             for out_edge in tracklet_graph._graph.out_edges(dest):
