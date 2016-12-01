@@ -14,8 +14,8 @@ def test_trackletgraph():
         h._graph.node[i]['traxel'] = t
     
     t = h.generateTrackletGraph()
-    assert(t.countArcs() == 0)
-    assert(t.countNodes() == 1)
+    assert(t.countArcs() == 1)
+    assert(t.countNodes() == 2)
     assert('tracklet' in t._graph.node[(0,1)])
 
 def test_computeLineagesAndPrune():
