@@ -14,8 +14,8 @@ def test_trackletgraph():
         h._graph.node[i]['traxel'] = t
     
     t = h.generateTrackletGraph()
-    assert(t.countArcs() == 0)
-    assert(t.countNodes() == 1)
+    assert(t.countArcs() == 1)
+    assert(t.countNodes() == 2)
     assert('tracklet' in t._graph.node[(0,1)])
 
 def test_computeLineagesAndPrune():
@@ -91,6 +91,94 @@ def test_computeLineagesAndPrune():
     h.pruneGraphToSolution(0)
     h.pruneGraphToSolution(1)
 
+def test_computeLineagesWithMergers():
+    h = hg.HypothesesGraph()
+    h._graph.add_path([(0, 0),(1, 1),(2, 2)])
+    h._graph.add_path([(0, 5),(1, 1),(2, 3),(3, 4)])
+
+    for n in h._graph.node:
+        h._graph.node[n]['id'] = n[1]
+        h._graph.node[n]['traxel'] = pg.Traxel()
+        h._graph.node[n]['traxel'].Id = n[1]
+        h._graph.node[n]['traxel'].Timestep = n[0]
+
+    solutionDict = {
+    "detectionResults": [
+        {
+            "id": 0,
+            "value": 1
+        },
+        {
+            "id": 1,
+            "value": 2
+        },
+        {
+            "id": 2,
+            "value": 1
+        },
+        {
+            "id": 3,
+            "value": 1
+        },
+        {
+            "id": 4,
+            "value": 1
+        },
+        {
+            "id": 5,
+            "value": 1
+        }
+    ],
+    "linkingResults": [
+        {
+            "dest": 1,
+            "src": 0,
+            "value": 1
+        },
+        {
+            "dest": 1,
+            "src": 5,
+            "value": 1
+        },
+        {
+            "dest": 2,
+            "src": 1,
+            "value": 1
+        },
+        {
+            "dest": 3,
+            "src": 1,
+            "value": 1
+        },
+        {
+            "dest": 4,
+            "src": 3,
+            "value": 1
+        }
+    ],
+    "divisionResults": [
+        {
+            "id": 1,
+            "value": False
+        },
+        {
+            "id": 2,
+            "value": False
+        }
+    ]
+    }
+
+    h.insertSolution(solutionDict)
+    h.computeLineage()
+
+    assert(h._graph.node[(0,0)]['lineageId'] == 2)
+    assert(h._graph.node[(0,5)]['lineageId'] == 3)
+    assert(h._graph.node[(1,1)]['lineageId'] == 3)
+    assert(h._graph.node[(1,1)]['lineageId'] == 3)
+    assert(h._graph.node[(2,3)]['lineageId'] == 3)
+    assert(h._graph.node[(3,4)]['lineageId'] == 3)
+
+
 def test_insertAndExtractSolution():
     h = hg.HypothesesGraph()
     h._graph.add_path([(0, 0),(1, 1),(2, 2)])
@@ -161,15 +249,30 @@ def test_insertAndExtractSolution():
 
     h.insertSolution(solutionDict)
     outSolutionDict = h.getSolutionDictionary()
-    for k in (["detectionResults","divisionResults"]):
-        for cat_dict in solutionDict[k]:
-            ref = [m for m in outSolutionDict[k] if m['id'] == cat_dict['id']]
-            assert(len(ref)==1)
-            for c,v in ref[0].items():
-                assert(v==cat_dict[c])
 
-    assert(len([i for k in solutionDict for i in solutionDict[k] ]) 
-        == len([i for k in outSolutionDict for i in outSolutionDict[k] ]))
+    # from solution to outSolution
+    for group in (["detectionResults","divisionResults"]):
+        for entry in solutionDict[group]:
+            ref = [m for m in outSolutionDict[group] if m['id'] == entry['id']]
+            assert(len(ref)<=1)
+            if len(ref) == 1:
+                for k,v in ref[0].items():
+                    assert(v==entry[k])
+            else:
+                assert(entry['value'] == 0)
+    
+    # from outSolution to Solution
+    for group in (["detectionResults","divisionResults"]):
+        for entry in outSolutionDict[group]:
+            ref = [m for m in solutionDict[group] if m['id'] == entry['id']]
+            assert(len(ref)<=1)
+            if len(ref) == 1:
+                for k,v in ref[0].items():
+                    assert(v==entry[k])
+            else:
+                assert(entry['value'] == 0)
+
+
     assert(h._graph.node[(1, 1)]["divisionValue"] == 1)
     assert(h._graph.node[(2, 2)]["divisionValue"] == 0)
     assert(h._graph.node[(0, 0)]["value"] == 1)
@@ -240,4 +343,5 @@ if __name__ == "__main__":
     test_trackletgraph()
     test_insertAndExtractSolution()
     test_computeLineagesAndPrune()
+    test_computeLineagesWithMergers()
     test_insertEnergies()

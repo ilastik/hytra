@@ -17,13 +17,44 @@ class TrackingPluginManager(object):
         and if `verbose=True` then the [yapsy](http://yapsy.sourceforge.net/) plugin backend 
         will also show errors that occurred while trying to import plugins (useful for debugging).
         """
+        self._pluginPaths = pluginPaths
+        self._turnOffFeatures = turnOffFeatures
+        self._verbose = verbose
+        
+        self._initializeYapsy()
+
+        self.chosen_data_provider = "LocalImageLoader"
+        self.chosen_feature_serializer = "LocalFeatureSerializer"
+        self.chosen_merger_resolver = 'GMMMergerResolver'
+
+    def __getstate__(self):
+        '''
+        We define __getstate__ and __setstate__ to exclude the loaded yapsy modules from being pickled.
+
+        See https://docs.python.org/3/library/pickle.html#pickle-state for more details.
+        '''
+        # Copy the object's state from self.__dict__ which contains
+        # all our instance attributes. Always use the dict.copy()
+        # method to avoid modifying the original state.
+        state = self.__dict__.copy()
+        # Remove the unpicklable entries.
+        del state['_yapsyPluginManager']
+        return state
+
+    def __setstate__(self, state):
+        # Restore instance attributes
+        self.__dict__.update(state)
+        # Restore the yapsy plugins by reading them from scratch
+        self._initializeYapsy()
+
+    def _initializeYapsy(self):
         # Build the manager
         self._yapsyPluginManager = PluginManager()
         self._yapsyPluginManager = FilteredPluginManager(self._yapsyPluginManager)
-        self._yapsyPluginManager.isPluginOk = lambda x: x.name not in turnOffFeatures
+        self._yapsyPluginManager.isPluginOk = lambda x: x.name not in self._turnOffFeatures
 
         # Tell it the default place(s) where to find plugins
-        self._yapsyPluginManager.setPluginPlaces(pluginPaths)
+        self._yapsyPluginManager.setPluginPlaces(self._pluginPaths)
         # Define the various categories corresponding to the different
         # kinds of plugins you have defined
         self._yapsyPluginManager.setCategoriesFilter({
@@ -33,15 +64,12 @@ class TrackingPluginManager(object):
             "FeatureSerializer": FeatureSerializerPlugin,
             "MergerResolver": MergerResolverPlugin,
         })
-        if verbose:
+        if self._verbose:
             logging.getLogger('yapsy').setLevel(logging.DEBUG)
         else:
             logging.getLogger('yapsy').setLevel(logging.CRITICAL)
 
         self._yapsyPluginManager.collectPlugins()
-        self.chosen_data_provider = "LocalImageLoader"
-        self.chosen_feature_serializer = "LocalFeatureSerializer"
-        self.chosen_merger_resolver = 'GMMMergerResolver'
 
     def _applyToAllPluginsOfCategory(self, func, category):
         ''' helper function to apply `func` to all plugins of the given `category` and hide all yapsy stuff '''

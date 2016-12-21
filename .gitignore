@@ -6,6 +6,7 @@
 CMakeCache*
 *.pyc
 *_test
+tags*
 Testing
 CMakeFiles
 *.swp
@@ -14,7 +15,12 @@ doxygenconfig*
 randomforest_test.cpp
 tracking/
 .idea
+tests/divisionTestDataset/*
+tests/boxesTestDataset/*
 tests/mergerResolvingTestDataset/*
+tests/mergerResolvingTestDatasetNewLabelImage/*
+tests/multiSegmentationHypothesesTestDataset/ctc_out/*
+*.dump
 
 # Compiled source #
 ###################

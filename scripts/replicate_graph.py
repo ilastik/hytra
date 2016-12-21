@@ -4,7 +4,10 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
 # standard imports
-import commentjson as json
+try:
+    import commentjson as json
+except ImportError:
+    import json
 import argparse
 import numpy as np
 import copy

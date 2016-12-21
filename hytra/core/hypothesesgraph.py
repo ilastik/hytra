@@ -81,6 +81,12 @@ class HypothesesGraph(object):
 
     def countArcs(self):
         return self._graph.number_of_edges()
+    
+    def hasNode(self, node):
+        return self._graph.has_node(node)
+    
+    def hasEdge(self, u, v):
+        return self._graph.has_edge(u, v)
 
     @staticmethod
     def source(edge):
@@ -98,8 +104,8 @@ class HypothesesGraph(object):
         kdtree, objectIdList = kdtreeObjectPair
         if len(objectIdList) <= numNeighbors:
             return objectIdList
-        distances, neighbors = kdtree.query(self._extractCenter(
-            traxel), k=numNeighbors, return_distance=True)
+        distances, neighbors = kdtree.query([self._extractCenter(
+            traxel)], k=numNeighbors, return_distance=True)
         return [objectIdList[index] for distance, index in zip(distances[0], neighbors[0]) if
                 distance < maxNeighborDist]
 
@@ -170,6 +176,7 @@ class HypothesesGraph(object):
         """
         assert (probabilityGenerator is not None)
         assert (len(probabilityGenerator.TraxelsPerFrame) > 0)
+        assert (skipLinks > 0)
 
         def checkNodeWhileAddingLinks(frame, obj):
             if (frame, obj) not in self._graph:
@@ -178,9 +185,11 @@ class HypothesesGraph(object):
         kdTreeFrames = [None]*(skipLinks + 1)
         # len(probabilityGenerator.TraxelsPerFrame.keys()) is NOT an indicator for the total number of frames,
         # because an empty frame does not create a key in the dictionary. E.g. for one frame in the middle of the
-        # dataset, we won't avcces the last one.
+        # dataset, we won't access the last one.
         # Idea: take the max key in the dict. Remember, frame numbering starts with 0.
         numFrames = max(probabilityGenerator.TraxelsPerFrame.keys()) + 1
+        progressBar = ProgressBar(stop=numFrames*skipLinks)
+        progressBar.show(0)
         
         for frame in range(numFrames):
             if frame > 0:
@@ -233,6 +242,8 @@ class HypothesesGraph(object):
                                         self._graph.add_edge((frame, n), (frame + i, obj))
                                         self._graph.edge[frame, n][frame + i, obj]['src'] = self._graph.node[(frame, n)]['id']
                                         self._graph.edge[frame, n][frame + i, obj]['dest'] = self._graph.node[(frame + i, obj)]['id']
+                    progressBar.show()
+        progressBar.show()
 
     def generateTrackletGraph(self):
         '''
@@ -267,6 +278,11 @@ class HypothesesGraph(object):
         for edge in links_to_be_contracted:
             src = node_remapping[edge[0]]
             dest = node_remapping[edge[1]]
+            if tracklet_graph._graph.in_degree(src) == 0 and tracklet_graph._graph.out_degree(dest) == 0:
+                # if this tracklet would contract to a single node without incoming or outgoing edges,
+                # then do NOT contract, as our tracking cannot handle length-one-tracks
+                continue
+            
             tracklet_graph._graph.node[src]['tracklet'].extend(tracklet_graph._graph.node[dest]['tracklet'])
             # duplicate out arcs with new source
             for out_edge in tracklet_graph._graph.out_edges(dest):
@@ -465,7 +481,6 @@ class HypothesesGraph(object):
         model = {
             'segmentationHypotheses':[translateNodeToDict(n) for n in self._graph.nodes_iter()],
             'linkingHypotheses':[translateLinkToDict(e) for e in self._graph.edges_iter()],
-            'exclusions':[],
             'divisionHypotheses':[],
             'traxelToUniqueId':traxelIdPerTimestepToUniqueIdMap,
             'settings':{'statesShareWeights':True,
@@ -476,6 +491,29 @@ class HypothesesGraph(object):
                         'optimizerNumThreads':1
                        }
             }
+
+        # extract exclusion sets:
+        exclusions = set([])
+        for n in self._graph.nodes_iter():
+            if self.withTracklets:
+                traxel = self._graph.node[n]['tracklet'][0]
+            else:
+                traxel = self._graph.node[n]['traxel']
+            
+            if traxel.conflictingTraxelIds is not None:
+                if self.withTracklets:
+                    getLogger().error("Exclusion constraints do not work with tracklets yet!")
+                
+                conflictingIds = [traxelIdPerTimestepToUniqueIdMap[str(traxel.Timestep)][str(i)] for i in traxel.conflictingTraxelIds]
+                myId = traxelIdPerTimestepToUniqueIdMap[str(traxel.Timestep)][str(traxel.Id)]
+                for ci in conflictingIds:
+                    # insert pairwise exclusion constraints only, and always put the lower id first
+                    if ci < myId:
+                        exclusions.add((ci, myId))
+                    else:
+                        exclusions.add((myId, ci))
+
+        model['exclusions'] = [list(t) for t in exclusions]
 
         # TODO: this recomputes the uuidToTraxelMap even though we have it already...
         trackingGraph = hytra.core.jsongraph.JsonTrackingGraph(model=model)
@@ -495,6 +533,15 @@ class HypothesesGraph(object):
         else:
             traxelgraph = self
 
+        # reset all values
+        for n in traxelgraph._graph.nodes_iter():
+            traxelgraph._graph.node[n]['value'] = 0
+            traxelgraph._graph.node[n]['divisionValue'] = False
+
+        for e in traxelgraph._graph.edges_iter():
+            traxelgraph._graph.edge[e[0]][e[1]]['value'] = 0
+
+        # store values from dict
         for detection in resultDictionary["detectionResults"]:
             traxels = uuidToTraxelMap[detection["id"]]
             for traxel in traxels:
@@ -528,15 +575,21 @@ class HypothesesGraph(object):
         divisionList = []
         linkList = []
 
+        def checkAttributeValue(element, attribName, default):
+            if attribName in element:
+                return element[attribName]
+            else:
+                return default
+
         for n in traxelgraph._graph.nodes_iter():
             newDetection = {}
             newDetection['id'] = traxelgraph._graph.node[n]['id']
-            newDetection['value'] = traxelgraph._graph.node[n]['value']
+            newDetection['value'] = checkAttributeValue(traxelgraph._graph.node[n], 'value', 0)
             detectionList.append(newDetection)
             if 'divisionValue' in traxelgraph._graph.node[n]:
                 newDivsion = {}
                 newDivsion['id'] = traxelgraph._graph.node[n]['id']
-                newDivsion['value'] = traxelgraph._graph.node[n]['divisionValue']
+                newDivsion['value'] = checkAttributeValue(traxelgraph._graph.node[n], 'divisionValue', False)
                 divisionList.append(newDivsion)
                 
         for a in traxelgraph.arcIterator():
@@ -545,8 +598,9 @@ class HypothesesGraph(object):
             dest = self.target(a)
             newLink['src'] = traxelgraph._graph.node[src]['id']
             newLink['dest'] = traxelgraph._graph.node[dest]['id']
-            newLink['value'] = traxelgraph._graph.edge[src][dest]['value']
-            newLink['gap'] = traxelgraph._graph.edge[src][dest]['gap']
+            newLink['value'] = checkAttributeValue(traxelgraph._graph.edge[src][dest], 'value', 0)
+            newLink['gap'] = checkAttributeValue(traxelgraph._graph.edge[src][dest], 'gap', 1)
+
             linkList.append(newLink)
 
         resultDictionary["detectionResults"] = detectionList
@@ -615,6 +669,16 @@ class HypothesesGraph(object):
 
         while len(update_queue) > 0:
             current_node,lineage_id,track_id = update_queue.pop()
+
+            # if we did not run merger resolving, it can happen that we reach a node several times,
+            # and would propagate the new lineage+track IDs to all descendants again! We simply
+            # stop propagating in that case and just use the lineageID that reached the node first.
+            if traxelgraph._graph.node[current_node].get("lineageId", None) is not None and \
+                traxelgraph._graph.node[current_node].get("trackId", None) is not None:
+                getLogger().debug("Several tracks are merging here, stopping a later one")
+                continue
+
+            # set a new trackID
             traxelgraph._graph.node[current_node]["lineageId"] = lineage_id
             traxelgraph._graph.node[current_node]["trackId"] = track_id
 
@@ -627,9 +691,9 @@ class HypothesesGraph(object):
                 assert(traxelgraph.countOutgoingObjects(current_node)[1] == 2)
                 traxelgraph._graph.node[current_node]['children'] = []
                 for a in traxelgraph._graph.out_edges(current_node):
+
                     if 'value' in traxelgraph._graph.edge[current_node][a[1]] and traxelgraph._graph.edge[current_node][a[1]]['value'] > 0:
                         traxelgraph._graph.node[a[1]]['gap'] = skipLinks
-
                         traxelgraph._graph.node[current_node]['children'].append(a[1])
                         traxelgraph._graph.node[a[1]]['parent'] = current_node
                         update_queue.append((traxelgraph.target(a),

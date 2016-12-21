@@ -9,7 +9,10 @@ import sys
 sys.path.insert(0, os.path.abspath('..'))
 
 import logging
-import commentjson as json
+try:
+    import commentjson as json
+except ImportError:
+    import json
 import dpct
 from subprocess import check_call
 import configargparse as argparse
@@ -20,7 +23,7 @@ from hytra.core.fieldofview import FieldOfView
 from hytra.core.jsonmergerresolver import JsonMergerResolver
 
 def convertToDict(unknown):
-    indicesOfParameters = [i for i,p in enumerate(unknown) if p.startswith('--')]
+    indicesOfParameters = [i for i, p in enumerate(unknown) if p.startswith('--')]
     keys = [u.replace('--', '') for u in [unknown[i] for i in indicesOfParameters]]
     values = []
     for i in indicesOfParameters:
@@ -40,7 +43,7 @@ def constructFov(shape, t0, t1, scale=[1, 1, 1]):
 
 def run_pipeline(options, unknown):
     """
-    Run the complete tracking pipeline by invoking the scripts as subprocesses.
+    Run the complete tracking pipeline by invoking the different steps.
     Using the `do-SOMETHING` switches one can configure which parts of the pipeline are run.
 
     **Params:**

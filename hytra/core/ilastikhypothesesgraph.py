@@ -76,15 +76,18 @@ class IlastikHypothesesGraph(HypothesesGraph):
             return self.getBoundaryCostMultiplier(traxel, self.fieldOfView, self.borderAwareWidth, self.timeRange[0], self.timeRange[-1])
 
         def divisionProbabilityFunc(traxel):
-            try:
-                divisionFeatures = self.getDivisionFeatures(traxel)
-                if divisionFeatures[0] > self.divisionThreshold:
-                    divisionFeatures = list(reversed(divisionFeatures))
-                else:
+            if self.withDivisions:
+                try:
+                    divisionFeatures = self.getDivisionFeatures(traxel)
+                    if divisionFeatures[0] > self.divisionThreshold:
+                        divisionFeatures = list(reversed(divisionFeatures))
+                    else:
+                        divisionFeatures = None
+                except:
                     divisionFeatures = None
-            except:
-                divisionFeatures = None
-            return divisionFeatures
+                return divisionFeatures
+            else:
+                return None
 
         super(IlastikHypothesesGraph, self).insertEnergies(
             self.maxNumObjects,

@@ -25,7 +25,7 @@ class IlastikProjectOptions:
         self.featureSerializerName = 'LocalFeatureSerializer'
         self.sizeFilter = None  # set to tuple with min,max pixel count
 
-def extractWeightDictFromIlastikProject(ilpFilename):
+def extractWeightDictFromIlastikProject(ilpFilename, basePath='/ConservationTracking/Parameters/0000'):
     """
     Open an ilastik tracking project and extract the conservation tracking parameters
     that weigh the contribution of the different energies/classifiers.
@@ -36,12 +36,12 @@ def extractWeightDictFromIlastikProject(ilpFilename):
     **Returns** a dictionary with weights that can be passed on to the solvers directly
     """
     with h5py.File(ilpFilename, 'r') as h5file:
-        withDivisions = h5file['/ConservationTracking/Parameters/0000/withDivisions'].value
-        transitionWeight = h5file['/ConservationTracking/Parameters/0000/transWeight'].value
+        withDivisions = h5file[basePath + '/withDivisions'].value
+        transitionWeight = h5file[basePath + '/transWeight'].value
         detectionWeight = 10.0
-        divisionWeight = h5file['/ConservationTracking/Parameters/0000/divWeight'].value
-        appearanceWeight = h5file['/ConservationTracking/Parameters/0000/appearanceCost'].value
-        disappearanceWeight = h5file['/ConservationTracking/Parameters/0000/disappearanceCost'].value
+        divisionWeight = h5file[basePath + '/divWeight'].value
+        appearanceWeight = h5file[basePath + '/appearanceCost'].value
+        disappearanceWeight = h5file[basePath + '/disappearanceCost'].value
     
     if withDivisions:
         weights = {'weights' : [transitionWeight, detectionWeight, divisionWeight, appearanceWeight, disappearanceWeight]}

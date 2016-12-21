@@ -10,4 +10,9 @@ class SkeletonObjectFeatures(object_feature_computation_plugin.ObjectFeatureComp
     omittedFeatures = ['Polygon']
 
     def computeFeatures(self, rawImage, labelImage, frameNumber, rawFilename):
-        return vigra.analysis.extractSkeletonFeatures(labelImage.squeeze().astype(np.uint32))
+        featureDict = vigra.analysis.extractSkeletonFeatures(labelImage.squeeze().astype(np.uint32))
+        if 'Center' in featureDict:
+            # old vigra versions simply call that feature "Center" which conflicts with other features 
+            featureDict['Skeleton Center'] = featureDict['Center']
+            del featureDict['Center']
+        return featureDict

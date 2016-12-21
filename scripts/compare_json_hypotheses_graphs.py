@@ -1,4 +1,7 @@
-import commentjson as json
+try:
+    import commentjson as json
+except ImportError:
+    import json
 import argparse
 
 if __name__ == "__main__":
