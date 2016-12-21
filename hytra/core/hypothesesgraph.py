@@ -706,7 +706,7 @@ class HypothesesGraph(object):
 
                 for a in traxelgraph._graph.out_edges(current_node):
                     if 'value' in traxelgraph._graph.edge[current_node][a[1]] and traxelgraph._graph.edge[current_node][a[1]]['value'] > 0:
-                        if 'gap' in traxelgraph._graph.edge[current_node][a[1]] and traxelgraph._graph.edge[current_node][a[1]]['gap'] == 1:
+                        if ('gap' in traxelgraph._graph.edge[current_node][a[1]] and traxelgraph._graph.edge[current_node][a[1]]['gap'] == 1) or 'gap' not in traxelgraph._graph.edge[current_node][a[1]]:
                             traxelgraph._graph.node[a[1]]['gap'] = 1
                             update_queue.append((traxelgraph.target(a),
                                             lineage_id,
