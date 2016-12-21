@@ -451,10 +451,13 @@ class JsonTrackingGraph(object):
             # adding nodes automatically assigns UUIDs, we replace them by the loaded one
             hypothesesGraph._graph.node[(traxel.Timestep, traxel.Id)]['id'] = s['id']
 
-        # instert edges
+        # insert edges
         for l in self.model['linkingHypotheses']:
-            srcTracklet = self.uuidToTraxelMap[l['src']]
-            destTracklet = self.uuidToTraxelMap[l['dest']]
+            try:
+                srcTracklet = self.uuidToTraxelMap[l['src']]
+                destTracklet = self.uuidToTraxelMap[l['dest']]
+            except:
+                getLogger().warning("Failed finding {} from JSON['linkingHypotheses'] in uuidToTraxelMap".format((l['dest'], l['src'])))
             hypothesesGraph._graph.add_edge((srcTracklet[0][0], srcTracklet[0][1]), 
                                             ((destTracklet[0][0], destTracklet[0][1])))
 

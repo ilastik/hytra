@@ -25,7 +25,9 @@ def get_num_frames(options):
 
 def save_frame_to_tif(timestep, label_image, options):
     if len(options.input_files) == 1:
-        filename = options.output_dir + '/man_seg' + format(timestep, "0{}".format(options.filename_zero_padding)) + '.tif'
+        filename = options.output_dir + '/man_seg' + format(timestep, "0{}".format(options.filename_zero_padding)) + '.tif' # default, GIT
+        # filename = options.output_dir + '/mask' + format(timestep, "0{}".format(options.filename_zero_padding)) + '.tif' # for letting SEGMEasure run before tracking
+        # filename = options.output_dir + '/seg' + format(timestep, "0{}".format(options.filename_zero_padding)) + '.tif' # for converting Phillips prediction pams to segm
     else:
     	'This was not implemented here'
     vigra.impex.writeImage(label_image.astype('uint16'), filename)
@@ -34,6 +36,7 @@ def get_frame_label_image(timestep, options):
     if len(options.input_files) == 1:
         with h5py.File(options.input_files[0], 'r') as in_h5:
             return np.array(in_h5[options.label_image_path][timestep, ..., 0]).squeeze()
+            # return np.array(in_h5[options.label_image_path][timestep, 0, ...]).squeeze()
     else:
         with h5py.File(options.input_files[timestep], 'r') as in_h5:
             return np.array(in_h5[options.label_image_path]).squeeze()

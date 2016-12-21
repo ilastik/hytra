@@ -84,6 +84,8 @@ if __name__ == "__main__":
                         default=[os.path.abspath('../../hytra/plugins')],
                         help='A list of paths to search for plugins for the tracking pipeline.')
     parser.add_argument("--is-ground-truth", dest='is_ground_truth', action='store_true', default=False)
+    parser.add_argument('--links-to-num-next-frames', dest='linksToNumNextFrames', type=int, default=1)
+
     parser.add_argument("--verbose", dest='verbose', action='store_true', default=False)
 
     # parse command line
@@ -103,11 +105,12 @@ if __name__ == "__main__":
     getLogger().debug("Loading graph and result")
     trackingGraph = JsonTrackingGraph(model_filename=args.model_filename, result_filename=args.result_filename)
     hypothesesGraph = trackingGraph.toHypothesesGraph()
-    hypothesesGraph.computeLineage(1, 1)
+    hypothesesGraph.computeLineage(1, 1, args.linksToNumNextFrames)
 
     mappings = {} # dictionary over timeframes, containing another dict objectId -> trackId per frame
     tracks = {} # stores a list of timeframes per track, so that we can find from<->to per track
     trackParents = {} # store the parent trackID of a track if known
+    gapTrackParents = {}
 
     for n in hypothesesGraph.nodeIterator():
         frameMapping = mappings.setdefault(n[0], {})
@@ -123,16 +126,24 @@ if __name__ == "__main__":
         if 'parent' in hypothesesGraph._graph.node[n]:
             assert(trackId not in trackParents)
             trackParents[trackId] = hypothesesGraph._graph.node[hypothesesGraph._graph.node[n]['parent']]['trackId']
+        if 'gap_parent' in hypothesesGraph._graph.node[n]:
+            assert(trackId not in trackParents)
+            gapTrackParents[trackId] = hypothesesGraph._graph.node[hypothesesGraph._graph.node[n]['gap_parent']]['trackId']
 
     # write res_track.txt
     getLogger().debug("Writing track text file")
     trackDict = {}
     for trackId, timestepList in tracks.iteritems():
         timestepList.sort()
-        try:
+        if trackId in trackParents.keys():
             parent = trackParents[trackId]
-        except KeyError:
+        else:
             parent = 0
+        # jumping over time frames, so creating 
+        if trackId in gapTrackParents.keys():
+            if gapTrackParents[trackId] != trackId:
+                parent = gapTrackParents[trackId]
+                getLogger().info("Jumping over one time frame in this link: trackid: {}, parent: {}, time: {}".format(trackId, parent, min(timestepList)))
         trackDict[trackId] = [parent, min(timestepList), max(timestepList)]
     save_tracks(trackDict, args) 
 
@@ -145,5 +156,10 @@ if __name__ == "__main__":
 
     for timeframe in range(timeRange[0], timeRange[1]):
         label_image = imageProvider.getLabelImageForFrame(args.label_image_filename, args.label_image_path, timeframe)
-        remapped_label_image = remap_label_image(label_image, mappings[timeframe])
-        save_frame_to_tif(timeframe, remapped_label_image, args)
+
+        # check if frame is empty
+        if timeframe in mappings.keys():
+            remapped_label_image = remap_label_image(label_image, mappings[timeframe])
+            save_frame_to_tif(timeframe, remapped_label_image, args)
+        else:
+            save_frame_to_tif(timeframe, label_image, args)

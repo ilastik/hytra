@@ -24,7 +24,9 @@ class IlastikHypothesesGraph(HypothesesGraph):
                  borderAwareWidth=10,
                  maxNeighborDistance=200,
                  transitionParameter=5.0,
-                 transitionClassifier=None):
+                 transitionClassifier=None,
+                 skipLinks=1,
+                 skipLinksBias=20):
         '''
         Constructor
         '''
@@ -42,13 +44,16 @@ class IlastikHypothesesGraph(HypothesesGraph):
         self.maxNeighborDistance = maxNeighborDistance
         self.transitionClassifier = transitionClassifier
         self.transitionParameter = transitionParameter
+        self.skipLinks = skipLinks
+        self.skipLinksBias = skipLinksBias
 
         # build hypotheses graph
         self.buildFromProbabilityGenerator(probabilityGenerator,
                                            numNearestNeighbors=numNearestNeighbors,
                                            maxNeighborDist=maxNeighborDistance,
                                            withDivisions=withDivisions,
-                                           divisionThreshold=divisionThreshold)
+                                           divisionThreshold=divisionThreshold,
+                                           skipLinks=skipLinks)
 
     def insertEnergies(self):
         """
@@ -89,7 +94,8 @@ class IlastikHypothesesGraph(HypothesesGraph):
             detectionProbabilityFunc,
             transitionProbabilityFunc,
             boundaryCostMultiplierFunc,
-            divisionProbabilityFunc)
+            divisionProbabilityFunc,
+            self.skipLinksBias)
 
     def getDetectionFeatures(self, traxel, max_state):
         """
@@ -113,6 +119,7 @@ class IlastikHypothesesGraph(HypothesesGraph):
         positions = [np.array([t.X(), t.Y(), t.Z()]) for t in [traxelA, traxelB]]
         dist = np.linalg.norm(positions[0] - positions[1])
         prob = np.exp(-dist / transitionParam)
+
         return [1.0 - prob] + [prob] * (max_state - 1)
 
 
@@ -123,7 +130,38 @@ class IlastikHypothesesGraph(HypothesesGraph):
         feats = [probabilityGenerator.getTraxelFeatureDict(obj.Timestep, obj.Id) for obj in [traxelA, traxelB]]
         featVec = probabilityGenerator.getTransitionFeatureVector(feats[0], feats[1], transitionClassifier.selectedFeatures)
         probs = transitionClassifier.predictProbabilities(featVec)[0]
-        return [probs[0]] + [probs[1]] * (max_state - 1)
+
+        # or image borders, so predict probability just by distance
+        upperBound = self.fieldOfView.getUpperBound()
+        lowerBound = self.fieldOfView.getLowerBound()
+
+        coordsMax = feats[0]['Coord<Maximum >']
+        boundMax = np.array(upperBound[1:len(coordsMax)+1])
+        coordsMin = feats[0]['Coord<Minimum >']
+        boundMin = np.array(lowerBound[1:len(coordsMin)+1])
+
+        dist_border = self.fieldOfView.spatial_distance_to_border(traxelA.Timestep, traxelA.X(), traxelA.Y(), traxelA.Z(), False)
+
+        # find the objects crossing the image border and return the distance based probability instead
+        # REASON: The TC classifier gets confused by the feature values at the image border.
+        # experiments on Fluo-N2DH-SIM 01:
+        # TC no border treatment: TRA measure 0.9888
+        # TC with border treatment: 0.991302
+        # pure distance: 0.993
+        # from all links: used distance 340 times, TC prob 3088 times used
+
+
+        # experiments on Rapoport:
+        # TC no border treatment: TRA measure 0.952467
+        # TC with border treatment: 0.95267
+        # pure distance: 0.951674
+        # from all links: used distance 13598 times, TC prob 271502 times
+
+        if np.isclose(coordsMax, boundMax).any() or np.isclose(coordsMin, boundMin).any():
+            return self.getTransitionFeaturesDist(traxelA, traxelB, self.transitionParameter, self.maxNumObjects + 1)
+        else:
+            return [probs[0]] + [probs[1]] * (max_state - 1)
+
 
 
     def getBoundaryCostMultiplier(self, traxel, fov, margin, t0, t1):

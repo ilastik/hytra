@@ -112,7 +112,9 @@ if __name__ == "__main__":
             prev = timestepIdTuple
 
     # group by timestep
-    timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
+    # timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
+    # there might be empty frames. We want them as output too.
+    timesteps = [str(t).decode("utf-8") for t in range(int(min(traxelIdPerTimestepToUniqueIdMap.keys())) , int(max(traxelIdPerTimestepToUniqueIdMap.keys()))+1 )]
     linksPerTimestep = dict([(t, [(a[1], b[1]) for a, b in links if b[0] == int(t)]) for t in timesteps])
     assert(len(linksPerTimestep['0']) == 0)
 
