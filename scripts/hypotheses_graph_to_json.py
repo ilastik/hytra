@@ -684,6 +684,18 @@ if __name__ == "__main__":
     time_range = [options.mints, options.maxts]
     if options.maxts == -1 and options.mints == 0:
         time_range = None
+    
+    try:
+        # find shape of dataset
+        pluginManager = TrackingPluginManager(verbose=options.verbose, pluginPaths=options.pluginPaths)
+        shape = pluginManager.getImageProvider().getImageShape(ilp_fn, options.label_img_path)
+        data_time_range = pluginManager.getImageProvider().getTimeRange(ilp_fn, options.label_img_path)
+        
+        if time_range is not None and time_range[1] < 0:
+            time_range[1] += data_time_range[1]
+
+    except:
+        logging.warning("Could not read shape and time range from images")
 
     # set average object size if chosen
     obj_size = [0]
@@ -692,9 +704,7 @@ if __name__ == "__main__":
     else:
         options.avg_obj_size = obj_size
 
-    # find shape of dataset
-    pluginManager = TrackingPluginManager(verbose=options.verbose, pluginPaths=options.pluginPaths)
-    shape = pluginManager.getImageProvider().getImageShape(ilp_fn, options.label_img_path)
+    
     
     # load traxelstore
     ts, fs, ndim, t0, t1, probGenerator, transitionClassifier = loadTraxelstoreAndTransitionClassifier(options, ilp_fn,
