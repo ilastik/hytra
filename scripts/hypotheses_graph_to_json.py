@@ -545,8 +545,8 @@ def getTransitionFeaturesRF(traxelA, traxelB, transitionClassifier, probGenerato
     return [probs[0]] + [probs[1]] * (max_state - 1)
 
 
-def getBoundaryCostMultiplier(traxel, fov, margin, t0, t1):
-    if traxel.Timestep <= t0 or traxel.Timestep >= t1 - 1:
+def getBoundaryCostMultiplier(traxel, fov, margin, t0, t1, forAppearance):
+    if (traxel.Timestep <= t0 and forAppearance) or (traxel.Timestep >= t1 - 1 and not forAppearance):
         return 0.0
 
     dist = fov.spatial_distance_to_border(traxel.Timestep, traxel.X(), traxel.Y(), traxel.Z(), False)
@@ -737,8 +737,8 @@ if __name__ == "__main__":
             else:
                 return getTransitionFeaturesRF(srcTraxel, destTraxel, transitionClassifier, probGenerator, maxNumObjects + 1)
 
-        def boundaryCostMultiplierFunc(traxel):
-            return getBoundaryCostMultiplier(traxel, fov, margin, t0, t1)
+        def boundaryCostMultiplierFunc(traxel, forAppearance):
+            return getBoundaryCostMultiplier(traxel, fov, margin, t0, t1, forAppearance)
 
         def divisionProbabilityFunc(traxel):
             try:

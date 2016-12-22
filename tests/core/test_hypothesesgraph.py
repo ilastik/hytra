@@ -313,7 +313,7 @@ def test_insertEnergies():
     def divProbFunc(traxel):
         return traxel.Features['divProb']
     
-    def boundaryCostFunc(traxel):
+    def boundaryCostFunc(traxel, forAppearance):
         return 1.0
     
     def transProbFunc(traxelA, traxelB):

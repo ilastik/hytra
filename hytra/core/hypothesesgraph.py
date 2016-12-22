@@ -332,7 +332,8 @@ class HypothesesGraph(object):
          ([prob0objects, prob1object,...])
         * `transitionProbabilityFunc`: should take two traxels and return this link's probabilities
          ([prob0objectsInTransition, prob1objectsInTransition,...])
-        * `boundaryCostMultiplierFunc`: should take a traxel and return a scalar multiplier between 0 and 1 for the
+        * `boundaryCostMultiplierFunc`: should take a traxel and a boolean that is true if we are seeking for an appearance cost multiplier, 
+         false for disappearance, and return a scalar multiplier between 0 and 1 for the
          appearance/disappearance cost that depends on the traxel's distance to the spacial and time boundary
         * `divisionProbabilityFunc`: should take a traxel and return its division probabilities ([probNoDiv, probDiv])
         '''
@@ -364,8 +365,8 @@ class HypothesesGraph(object):
                 divisionFeatures = listify(negLog(divisionFeatures))
 
             # appearance/disappearance
-            appearanceFeatures = listify([0.0] + [boundaryCostMultiplierFunc(traxels[0])] * maxNumObjects)
-            disappearanceFeatures = listify([0.0] + [boundaryCostMultiplierFunc(traxels[-1])] * maxNumObjects)
+            appearanceFeatures = listify([0.0] + [boundaryCostMultiplierFunc(traxels[0], True)] * maxNumObjects)
+            disappearanceFeatures = listify([0.0] + [boundaryCostMultiplierFunc(traxels[-1], False)] * maxNumObjects)
 
             self._graph.node[n]['features'] = detectionFeatures
             if divisionFeatures is not None:
