@@ -5,7 +5,7 @@ import colorsys
 
 
 class HypothesesGraphDiagram(object):
-    def __init__(self, hypothesesGraph, timeRange=(0, 10), width=4000, height=2000, radius=20, withNodeValue=True, withArcValue=True, withArcFeatures=False, fileName='HypothesesGraph.png', csvFileName=None):         
+    def __init__(self, hypothesesGraph, timeRange=(0, 10), width=4000, height=2000, radius=20, withNodeValue=True, withArcValue=True, withArcFeatures=False, withUuid=False, fileName='HypothesesGraph.png', csvFileName=None):         
         # Initalize and configure plt plot
         plt.clf()
         fig=plt.figure(1)
@@ -25,7 +25,7 @@ class HypothesesGraphDiagram(object):
               
             ax.annotate(str(time),
                 xy=(0, 0),  
-                xytext=((time-timeRange[0]+1)*columnWidth,radius),    # fraction, fraction
+                xytext=((time-timeRange[0]+1)*columnWidth,radius), # fraction, fraction
                 horizontalalignment='center',
                 verticalalignment='center',
                 zorder=10)              
@@ -40,7 +40,7 @@ class HypothesesGraphDiagram(object):
         nodeCoordsMap = {}
          
         # Draw nodes 
-        for node in hypothesesGraph.nodes_iter():#hypothesesGraph.nodeIterator():
+        for node in hypothesesGraph.nodes_iter():
             time = node[0]
             id = node[1]
             
@@ -54,9 +54,15 @@ class HypothesesGraphDiagram(object):
                 nodeLabel = str('')#id)
                 edgeColor = 'k'
                 
-                if withNodeValue and 'value' in hypothesesGraph.node[node]: #and hypothesesGraph._graph.node[(time,objectId)]['value'] > 1:
+                # Display label and color from node value
+                if withNodeValue and 'value' in hypothesesGraph.node[node]:
                     faceColor = colors[hypothesesGraph.node[node]['value']] 
-                    nodeLabel = str(hypothesesGraph.node[node]['value']) 
+                    nodeLabel = str(hypothesesGraph.node[node]['value'])
+                
+                # Display uuid on node labels instead    
+                if withUuid and 'id' in hypothesesGraph.node[node]:
+                    nodeLabel = str(hypothesesGraph.node[node]['id'])
+                     
                     
                 circle=plt.Circle(nodeCoordsMap[node], radius=radius, edgecolor=edgeColor, facecolor=faceColor, fill=True, zorder=2)
                 ax.add_patch(circle)
@@ -69,7 +75,7 @@ class HypothesesGraphDiagram(object):
                 zorder=10)           
          
         # Draw arcs           
-        for arc in hypothesesGraph.edges_iter():#hypothesesGraph.arcIterator():
+        for arc in hypothesesGraph.edges_iter():
             sourceNode = arc[0]
             targetNode = arc[1]
             
