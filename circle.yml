@@ -24,18 +24,18 @@ dependencies:
       fi
     - >
       if [ ! -d ${TEST_ENV_PREFIX} ]; then
-          conda create -y -n ${TEST_ENV_NAME} -c ilastik ilastik-everything-but-tracking ilastik-meta;
+          conda create -y -n ${TEST_ENV_NAME} -c ilastik ilastik-everything-no-solvers ilastik-meta;
       else
-          conda install -y -n ${TEST_ENV_NAME} -c ilastik ilastik-everything-but-tracking;
+          conda install -y -n ${TEST_ENV_NAME} -c ilastik ilastik-everything-no-solvers;
       fi
 
     - >
       source /home/ubuntu/miniconda/bin/activate ${TEST_ENV_NAME};
       pip install configargparse;
-      pip install commentjson;
       conda install -y jinja2;
       conda install -y yapsy -c ilastik;
       conda install -y dpct -c chaubold;
+      conda install vigra=1.11.0.post36 -c ilastik --no-deps -y;
 
 ## Customize test commands
 test:

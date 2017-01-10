@@ -386,7 +386,9 @@ class MergerResolver(object):
         """
 
         traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(self.model)
-        timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
+        # timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
+        # there might be empty frames. We want them as output too.
+        timesteps = [str(t).decode("utf-8") for t in range(int(min(traxelIdPerTimestepToUniqueIdMap.keys())) , int(max(traxelIdPerTimestepToUniqueIdMap.keys()))+1 )]
 
         mergers, detections, links, divisions = hytra.core.jsongraph.getMergersDetectionsLinksDivisions(self.result, uuidToTraxelMap)
 
@@ -451,6 +453,7 @@ class MergerResolver(object):
                 destUuid = int(jsonLink['dest'])
                 srcTraxels = uuidToTraxelMap[srcUuid]
                 destTraxels = uuidToTraxelMap[destUuid]
+
                 # return True if there was no traxel in either source or target node that was a merger.
                 return not (any(t[1] in self.mergersPerTimestep[str(t[0])] for t in srcTraxels) or any(t[1] in self.mergersPerTimestep[str(t[0])] for t in destTraxels))
 

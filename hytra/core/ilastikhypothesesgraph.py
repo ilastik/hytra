@@ -24,7 +24,9 @@ class IlastikHypothesesGraph(HypothesesGraph):
                  borderAwareWidth=10,
                  maxNeighborDistance=200,
                  transitionParameter=5.0,
-                 transitionClassifier=None):
+                 transitionClassifier=None,
+                 skipLinks=1,
+                 skipLinksBias=20):
         '''
         Constructor
         '''
@@ -42,13 +44,16 @@ class IlastikHypothesesGraph(HypothesesGraph):
         self.maxNeighborDistance = maxNeighborDistance
         self.transitionClassifier = transitionClassifier
         self.transitionParameter = transitionParameter
+        self.skipLinks = skipLinks
+        self.skipLinksBias = skipLinksBias
 
         # build hypotheses graph
         self.buildFromProbabilityGenerator(probabilityGenerator,
                                            numNearestNeighbors=numNearestNeighbors,
                                            maxNeighborDist=maxNeighborDistance,
                                            withDivisions=withDivisions,
-                                           divisionThreshold=divisionThreshold)
+                                           divisionThreshold=divisionThreshold,
+                                           skipLinks=skipLinks)
 
     def insertEnergies(self):
         """
@@ -67,8 +72,8 @@ class IlastikHypothesesGraph(HypothesesGraph):
             else:
                 return self.getTransitionFeaturesRF(srcTraxel, destTraxel, self.transitionClassifier, self.probabilityGenerator, self.maxNumObjects + 1)
 
-        def boundaryCostMultiplierFunc(traxel):
-            return self.getBoundaryCostMultiplier(traxel, self.fieldOfView, self.borderAwareWidth, self.timeRange[0], self.timeRange[-1])
+        def boundaryCostMultiplierFunc(traxel, forAppearance):
+            return self.getBoundaryCostMultiplier(traxel, self.fieldOfView, self.borderAwareWidth, self.timeRange[0], self.timeRange[-1], forAppearance)
 
         def divisionProbabilityFunc(traxel):
             if self.withDivisions:
@@ -89,7 +94,8 @@ class IlastikHypothesesGraph(HypothesesGraph):
             detectionProbabilityFunc,
             transitionProbabilityFunc,
             boundaryCostMultiplierFunc,
-            divisionProbabilityFunc)
+            divisionProbabilityFunc,
+            self.skipLinksBias)
 
     def getDetectionFeatures(self, traxel, max_state):
         """
@@ -113,6 +119,7 @@ class IlastikHypothesesGraph(HypothesesGraph):
         positions = [np.array([t.X(), t.Y(), t.Z()]) for t in [traxelA, traxelB]]
         dist = np.linalg.norm(positions[0] - positions[1])
         prob = np.exp(-dist / transitionParam)
+
         return [1.0 - prob] + [prob] * (max_state - 1)
 
 
@@ -123,16 +130,47 @@ class IlastikHypothesesGraph(HypothesesGraph):
         feats = [probabilityGenerator.getTraxelFeatureDict(obj.Timestep, obj.Id) for obj in [traxelA, traxelB]]
         featVec = probabilityGenerator.getTransitionFeatureVector(feats[0], feats[1], transitionClassifier.selectedFeatures)
         probs = transitionClassifier.predictProbabilities(featVec)[0]
-        return [probs[0]] + [probs[1]] * (max_state - 1)
+
+        # or image borders, so predict probability just by distance
+        upperBound = self.fieldOfView.getUpperBound()
+        lowerBound = self.fieldOfView.getLowerBound()
+
+        coordsMax = feats[0]['Coord<Maximum >']
+        boundMax = np.array(upperBound[1:len(coordsMax)+1])
+        coordsMin = feats[0]['Coord<Minimum >']
+        boundMin = np.array(lowerBound[1:len(coordsMin)+1])
+
+        dist_border = self.fieldOfView.spatial_distance_to_border(traxelA.Timestep, traxelA.X(), traxelA.Y(), traxelA.Z(), False)
+
+        # find the objects crossing the image border and return the distance based probability instead
+        # REASON: The TC classifier gets confused by the feature values at the image border.
+        # experiments on Fluo-N2DH-SIM 01:
+        # TC no border treatment: TRA measure 0.9888
+        # TC with border treatment: 0.991302
+        # pure distance: 0.993
+        # from all links: used distance 340 times, TC prob 3088 times used
 
 
-    def getBoundaryCostMultiplier(self, traxel, fov, margin, t0, t1):
+        # experiments on Rapoport:
+        # TC no border treatment: TRA measure 0.952467
+        # TC with border treatment: 0.95267
+        # pure distance: 0.951674
+        # from all links: used distance 13598 times, TC prob 271502 times
+
+        if np.isclose(coordsMax, boundMax).any() or np.isclose(coordsMin, boundMin).any():
+            return self.getTransitionFeaturesDist(traxelA, traxelB, self.transitionParameter, self.maxNumObjects + 1)
+        else:
+            return [probs[0]] + [probs[1]] * (max_state - 1)
+
+
+
+    def getBoundaryCostMultiplier(self, traxel, fov, margin, t0, t1, forAppearance):
         """
         A traxel's appearance and disappearance probability decrease linearly within a `margin` to the image border
         which is defined by the field of view `fov`. 
         Traxels in the first frame appear for free, and traxels in the last frame disappear for free.
         """
-        if traxel.Timestep <= t0 or traxel.Timestep >= t1 - 1:
+        if (traxel.Timestep <= t0 and forAppearance) or (traxel.Timestep >= t1 - 1 and not forAppearance):
             return 0.0
 
         dist = fov.spatial_distance_to_border(traxel.Timestep, traxel.X(), traxel.Y(), traxel.Z(), False)
@@ -178,8 +216,9 @@ def convertLegacyHypothesesGraphToJsonGraph(hypothesesGraph,
      ([prob0objects, prob1object,...])
     * `transitionProbabilityFunc`: should take two traxels and return this link's probabilities
      ([prob0objectsInTransition, prob1objectsInTransition,...])
-    * `boundaryCostMultiplierFunc`: should take a traxel and return a scalar multiplier between 0 and 1 for the
-     appearance/disappearance cost that depends on the traxel's distance to the spacial and time boundary
+    * `boundaryCostMultiplierFunc`: should take a traxel and a boolean that is true if we are seeking for an appearance cost multiplier, 
+      false for disappearance, and return a scalar multiplier between 0 and 1 for the
+      appearance/disappearance cost that depends on the traxel's distance to the spacial and time boundary
     * `divisionProbabilityFunc`: should take a traxel and return its division probabilities
      ([probNoDiv, probDiv])
     '''
@@ -221,8 +260,8 @@ def convertLegacyHypothesesGraphToJsonGraph(hypothesesGraph,
             divisionFeatures = listify(negLog(divisionFeatures))
 
         # appearance/disappearance
-        appearanceFeatures = listify([0.0] + [boundaryCostMultiplierFunc(traxels[0])] * maxNumObjects)
-        disappearanceFeatures = listify([0.0] + [boundaryCostMultiplierFunc(traxels[-1])] * maxNumObjects)
+        appearanceFeatures = listify([0.0] + [boundaryCostMultiplierFunc(traxels[0], True)] * maxNumObjects)
+        disappearanceFeatures = listify([0.0] + [boundaryCostMultiplierFunc(traxels[-1], False)] * maxNumObjects)
 
         trackingGraph.addDetectionHypothesesFromTracklet(traxels,
                                                          detectionFeatures,

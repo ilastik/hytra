@@ -16,7 +16,7 @@ def edges_visualisation(options):
     Note! Everything has to be in CTC-Format!!
 
     The edges to be added will be shown in Cyan in the groundtruth.
-    The redudant edges to be deleted in tomato orange in the tracking result.
+    The redundant edges to be deleted in tomato orange in the tracking result.
     The wrong semantics will be shown in gold in the tracking result.
 
     The output images for all problematic frames will be written in the ouptut directory. If this directory

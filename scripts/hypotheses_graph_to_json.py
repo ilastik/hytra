@@ -100,6 +100,8 @@ def getConfigAndCommandLineArguments():
                         help='Do not use multiprocessing to speed up computation',
                         default=False)
     parser.add_argument('--turn-off-features', dest='turnOffFeatures', type=str, nargs='+', default=[])
+    parser.add_argument('--skip-links', dest='skipLinks', type=int, default=1)
+    parser.add_argument('--skip-links-bias', dest='skipLinksBias', type=int, default=20)
     parser.add_argument('--verbose', dest='verbose', action='store_true',
                         help='Turn on verbose logging', default=False)
     parser.add_argument('--plugin-paths', dest='pluginPaths', type=str, nargs='+',
@@ -543,8 +545,8 @@ def getTransitionFeaturesRF(traxelA, traxelB, transitionClassifier, probGenerato
     return [probs[0]] + [probs[1]] * (max_state - 1)
 
 
-def getBoundaryCostMultiplier(traxel, fov, margin, t0, t1):
-    if traxel.Timestep <= t0 or traxel.Timestep >= t1 - 1:
+def getBoundaryCostMultiplier(traxel, fov, margin, t0, t1, forAppearance):
+    if (traxel.Timestep <= t0 and forAppearance) or (traxel.Timestep >= t1 - 1 and not forAppearance):
         return 0.0
 
     dist = fov.spatial_distance_to_border(traxel.Timestep, traxel.X(), traxel.Y(), traxel.Z(), False)
@@ -556,7 +558,7 @@ def getBoundaryCostMultiplier(traxel, fov, margin, t0, t1):
         else:
             return 1.0
 
-def getHypothesesGraphAndIterators(options, shape, t0, t1, ts, probGenerator, transitionClassifier=None):
+def getHypothesesGraphAndIterators(options, shape, t0, t1, ts, probGenerator, transitionClassifier=None, skipLinks=1, skipLinksBias=20):
     """
     Build the hypotheses graph either using pgmlink, or from the python traxelstore in python
     """
@@ -565,7 +567,6 @@ def getHypothesesGraphAndIterators(options, shape, t0, t1, ts, probGenerator, tr
         fov = getPythonFovFromOptions(options, shape, t0, t1)
         maxNumObjects = int(options.max_num_objects)
         margin = float(options.border_width)
-
         hypotheses_graph = ilastikhypothesesgraph.IlastikHypothesesGraph(
             probGenerator,
             [t0, t1],
@@ -577,7 +578,9 @@ def getHypothesesGraphAndIterators(options, shape, t0, t1, ts, probGenerator, tr
             borderAwareWidth=margin,
             maxNeighborDistance=options.mnd,
             transitionParameter=options.trans_par,
-            transitionClassifier=transitionClassifier)
+            transitionClassifier=transitionClassifier,
+            skipLinks=skipLinks,
+            skipLinksBias=skipLinksBias)
 
         if not options.without_tracklets:
             hypotheses_graph = hypotheses_graph.generateTrackletGraph()
@@ -681,6 +684,18 @@ if __name__ == "__main__":
     time_range = [options.mints, options.maxts]
     if options.maxts == -1 and options.mints == 0:
         time_range = None
+    
+    try:
+        # find shape of dataset
+        pluginManager = TrackingPluginManager(verbose=options.verbose, pluginPaths=options.pluginPaths)
+        shape = pluginManager.getImageProvider().getImageShape(ilp_fn, options.label_img_path)
+        data_time_range = pluginManager.getImageProvider().getTimeRange(ilp_fn, options.label_img_path)
+        
+        if time_range is not None and time_range[1] < 0:
+            time_range[1] += data_time_range[1]
+
+    except:
+        logging.warning("Could not read shape and time range from images")
 
     # set average object size if chosen
     obj_size = [0]
@@ -689,9 +704,7 @@ if __name__ == "__main__":
     else:
         options.avg_obj_size = obj_size
 
-    # find shape of dataset
-    pluginManager = TrackingPluginManager(verbose=options.verbose, pluginPaths=options.pluginPaths)
-    shape = pluginManager.getImageProvider().getImageShape(ilp_fn, options.label_img_path)
+    
     
     # load traxelstore
     ts, fs, ndim, t0, t1, probGenerator, transitionClassifier = loadTraxelstoreAndTransitionClassifier(options, ilp_fn,
@@ -699,7 +712,7 @@ if __name__ == "__main__":
                                                                                                        shape)
 
     # build hypotheses graph
-    hypotheses_graph, n_it, a_it, fov = getHypothesesGraphAndIterators(options, shape, t0, t1, ts, probGenerator, transitionClassifier)
+    hypotheses_graph, n_it, a_it, fov = getHypothesesGraphAndIterators(options, shape, t0, t1, ts, probGenerator, transitionClassifier, options.skipLinks, options.skipLinksBias)
 
     if probGenerator is None:
         import pgmlink
@@ -724,8 +737,8 @@ if __name__ == "__main__":
             else:
                 return getTransitionFeaturesRF(srcTraxel, destTraxel, transitionClassifier, probGenerator, maxNumObjects + 1)
 
-        def boundaryCostMultiplierFunc(traxel):
-            return getBoundaryCostMultiplier(traxel, fov, margin, t0, t1)
+        def boundaryCostMultiplierFunc(traxel, forAppearance):
+            return getBoundaryCostMultiplier(traxel, fov, margin, t0, t1, forAppearance)
 
         def divisionProbabilityFunc(traxel):
             try:

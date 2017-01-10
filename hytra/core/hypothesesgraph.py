@@ -111,13 +111,13 @@ class HypothesesGraph(object):
 
     def _extractCenter(self, traxel):
         try:
-            # python traxelstore
+            # python probabilityGenerator
             if 'com' in traxel.Features:
                 return traxel.Features['com']
             else:
                 return traxel.Features['RegionCenter']
         except:
-            # C++ pgmlink traxelstore
+            # C++ pgmlink probabilityGenerator
             try:
                 return getTraxelFeatureVector(traxel, 'com')
             except:
@@ -168,63 +168,81 @@ class HypothesesGraph(object):
         self._nextNodeUuid += 1
 
     def buildFromProbabilityGenerator(self, probabilityGenerator, maxNeighborDist=200, numNearestNeighbors=1,
-                                      forwardBackwardCheck=True, withDivisions=True, divisionThreshold=0.1):
+                                      forwardBackwardCheck=True, withDivisions=True, divisionThreshold=0.1, skipLinks=1):
         """
-        Takes a python traxelstore containing traxel features and finds probable links between frames.
+        Takes a python probabilityGenerator containing traxel features and finds probable links between frames.
+        Builds a kdTree with the 'numNearestneighbors' for each frame and adds the nodes. In the same iteration, it adds
+        a number of 'skipLinks' between the nodes separated by 'skipLinks' frames.
         """
         assert (probabilityGenerator is not None)
         assert (len(probabilityGenerator.TraxelsPerFrame) > 0)
+        assert (skipLinks > 0)
 
         def checkNodeWhileAddingLinks(frame, obj):
             if (frame, obj) not in self._graph:
                 getLogger().warning("Adding node ({}, {}) when setting up links".format(frame, obj))
 
-        kdTreeNextFrame = None
-        numFrames = len(probabilityGenerator.TraxelsPerFrame.keys())
-        progressBar = ProgressBar(stop=numFrames)
+        kdTreeFrames = [None]*(skipLinks + 1)
+        # len(probabilityGenerator.TraxelsPerFrame.keys()) is NOT an indicator for the total number of frames,
+        # because an empty frame does not create a key in the dictionary. E.g. for one frame in the middle of the
+        # dataset, we won't access the last one.
+        # Idea: take the max key in the dict. Remember, frame numbering starts with 0.
+        numFrames = max(probabilityGenerator.TraxelsPerFrame.keys()) + 1
+        progressBar = ProgressBar(stop=numFrames*skipLinks)
         progressBar.show(0)
-        for frame in range(numFrames - 1):
+        
+        for frame in range(numFrames):
             if frame > 0:
-                kdTreeThisFrame = kdTreeNextFrame
+                del kdTreeFrames[0] # this is the current frame
+                if frame + skipLinks < numFrames and frame + skipLinks in probabilityGenerator.TraxelsPerFrame.keys():
+                    kdTreeFrames.append(self._buildFrameKdTree(probabilityGenerator.TraxelsPerFrame[frame + skipLinks]))
+                    self._addNodesForFrame(frame + skipLinks, probabilityGenerator.TraxelsPerFrame[frame + skipLinks])
             else:
-                kdTreeThisFrame = self._buildFrameKdTree(probabilityGenerator.TraxelsPerFrame[frame])
-                self._addNodesForFrame(frame, probabilityGenerator.TraxelsPerFrame[frame])
-
-            kdTreeNextFrame = self._buildFrameKdTree(probabilityGenerator.TraxelsPerFrame[frame + 1])
-            self._addNodesForFrame(frame + 1, probabilityGenerator.TraxelsPerFrame[frame + 1])
+                for i in range(0, skipLinks+1):
+                    if frame + i in probabilityGenerator.TraxelsPerFrame.keys(): # empty frame
+                        kdTreeFrames[i] = self._buildFrameKdTree(probabilityGenerator.TraxelsPerFrame[frame + i])
+                        self._addNodesForFrame(frame + i, probabilityGenerator.TraxelsPerFrame[frame + i])
 
             # find forward links
-            for obj, traxel in probabilityGenerator.TraxelsPerFrame[frame].iteritems():
-                divisionPreservingNumNearestNeighbors = numNearestNeighbors
-                if divisionPreservingNumNearestNeighbors < 2 \
-                        and withDivisions \
-                        and self._traxelMightDivide(traxel, divisionThreshold):
-                    divisionPreservingNumNearestNeighbors = 2
-                neighbors = self._findNearestNeighbors(kdTreeNextFrame,
-                                                       traxel,
-                                                       divisionPreservingNumNearestNeighbors,
-                                                       maxNeighborDist)
-                for n in neighbors:
-                    checkNodeWhileAddingLinks(frame, obj)
-                    checkNodeWhileAddingLinks(frame + 1, n)
-                    self._graph.add_edge((frame, obj), (frame + 1, n))
-                    self._graph.edge[frame, obj][frame + 1, n]['src'] = self._graph.node[(frame, obj)]['id']
-                    self._graph.edge[frame, obj][frame + 1, n]['dest'] = self._graph.node[(frame + 1, n)]['id']
+            if frame in probabilityGenerator.TraxelsPerFrame.keys(): # 'frame' could be empty
+                for obj, traxel in probabilityGenerator.TraxelsPerFrame[frame].iteritems():
+                    divisionPreservingNumNearestNeighbors = numNearestNeighbors
+                    if divisionPreservingNumNearestNeighbors < 2 \
+                            and withDivisions \
+                            and self._traxelMightDivide(traxel, divisionThreshold):
+                        divisionPreservingNumNearestNeighbors = 2
+                    for i in range(1, skipLinks+1):
+                        if frame + i < numFrames and frame + i in probabilityGenerator.TraxelsPerFrame.keys():
+                            neighbors = (self._findNearestNeighbors(kdTreeFrames[i],
+                                                               traxel,
+                                                               divisionPreservingNumNearestNeighbors,
+                                                               maxNeighborDist))
+                            # type(neighbors) is list
+                            for n in neighbors:
+                                checkNodeWhileAddingLinks(frame, obj)
+                                checkNodeWhileAddingLinks(frame + i, n)
+                                self._graph.add_edge((frame, obj), (frame + i, n))
+                                self._graph.edge[frame, obj][frame + i, n]['src'] = self._graph.node[(frame, obj)]['id']
+                                self._graph.edge[frame, obj][frame + i, n]['dest'] = self._graph.node[(frame + i, n)]['id']
 
             # find backward links
             if forwardBackwardCheck:
-                for obj, traxel in probabilityGenerator.TraxelsPerFrame[frame + 1].iteritems():
-                    neighbors = self._findNearestNeighbors(kdTreeThisFrame,
-                                                           traxel,
-                                                           numNearestNeighbors,
-                                                           maxNeighborDist)
-                    for n in neighbors:
-                        checkNodeWhileAddingLinks(frame, n)
-                        checkNodeWhileAddingLinks(frame + 1, obj)
-                        self._graph.add_edge((frame, n), (frame + 1, obj))
-                        self._graph.edge[frame, n][frame + 1, obj]['src'] = self._graph.node[(frame, n)]['id']
-                        self._graph.edge[frame, n][frame + 1, obj]['dest'] = self._graph.node[(frame + 1, obj)]['id']
-            progressBar.show()
+                for i in range(1, skipLinks+1):
+                    if frame + i < numFrames:
+                        if frame + i in probabilityGenerator.TraxelsPerFrame.keys(): # empty frame
+                            for obj, traxel in probabilityGenerator.TraxelsPerFrame[frame + i].iteritems():
+                                if kdTreeFrames[0] is not None:
+                                    neighbors = (self._findNearestNeighbors(kdTreeFrames[0],
+                                                                       traxel,
+                                                                       numNearestNeighbors,
+                                                                       maxNeighborDist))
+                                    for n in neighbors:
+                                        checkNodeWhileAddingLinks(frame, n)
+                                        checkNodeWhileAddingLinks(frame + i, obj)
+                                        self._graph.add_edge((frame, n), (frame + i, obj))
+                                        self._graph.edge[frame, n][frame + i, obj]['src'] = self._graph.node[(frame, n)]['id']
+                                        self._graph.edge[frame, n][frame + i, obj]['dest'] = self._graph.node[(frame + i, obj)]['id']
+                    progressBar.show()
         progressBar.show()
 
     def generateTrackletGraph(self):
@@ -290,7 +308,8 @@ class HypothesesGraph(object):
                        detectionProbabilityFunc,
                        transitionProbabilityFunc,
                        boundaryCostMultiplierFunc,
-                       divisionProbabilityFunc):
+                       divisionProbabilityFunc,
+                       skipLinksBias):
         '''
         Insert energies for detections, divisions and links into the hypotheses graph, 
         by transforming the probabilities for certain
@@ -313,7 +332,8 @@ class HypothesesGraph(object):
          ([prob0objects, prob1object,...])
         * `transitionProbabilityFunc`: should take two traxels and return this link's probabilities
          ([prob0objectsInTransition, prob1objectsInTransition,...])
-        * `boundaryCostMultiplierFunc`: should take a traxel and return a scalar multiplier between 0 and 1 for the
+        * `boundaryCostMultiplierFunc`: should take a traxel and a boolean that is true if we are seeking for an appearance cost multiplier, 
+         false for disappearance, and return a scalar multiplier between 0 and 1 for the
          appearance/disappearance cost that depends on the traxel's distance to the spacial and time boundary
         * `divisionProbabilityFunc`: should take a traxel and return its division probabilities ([probNoDiv, probDiv])
         '''
@@ -345,8 +365,8 @@ class HypothesesGraph(object):
                 divisionFeatures = listify(negLog(divisionFeatures))
 
             # appearance/disappearance
-            appearanceFeatures = listify([0.0] + [boundaryCostMultiplierFunc(traxels[0])] * maxNumObjects)
-            disappearanceFeatures = listify([0.0] + [boundaryCostMultiplierFunc(traxels[-1])] * maxNumObjects)
+            appearanceFeatures = listify([0.0] + [boundaryCostMultiplierFunc(traxels[0], True)] * maxNumObjects)
+            disappearanceFeatures = listify([0.0] + [boundaryCostMultiplierFunc(traxels[-1], False)] * maxNumObjects)
 
             self._graph.node[n]['features'] = detectionFeatures
             if divisionFeatures is not None:
@@ -367,6 +387,25 @@ class HypothesesGraph(object):
                 destTraxel = self._graph.node[self.target(a)]['tracklet'][0]  # dest is first of traxels in destination tracklet
 
             features = listify(negLog(transitionProbabilityFunc(srcTraxel, destTraxel)))
+
+            # add feature for additional Frames. Since we do not want these edges to be primarily taken, we add a bias to the edge. Now: hard coded, future: parameter
+            frame_gap = destTraxel.Timestep - srcTraxel.Timestep
+
+            # 1. method
+            if frame_gap > 1:
+                features[1][0] = features[1][0] + skipLinksBias*frame_gap
+
+            # # 2. method
+            # # introduce a new energies like: [[6], [15]] -> [[6, 23], [15, 23]] for first links and
+            # # [[6], [15]] -> [[23, 6], [23, 15]] for second links, and so on for 3rd order links
+            # # !!! this will introduce a new weight in the weight.json file. For the 2nd link, comes in 2nd row and so on.
+            # # drawback: did not manage to adjust parameter to get sensible results.
+            # for feat in features:
+            #     for i in range(frame_gap):
+            #         feat.append(23)
+            #     if frame_gap > 1:
+            #         feat[frame_gap-1], feat[0] = feat[0], feat[frame_gap-1]
+
 
             self._graph.edge[a[0]][a[1]]['src'] = self._graph.node[a[0]]['id']
             self._graph.edge[a[0]][a[1]]['dest'] = self._graph.node[a[1]]['id']
@@ -486,6 +525,7 @@ class HypothesesGraph(object):
         Add solution values to nodes and arcs from dictionary representation of solution.
         The resulting graph (=model) gets an additional property "value" that represents the number of objects inside a detection/arc
         Additionally a division indicator is saved in the node property "divisionValue".
+        The link also gets a new attribute: the gap that is covered. E.g. 1, if consecutive timeframes, 2 if link skipping one timeframe.
         '''
         _, uuidToTraxelMap = self.getMappingsBetweenUUIDsAndTraxels()
 
@@ -514,6 +554,7 @@ class HypothesesGraph(object):
             for link in resultDictionary["linkingResults"]:
                 source, dest = uuidToTraxelMap[link["src"]][-1], uuidToTraxelMap[link["dest"]][0]
                 traxelgraph._graph.edge[source][dest]['value'] = link["value"]
+                traxelgraph._graph.edge[source][dest]['gap'] = dest[0] - source[0]
 
         if "divisionResults" in resultDictionary and resultDictionary["divisionResults"] is not None:
             for division in resultDictionary["divisionResults"]:
@@ -559,6 +600,8 @@ class HypothesesGraph(object):
             newLink['src'] = traxelgraph._graph.node[src]['id']
             newLink['dest'] = traxelgraph._graph.node[dest]['id']
             newLink['value'] = checkAttributeValue(traxelgraph._graph.edge[src][dest], 'value', 0)
+            newLink['gap'] = checkAttributeValue(traxelgraph._graph.edge[src][dest], 'gap', 1)
+
             linkList.append(newLink)
 
         resultDictionary["detectionResults"] = detectionList
@@ -595,7 +638,7 @@ class HypothesesGraph(object):
                 numberOfOutgoingEdges += 1
         return numberOfOutgoingObject, numberOfOutgoingEdges
 
-    def computeLineage(self, firstTrackId=2, firstLineageId=2):
+    def computeLineage(self, firstTrackId=2, firstLineageId=2, skipLinks=1):
         """
         computes lineage and track id for every node in the graph
         """
@@ -649,8 +692,9 @@ class HypothesesGraph(object):
                 assert(traxelgraph.countOutgoingObjects(current_node)[1] == 2)
                 traxelgraph._graph.node[current_node]['children'] = []
                 for a in traxelgraph._graph.out_edges(current_node):
-                    if 'value' in traxelgraph._graph.edge[current_node][a[1]] and \
-                     traxelgraph._graph.edge[current_node][a[1]]['value'] > 0:
+
+                    if 'value' in traxelgraph._graph.edge[current_node][a[1]] and traxelgraph._graph.edge[current_node][a[1]]['value'] > 0:
+                        traxelgraph._graph.node[a[1]]['gap'] = skipLinks
                         traxelgraph._graph.node[current_node]['children'].append(a[1])
                         traxelgraph._graph.node[a[1]]['parent'] = current_node
                         update_queue.append((traxelgraph.target(a),
@@ -661,12 +705,20 @@ class HypothesesGraph(object):
                 if traxelgraph.countOutgoingObjects(current_node)[1] > 1:
                     getLogger().debug('Found merger splitting into several objects, propagating lineage and track to all descendants!')
 
-                for a in traxelgraph._graph.out_edges(current_node): 
-                    if 'value' in traxelgraph._graph.edge[current_node][a[1]] and \
-                     traxelgraph._graph.edge[current_node][a[1]]['value'] > 0:
-                        update_queue.append((traxelgraph.target(a),
+                for a in traxelgraph._graph.out_edges(current_node):
+                    if 'value' in traxelgraph._graph.edge[current_node][a[1]] and traxelgraph._graph.edge[current_node][a[1]]['value'] > 0:
+                        if ('gap' in traxelgraph._graph.edge[current_node][a[1]] and traxelgraph._graph.edge[current_node][a[1]]['gap'] == 1) or 'gap' not in traxelgraph._graph.edge[current_node][a[1]]:
+                            traxelgraph._graph.node[a[1]]['gap'] = 1
+                            update_queue.append((traxelgraph.target(a),
                                             lineage_id,
                                             track_id))
+                        if 'gap' in traxelgraph._graph.edge[current_node][a[1]] and traxelgraph._graph.edge[current_node][a[1]]['gap'] > 1:
+                            traxelgraph._graph.node[a[1]]['gap'] = skipLinks
+                            traxelgraph._graph.node[a[1]]['gap_parent'] = current_node
+                            update_queue.append((traxelgraph.target(a),
+                                            lineage_id,
+                                            max_track_id))
+                            max_track_id += 1
                 
 
     def pruneGraphToSolution(self, distanceToSolution=0):

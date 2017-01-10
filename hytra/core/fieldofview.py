@@ -83,3 +83,8 @@ class FieldOfView:
             ds[5] /= ((zub - self.__lowerBound[3])) # / 2)
         # return *min_element(ds, ds+vlen)
         return np.min(ds[:vlen])
+
+    def getUpperBound(self):
+        return self.__upperBound
+    def getLowerBound(self):
+        return self.__lowerBound

@@ -3,6 +3,7 @@ import numpy as np
 import logging
 import hytra.core.mergerresolver
 from hytra.core.probabilitygenerator import Traxel
+import hytra.core.probabilitygenerator
 
 def getLogger():
     ''' logger to be used in this module '''
@@ -279,15 +280,16 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
                 traxel = Traxel()
                 traxel.Id = newId
                 traxel.Timestep = n[0]
-                traxel.Features = self._fitToRegionCenter(fit)
-                self.hypothesesGraph.addNodeFromTraxel(traxel, value=1, merger=True)
+
+                traxel.Features = {'com': self._fitToRegionCenter(fit)}
+                self.hypothesesGraph.addNodeFromTraxel(traxel, value=1, mergerValue=True, divisionValue=False)
             
             # remove merger from HG, which also removes all edges that would otherwise be dangling
             self.hypothesesGraph._graph.remove_node(n)
 
         # add new links only for merger nodes
         for edge in self.resolvedGraph.edges_iter():            
-            if 'merger' in self.hypothesesGraph._graph.node[edge[0]] or 'merger' in self.hypothesesGraph._graph.node[edge[1]]:
+            if 'mergerValue' in self.hypothesesGraph._graph.node[edge[0]] or 'mergerValue' in self.hypothesesGraph._graph.node[edge[1]]:
                 srcId = self.resolvedGraph.node[edge[0]]['id']
                 destId = self.resolvedGraph.node[edge[1]]['id']
                 

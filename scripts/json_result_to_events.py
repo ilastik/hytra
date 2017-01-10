@@ -118,7 +118,9 @@ if __name__ == "__main__":
     logging.getLogger('json_result_to_events.py').debug("Ignoring unknown parameters: {}".format(unknown))
 
     traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(model)
-    timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
+    # timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
+    # there might be empty frames. We want them as output too. A little messy, but:
+    timesteps = [str(t).decode("utf-8") for t in range(int(min(traxelIdPerTimestepToUniqueIdMap.keys())) , int(max(traxelIdPerTimestepToUniqueIdMap.keys()))+1 )]
 
     mergers, detections, links, divisions = hytra.core.jsongraph.getMergersDetectionsLinksDivisions(result, uuidToTraxelMap)
 
@@ -133,7 +135,7 @@ if __name__ == "__main__":
         os.makedirs(args.out_dir)
 
     processing_pool = Pool()
-    for timestep in traxelIdPerTimestepToUniqueIdMap.keys():
+    for timestep in timesteps:
         fn = os.path.join(args.out_dir, "{0:05d}.h5".format(int(timestep)))
         processing_pool.apply_async(writeEvents,
                                     (int(timestep),
