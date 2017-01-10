@@ -267,6 +267,7 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
 
         This also stores the new solution (`value` property) in the new nodes and links
         """
+        
         # update nodes
         for n in self.unresolvedGraph.nodes_iter():
             # skip non-mergers
@@ -279,15 +280,18 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
                 traxel = Traxel()
                 traxel.Id = newId
                 traxel.Timestep = n[0]
+
                 traxel.Features = {'com': self._fitToRegionCenter(fit)}
-                self.hypothesesGraph.addNodeFromTraxel(traxel, value=1, divisionValue=False)
+                self.hypothesesGraph.addNodeFromTraxel(traxel, value=1, mergerValue=True, divisionValue=False)
             
             # remove merger from HG, which also removes all edges that would otherwise be dangling
             self.hypothesesGraph._graph.remove_node(n)
 
-        # add new links
-        for edge in self.resolvedGraph.edges_iter():
-            srcId = self.resolvedGraph.node[edge[0]]['id']
-            destId = self.resolvedGraph.node[edge[1]]['id']
-            value = arcFlowMap[(srcId, destId)]
-            self.hypothesesGraph._graph.add_edge(edge[0], edge[1], value=value)
+        # add new links only for merger nodes
+        for edge in self.resolvedGraph.edges_iter():            
+            if 'mergerValue' in self.hypothesesGraph._graph.node[edge[0]] or 'mergerValue' in self.hypothesesGraph._graph.node[edge[1]]:
+                srcId = self.resolvedGraph.node[edge[0]]['id']
+                destId = self.resolvedGraph.node[edge[1]]['id']
+                
+                value = arcFlowMap[(srcId, destId)]
+                self.hypothesesGraph._graph.add_edge(edge[0], edge[1], value=value)
