@@ -288,10 +288,21 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
             self.hypothesesGraph._graph.remove_node(n)
 
         # add new links only for merger nodes
-        for edge in self.resolvedGraph.edges_iter():            
+        for edge in self.resolvedGraph.edges_iter(): 
+            # Add new edges that are connected to new merger nodes
             if 'mergerValue' in self.hypothesesGraph._graph.node[edge[0]] or 'mergerValue' in self.hypothesesGraph._graph.node[edge[1]]:
                 srcId = self.resolvedGraph.node[edge[0]]['id']
                 destId = self.resolvedGraph.node[edge[1]]['id']
                 
-                value = arcFlowMap[(srcId, destId)]
-                self.hypothesesGraph._graph.add_edge(edge[0], edge[1], value=value)
+                edgeValue = arcFlowMap[(srcId, destId)]
+                
+                # Remove edges for nodes connected to mergers in order to prevent multiple edges from single nodes. The correct edges will be added later.
+                if edgeValue > 0:
+                    for outEdge in self.hypothesesGraph._graph.out_edges(edge[0]):
+                        self.hypothesesGraph._graph.remove_edge(outEdge[0], outEdge[1])
+                     
+                    for inEdge in self.hypothesesGraph._graph.in_edges(edge[1]):
+                        self.hypothesesGraph._graph.remove_edge(inEdge[0], inEdge[1])
+                
+                # Add new edge connected to merger node
+                self.hypothesesGraph._graph.add_edge(edge[0], edge[1], value=edgeValue)
