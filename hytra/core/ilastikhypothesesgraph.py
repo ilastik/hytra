@@ -1,3 +1,4 @@
+from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 import logging
 import numpy as np
 from hytra.core.hypothesesgraph import HypothesesGraph, getTraxelFeatureVector, negLog, listify

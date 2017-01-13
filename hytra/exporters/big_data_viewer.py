@@ -1,13 +1,13 @@
+from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 import xml.etree.ElementTree as ET
 import argparse
 
 if __name__ == '__main__':
-	"""
-	Transform tracking result and ilastik raw + segmentation data to the BigDataViewer format
     """
-
+    Transform tracking result and ilastik raw + segmentation data to the BigDataViewer format
+    """
     parser = argparse.ArgumentParser(description='Transform tracking result and ilastik raw'
-    								 '+ segmentation data to the BigDataViewer format',
+                                     '+ segmentation data to the BigDataViewer format',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--ilastik-project', required=True, type=str, dest='ilpFilename',
                         help='Filename of the ilastik project')

@@ -1,3 +1,4 @@
+from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 import numpy as np
 
 class FieldOfView:
@@ -46,7 +47,7 @@ class FieldOfView:
         and return the distances to the 4 corresponding planes
         """
         zub = 1.0 # 2D case
-        vlen = 4;
+        vlen = 4
 
         if self.__upperBound[3] - self.__lowerBound[3] > 0: # 3D case
             zub = self.__upperBound[3]

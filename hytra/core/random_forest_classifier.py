@@ -1,3 +1,4 @@
+from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 import vigra
 import numpy as np
 import h5py
