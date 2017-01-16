@@ -185,16 +185,16 @@ class IlastikHypothesesGraph(HypothesesGraph):
 
 
 def convertLegacyHypothesesGraphToJsonGraph(hypothesesGraph,
-                                      nodeIterator,
-                                      arcIterator,
-                                      withTracklets,
-                                      maxNumObjects,
-                                      numElements,
-                                      traxelMap,
-                                      detectionProbabilityFunc,
-                                      transitionProbabilityFunc,
-                                      boundaryCostMultiplierFunc,
-                                      divisionProbabilityFunc):
+                                            nodeIterator,
+                                            arcIterator,
+                                            withTracklets,
+                                            maxNumObjects,
+                                            numElements,
+                                            traxelMap,
+                                            detectionProbabilityFunc,
+                                            transitionProbabilityFunc,
+                                            boundaryCostMultiplierFunc,
+                                            divisionProbabilityFunc):
     '''
     Build a json representation of this hypotheses graph, by transforming the probabilities for certain
     events (given by the `*ProbabilityFunc`-functions per traxel) into energies. If the given graph
@@ -223,14 +223,6 @@ def convertLegacyHypothesesGraphToJsonGraph(hypothesesGraph,
     * `divisionProbabilityFunc`: should take a traxel and return its division probabilities
      ([probNoDiv, probDiv])
     '''
-
-    ## TODO: store probabilities inside the networkx-graph and then 
-    ## use the following networkx functionality to make this much nicer:
-    # a = json_graph.node_link_data(g, attrs={'source':'src', 'target':'dest', 'id':'id', 'key':'test'})
-    # a['segmentationHypotheses'] = a['nodes']
-    # del a['nodes']
-    # a['linkingHypotheses'] = a['links']
-    # del a['nodes']
 
     getLogger().info("Creating JSON graph from legacy hypotheses graph")
     progressBar = ProgressBar(stop=numElements)

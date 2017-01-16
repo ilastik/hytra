@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import sys
 
 sys.path.append('../.')
@@ -17,7 +16,7 @@ import itertools
 import vigra
 import copy
 import pgmlink as track
-from trackingfeatures import extract_features_and_compute_score, get_feature_vector
+from hytra.core.trackingfeatures import extract_features_and_compute_score, get_feature_vector
 from hytra.util.progressbar import ProgressBar
 from empryonic import io
 from multiprocessing import Pool
@@ -1047,7 +1046,8 @@ def initializeConservationTracking(options, shape, t0, t1):
                                      rf_fn,
                                      fov,
                                      "none",
-                                     track.ConsTrackingSolverType.CplexSolver)
+                                     track.ConsTrackingSolverType.CplexSolver,
+                                     ndim)
     elif options.method == 'conservation-dynprog':
         print(">>>>>>>>>>>>>>>>>>>>> Running dynprog")
         tracker = track.ConsTracking(int(options.max_num_objects),
@@ -1059,7 +1059,8 @@ def initializeConservationTracking(options, shape, t0, t1):
                                      rf_fn,
                                      fov,
                                      "none",
-                                     track.ConsTrackingSolverType.DynProgSolver)
+                                     track.ConsTrackingSolverType.DynProgSolver,
+                                     ndim)
     elif options.method == 'conservation-twostage':
         print(">>>>>>>>>>>>>>>>>>>>> Running twostage")
         tracker = track.ConsTracking(int(options.max_num_objects),
@@ -1071,7 +1072,8 @@ def initializeConservationTracking(options, shape, t0, t1):
                                      rf_fn,
                                      fov,
                                      "none",
-                                     track.ConsTrackingSolverType.DPInitCplexSolver)
+                                     track.ConsTrackingSolverType.DPInitCplexSolver,
+                                     ndim)
     else:
         raise InvalidArgumentException("Must be conservation or conservation-dynprog")
     return tracker, fov
@@ -1508,6 +1510,7 @@ if __name__ == "__main__":
             options.timeout,
             trans_classifier, # pointer to transition classifier
             solver, # Solver
+            False, # training to hard constraints
             options.num_threads
         )
 
