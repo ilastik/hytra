@@ -21,7 +21,7 @@ def getTraxelFeatureVector(traxel, featureName, maxNumDimensions=3):
     result = []
     for i in range(maxNumDimensions):
         try:
-            result.append(traxel.get_feature_value(featureName, i))
+            result.append(traxel.get_feature_value(str(featureName), i))
         except:
             if i == 0:
                 getLogger().error("Error when accessing feature {}[{}] for traxel (Id={},Timestep={})".format(featureName,

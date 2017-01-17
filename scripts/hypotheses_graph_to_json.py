@@ -433,10 +433,11 @@ def initializeConservationTracking(options, shape, t0, t1):
                                      options.mnd,
                                      not bool(options.without_divisions),
                                      options.division_threshold,
-                                     rf_fn,
+                                     str(rf_fn),
                                      fov,
-                                     "none",
-                                     track.ConsTrackingSolverType.CplexSolver)
+                                     str("none"),
+                                     track.ConsTrackingSolverType.CplexSolver,
+                                     ndim)
     elif options.method == 'conservation-dynprog':
         tracker = track.ConsTracking(int(options.max_num_objects),
                                      bool(options.size_dependent_detection_prob),
@@ -444,10 +445,11 @@ def initializeConservationTracking(options, shape, t0, t1):
                                      options.mnd,
                                      not bool(options.without_divisions),
                                      options.division_threshold,
-                                     rf_fn,
+                                     str(rf_fn),
                                      fov,
-                                     "none",
-                                     track.ConsTrackingSolverType.DynProgSolver)
+                                     str("none"),
+                                     track.ConsTrackingSolverType.DynProgSolver,
+                                     ndim)
     else:
         raise ValueError("Must be conservation or conservation-dynprog")
     return tracker, fov
