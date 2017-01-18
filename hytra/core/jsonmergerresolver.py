@@ -2,6 +2,7 @@ from __future__ import print_function, absolute_import, nested_scopes, generator
 import copy
 import logging
 import h5py
+import numpy as np
 import os
 import hytra.core.mergerresolver
 from hytra.core.jsongraph import JsonTrackingGraph
@@ -58,9 +59,12 @@ class JsonMergerResolver(hytra.core.mergerresolver.MergerResolver):
         rawImages = {}
         labelImages = {}
         for t in timesteps:
-            rawImages[t] = self.imageProvider.getImageDataAtTimeFrame(self.raw_filename, self.raw_path, self.raw_axes, int(t))
-            labelImages[t] = self.imageProvider.getLabelImageForFrame(self.label_image_filename, self.label_image_path, int(t))
-            self.relabelMergers(labelImages[t], int(t))
+            if self.raw_filename is not None:
+                rawImages[str(t)] = self.imageProvider.getImageDataAtTimeFrame(self.raw_filename, self.raw_path, self.raw_axes, int(t))
+            else:
+                rawImages[str(t)] = self.imageProvider.getLabelImageForFrame(self.label_image_filename, self.label_image_path, int(t)).astype(np.float32)
+            labelImages[str(t)] = self.imageProvider.getLabelImageForFrame(self.label_image_filename, self.label_image_path, int(t))
+            self.relabelMergers(labelImages[str(t)], int(t))
 
         getLogger().info("Computing object features")
         objectFeatures = {}
