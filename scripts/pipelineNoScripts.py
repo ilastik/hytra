@@ -68,33 +68,33 @@ def run_pipeline(options, unknown):
         import hytra.core.probabilitygenerator as probabilitygenerator
         from hytra.core.ilastik_project_options import IlastikProjectOptions
         ilpOptions = IlastikProjectOptions()
-        ilpOptions.labelImagePath = params['label-image-path']
-        ilpOptions.labelImageFilename = params['label-image-file']
-        ilpOptions.rawImagePath = params['raw-data-path']
-        ilpOptions.rawImageFilename = params['raw-data-file']
+        ilpOptions.labelImagePath = params[str('label-image-path')]
+        ilpOptions.labelImageFilename = params[str('label-image-file')]
+        ilpOptions.rawImagePath = params[str('raw-data-path')]
+        ilpOptions.rawImageFilename = params[str('raw-data-file')]
         try:
-            ilpOptions.rawImageAxes = params['raw-data-axes']
+            ilpOptions.rawImageAxes = params[str('raw-data-axes')]
         except:
             ilpOptions.rawImageAxes = 'txyzc'
 
-        ilpOptions.sizeFilter = [int(params['min-size']), 100000]
+        ilpOptions.sizeFilter = [int(params[str('min-size')]), 100000]
 
         if 'object-count-classifier-file' in params:
-            ilpOptions.objectCountClassifierFilename = params['object-count-classifier-file']
+            ilpOptions.objectCountClassifierFilename = params[str('object-count-classifier-file')]
         else:
             ilpOptions.objectCountClassifierFilename = options.ilastik_tracking_project
 
         withDivisions = 'without-divisions' not in params
         if withDivisions:
             if 'division-classifier-file' in params:
-                ilpOptions.divisionClassifierFilename = params['division-classifier-file']
+                ilpOptions.divisionClassifierFilename = params[str('division-classifier-file')]
             else:
                 ilpOptions.divisionClassifierFilename = options.ilastik_tracking_project
         else:
             ilpOptions.divisionClassifierFilename = None
 
         probGenerator = probabilitygenerator.IlpProbabilityGenerator(ilpOptions, 
-                                              pluginPaths=['../hytra/plugins'],
+                                              pluginPaths=[str('../hytra/plugins')],
                                               useMultiprocessing=False)
 
         # if time_range is not None:
@@ -111,8 +111,8 @@ def run_pipeline(options, unknown):
         hypotheses_graph = IlastikHypothesesGraph(
             probabilityGenerator=probGenerator,
             timeRange=probGenerator.timeRange,
-            maxNumObjects=int(params['max-number-objects']),
-            numNearestNeighbors=int(params['max-nearest-neighbors']),
+            maxNumObjects=int(params[str('max-number-objects')]),
+            numNearestNeighbors=int(params[str('max-nearest-neighbors')]),
             fieldOfView=fieldOfView,
             withDivisions=withDivisions,
             divisionThreshold=0.1
@@ -136,9 +136,20 @@ def run_pipeline(options, unknown):
 
     if options.do_tracking:
         logging.info("Run tracking...")
-        result = dpct.trackFlowBased(model, weights)
+        if options.solver == "flow-based":
+            result = dpct.trackFlowBased(model, weights)
+        elif options.solver == "ilp":
+            try:
+                import multiHypoTracking_with_cplex as mht
+            except ImportError:
+                try:
+                    import multiHypoTracking_with_gurobi as mht
+                except ImportError:
+                    raise ImportError("Could not find multi hypotheses tracking ilp solver")
+            result = mht.track(model, weights)
+            
         hytra.core.jsongraph.writeToFormattedJSON(options.result_filename, result)
-
+        
         if hypotheses_graph:
             # insert the solution into the hypotheses graph and from that deduce the lineages
             hypotheses_graph.insertSolution(result)
@@ -151,18 +162,18 @@ def run_pipeline(options, unknown):
             trackingGraph,
             ilpOptions.labelImageFilename,
             ilpOptions.labelImagePath,
-            params['out-label-image-file'],
+            params[str('out-label-image-file')],
             ilpOptions.rawImageFilename,
             ilpOptions.rawImagePath,
             ilpOptions.rawImageAxes,
-            ['../hytra/plugins'],
+            [str('../hytra/plugins')],
             True)
-        ilpOptions.labelImagePath = params['label-image-path']
-        ilpOptions.labelImageFilename = params['label-image-file']
-        ilpOptions.rawImagePath = params['raw-data-path']
-        ilpOptions.rawImageFilename = params['raw-data-file']
+        ilpOptions.labelImagePath = params[str('label-image-path')]
+        ilpOptions.labelImageFilename = params[str('label-image-file')]
+        ilpOptions.rawImagePath = params[str('raw-data-path')]
+        ilpOptions.rawImageFilename = params[str('raw-data-file')]
         try:
-            ilpOptions.rawImageAxes = params['raw-data-axes']
+            ilpOptions.rawImageAxes = params[str('raw-data-axes')]
         except:
             ilpOptions.rawImageAxes = 'txyzc'
         merger_resolver.run(None,  None)
@@ -188,6 +199,8 @@ if __name__ == "__main__":
     parser.add_argument("--do-merger-resolving", dest='do_merger_resolving', action='store_true', default=False)
     parser.add_argument("--export-format", dest='export_format', type=str, default=None,
                         help='Export format may be one of: "ilastikH5", "ctc", "labelimage", or None')
+    parser.add_argument("--solver", dest='solver', default='flow-based', type=str,
+                        help='Name of the solver to use, can be "ilp" or "flow-based"')
     parser.add_argument("--ilastik-tracking-project", dest='ilastik_tracking_project', required=True,
                         type=str, help='ilastik tracking project file that contains the chosen weights')
     parser.add_argument('--graph-json-file', required=True, type=str, dest='model_filename',

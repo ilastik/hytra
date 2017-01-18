@@ -524,7 +524,7 @@ def getDetectionFeatures(traxel, max_state):
 
 
 def getDivisionFeatures(traxel):
-    prob = traxel.get_feature_value("divProb", 0)
+    prob = hypothesesgraph.getTraxelFeatureVector(traxel, "divProb", 1)[0]
     return [1.0 - prob, prob]
 
 
@@ -750,7 +750,8 @@ if __name__ == "__main__":
                     divisionFeatures = list(reversed(divisionFeatures))
                 else:
                     divisionFeatures = None
-            except:
+            except Exception as e:
+                print(e)
                 divisionFeatures = None
             return divisionFeatures
 
