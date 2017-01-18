@@ -117,7 +117,8 @@ class MergerResolver(object):
                 numDivisionNodes += 1
                 self.resolvedGraph.add_node(duplicate, division=False, count=1)
 
-                dest = self.unresolvedGraph.out_edges(n)[0]
+                # pick only one link
+                dest = self.unresolvedGraph.out_edges(n)[0][1]
                 self.resolvedGraph.add_edge(duplicate, dest)
                 self.resolvedGraph.remove_edge(n, dest)
 
