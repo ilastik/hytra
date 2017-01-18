@@ -136,7 +136,7 @@ def computeRegionFeaturesOnCloud(frame,
             del frameFeatures[k]
 
     # return or save features
-    if featuresPerFrame is None and featureSerializerPluginName is 'LocalFeatureSerializer':
+    if featuresPerFrame is None and featureSerializerPluginName == 'LocalFeatureSerializer':
         # simply return resulting dict
         return frame, frameFeatures
     else:

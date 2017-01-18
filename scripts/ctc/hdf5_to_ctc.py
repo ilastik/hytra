@@ -54,10 +54,10 @@ def save_frame_to_tif(timestep, label_image, options):
         filename = options.output_dir + '/mask' + format(timestep, "0{}".format(options.filename_zero_padding)) + '.tif'
     label_image = np.swapaxes(label_image, 0, 1)
     if len(label_image.shape) == 2: # 2d
-        vigra.impex.writeImage(label_image.astype('uint16'), filename)
+        vigra.impex.writeImage(label_image.astype('uint16'), str(filename))
     else: # 3D
         label_image = np.transpose(label_image, axes=[2, 0, 1])
-        tifffile.imsave(filename, label_image.astype('uint16'))
+        tifffile.imsave(str(filename), label_image.astype('uint16'))
 
 
 
