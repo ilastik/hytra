@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import unicode_literals
 import numpy as np
 import logging
 import time
@@ -65,7 +67,7 @@ class Traxel(object):
         return self.Features[name][index]
 
     def print_available_features(self):
-        print self.Features.keys()
+        print(self.Features.keys())
 
     def __repr__(self):
         return "Traxel(Timestep={},Id={})".format(self.Timestep, self.Id)
@@ -513,10 +515,10 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
 
             for job in jobs:
                 job() # wait for job to finish
-                print job.exception
-                print job.stdout
-                print job.stderr
-                print job.id
+                print(job.exception)
+                print(job.stdout)
+                print(job.stderr)
+                print(job.id)
 
             logging.getLogger('Traxelstore').warning('Using dispy we cannot compute division features yet!')
             # # 2nd pass for division features

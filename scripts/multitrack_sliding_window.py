@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+from __future__ import print_function
+from __future__ import unicode_literals
 import os
 import os.path as path
 import sys
@@ -89,7 +91,7 @@ def track_subgraphs(graph,
                     origin_node = subgraph_node_origin_map[n]
                     origin_node_id = graph.id(origin_node)
                     subgraph.addAppearanceLabel(n, solutions[origin_node_id][-1])
-                    print "fixing node ", origin_node_id, " which is ", subgraph.id(n), " in subgraph"
+                    print("fixing node ", origin_node_id, " which is ", subgraph.id(n), " in subgraph")
 
         print("Subgraph has {} nodes and {} arcs".format(track.countNodes(subgraph), track.countArcs(subgraph)))
 
@@ -197,12 +199,12 @@ if __name__ == "__main__":
     fns = []
     if numArgs > 0:
         for arg in args:
-            print arg
+            print(arg)
             fns.extend(glob.glob(arg))
         fns.sort()
         print(fns)
 
-    print fns
+    print(fns)
     ilp_fn = fns[0]
 
     # create output path
@@ -240,7 +242,7 @@ if __name__ == "__main__":
     # read all traxels into TraxelStore
     ts, fs, max_traxel_id_at, ndim, t0, t1 = multitrack.getTraxelStore(options, ilp_fn, time_range, shape)
 
-    print "Start tracking..."
+    print("Start tracking...")
     if options.method != "conservation" and options.method != 'conservation-dynprog':
         raise Exception("unknown tracking method: " + options.method)
 
@@ -253,7 +255,7 @@ if __name__ == "__main__":
         outpath = multitrack.exportFunkeyFiles(options, ts, tracker, trans_classifier)
 
         if options.only_labels:
-            print "finished writing labels to "+outpath
+            print("finished writing labels to "+outpath)
             exit(0)
 
         if options.learn_funkey:
@@ -283,7 +285,7 @@ if __name__ == "__main__":
         exit(0)
     
     # build hypotheses graph
-    print "tracking with weights ", w_det, w_div, w_trans, w_dis, w_app
+    print("tracking with weights ", w_det, w_div, w_trans, w_dis, w_app)
     hypotheses_graph = tracker.buildGraph(ts)
 
     if options.w_labeling:
@@ -384,6 +386,6 @@ if __name__ == "__main__":
         multitrack.save_events(out_dir, events, shape, t0, t1,
                       options.label_img_path, max_traxel_id_at, ilp_fn, first_events)
 
-    print "Elapsed time [s]: " + str(int(since))
-    print "Elapsed time [min]: " + str(int(since) / 60)
-    print "Elapsed time [h]: " + str(int(since) / 3600)
+    print("Elapsed time [s]: " + str(int(since)))
+    print("Elapsed time [min]: " + str(int(since) / 60))
+    print("Elapsed time [h]: " + str(int(since) / 3600))

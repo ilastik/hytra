@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 import numpy as np
 import copy
 import unittest as ut
@@ -38,7 +39,7 @@ class Tracklet( object ):
             raise Exception("Tracklet::nearest_neighbor(): neighborhood is empty")
         
         it = iter(neighborhood)
-        target = it.next()
+        target = next(it)
         lowest_dist = self.distance(target)
         for neighbor in it:
             dist = self.distance(neighbor)

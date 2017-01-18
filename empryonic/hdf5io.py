@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import unicode_literals
 import h5py
 import numpy as np
 
@@ -30,8 +32,8 @@ def load_features_one_object(handle, index, features = ['volume','bbox','positio
     """
     allfeatures = load_object_features(handle, features)
     if index >= allfeatures.shape[0]:
-        print "-> Error: given index %i could not be found in file."%index
-        print "-> Aborted."
+        print("-> Error: given index %i could not be found in file."%index)
+        print("-> Aborted.")
         sys.exit(1)
     
     fvector = np.zeros((1,allfeatures.shape[1]),dtype=np.float32)
@@ -75,8 +77,8 @@ def set_one_label(handle, category, index, label):
     if '/objects/meta' in handle:
         group = handle['/objects/meta']
     else:
-        print "-> Error: HDF5 file does not contain '/objects/meta' group."
-        print "-> Aborted."
+        print("-> Error: HDF5 file does not contain '/objects/meta' group.")
+        print("-> Aborted.")
         sys.exit(1)
 
     if not category in group:
@@ -114,8 +116,8 @@ def get_labels(handle, category):
     if '/objects/meta' in handle:
         group = handle['/objects/meta']
     else:
-        print "-> Error: HDF5 file does not contain '/objects/meta' group."
-        print "-> Aborted."
+        print("-> Error: HDF5 file does not contain '/objects/meta' group.")
+        print("-> Aborted.")
         sys.exit(1)
 
     if not category in group:
@@ -142,8 +144,8 @@ def set_labels(handle, category, labels):
     if '/objects/meta' in handle:
         group = handle['/objects/meta']
     else:
-        print "-> Error: HDF5 file does not contain '/objects/meta' group."
-        print "-> Aborted."
+        print("-> Error: HDF5 file does not contain '/objects/meta' group.")
+        print("-> Aborted.")
         sys.exit(1)
 
     if not category in group:
@@ -172,8 +174,8 @@ def set_probabilities(handle, category, probabilities):
     if '/objects/meta' in handle:
         group = handle['/objects/meta']
     else:
-        print "-> Error: HDF5 file does not contain '/objects/meta' group."
-        print "-> Aborted."
+        print("-> Error: HDF5 file does not contain '/objects/meta' group.")
+        print("-> Aborted.")
         sys.exit(1)
 
     if not category in group:

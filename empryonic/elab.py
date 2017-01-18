@@ -18,14 +18,16 @@ The following empryonic modules are imported:
 - plot
 - training
 '''
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
-import segment
-from segment import msa
+from . import segment
+from .segment import msa
 
-import io
-from io import loadRaw, loadSegmentation
+from . import io
+from .io import loadRaw, loadSegmentation
 
-import plot
-from plot import cutPlanes
+from . import plot
+from .plot import cutPlanes
 
-import training
+from . import training

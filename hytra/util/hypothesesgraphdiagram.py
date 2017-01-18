@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from hytra.core.hypothesesgraph import HypothesesGraph
 import numpy as np
 import matplotlib.pyplot as plt

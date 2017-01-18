@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import unicode_literals
 #
 # (c) Martin Lindner, 2010
 #
@@ -96,10 +98,10 @@ def batchConvert( folder , compression = 0):
 			convert(oldname, newname, compr = compression)
 			if not compare(oldname, newname):
 				conflicts=conflicts+1
-				print 'Error: Copying failed: "', oldname, '" is not equal to "', newname, '"!'
+				print('Error: Copying failed: "', oldname, '" is not equal to "', newname, '"!')
 	
-	print 'Conversion finished! ', total, ' files processed, ', conflicts, 'conflicts detected.'
-	print (time.time() - t0), "seconds wall time"		
+	print('Conversion finished! ', total, ' files processed, ', conflicts, 'conflicts detected.')
+	print((time.time() - t0), "seconds wall time")		
 
 	
 if __name__ == "__main__":

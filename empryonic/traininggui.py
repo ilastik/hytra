@@ -1,12 +1,14 @@
+from __future__ import absolute_import
+from __future__ import unicode_literals
 from mayavi import mlab
 import h5py
 import numpy as np
 import vigra
 import time
 
-import trainingcore
-import visCell
-import hdf5io
+from . import trainingcore
+from . import visCell
+from . import hdf5io
 
 from traits.api import *
 from traitsui.api import *

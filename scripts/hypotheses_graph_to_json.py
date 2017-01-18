@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import unicode_literals
 # pythonpath modification to make hytra available 
 # for import without requiring it to be installed
 import os
@@ -166,13 +168,13 @@ def generate_traxelstore(h5file,
         detProbs = h5file[options.obj_count_path]
 
     if x_range is None:
-        x_range = [0, sys.maxint]
+        x_range = [0, sys.maxsize]
 
     if y_range is None:
-        y_range = [0, sys.maxint]
+        y_range = [0, sys.maxsize]
 
     if z_range is None:
-        z_range = [0, sys.maxint]
+        z_range = [0, sys.maxsize]
 
     shape_t = len(h5file[options.obj_count_path].keys())
     keys_sorted = range(shape_t)
@@ -230,7 +232,7 @@ def generate_traxelstore(h5file,
             elif len(region_centers[idx]) == 3:
                 x, y, z = region_centers[idx]
             else:
-                raise Exception, "The RegionCenter feature must have dimensionality 2 or 3."
+                raise Exception("The RegionCenter feature must have dimensionality 2 or 3.")
             size = pixel_count[idx]
             if (x < x_range[0] or x >= x_range[1] or
                         y < y_range[0] or y >= y_range[1] or

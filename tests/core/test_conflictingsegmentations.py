@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 import logging
 
 from hytra.core.ilastik_project_options import IlastikProjectOptions

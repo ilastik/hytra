@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 import argparse
 import jinja2
 import itertools

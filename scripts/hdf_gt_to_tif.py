@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import unicode_literals
 ############################### Convert hdf5 to file to tif #######################
 # script can be used to e.g convert the gt of rapoport which is stored in hdf file
 # into multiple tif files which then in turn can be evaluated using the evaluation
@@ -46,7 +48,7 @@ def convert_label_volume(options):
     if num_frames == 0:
         print("Cannot work on empty set")
         return
-    print num_frames
+    print(num_frames)
     for frame in range(0, num_frames):
     	# print frame
     	label_image=get_frame_label_image(frame,options)

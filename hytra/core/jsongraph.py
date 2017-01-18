@@ -2,6 +2,7 @@
 Utilities that help with loading / saving as well as constructing and parsing
 hypotheses graphs stored in our json (or python dictionary) format.
 '''
+from __future__ import unicode_literals
 import copy
 import logging
 import numpy as np

@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import unicode_literals
 #
 # (c) Bernhard X. Kausler, 2010
 #
@@ -71,7 +73,7 @@ def filterFeaturesByPredicate(h5In, h5Out, predicate):
     labelGroups = filter(lambda item: isinstance(item, h5py.Group), featuresGroup.itervalues())
     
     validLabelGroups = filter( predicate, labelGroups )
-    print "# of accepted cells: " + str(len(validLabelGroups))
+    print("# of accepted cells: " + str(len(validLabelGroups)))
 
     #####################
     # write out results #
@@ -80,7 +82,7 @@ def filterFeaturesByPredicate(h5In, h5Out, predicate):
     outFeaturesGroup = outFile.create_group( featurebasepath )
 
     # supervoxels
-    print "labelcount = ", labelcount
+    print("labelcount = ", labelcount)
     outFeaturesGroup.create_dataset(labelcount, data=featuresGroup[labelcount].value)
 
     # featureconfig

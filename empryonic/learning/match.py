@@ -1,9 +1,12 @@
+from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 import unittest
 import numpy as np
 
 from empryonic.tracklets import Tracklet, Tracklets
 from empryonic import io as _io
-import optimal_matching as _om
+from . import optimal_matching as _om
 
 def idAssoc_from_trackletAssoc( assoc ):
     ''' Construct an id based association dict from a trackled based one.'''
@@ -93,18 +96,18 @@ def match(lhs, rhs, nonmatch_threshold = 25, ignore_z=False, swap_xy=False, meth
         map(xy_projector, lhs.the)
         map(xy_projector, rhs.the)
         if verbose:
-            print "-> Projected traxels to x-y subspace."
+            print("-> Projected traxels to x-y subspace.")
     if swap_xy:    
         lhs = Tracklets(list(lhs.xy_swapped()))
         if verbose:
 
-            print "-> Swapped x and y coordinates."
+            print("-> Swapped x and y coordinates.")
     if verbose:
         if verbose:
-            print "-- Calling match method"
+            print("-- Calling match method")
     assoc = method( lhs, rhs, nonmatch_threshold)
     if verbose:
-        print "-> Finished matching."
+        print("-> Finished matching.")
     return assoc
 
 def match_files(lhs_h5, rhs_h5, nonmatch_threshold = 25, ignore_z=False, swap_xy=False, method=optimal_matching, verbose=True):
@@ -122,7 +125,7 @@ def match_files(lhs_h5, rhs_h5, nonmatch_threshold = 25, ignore_z=False, swap_xy
     del f
     assoc =  match( traxels1, traxels2, nonmatch_threshold, ignore_z, swap_xy, method, verbose )
     if verbose:
-        print "-> matched: " + path.basename(lhs_h5) + " <-> " + path.basename(rhs_h5)
+        print("-> matched: " + path.basename(lhs_h5) + " <-> " + path.basename(rhs_h5))
     return idAssoc_from_trackletAssoc( assoc )
 
 

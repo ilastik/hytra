@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import unicode_literals
 import itertools
 import sys
 import numpy as np
@@ -23,7 +25,7 @@ def spacetime( volumes, projector = makeMaxIntensityProjector(2)):
             self.count = 0
         def __call__( self, volume ):
             self.count += 1
-            print "Processing volume #" + str(self.count)
+            print("Processing volume #" + str(self.count))
             sys.stdout.flush()
             return projector( volume )
 

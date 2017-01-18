@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from hytra.core.probabilitygenerator import RandomForestClassifier
 
 def test_rf():

@@ -1,10 +1,13 @@
+from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 import os.path as _path
 
 import h5py
 import numpy as np
 
-import tracklets as _ts
-import track as _track
+from . import tracklets as _ts
+from . import track as _track
 
 
 
@@ -351,7 +354,7 @@ class LineageH5( h5py.File ):
 
     def cTraxels( self, as_python_list=False, prediction_threshold=None ):
         if prediction_threshold:
-            print "LineageH5::cTraxels: predicition threshold %f" % prediction_threshold
+            print("LineageH5::cTraxels: predicition threshold %f" % prediction_threshold)
         # probe for objects group (higher io performance than features group)
         if 'objects' in self.keys():
             return self._cTraxels_from_objects_group( as_python_list, prediction_threshold )
@@ -427,7 +430,7 @@ class LineageH5( h5py.File ):
                         ts.add_traxel(self.current_ctracklet)
                     if int(name) in self.invalid_labels:
                         self.current_ctracklet = None
-                        print "invalid!"
+                        print("invalid!")
                     else:
                         self.current_ctracklet = _track.cTraxel()
                         self.current_ctracklet.Id = int(name)
@@ -478,8 +481,8 @@ class Test_tracklet_from_labelgroup( ut.TestCase ):
 
         self.assertEqual( len(tr.meta), 16 )
         # some spot tests
-        self.assertTrue( tr.meta.has_key("com") )
-        self.assertTrue( tr.meta.has_key("intmaxpos") )
+        self.assertTrue( "com" in tr.meta )
+        self.assertTrue( "intmaxpos" in tr.meta )
         self.assertTrue( np.all(tr.meta['intmaxpos'] == np.asarray([767.0, 480.0, 591.0, 79.0])))
 
     def test_max_position( self ):

@@ -1,12 +1,15 @@
+from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
 from mayavi import mlab
 import h5py
 import numpy as np
 import vigra
 import time
 
-import visCell
-import hdf5io
-from cfg.trainingcore import cfg
+from . import visCell
+from . import hdf5io
+from .cfg.trainingcore import cfg
 
 from traits.api import *
 from traitsui.api import Label, View, Item
@@ -108,7 +111,7 @@ class trainingcore():
             seg1 = f["segmentation"]["labels"][ibbox[2]:ibbox[5],ibbox[1]:ibbox[4],ibbox[0]:ibbox[3]]
             raw = f["raw"]["volume"][ibbox[2]:ibbox[5],ibbox[1]:ibbox[4],ibbox[0]:ibbox[3]]
         
-        print "Drawing cell number",index
+        print("Drawing cell number",index)
         t0 = time.time()
         
         #draw everything
@@ -125,7 +128,7 @@ class trainingcore():
         visCell.draw2DView(fig2, raw[:,:,middle-2:middle+2], seg1[:,:,:], index, self.color)
         
         t = time.time() - t0
-        print "Time for drawing:",t
+        print("Time for drawing:",t)
 
 
 
@@ -138,7 +141,7 @@ class trainingcore():
             seg1 = f["segmentation"]["labels"][bbox[2]:bbox[5],bbox[1]:bbox[4],bbox[0]:bbox[3]]
             raw = f["raw"]["volume"][bbox[2]:bbox[5],bbox[1]:bbox[4],bbox[0]:bbox[3]]
         
-        print "Drawing volume"
+        print("Drawing volume")
         t0 = time.time()
         
         #draw everything
@@ -155,7 +158,7 @@ class trainingcore():
         visCell.draw2DView(fig2, raw[20:-20,:,:], seg1[20:-20,:,:], -1)
         
         t = time.time() - t0
-        print "Time for drawing:",t
+        print("Time for drawing:",t)
 
 
     
@@ -293,7 +296,7 @@ class trainingcore():
         """
         if self.RF != None:
             cn = self.get_cellness()
-            print "cellness: ",cn
+            print("cellness: ",cn)
             self.color = (float((1-abs(1-2*cn))**2+np.max([0,2*(0.5-cn)])),float(2*abs(cn-0.5)),float(0))
         else:
             self.set_std_color()        

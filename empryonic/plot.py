@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from enthought.mayavi import mlab
 
 def cutPlanes( volume, colormap='gist_ncar' ):

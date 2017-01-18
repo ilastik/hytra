@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from hytra.pluginsystem import merger_resolver_plugin
 import numpy as np
 

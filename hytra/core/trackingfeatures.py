@@ -1,4 +1,7 @@
+from __future__ import print_function
+from __future__ import unicode_literals
 import sys
+from functools import reduce
 sys.path.append('../.')
 sys.path.append('.')
 import h5py
@@ -27,8 +30,8 @@ def get_feature_vector(traxel, feature_name, num_dimensions):
                                                                                               i,
                                                                                               traxel.Id,
                                                                                               traxel.Timestep))
-            print "Available features are: "
-            print traxel.print_available_features()
+            print("Available features are: ")
+            print(traxel.print_available_features())
             raise Exception
     return result
 
@@ -289,7 +292,7 @@ class Track(LineagePart):
                     k, idx = k.split('[')
                     idx = int(idx.replace(']', ''))
                 except:
-                    print "Did not recognize format of feature name: ", k
+                    print("Did not recognize format of feature name: ", k)
                     idx = 0
             else:
                 idx = 0
@@ -480,14 +483,14 @@ def create_and_link_tracks_and_divisions(track_features_h5, ts, region_features)
             d.parent_track_id = track_ends_with_traxel_id[d.parent_traxel_id]
             tracks[d.parent_track_id].end_division_id = division_id_int
         except KeyError as e:
-            print("Could not find parent track of division {}: ".format(division_id), e.message)
+            print(("Could not find parent track of division {}: ".format(division_id), e.message))
 
         for i in [0, 1]:
             try:
                 d.children_track_ids[i] = track_starts_with_traxel_id[d.children_traxel_ids[i]]
                 tracks[d.children_track_ids[i]].start_division_id = division_id_int
             except KeyError as e:
-                print("Could not find child track of division {}: ".format(division_id), e.message)
+                print(("Could not find child track of division {}: ".format(division_id), e.message))
 
         # store in container
         divisions[division_id_int] = d

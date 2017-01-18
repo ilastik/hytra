@@ -1,9 +1,11 @@
+from __future__ import absolute_import
+from __future__ import unicode_literals
 #
 # (c) Bernhard X. Kausler, 2010
 #
 import unittest
 from unittest import TestCase
-import optimal_matching as om
+from . import optimal_matching as om
 
 
 class TestCostThreshold( TestCase ):

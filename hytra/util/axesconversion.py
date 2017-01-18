@@ -1,6 +1,7 @@
 """
 This module provides some helper methods to deal with multidimensional arrays of different axes order.
 """
+from __future__ import unicode_literals
 
 import numpy as np
 

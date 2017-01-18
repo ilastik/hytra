@@ -1,7 +1,9 @@
+from __future__ import unicode_literals
 import unittest as _ut
 import numpy as np
 from empryonic import io as _io
 import math
+from functools import reduce
 
 ###
 ### Events as members of sets for the calculation of performance measures
@@ -92,7 +94,7 @@ class Move( Event ):
         return origin_match[self.ids[0]] and to_match[self.ids[1]]
 
     def is_matched(self, origin_match, to_match):
-        if origin_match.has_key(self.ids[0]) and to_match.has_key(self.ids[1]):
+        if self.ids[0] in origin_match and self.ids[1] in to_match:
             return True
         else:
             return False
@@ -124,7 +126,7 @@ class Merger( Event ):
         return True
 
     def is_matched(self,origin_match, to_match):
-        if to_match.has_key(self.ids[0]):
+        if self.ids[0] in to_match:
             return True
         else:
             return False
@@ -149,7 +151,7 @@ class MultiFrameMove( Event ):
         return True
 
     def is_matched(self,origin_match, to_match):
-        if to_match.has_key(self.ids[1]):
+        if self.ids[1] in to_match:
             return True
         else:
             return False
@@ -183,7 +185,7 @@ class Division( Event ):
         return origin_match[self.ids[0]] and to_match[self.ids[1]] and to_match[self.ids[2]]
 
     def is_matched(self,origin_match, to_match):
-        if origin_match.has_key(self.ids[0]) and to_match.has_key(self.ids[1]) and to_match.has_key(self.ids[2]):
+        if self.ids[0] in origin_match and self.ids[1] in to_match and self.ids[2] in to_match:
             return True
         else:
             return False
@@ -215,7 +217,7 @@ class Appearance( Event ):
         return to_match[self.ids[0]]
 
     def is_matched(self,origin_match, to_match):
-        if to_match.has_key(self.ids[0]):
+        if self.ids[0] in to_match:
             return True
         else:
             return False
@@ -238,7 +240,7 @@ class Disappearance( Event ):
         return origin_match[self.ids[0]]
     
     def is_matched(self,origin_match, to_match):
-        if origin_match.has_key(self.ids[0]):
+        if self.ids[0] in origin_match:
             return True
         else:
             return False

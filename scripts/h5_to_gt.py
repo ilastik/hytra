@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import unicode_literals
 import optparse
 import numpy as np
 import h5py
@@ -16,7 +18,7 @@ def getErrorIds(list1,list2):
     for idx in list1:
         if np.any(list1==idx):
             returnlist.append(idx)
-    print returnlist
+    print(returnlist)
     return returnlist
 
 def getoutLabelImage(labelfile,t):
@@ -37,7 +39,7 @@ def load_4d_image(filename):
 
         for i in range(1,max_frame_num):
             currentfilename = ntpath.dirname(filename)+"/"+ntpath.basename(filename).replace(numberlist[-1], ("{:0>"+str(len(numberlist[-1]))+"d}").format(i),1)
-            print "reading ",currentfilename
+            print("reading ",currentfilename)
             slice = vigra.impex.readVolume(currentfilename)
             slice = np.expand_dims(slice, axis=0)
             d = np.append(d, slice, axis=0)
@@ -46,9 +48,9 @@ def load_4d_image(filename):
 def count_files(pattern,path):
     count = 0
     for file in os.listdir(path):
-        print file,pattern
+        print(file,pattern)
         if fnmatch.fnmatch(file,pattern):
-            print "found",file
+            print("found",file)
             count +=1
     return count
 
@@ -76,7 +78,7 @@ def generate_groundtruth(options):
                 labelfile = vigra.impex.readVolume(options.label_image)
             else: 
                 labelfile = load_4d_image(options.label_image)#+"/seg{0:03d}.tif".format(t))
-        print "labelfile.shape: ",labelfile#.shape
+        print("labelfile.shape: ",labelfile)#.shape
 
 
         for t in xrange(options.start,options.end+1,1):
@@ -314,11 +316,11 @@ def generate_groundtruth(options):
                         moves = np.array(movelist)
                         trackingdata.create_dataset("Moves", data=moves, dtype='u2')
                         if(np.any(moves == -1)):
-                            print "-1 in moves !!! at timestep",t
-                            print "#####################################"
-                            print np.array(inputfile["tracking"][options.format.format(t)]["Moves"]).squeeze().astype(np.int)
-                            print movelist
-                            print moves
+                            print("-1 in moves !!! at timestep",t)
+                            print("#####################################")
+                            print(np.array(inputfile["tracking"][options.format.format(t)]["Moves"]).squeeze().astype(np.int))
+                            print(movelist)
+                            print(moves)
                             exit()
 
 
@@ -330,9 +332,9 @@ def generate_groundtruth(options):
                         splitdict[t] = splits
 
                         if(np.any(splits == -1)):
-                            print "-1 in splits !!! at timestep",t
-                            print "#####################################"
-                            print splits
+                            print("-1 in splits !!! at timestep",t)
+                            print("#####################################")
+                            print(splits)
                             exit()
 
 

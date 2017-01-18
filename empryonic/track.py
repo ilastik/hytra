@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import unicode_literals
 import os.path
 import sys
 
@@ -34,5 +36,5 @@ try:
    
 except ImportError as error:
    if VERBOSE:
-      print "-! pgmlink module not found or incompatible. Related functionality not available.: %s" % error 
+      print("-! pgmlink module not found or incompatible. Related functionality not available.: %s" % error) 
       

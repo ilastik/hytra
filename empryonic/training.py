@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
+from __future__ import unicode_literals
 from enthought.mayavi import mlab
 import h5py
 import numpy as np
@@ -130,14 +132,14 @@ class training():
         # check if the cell results from a movement
         [ind] = np.nonzero(self.moves[:,1] == number)
         if ind.size == 1:
-            print "Ancestor from movement, row ", ind[0]
+            print("Ancestor from movement, row ", ind[0])
             found = np.array([self.moves[ind[0],0]])
         # check if the cell results from a split
         [ind1] = np.nonzero(self.splits[:,1] == number)
         [ind2] = np.nonzero(self.splits[:,2] == number)
         ind = np.concatenate((ind1, ind2))
         if ind.size==1:
-            print "Ancestor from split, row ", ind[0]
+            print("Ancestor from split, row ", ind[0])
             found = np.array([self.splits[ind[0],0]])
         return found
     
@@ -194,7 +196,7 @@ class training():
             mlab.pipeline.iso_surface(mlab.pipeline.scalar_field(seg), contours=[0.5], 
                                       opacity = opacity, color=color, figure=figure)
         else:    
-            print "Jetzt haben wir ein Problem..."
+            print("Jetzt haben wir ein Problem...")
 
     def drawReferenceCell(self, figure, cseg, reference, color = (0,1,0), opacity=0.4):
         """
@@ -297,7 +299,7 @@ class training():
         raw1 = self.file1["raw"]["volume"][bbox[2]:bbox[5],bbox[1]:bbox[4],bbox[0]:bbox[3]]
         raw2 = self.file2["raw"]["volume"][bbox[2]:bbox[5],bbox[1]:bbox[4],bbox[0]:bbox[3]]
         
-        print "Drawing cell number ",number," and its ", partnerStr ,partner
+        print("Drawing cell number ",number," and its ", partnerStr ,partner)
         t0 = time.time()
         
         #draw everything
@@ -321,7 +323,7 @@ class training():
                 p = self.findAncestor(i)
                 self.drawArrows(fig1, bbox, p, i)
         t = time.time() - t0
-        print "Time for drawing:",t
+        print("Time for drawing:",t)
 
     def showNextCell(self):
         newIndex = self.findNextIndex()
@@ -329,7 +331,7 @@ class training():
             self.index = newIndex 
             self.showCell(self.index)
         else:
-            print "No valid cells with higher indices available"
+            print("No valid cells with higher indices available")
         
     def showPreviousCell(self):
         newIndex = self.findPreviousIndex()
@@ -337,14 +339,14 @@ class training():
             self.Index = newIndex
             self.showCell(self.Index)
         else:
-            print "No valid cells with smaller indices available"
+            print("No valid cells with smaller indices available")
         
     def jumpToCell(self, number):
         if self.isValid(number):
             self.index = number
             self.showCell(self.index)
         else:
-            print "User-defined index does not correspond to valid cell"
+            print("User-defined index does not correspond to valid cell")
 
 
             
@@ -387,7 +389,7 @@ class dialog(HasTraits):
     def _btnSave_fired(self):
         if self.strFile.__len__() != 0:
             np.savetxt(self.strFile,np.int16(self.labels), fmt="%i",delimiter="\t")
-            print "Labels written to",self.strFile 
+            print("Labels written to",self.strFile) 
             
     view = View('index', 
                 Item('btnJump', label='Jump to index', show_label=False ),

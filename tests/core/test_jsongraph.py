@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 import hytra.core.jsongraph as jg
 
 def return_example_model():

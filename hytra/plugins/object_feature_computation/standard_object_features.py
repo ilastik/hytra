@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from hytra.pluginsystem import object_feature_computation_plugin
 import vigra
 from vigra import numpy as np

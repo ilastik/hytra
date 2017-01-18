@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 import hytra.core.hypothesesgraph as hg
 import hytra.core.probabilitygenerator as pg
 import networkx as nx

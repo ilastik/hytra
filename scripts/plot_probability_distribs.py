@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import unicode_literals
 # pythonpath modification to make hytra and empryonic available 
 # for import without requiring it to be installed
 import os
@@ -145,20 +147,20 @@ def generate_traxelstore(h5file,
                          with_optical_correction=False,
                          ext_probs=None
 ):
-    print "generating traxels"
-    print "filling traxelstore"
+    print("generating traxels")
+    print("filling traxelstore")
     ts = track.TraxelStore()
     fs = track.FeatureStore()
     max_traxel_id_at = track.VectorOfInt()
 
-    print "fetching region features and division probabilities"
-    print h5file.filename, feature_path
+    print("fetching region features and division probabilities")
+    print(h5file.filename, feature_path)
 
     detection_probabilities = []
     division_probabilities = []
 
     if with_div:
-        print options.div_prob_path
+        print(options.div_prob_path)
         divProbs = h5file[options.div_prob_path]
 
     if with_merger_prior:
@@ -168,13 +170,13 @@ def generate_traxelstore(h5file,
         localCenters = None  # self.RegionLocalCenters(time_range).wait()
 
     if x_range is None:
-        x_range = [0, sys.maxint]
+        x_range = [0, sys.maxsize]
 
     if y_range is None:
-        y_range = [0, sys.maxint]
+        y_range = [0, sys.maxsize]
 
     if z_range is None:
-        z_range = [0, sys.maxint]
+        z_range = [0, sys.maxsize]
 
     shape_t = len(h5file[options.obj_count_path].keys())
     keys_sorted = range(shape_t)
@@ -210,7 +212,7 @@ def generate_traxelstore(h5file,
                 feats_name = options.feats_path % (t, t + 1, 'RegionCenter_corr')
                 region_centers_corr = np.array(h5file[feats_name])
             except:
-                raise Exception, 'cannot consider optical correction since it has not been computed'
+                raise Exception('cannot consider optical correction since it has not been computed')
             if region_centers_corr.size:
                 region_centers_corr = region_centers_corr[1:, ...]
 
@@ -220,7 +222,7 @@ def generate_traxelstore(h5file,
         if pixel_count.size:
             pixel_count = pixel_count[1:, ...]
 
-        print "at timestep ", t, region_centers.shape[0], "traxels found"
+        print("at timestep ", t, region_centers.shape[0], "traxels found")
         count = 0
         filtered_labels[t] = []
         for idx in range(region_centers.shape[0]):
@@ -230,7 +232,7 @@ def generate_traxelstore(h5file,
             elif len(region_centers[idx]) == 3:
                 x, y, z = region_centers[idx]
             else:
-                raise Exception, "The RegionCenter feature must have dimensionality 2 or 3."
+                raise Exception("The RegionCenter feature must have dimensionality 2 or 3.")
             size = pixel_count[idx]
             if (x < x_range[0] or x >= x_range[1] or
                         y < y_range[0] or y >= y_range[1] or
@@ -269,7 +271,7 @@ def generate_traxelstore(h5file,
                 division_probabilities.append(prob)
 
             if with_local_centers:
-                raise Exception, "not yet implemented"
+                raise Exception("not yet implemented")
                 traxel.add_feature_array("localCentersX", len(localCenters[t][idx + 1]))
                 traxel.add_feature_array("localCentersY", len(localCenters[t][idx + 1]))
                 traxel.add_feature_array("localCentersZ", len(localCenters[t][idx + 1]))
@@ -295,7 +297,7 @@ def generate_traxelstore(h5file,
                 obj_sizes.append(float(size))
             ts.add(fs, traxel)
 
-        print "at timestep ", t, count, "traxels passed filter"
+        print("at timestep ", t, count, "traxels passed filter")
         max_traxel_id_at.append(int(region_centers.shape[0]))
         if count == 0:
             empty_frame = True
@@ -339,7 +341,7 @@ def generate_traxelstore(h5file,
 
     if median_object_size is not None:
         median_object_size[0] = np.median(np.array(obj_sizes), overwrite_input=True)
-        print 'median object size = ' + str(median_object_size[0])
+        print('median object size = ' + str(median_object_size[0]))
 
     return ts, fs, max_traxel_id_at, division_probabilities, detection_probabilities
 
@@ -379,15 +381,15 @@ def getTraxelStore(options, ilp_fn,time_range, shape):
     with h5py.File(ilp_fn, 'r') as h5file:
         ndim = 3
 
-        print '/'.join(options.label_img_path.strip('/').split('/')[:-1])
+        print('/'.join(options.label_img_path.strip('/').split('/')[:-1]))
 
         if h5file['/'.join(options.label_img_path.strip('/').split('/')[:-1])].values()[0].shape[3] == 1:
             ndim = 2
-        print 'ndim=', ndim
+        print('ndim=', ndim)
 
-        print time_range
+        print(time_range)
         if options.load_traxelstore:
-            print 'loading traxelstore from file'
+            print('loading traxelstore from file')
             import pickle
 
             with open(options.load_traxelstore, 'rb') as ts_in:
@@ -432,10 +434,10 @@ def getTraxelStore(options, ilp_fn,time_range, shape):
 
         info = [int(x) for x in ts.bounding_box()]
         t0, t1 = (info[0], info[4])
-        print "-> Traxelstore bounding box: " + str(info)
+        print("-> Traxelstore bounding box: " + str(info))
 
         if options.dump_traxelstore:
-            print 'dumping traxelstore to file'
+            print('dumping traxelstore to file')
             import pickle
 
             with open(options.dump_traxelstore, 'wb') as ts_out:
@@ -499,12 +501,12 @@ if __name__ == "__main__":
     fns = []
     if numArgs > 0:
         for arg in args:
-            print arg
+            print(arg)
             fns.extend(glob.glob(arg))
         fns.sort()
         print(fns)
 
-    print fns
+    print(fns)
     ilp_fn = fns[0]
 
     # create output path

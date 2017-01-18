@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
+from __future__ import unicode_literals
 import os.path
 import sys
 sys.path.append('.')
@@ -91,7 +93,7 @@ if __name__ == "__main__":
     #plt.savefig(filename + "_outlier_score" + extension)
     plt.legend()
     plt.savefig(options.out_file)
-    print("Saved figure ", options.out_file) 
+    print(("Saved figure ", options.out_file)) 
 
     # # scatter plot
     # plt.figure()

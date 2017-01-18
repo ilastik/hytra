@@ -2,6 +2,7 @@
 Provide methods to find positive and negative training examples from a hypotheses graph and 
 a ground truth mapping, in the presence of multiple competing segmentation hypotheseses.
 '''
+from __future__ import unicode_literals
 
 import logging
 import numpy as np

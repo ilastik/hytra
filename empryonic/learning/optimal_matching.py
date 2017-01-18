@@ -22,6 +22,7 @@
 Associate elements of two arbitrarily sized sets such that total association
 costs are minimzed. Nonmatches are allowed and controlled by a separate cost function.
 '''
+from __future__ import unicode_literals
 
 import collections as _collections
 import pulp as _pulp
@@ -60,7 +61,7 @@ class _BipartiteGraph( object ):
             raise Exception("use one of the following as partition identifier: 'lhs' or 'rhs'")
 
     def add_edge( self, id, id_lhs, id_rhs, weight ):
-        if not(self.rhs.has_key(id_rhs) and self.lhs.has_key(id_lhs)):
+        if not(id_rhs in self.rhs and id_lhs in self.lhs):
             raise Exception('cannot add edge between non-existing vertices')
         
         edge = self.Edge(id, id_lhs, id_rhs, weight )

@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from hytra.pluginsystem import transition_feature_vector_construction_plugin
 import numpy as np
 

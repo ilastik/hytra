@@ -1,7 +1,9 @@
+from __future__ import absolute_import
+from __future__ import unicode_literals
 #
 # (c) Bernhard X. Kausler, 2010
 #
-import conversion as c
+from . import conversion as c
 import unittest as ut
 import os.path as path
 import shutil

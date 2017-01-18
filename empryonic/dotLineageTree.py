@@ -1,7 +1,10 @@
 #!/usr/bin/python
+from __future__ import print_function
+from __future__ import unicode_literals
 import operator
 from h5py import h5s, h5d, h5f, h5g
 import numpy as np
+from functools import reduce
 
 def readDataSet( gid, name, dt=np.int32 ):
   did = h5d.open( gid, name )
@@ -69,7 +72,7 @@ def visualizeGraph( fileStr, fileNrs, dotNameLinear, penWidthNodes=2, penWidthEd
       raise RuntimeError("If intensWindow non-empty, it must contain two values (with the first " \
         + "being smaller")
   outLin = open(dotNameLinear,'w')
-  print >> outLin, 'graph G {'
+  print('graph G {', file=outLin)
   # we keep a dictionary of all currently living cells, which maps the integer number of this
   # cell to the tuple consisting of the index of the node by which this cell is represented 
   # in the graph, plus the list of intensities from which the final pen width can be
@@ -80,10 +83,10 @@ def visualizeGraph( fileStr, fileNrs, dotNameLinear, penWidthNodes=2, penWidthEd
   # red, while disappearing nodes are marked with a cross.
   fstr = fileStr % fileNrs[0]
   fid = h5f.open( fstr, h5f.ACC_RDONLY )
-  print >> outLin, 'subgraph %d {\nrank=same;' % fileNrs[0]
+  print('subgraph %d {\nrank=same;' % fileNrs[0], file=outLin)
   # list of all edges which are added to the graph at the end
   edgesLin = []
-  print >> outLin, '%d [color=white, shape=circle];' % fileNrs[0]
+  print('%d [color=white, shape=circle];' % fileNrs[0], file=outLin)
   labcontent = readDataSet(fid, '/features/labelcontent', np.uint16)
   cellIdx = 1
   allCellStrs = []
@@ -99,13 +102,13 @@ def visualizeGraph( fileStr, fileNrs, dotNameLinear, penWidthNodes=2, penWidthEd
   del fid
   allCellStrs.sort(key=lambda x : x[2])
   for cs in allCellStrs:
-    print >> outLin, cs[0] + (' [shape=circle, penwidth=%f, ' % (cs[3]*penWidthNodes)) + cs[1] + '];' 
-  print >> outLin, '}'
+    print(cs[0] + (' [shape=circle, penwidth=%f, ' % (cs[3]*penWidthNodes)) + cs[1] + '];', file=outLin) 
+  print('}', file=outLin)
   fnPrev = fileNrs[0]
   for fn in fileNrs[1:]:
-    print 'Processing file no. %d' % fn
-    print >> outLin, 'subgraph %d {\nrank=same;' % fn
-    print >> outLin, '%d [color=white, shape=circle];' % fn
+    print('Processing file no. %d' % fn)
+    print('subgraph %d {\nrank=same;' % fn, file=outLin)
+    print('%d [color=white, shape=circle];' % fn, file=outLin)
     edgesLin.append('%d -- %d [penwidth=%f];' % (fnPrev, fn, 0.1*penWidthEdges) )
     fid = h5f.open(fileStr % fn, h5f.ACC_RDONLY)
     gid = h5g.open(fid,'/tracking')
@@ -152,7 +155,7 @@ def visualizeGraph( fileStr, fileNrs, dotNameLinear, penWidthNodes=2, penWidthEd
       nDisapps = disapps.shape[0]
       for iDA in range(nDisapps):
         cellStr = 'D%d_%d' % (fn, disapps[iDA])
-        print >> outLin, cellStr + ' [shape=point, penwidth=%f];' % (minIndex*penWidthNodes)
+        print(cellStr + ' [shape=point, penwidth=%f];' % (minIndex*penWidthNodes), file=outLin)
         (motherStr, motherInts) = livingCells[ disapps[iDA] ]
         meanInt = reduce(operator.add, motherInts) / len(motherInts)
         edgesLin.append(motherStr + ' -- ' + cellStr + ' [penwidth=%f];' % (meanInt*penWidthEdges) )
@@ -160,21 +163,21 @@ def visualizeGraph( fileStr, fileNrs, dotNameLinear, penWidthNodes=2, penWidthEd
     fid.close()
     del fid
     for cs in allCellStrs:
-      print >> outLin, cs[0] + (' [shape=circle, penwidth=%f, ' % (cs[3]*penWidthNodes)) + cs[1] + '];' 
-    print >> outLin, '}\n'
+      print(cs[0] + (' [shape=circle, penwidth=%f, ' % (cs[3]*penWidthNodes)) + cs[1] + '];', file=outLin) 
+    print('}\n', file=outLin)
     livingCells = newLivingCells
     fnPrev = fn
-  print >> outLin, 'subgraph end {\nrank=same;'
+  print('subgraph end {\nrank=same;', file=outLin)
   for k in livingCells.keys():
     cellStr = 'L%d' % k
-    print >> outLin, cellStr + ' [shape=none, penwidth=%f];' % (2*minIndex*penWidthNodes)
+    print(cellStr + ' [shape=none, penwidth=%f];' % (2*minIndex*penWidthNodes), file=outLin)
     (motherStr, motherInts) = livingCells[k]
     meanInt = reduce(operator.add, motherInts)/len(motherInts)
     edgesLin.append(motherStr + ' -- ' + cellStr + ' [penwidth=%f];' % (0.2*penWidthEdges) )
-  print >> outLin, '}\n'
+  print('}\n', file=outLin)
   for e in edgesLin:
-    print >> outLin, e
-  print >> outLin, '}' 
+    print(e, file=outLin)
+  print('}', file=outLin) 
   outLin.close()
   return (cellIdx-1)
 

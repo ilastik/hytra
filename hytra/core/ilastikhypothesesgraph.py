@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 import logging
 import numpy as np
 from hytra.core.hypothesesgraph import HypothesesGraph, getTraxelFeatureVector, negLog, listify

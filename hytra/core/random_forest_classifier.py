@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import unicode_literals
 import vigra
 import numpy as np
 import h5py

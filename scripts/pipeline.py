@@ -1,6 +1,7 @@
 """
 Run the full pipeline, configured by a config file
 """
+from __future__ import unicode_literals
 
 # pythonpath modification to make hytra available 
 # for import without requiring it to be installed

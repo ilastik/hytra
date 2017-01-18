@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 import numpy as np
 import math
 
@@ -193,7 +194,7 @@ class FeatureManager( object ):
                 continue
             
             if len(name_split) != 2:                
-                raise Exception, 'tracking features consist of an operator and a feature name only, given name={}'.format(name_split) 
+                raise Exception('tracking features consist of an operator and a feature name only, given name={}'.format(name_split)) 
             if len(feats_cur[name_split[1]].shape) > 1:
                 feat_dim = feats_cur[name_split[1]].shape[1]
             else:

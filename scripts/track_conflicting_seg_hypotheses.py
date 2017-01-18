@@ -2,6 +2,7 @@
 Take a set of label images that represent different segmentation hypotheses,
 track them, and create a final result by cherry-picking the segments that were part of the tracking solution
 """
+from __future__ import unicode_literals
 
 # pythonpath modification to make hytra available
 # for import without requiring it to be installed
