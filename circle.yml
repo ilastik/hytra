@@ -36,6 +36,7 @@ dependencies:
       conda install -y yapsy -c ilastik;
       conda install -y dpct -c chaubold;
       conda install vigra=1.11.0.post36 -c ilastik --no-deps -y;
+      conda install -y future;
 
 ## Customize test commands
 test:
