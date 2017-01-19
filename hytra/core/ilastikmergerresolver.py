@@ -297,13 +297,13 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
                 
                 edgeValue = arcFlowMap[(srcId, destId)]
                 
-                # Remove edges for nodes connected to mergers in order to prevent multiple edges from single nodes. The correct edges will be added later.
-                if edgeValue > 0:
+                # edges connected to mergers are set to "not used" in order to prevent multiple active outgoing edges from single nodes. The correct edges will be added later.
+                if edgeValue > 0 and not self.resolvedGraph.node[edge[0]]['division']:
                     for outEdge in self.hypothesesGraph._graph.out_edges(edge[0]):
-                        self.hypothesesGraph._graph.remove_edge(outEdge[0], outEdge[1])
+                        self.hypothesesGraph._graph.edge[outEdge[0]][outEdge[1]]['value'] = 0
                      
                     for inEdge in self.hypothesesGraph._graph.in_edges(edge[1]):
-                        self.hypothesesGraph._graph.remove_edge(inEdge[0], inEdge[1])
+                        self.hypothesesGraph._graph.edge[inEdge[0]][inEdge[1]]['value'] = 0
                 
                 # Add new edge connected to merger node
                 self.hypothesesGraph._graph.add_edge(edge[0], edge[1], value=edgeValue)
