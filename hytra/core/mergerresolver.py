@@ -208,12 +208,12 @@ class MergerResolver(object):
                 # division nodes with no incoming arcs offer 2 units of flow without the need to de-merge
                 if self.unresolvedGraph.node[node]['division'] and len(self.unresolvedGraph.out_edges(node)) == 2:
                     numStates = 3
-                additionalFeatures['appearanceFeatures'] = [[0]] * numStates
+                additionalFeatures['appearanceFeatures'] = [[i**2 * 0.01] for i in range(numStates)]
             if len(self.resolvedGraph.out_edges(node)) == 0:
                 assert(numStates == 2) # division nodes with no incoming should have outgoing, or they shouldn't show up in resolved graph
-                additionalFeatures['disappearanceFeatures'] = [[0], [0]]
+                additionalFeatures['disappearanceFeatures'] = [[i**2 * 0.01] for i in range(numStates)]
 
-            features = [[0]] + [[1]] * (numStates - 1)
+            features = [[i**2] for i in range(numStates)]
             uuid = trackingGraph.addDetectionHypotheses(features, **additionalFeatures)
             self.resolvedGraph.node[node]['id'] = uuid
 
