@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 from __future__ import print_function
 from __future__ import unicode_literals
+from __future__ import division
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import numpy as np
 import h5py
 import argparse
@@ -10,7 +14,7 @@ def get_track_feature_matrix(track_features_filename, region_features, normalize
     track_feature_matrix = np.array([]).reshape(0, num_features)
     with h5py.File(track_features_filename, 'r') as track_features:
         # examine all tracks
-        for track_id in track_features['tracks'].keys():
+        for track_id in list(track_features['tracks'].keys()):
             merged_features = np.zeros(num_features)
 
             try:
@@ -28,7 +32,7 @@ def get_track_feature_matrix(track_features_filename, region_features, normalize
 
             # divide by num traxels to get average
             if normalize:
-                merged_features = [f / len(traxels) for f in merged_features]
+                merged_features = [old_div(f, len(traxels)) for f in merged_features]
 
             track_feature_matrix = np.vstack([track_feature_matrix, merged_features])
 
@@ -73,7 +77,7 @@ def extract_features_and_compute_score(options):
         with h5py.File(options.track_features, 'r') as track_features:
             track_scores = []
             # examine all tracks, extract HO features for quality measures
-            for track_id in track_features['tracks'].keys():
+            for track_id in list(track_features['tracks'].keys()):
 
                 # ugly way of using the learned weights to compute track quality measurements
                 score = 0

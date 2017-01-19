@@ -2,6 +2,9 @@ from __future__ import print_function
 from __future__ import unicode_literals
 # pythonpath modification to make hytra and empryonic available 
 # for import without requiring it to be installed
+from builtins import zip
+from builtins import str
+from builtins import range
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
@@ -178,8 +181,8 @@ def generate_traxelstore(h5file,
     if z_range is None:
         z_range = [0, sys.maxsize]
 
-    shape_t = len(h5file[options.obj_count_path].keys())
-    keys_sorted = range(shape_t)
+    shape_t = len(list(h5file[options.obj_count_path].keys()))
+    keys_sorted = list(range(shape_t))
 
     if time_range is not None:
         if time_range[1] == -1:
@@ -310,12 +313,12 @@ def generate_traxelstore(h5file,
         start_time = time.time()
 
         with h5py.File(options.raw_filename, 'r') as raw_h5:
-            shape = h5file['/'.join(options.label_img_path.split('/')[:-1])].values()[0].shape[1:4]
-            shape = (len(h5file['/'.join(options.label_img_path.split('/')[:-1])].values()),) + shape
+            shape = list(h5file['/'.join(options.label_img_path.split('/')[:-1])].values())[0].shape[1:4]
+            shape = (len(list(h5file['/'.join(options.label_img_path.split('/')[:-1])].values())),) + shape
             print("Shape is {}".format(shape))
 
             # loop over all frames and compute features for all traxels per frame
-            for timestep in xrange(max(0, time_range[0]), min(shape[0], time_range[1])):
+            for timestep in range(max(0, time_range[0]), min(shape[0], time_range[1])):
                 print("\tFrame {}".format(timestep))
                 # TODO: handle smaller FOV instead of looking at full frame
                 label_image_path = options.label_img_path % (timestep, timestep+1, shape[1], shape[2], shape[3])
@@ -347,7 +350,7 @@ def generate_traxelstore(h5file,
 
 
 def getH5Dataset(h5group, ds_name):
-    if ds_name in h5group.keys():
+    if ds_name in list(h5group.keys()):
         return np.array(h5group[ds_name])
 
     return np.array([])
@@ -383,7 +386,7 @@ def getTraxelStore(options, ilp_fn,time_range, shape):
 
         print('/'.join(options.label_img_path.strip('/').split('/')[:-1]))
 
-        if h5file['/'.join(options.label_img_path.strip('/').split('/')[:-1])].values()[0].shape[3] == 1:
+        if list(h5file['/'.join(options.label_img_path.strip('/').split('/')[:-1])].values())[0].shape[3] == 1:
             ndim = 2
         print('ndim=', ndim)
 
@@ -537,7 +540,7 @@ if __name__ == "__main__":
 
     # find shape of dataset
     with h5py.File(ilp_fn, 'r') as h5file:
-        shape = h5file['/'.join(options.label_img_path.split('/')[:-1])].values()[0].shape[1:4]
+        shape = list(h5file['/'.join(options.label_img_path.split('/')[:-1])].values())[0].shape[1:4]
 
     if path.exists(os.path.join(options.out_dir, 'probabilities.dump')):
         import pickle
@@ -597,10 +600,10 @@ if __name__ == "__main__":
 
         for d in grouped_detections[-1]:
             model = make_pipeline(PolynomialFeatures(degree=2,include_bias=False), Ridge())
-            X_values = np.array(range(len(d)))
+            X_values = np.array(list(range(len(d))))
 
             # reorder to get minimum to the end
-            X_values_but_min = range(len(d))
+            X_values_but_min = list(range(len(d)))
             d_values_but_min = list(d)
             del X_values_but_min[i]
             del d_values_but_min[i]
@@ -629,7 +632,7 @@ if __name__ == "__main__":
         l2, = plt.plot(mean_convexified_energies[i], label='mean of convexified')
 
         # fit quadratic function:
-        X_values = np.array(range(len(mean_energies[i])))
+        X_values = np.array(list(range(len(mean_energies[i]))))
         parabola = fit_parabola(i, mean_energies[i][i], X_values, mean_energies[i])
         Y_predictions = parabola(X_values)
         l3, = plt.plot(X_values, Y_predictions, label='convexified mean')
@@ -649,10 +652,10 @@ if __name__ == "__main__":
         
         d = grouped_detections[0]
         model = make_pipeline(PolynomialFeatures(degree=2,include_bias=False), Ridge())
-        X_values = np.array(range(len(d)))
+        X_values = np.array(list(range(len(d))))
 
         # reorder to get minimum to the end
-        X_values_but_min = range(len(d))
+        X_values_but_min = list(range(len(d)))
         d_values_but_min = list(d)
         del X_values_but_min[i]
         del d_values_but_min[i]

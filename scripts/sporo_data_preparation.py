@@ -1,7 +1,9 @@
 from __future__ import print_function
 from __future__ import unicode_literals
+from __future__ import division
 # pythonpath modification to make hytra and empryonic available 
 # for import without requiring it to be installed
+from past.utils import old_div
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
@@ -38,8 +40,8 @@ if __name__ == "__main__":
 
     if args.normalize:
         # normalize to range 0-1
-        sporoChannel = (sporoChannel-np.min(sporoChannel))/float(np.max(sporoChannel)-np.min(sporoChannel))
-        nucleusChannel = (nucleusChannel-np.min(sporoChannel))/float(np.max(nucleusChannel)-np.min(sporoChannel))
+        sporoChannel = old_div((sporoChannel-np.min(sporoChannel)),float(np.max(sporoChannel)-np.min(sporoChannel)))
+        nucleusChannel = old_div((nucleusChannel-np.min(sporoChannel)),float(np.max(nucleusChannel)-np.min(sporoChannel)))
 
     # adjust axes
     sporoChannel = hytra.util.axesconversion.adjustOrder(sporoChannel, args.inputAxes, args.outputAxes)

@@ -2,6 +2,10 @@
 
 from __future__ import print_function
 from __future__ import unicode_literals
+from __future__ import division
+from builtins import zip
+from builtins import range
+from past.utils import old_div
 import os.path
 import sys
 sys.path.append('.')
@@ -54,9 +58,9 @@ if __name__ == "__main__":
 
     filename, extension = os.path.splitext(options.out_file)
 
-    prec_score_pairs = zip(list(precisions), scores)
+    prec_score_pairs = list(zip(list(precisions), scores))
     prec_score_pairs.sort(key=lambda x: x[1], reverse=True) # sort by score
-    sorted_precs, sorted_scores = zip(*prec_score_pairs)
+    sorted_precs, sorted_scores = list(zip(*prec_score_pairs))
     
     threshold = 0.9
     def filter_precs(threshold, precs):
@@ -66,7 +70,7 @@ if __name__ == "__main__":
         for c in range(len(precs)):
             if precs[c] < threshold:
                 i+=1
-            precs[c] = 1.0 - float(i) / len(precs)
+            precs[c] = 1.0 - old_div(float(i), len(precs))
         return precs
 
     sorted_precs = filter_precs(threshold, sorted_precs)
@@ -79,9 +83,9 @@ if __name__ == "__main__":
         fv = lt.get_feature_vector()
         outlier_svm_scores.append(fv[track_outlier_feature_idx] + fv[div_outlier_feature_idx])
 
-    prec_outlier_pairs = zip(list(precisions), outlier_svm_scores)
+    prec_outlier_pairs = list(zip(list(precisions), outlier_svm_scores))
     prec_outlier_pairs.sort(key=lambda x: x[1], reverse=True) # sort by outlier_svm_score
-    o_sorted_precs, sorted_outliers = zip(*prec_outlier_pairs)
+    o_sorted_precs, sorted_outliers = list(zip(*prec_outlier_pairs))
     o_sorted_precs = filter_precs(threshold, o_sorted_precs)
 
     plt.figure()

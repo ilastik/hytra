@@ -1,7 +1,11 @@
 from __future__ import print_function
 from __future__ import unicode_literals
+from __future__ import division
 # pythonpath modification to make hytra available 
 # for import without requiring it to be installed
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
@@ -120,7 +124,7 @@ if __name__ == "__main__":
     numMergers = 0
     truePositives = 0
     squaredError = 0.0
-    for obj, gtCount in objectCounts.iteritems():
+    for obj, gtCount in objectCounts.items():
         predictedObjCount = getPredictedCount(obj)
         squaredError += (gtCount - predictedObjCount)**2
 
@@ -130,8 +134,8 @@ if __name__ == "__main__":
                 truePositives += 1
         progressBar.show()
 
-    mse = float(squaredError) / len(objectCounts)
-    print("Found {} TP in {} mergers: {} % ({} duplicates)".format(truePositives, numMergers, float(truePositives)/numMergers, duplicates))
+    mse = old_div(float(squaredError), len(objectCounts))
+    print("Found {} TP in {} mergers: {} % ({} duplicates)".format(truePositives, numMergers, old_div(float(truePositives),numMergers), duplicates))
     print("Overall MSE: {} on {} objects".format(mse, len(objectCounts)))
 
 

@@ -2,13 +2,18 @@ from __future__ import print_function
 from __future__ import unicode_literals
 # pythonpath modification to make hytra available 
 # for import without requiring it to be installed
+from future import standard_library
+standard_library.install_aliases()
+from builtins import map
+from builtins import zip
+from builtins import range
 import os
 import sys
 from functools import reduce
 sys.path.insert(0, os.path.abspath('..'))
 # standard imports
 import numpy as np
-import cPickle
+import pickle
 import collections
 import multiprocessing
 import os
@@ -57,9 +62,9 @@ def construct_associations(base_fns, cont_fns, timesteps, verbose=False):
         assert(np.all(base_ids == cont_ids))
         assert(np.all(base_valid == 1))
         assert(np.all(cont_valid == 1))
-        base_ids = map(int, base_ids)
-        cont_ids = map(int, cont_ids)
-        assoc = {'lhs':dict(zip(base_ids, cont_ids)), 'rhs':dict(zip(cont_ids, base_ids))}
+        base_ids = list(map(int, base_ids))
+        cont_ids = list(map(int, cont_ids))
+        assoc = {'lhs':dict(list(zip(base_ids, cont_ids))), 'rhs':dict(list(zip(cont_ids, base_ids)))}
         assocs.append(assoc)
     return assocs
 
@@ -144,7 +149,7 @@ Compare two tracking results, based only on the association information in the t
     ## 
     ## generate taxonomy
     ##
-    fn_pairs = zip(base_fns[0:timesteps], cont_fns[0:timesteps])
+    fn_pairs = list(zip(base_fns[0:timesteps], cont_fns[0:timesteps]))
     assert(timesteps == len(assocs))
 
 

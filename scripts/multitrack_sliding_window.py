@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 from __future__ import print_function
 from __future__ import unicode_literals
+from __future__ import division
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import os
 import os.path as path
 import sys
@@ -43,10 +47,10 @@ def track_subgraphs(graph,
     and then stitch the results together using fusion moves.
     """
     # define which segments we have
-    num_segments = int(np.ceil(float((time_range[1] - time_range[0])) / (timesteps_per_segment - segment_overlap_timesteps)))
+    num_segments = int(np.ceil(old_div(float((time_range[1] - time_range[0])), (timesteps_per_segment - segment_overlap_timesteps))))
     segments = [(time_range[0] + i * (timesteps_per_segment - segment_overlap_timesteps),
                  (time_range[0] + (i + 1) * timesteps_per_segment - i * segment_overlap_timesteps))
-                for i in xrange(num_segments)]
+                for i in range(num_segments)]
 
     tmap = graph.getNodeTraxelMap()
     solutions = {}
@@ -158,10 +162,10 @@ def track_subgraphs(graph,
 
     # find overlapping variables
     print("Computing overlap statistics...")
-    num_overlap_vars = sum([1 for values in solutions.values() if len(values) > 1])
-    num_disagreeing_overlap_vars = sum([1 for values in solutions.values() if len(values) > 1 and values[0] != values[1]])
+    num_overlap_vars = sum([1 for values in list(solutions.values()) if len(values) > 1])
+    num_disagreeing_overlap_vars = sum([1 for values in list(solutions.values()) if len(values) > 1 and values[0] != values[1]])
 
-    for key, values in solutions.iteritems():
+    for key, values in solutions.items():
         if len(values) > 1 and values[0] != values[1]:
             print("\tFound disagreement at {}: {} != {}".format(key, values[0], values[1]))
 
@@ -237,7 +241,7 @@ if __name__ == "__main__":
 
     # find shape of dataset
     with h5py.File(ilp_fn, 'r') as h5file:
-        shape = h5file['/'.join(options.label_img_path.split('/')[:-1])].values()[0].shape[1:4]
+        shape = list(h5file['/'.join(options.label_img_path.split('/')[:-1])].values())[0].shape[1:4]
 
     # read all traxels into TraxelStore
     ts, fs, max_traxel_id_at, ndim, t0, t1 = multitrack.getTraxelStore(options, ilp_fn, time_range, shape)
@@ -387,5 +391,5 @@ if __name__ == "__main__":
                       options.label_img_path, max_traxel_id_at, ilp_fn, first_events)
 
     print("Elapsed time [s]: " + str(int(since)))
-    print("Elapsed time [min]: " + str(int(since) / 60))
-    print("Elapsed time [h]: " + str(int(since) / 3600))
+    print("Elapsed time [min]: " + str(old_div(int(since), 60)))
+    print("Elapsed time [h]: " + str(old_div(int(since), 3600)))

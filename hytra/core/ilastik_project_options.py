@@ -1,7 +1,8 @@
 from __future__ import unicode_literals
+from builtins import object
 import h5py
 
-class IlastikProjectOptions:
+class IlastikProjectOptions(object):
     """
     The Ilastik Project Options configure where in the project HDF5 file the important things can be found.
     Use this when creating a Traxelstore

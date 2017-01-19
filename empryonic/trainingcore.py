@@ -1,6 +1,11 @@
 from __future__ import print_function
 from __future__ import absolute_import
 from __future__ import unicode_literals
+from __future__ import division
+from builtins import map
+from builtins import range
+from builtins import object
+from past.utils import old_div
 from mayavi import mlab
 import h5py
 import numpy as np
@@ -30,7 +35,7 @@ def showmessage(message):
     
 
 
-class trainingcore():
+class trainingcore(object):
     borderSize = 75
     RF = None
     color = (0.5,1,0)
@@ -106,7 +111,7 @@ class trainingcore():
 
 
         # load the data
-        ibbox = map(int, bbox)
+        ibbox = list(map(int, bbox))
         with h5py.File(self.h5fn, 'r') as f:
             seg1 = f["segmentation"]["labels"][ibbox[2]:ibbox[5],ibbox[1]:ibbox[4],ibbox[0]:ibbox[3]]
             raw = f["raw"]["volume"][ibbox[2]:ibbox[5],ibbox[1]:ibbox[4],ibbox[0]:ibbox[3]]
@@ -124,7 +129,7 @@ class trainingcore():
         
         fig2 = mlab.figure(2, size=(500,450))
         mlab.clf(fig2)
-        middle = int(raw.shape[2]/2)
+        middle = int(old_div(raw.shape[2],2))
         visCell.draw2DView(fig2, raw[:,:,middle-2:middle+2], seg1[:,:,:], index, self.color)
         
         t = time.time() - t0

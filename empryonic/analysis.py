@@ -1,5 +1,8 @@
 from __future__ import print_function
 from __future__ import unicode_literals
+from builtins import map
+from builtins import str
+from builtins import object
 import itertools
 import sys
 import numpy as np
@@ -20,7 +23,7 @@ def spacetime( volumes, projector = makeMaxIntensityProjector(2)):
     volumes: a sequence of three-dimensional numpy arrays of scalars
     projector: function :: volume -> 2D matrix
     '''
-    class verboseProjector:
+    class verboseProjector(object):
         def __init__( self ):
             self.count = 0
         def __call__( self, volume ):
@@ -30,4 +33,4 @@ def spacetime( volumes, projector = makeMaxIntensityProjector(2)):
             return projector( volume )
 
     
-    return np.dstack(itertools.imap(verboseProjector(), volumes))
+    return np.dstack(map(verboseProjector(), volumes))

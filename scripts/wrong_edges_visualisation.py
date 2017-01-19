@@ -1,4 +1,7 @@
 from __future__ import unicode_literals
+from __future__ import division
+from builtins import range
+from past.utils import old_div
 import numpy as np
 import logging
 import configargparse as argparse
@@ -100,9 +103,9 @@ def edges_visualisation(options):
         colors0 = np.array([[0,0,0]])  # background
         colors1 = np.array([[0,0,0]]) 
         for grayval in range(1,traim[0].max()+1):
-            colors0 = np.vstack((colors0, [0,float(grayval)/traim[0].max(), 1-float(grayval)/traim[0].max()]))
+            colors0 = np.vstack((colors0, [0,old_div(float(grayval),traim[0].max()), 1-old_div(float(grayval),traim[0].max())]))
         for grayval in range(1,traim[1].max()+1):
-            colors1 = np.vstack((colors1, [0,float(grayval)/traim[1].max(), 1-float(grayval)/traim[1].max()]))
+            colors1 = np.vstack((colors1, [0,old_div(float(grayval),traim[1].max()), 1-old_div(float(grayval),traim[1].max())]))
 
         tra_colors0 = colors0.copy()
         tra_colors1 = colors1.copy()

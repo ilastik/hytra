@@ -1,5 +1,12 @@
 from __future__ import print_function
 from __future__ import unicode_literals
+from __future__ import division
+from builtins import zip
+from builtins import map
+from builtins import str
+from builtins import range
+from past.utils import old_div
+from builtins import object
 import sys
 from functools import reduce
 sys.path.append('../.')
@@ -53,7 +60,7 @@ def get_feature_vector(traxel, feature_name, num_dimensions):
 #     return weights
 
 
-class LineagePart:
+class LineagePart(object):
     """
     Parent class for all parts of a lineage, e.g. track, division, lineage
     """
@@ -409,10 +416,10 @@ class LineageTree(LineagePart):
         result = np.zeros(self.get_feature_vector_size())
         
         for t in self.tracks:
-            result += t.get_feature_vector() / len(self.tracks)
+            result += old_div(t.get_feature_vector(), len(self.tracks))
 
         for d in self.divisions:
-            result += d.get_feature_vector() / len(self.divisions)
+            result += old_div(d.get_feature_vector(), len(self.divisions))
 
         return result
 
@@ -421,10 +428,10 @@ class LineageTree(LineagePart):
         result = np.zeros(num_expansions * self.get_num_track_features() + self.get_num_division_features())
 
         for t in self.tracks:
-            result += t.get_expanded_feature_vector(series_expansion_range) / len(self.tracks)
+            result += old_div(t.get_expanded_feature_vector(series_expansion_range), len(self.tracks))
 
         for d in self.divisions:
-            result += d.get_expanded_feature_vector(series_expansion_range) / len(self.divisions)
+            result += old_div(d.get_expanded_feature_vector(series_expansion_range), len(self.divisions))
 
         return result
 
@@ -436,7 +443,7 @@ class LineageTree(LineagePart):
         """
         traxels = []
         for t in self.tracks:
-            for i in xrange(t.traxels.shape[1]):
+            for i in range(t.traxels.shape[1]):
                 traxels.append(tuple(t.traxels[0:2, i]))
         return traxels
 
@@ -450,10 +457,10 @@ def create_and_link_tracks_and_divisions(track_features_h5, ts, region_features)
     track_starts_with_traxel_id = {}
     track_ends_with_traxel_id = {}
 
-    pb = ProgressBar(0, len(track_features_h5['tracks'].keys()) + len(track_features_h5['divisions'].keys()))
+    pb = ProgressBar(0, len(list(track_features_h5['tracks'].keys())) + len(list(track_features_h5['divisions'].keys())))
     print("Extracting Tracks and Divisions")
 
-    for track_id in track_features_h5['tracks'].keys():
+    for track_id in list(track_features_h5['tracks'].keys()):
         pb.show()
         track_id_int = int(track_id)
         t = Track(track_id_int)
@@ -467,11 +474,11 @@ def create_and_link_tracks_and_divisions(track_features_h5, ts, region_features)
         track_starts_with_traxel_id[t.start_traxel_id] = track_id_int
         track_ends_with_traxel_id[t.end_traxel_id] = track_id_int
 
-    max_length = max([t.length for t in tracks.values()])   
-    for t in tracks.values():
-        t.features['track_length'] = float(t.length) / max_length
+    max_length = max([t.length for t in list(tracks.values())])   
+    for t in list(tracks.values()):
+        t.features['track_length'] = old_div(float(t.length), max_length)
 
-    for division_id in track_features_h5['divisions'].keys():
+    for division_id in list(track_features_h5['divisions'].keys()):
         pb.show()
         division_id_int = int(division_id)
         d = Division(division_id_int)
@@ -499,7 +506,7 @@ def create_and_link_tracks_and_divisions(track_features_h5, ts, region_features)
 
 def build_lineage_trees(tracks, divisions):
     # select all tracks that have no parent division (appearances)
-    appearances = [t for t in tracks.values() if t.start_division_id == -1]
+    appearances = [t for t in list(tracks.values()) if t.start_division_id == -1]
 
     # create a new lineage tree for each of those
     lineageTrees = [LineageTree(l_id, t, tracks, divisions) for l_id, t in enumerate(appearances)]
@@ -512,8 +519,8 @@ def score_solutions(tracks, divisions, lineage_trees, out_dir, reranker_weight_f
     if reranker_weight_filename and len(reranker_weight_filename) > 0:
         reranker_weights = np.loadtxt(reranker_weight_filename)
 
-        track_scores = [t.compute_score(reranker_weights, series_expansion_range) for t in tracks.values()]
-        division_scores = [d.compute_score(reranker_weights, series_expansion_range) for d in divisions.values()]
+        track_scores = [t.compute_score(reranker_weights, series_expansion_range) for t in list(tracks.values())]
+        division_scores = [d.compute_score(reranker_weights, series_expansion_range) for d in list(divisions.values())]
         lineage_scores = [l.compute_score(reranker_weights, series_expansion_range) for l in lineage_trees]
         overall_score = sum(lineage_scores)
 
@@ -570,16 +577,16 @@ def compare_lineage_trees_to_gt(gt_dir, proposal_dir, lineage_trees):
     timesteps = min(len(gt_filenames), len(proposal_filenames))
     associations = compare_tracking.construct_associations(gt_filenames, proposal_filenames, timesteps)
 
-    filename_pairs = zip(gt_filenames[0:timesteps], proposal_filenames[0:timesteps])
+    filename_pairs = list(zip(gt_filenames[0:timesteps], proposal_filenames[0:timesteps]))
     lineage_tree_traxels = [lt.get_all_traxels() for lt in lineage_trees]
 
     pb = ProgressBar(0, len(lineage_trees))
     lineage_tree_measures = []
     for measure in processing_pool.imap(compute_traxel_set_measures,
-                                        itertools.izip(lineage_tree_traxels,
+                                        list(zip(lineage_tree_traxels,
                                                        itertools.repeat(associations),
                                                        itertools.repeat(filename_pairs),
-                                                       itertools.repeat(first_timestep))):
+                                                       itertools.repeat(first_timestep)))):
         lineage_tree_measures.append(measure)
         pb.show()
 
@@ -689,9 +696,9 @@ def analyze_lineage_dump(args):
         else:
             return a
 
-    precisions = map(replaceNan, precisions)
-    recalls = map(replaceNan, recalls)
-    fmeasures = map(replaceNan, fmeasures)
+    precisions = list(map(replaceNan, precisions))
+    recalls = list(map(replaceNan, recalls))
+    fmeasures = list(map(replaceNan, fmeasures))
     np.savetxt(args.out_dir.rstrip('/') + '/precisions.txt', np.array(precisions))
     np.savetxt(args.out_dir.rstrip('/') + '/recalls.txt', np.array(recalls))
     np.savetxt(args.out_dir.rstrip('/') + '/fmeasures.txt', np.array(fmeasures))

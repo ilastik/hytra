@@ -24,6 +24,9 @@ costs are minimzed. Nonmatches are allowed and controlled by a separate cost fun
 '''
 from __future__ import unicode_literals
 
+from builtins import map
+from builtins import str
+from builtins import object
 import collections as _collections
 import pulp as _pulp
 
@@ -80,12 +83,14 @@ def _construct_match_graph(candidates_lhs, candidates_rhs, match_cost_function, 
     cost_threshold -- only add edges, when their weight is below this threshold; applies only to match costs
     '''
     graph = _BipartiteGraph()
-    map(lambda x: graph.add_vertex(x[0], x[1], 'lhs'), enumerate(candidates_lhs))
-    map(lambda x: graph.add_vertex(x[0], x[1], 'rhs'), enumerate(candidates_rhs))
+    [graph.add_vertex(x[0], x[1], 'lhs') for x in enumerate(candidates_lhs)]
+    [graph.add_vertex(x[0], x[1], 'rhs') for x in enumerate(candidates_rhs)]
+    # list(map(lambda x: graph.add_vertex(x[0], x[1], 'lhs'), enumerate(candidates_lhs)))
+    # list(map(lambda x: graph.add_vertex(x[0], x[1], 'rhs'), enumerate(candidates_rhs)))
 
     # connect vertices (if not above cost threshold)
-    for vertex_lhs in graph.lhs.values():
-        for vertex_rhs in graph.rhs.values():
+    for vertex_lhs in list(graph.lhs.values()):
+        for vertex_rhs in list(graph.rhs.values()):
             cost = match_cost_function(vertex_lhs.value, vertex_rhs.value)
             if (not cost_threshold) or (cost_threshold and cost < cost_threshold):
                 graph.add_edge('edge_' + str(vertex_lhs.id)+'_'+str(vertex_rhs.id), vertex_lhs.id, vertex_rhs.id, cost)
@@ -93,10 +98,10 @@ def _construct_match_graph(candidates_lhs, candidates_rhs, match_cost_function, 
     # add sink nodes to represent nonmatches
     graph.add_vertex('sink', None, 'lhs')
     graph.add_vertex('sink', None, 'rhs')
-    for vertex in graph.lhs.values():
+    for vertex in list(graph.lhs.values()):
         if vertex.id != 'sink':
             graph.add_edge('edge_'+str(vertex.id)+'_sink', vertex.id, 'sink', nonmatch_cost_function(vertex.value))
-    for vertex in graph.rhs.values():
+    for vertex in list(graph.rhs.values()):
         if vertex.id != 'sink':
             graph.add_edge('edge_sink_'+str(vertex.id), 'sink', vertex.id, nonmatch_cost_function(vertex.value))
 
@@ -114,15 +119,15 @@ def _formulate_integer_linear_program( graph ):
 
     # represent every edge in the bipartite graph with a binary variable
     match_vars = dict()
-    for edge_id in graph.edges.keys():
+    for edge_id in list(graph.edges.keys()):
         match_vars[edge_id] = _pulp.LpVariable(edge_id, 0, 1, _pulp.LpInteger)
-    ilp += _pulp.lpSum([graph.edges[id].weight * var for id,var in match_vars.items()])
+    ilp += _pulp.lpSum([graph.edges[id].weight * var for id,var in list(match_vars.items())])
 
     # allow max. one edge per vertex, except the sink vertices
-    for vertex in graph.lhs.values():
+    for vertex in list(graph.lhs.values()):
         if vertex.id != 'sink':
             ilp += _pulp.lpSum([match_vars[edge.id] for edge in vertex.edges]) == 1, ''
-    for vertex in graph.rhs.values():
+    for vertex in list(graph.rhs.values()):
         if vertex.id != 'sink':
             ilp += _pulp.lpSum([match_vars[edge.id] for edge in vertex.edges]) == 1, ''
 
@@ -133,7 +138,7 @@ def _formulate_associations( graph, solved_ilp_variables ):
     assoc = dict()
     assoc['lhs'] = dict()
     assoc['rhs'] = dict()
-    for id, var in solved_ilp_variables.items():
+    for id, var in list(solved_ilp_variables.items()):
         if var.value() == 1:
             match = graph.edges[id]
             lhs = graph.lhs[match.id_lhs].value

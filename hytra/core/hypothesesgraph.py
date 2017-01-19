@@ -1,4 +1,8 @@
 from __future__ import unicode_literals
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 import logging
 import copy
 import networkx as nx
@@ -140,7 +144,7 @@ class HypothesesGraph(object):
         """
         objectIdList = []
         features = []
-        for obj, traxel in traxelDict.iteritems():
+        for obj, traxel in list(traxelDict.items()):
             if obj == 0:
                 continue
             objectIdList.append(obj)
@@ -152,7 +156,7 @@ class HypothesesGraph(object):
         """
         Insert nodes for all objects in this frame, with the attribute "traxel"
         """
-        for obj, traxel in traxelDict.iteritems():
+        for obj, traxel in list(traxelDict.items()):
             if obj == 0:
                 continue
             self._graph.add_node((frame, obj), traxel=traxel, id=self._nextNodeUuid)
@@ -195,25 +199,25 @@ class HypothesesGraph(object):
         for frame in range(numFrames):
             if frame > 0:
                 del kdTreeFrames[0] # this is the current frame
-                if frame + skipLinks < numFrames and frame + skipLinks in probabilityGenerator.TraxelsPerFrame.keys():
+                if frame + skipLinks < numFrames and frame + skipLinks in list(probabilityGenerator.TraxelsPerFrame.keys()):
                     kdTreeFrames.append(self._buildFrameKdTree(probabilityGenerator.TraxelsPerFrame[frame + skipLinks]))
                     self._addNodesForFrame(frame + skipLinks, probabilityGenerator.TraxelsPerFrame[frame + skipLinks])
             else:
                 for i in range(0, skipLinks+1):
-                    if frame + i in probabilityGenerator.TraxelsPerFrame.keys(): # empty frame
+                    if frame + i in list(probabilityGenerator.TraxelsPerFrame.keys()): # empty frame
                         kdTreeFrames[i] = self._buildFrameKdTree(probabilityGenerator.TraxelsPerFrame[frame + i])
                         self._addNodesForFrame(frame + i, probabilityGenerator.TraxelsPerFrame[frame + i])
 
             # find forward links
-            if frame in probabilityGenerator.TraxelsPerFrame.keys(): # 'frame' could be empty
-                for obj, traxel in probabilityGenerator.TraxelsPerFrame[frame].iteritems():
+            if frame in list(probabilityGenerator.TraxelsPerFrame.keys()): # 'frame' could be empty
+                for obj, traxel in list(probabilityGenerator.TraxelsPerFrame[frame].items()):
                     divisionPreservingNumNearestNeighbors = numNearestNeighbors
                     if divisionPreservingNumNearestNeighbors < 2 \
                             and withDivisions \
                             and self._traxelMightDivide(traxel, divisionThreshold):
                         divisionPreservingNumNearestNeighbors = 2
                     for i in range(1, skipLinks+1):
-                        if frame + i < numFrames and frame + i in probabilityGenerator.TraxelsPerFrame.keys():
+                        if frame + i < numFrames and frame + i in list(probabilityGenerator.TraxelsPerFrame.keys()):
                             neighbors = (self._findNearestNeighbors(kdTreeFrames[i],
                                                                traxel,
                                                                divisionPreservingNumNearestNeighbors,
@@ -230,8 +234,8 @@ class HypothesesGraph(object):
             if forwardBackwardCheck:
                 for i in range(1, skipLinks+1):
                     if frame + i < numFrames:
-                        if frame + i in probabilityGenerator.TraxelsPerFrame.keys(): # empty frame
-                            for obj, traxel in probabilityGenerator.TraxelsPerFrame[frame + i].iteritems():
+                        if frame + i in list(probabilityGenerator.TraxelsPerFrame.keys()): # empty frame
+                            for obj, traxel in list(probabilityGenerator.TraxelsPerFrame[frame + i].items()):
                                 if kdTreeFrames[0] is not None:
                                     neighbors = (self._findNearestNeighbors(kdTreeFrames[0],
                                                                        traxel,
@@ -441,7 +445,7 @@ class HypothesesGraph(object):
                 traxelIdPerTimestepToUniqueIdMap.setdefault(str(t[0]), {})[str(t[1])] = uuid
 
         # sort the list of traxels per UUID by their timesteps
-        for v in uuidToTraxelMap.values():
+        for v in list(uuidToTraxelMap.values()):
             v.sort(key=lambda timestepIdTuple: timestepIdTuple[0])
 
         return traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap

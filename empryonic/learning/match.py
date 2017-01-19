@@ -1,6 +1,7 @@
 from __future__ import print_function
 from __future__ import absolute_import
 from __future__ import unicode_literals
+from builtins import map
 import unittest
 import numpy as np
 
@@ -14,12 +15,12 @@ def idAssoc_from_trackletAssoc( assoc ):
     ret['lhs'] = dict()
     ret['rhs'] = dict()
     
-    for i,v in assoc['lhs'].iteritems():
+    for i,v in list(assoc['lhs'].items()):
         if v:
             ret['lhs'][i.id] = v.id
         else:
             ret['lhs'][i.id] = None
-    for i,v in assoc['rhs'].iteritems():
+    for i,v in list(assoc['rhs'].items()):
         if v:
             ret['rhs'][i.id] = v.id
         else:
@@ -93,8 +94,10 @@ def match(lhs, rhs, nonmatch_threshold = 25, ignore_z=False, swap_xy=False, meth
     if ignore_z:
         def xy_projector(tr):
             tr.z = 0
-        map(xy_projector, lhs.the)
-        map(xy_projector, rhs.the)
+        [xy_projector(x) for x in lhs.the]
+        [xy_projector(x) for x in rhs.the]
+        # list(map(xy_projector, lhs.the))
+        # list(map(xy_projector, rhs.the))
         if verbose:
             print("-> Projected traxels to x-y subspace.")
     if swap_xy:    

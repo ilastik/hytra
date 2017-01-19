@@ -1,4 +1,7 @@
 from __future__ import unicode_literals
+from __future__ import division
+from past.utils import old_div
+from builtins import object
 import numpy as np
 
 from empryonic.tracklets import Tracklet
@@ -54,8 +57,8 @@ class Division( object ):
         return self.to1.distance(self.to2)
 
     def angle( self ):
-        return np.arccos(np.dot(self.vec1(), self.vec2()) /
-                         (np.linalg.norm(self.vec1()) * np.linalg.norm(self.vec2())))
+        return np.arccos(old_div(np.dot(self.vec1(), self.vec2()),
+                         (np.linalg.norm(self.vec1()) * np.linalg.norm(self.vec2()))))
 
 class Appearance( object ):
     def __init__(self, to = Tracklet(), energy=None):

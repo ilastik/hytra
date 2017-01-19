@@ -2,6 +2,8 @@ from __future__ import print_function
 from __future__ import unicode_literals
 # pythonpath modification to make hytra and empryonic available 
 # for import without requiring it to be installed
+from builtins import range
+from builtins import object
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
@@ -38,7 +40,7 @@ def compute_features(raw_image, labeled_image, n1, n2, pluginManager, filepath):
             len(raw_image.squeeze().shape)-1, raw_image[..., i, 0], labeled_image[i][..., 0], i, filepath)
         frameFeatureItems = []
         for f in moreFeats:
-            frameFeatureItems = frameFeatureItems + f.items()
+            frameFeatureItems = frameFeatureItems + list(f.items())
         allFeat.append(dict(frameFeatureItems))
     return allFeat
 
@@ -104,9 +106,9 @@ def find_features_without_NaNs(features):
     """
     Remove all features from the list of selected features which have NaNs
     """
-    selectedFeatures = features[0].keys()
+    selectedFeatures = list(features[0].keys())
     for featuresPerFrame in features:
-        for key, value in featuresPerFrame.iteritems():
+        for key, value in featuresPerFrame.items():
             if not isinstance(value, list) and (np.any(np.isnan(value)) or np.any(np.isinf(value))):
                 try:
                     selectedFeatures.remove(key)
@@ -121,7 +123,7 @@ def find_features_without_NaNs(features):
     selectedFeatures.sort()
     return selectedFeatures
 
-class TransitionClassifier:
+class TransitionClassifier(object):
     def __init__(self, selectedFeatures, numSamples=None):
         """
         Set up a transition classifier class that makes it easy to add samples, train and store the RF.

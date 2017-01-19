@@ -1,4 +1,9 @@
 from __future__ import unicode_literals
+from __future__ import division
+from builtins import str
+from builtins import range
+from builtins import object
+from past.utils import old_div
 from hytra.core.hypothesesgraph import HypothesesGraph
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,12 +16,12 @@ class HypothesesGraphDiagram(object):
         plt.clf()
         fig=plt.figure(1)
         dpi = fig.get_dpi()
-        fig.set_size_inches(width/float(dpi), height/float(dpi))  
+        fig.set_size_inches(old_div(width,float(dpi)), old_div(height,float(dpi)))  
         plt.axis([0,width,0,height])
         ax=fig.add_subplot(1,1,1)
          
         # Compute dimensions
-        columnWidth = width/float(len( range(timeRange[0], timeRange[1]) )+1)
+        columnWidth = old_div(width,float(len( list(range(timeRange[0], timeRange[1])) )+1))
         rowHeight = 3*radius
           
         # Compute row position and add time labels
@@ -133,7 +138,7 @@ class HypothesesGraphDiagram(object):
                     ax.add_patch(circle)
                      
             # Plot the arcs     
-            for arc in arcsWeight.keys():        
+            for arc in list(arcsWeight.keys()):        
                 sourceNode = arc[0]
                 targetNode = arc[1]
                  
@@ -155,10 +160,10 @@ class HypothesesGraphDiagram(object):
     # Generate color list
     def _get_colors(self, num_colors):
         colors=[]
-        for i in np.arange(0., 360., 360. / num_colors):
-            hue = i/360.
-            lightness = (50 + np.random.rand() * 10)/100.
-            saturation = (90 + np.random.rand() * 10)/100.
+        for i in np.arange(0., 360., old_div(360., num_colors)):
+            hue = old_div(i,360.)
+            lightness = old_div((50 + np.random.rand() * 10),100.)
+            saturation = old_div((90 + np.random.rand() * 10),100.)
             colors.append(colorsys.hls_to_rgb(hue, lightness, saturation))
         return colors
     

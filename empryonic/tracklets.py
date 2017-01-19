@@ -1,4 +1,7 @@
 from __future__ import unicode_literals
+from builtins import next
+from builtins import str
+from builtins import object
 import numpy as np
 import copy
 import unittest as ut
@@ -54,15 +57,15 @@ class Tracklets( object ):
         self.the = collection
 
     def with_x( self, value ):
-        return Tracklets(filter( lambda tr: tr.x == value, self.the ))
+        return Tracklets([tr for tr in self.the if tr.x == value])
     def with_y( self, value ):
-        return Tracklets(filter( lambda tr: tr.y == value, self.the ))
+        return Tracklets([tr for tr in self.the if tr.y == value])
     def with_z( self, value ):
-        return Tracklets(filter( lambda tr: tr.z == value, self.the ))
+        return Tracklets([tr for tr in self.the if tr.z == value])
     def with_t( self, value ):
-        return Tracklets(filter( lambda tr: tr.t == value, self.the ))
+        return Tracklets([tr for tr in self.the if tr.t == value])
     def with_id( self, value ):
-        return Tracklets(filter( lambda tr: tr.id == value, self.the ))
+        return Tracklets([tr for tr in self.the if tr.id == value])
 
     def xy_swapped( self ):
         '''Iterator to the tracklets, swapping the x and y coordinate.'''

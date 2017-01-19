@@ -1,4 +1,7 @@
 from __future__ import unicode_literals
+from __future__ import division
+from builtins import range
+from past.utils import old_div
 import numpy as np
 import logging
 import configargparse as argparse
@@ -53,11 +56,11 @@ def error_visualisation(options):
         # generating a suitable colormap for showing errors of the tracking result
         colors = np.array([[0,0,0]])  # background
         for grayval in range(1,traim.max()+1):
-            colors = np.vstack((colors, [0,float(grayval)/traim.max(), 1-float(grayval)/traim.max()]))
+            colors = np.vstack((colors, [0,old_div(float(grayval),traim.max()), 1-old_div(float(grayval),traim.max())]))
 
         tra_colors = colors.copy()
         # visualise mergers as purple blobs in the tracking result
-        if frame in merger.keys():
+        if frame in list(merger.keys()):
             for label in merger[frame]:
                 tra_colors[(int(label))] = [0.65, 0, 1]
         tracolormap = matplotlib.colors.ListedColormap(tra_colors, N=traim.max()+1)

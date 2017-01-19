@@ -1,4 +1,10 @@
 from __future__ import unicode_literals
+from __future__ import division
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
+from past.utils import old_div
 import numpy as np
 import math
 
@@ -15,11 +21,11 @@ def angle(v1, v2):
         if length(v1) * length(v2) == 0:
             radians = 0
         else:
-            radians = math.acos(dotproduct(v1, v2) / (length(v1) * length(v2)))
+            radians = math.acos(old_div(dotproduct(v1, v2), (length(v1) * length(v2))))
     except Exception as e:
         #print str(e), ': math.acos(', dotproduct(v1, v2) / (length(v1) * length(v2)), '), v1 =', v1, ', v2 =', v2
         radians = 0
-    return (radians*180)/math.pi
+    return old_div((radians*180),math.pi)
 
 
 
@@ -60,7 +66,7 @@ class ParentChildrenRatio( Feature ):
     def compute(self, feats_cur, feats_next, **kwargs):
         if len(feats_next) < 2:
             return np.array(len(feats_cur) * [self.default_value,])
-        result = np.array(feats_cur) / np.array(feats_next[0] + feats_next[1])
+        result = old_div(np.array(feats_cur), np.array(feats_next[0] + feats_next[1]))
         for i in range(len(result)):
             if math.isnan(result[i]):
                 result[i] = self.default_value
@@ -76,12 +82,12 @@ class ChildrenRatio( Feature ):
     def compute(self, feats_cur, feats_next, **kwargs):
         if len(feats_next) < 2:
             return np.array(len(feats_cur) * [self.default_value,])
-        ratio = np.array(feats_next[0]) / np.array(feats_next[1])
+        ratio = old_div(np.array(feats_next[0]), np.array(feats_next[1]))
         for i in range(len(ratio)):
             if math.isnan(ratio[i]):
                 ratio[i] = self.default_value
             if ratio[i] > 1 and ratio[i] != 0:
-                ratio[i] = 1./ratio[i]
+                ratio[i] = old_div(1.,ratio[i])
         return ratio
 
     def dim(self):
@@ -155,8 +161,8 @@ class FeatureManager( object ):
         ''' returns the squared distances to the objects in the neighborhood of com_curr, optionally with size filter '''
         squaredDistances = []
 
-        for label_next in coms_next.keys():
-            assert label_next in sizes_next.keys()
+        for label_next in list(coms_next.keys()):
+            assert label_next in list(sizes_next.keys())
             if size_filter != None and sizes_next[label_next] >= size_filter:
                 dist = np.linalg.norm(coms_next[label_next] - com_cur * self.scales)                
                 squaredDistances.append([label_next,dist])
@@ -201,7 +207,7 @@ class FeatureManager( object ):
                 feat_dim = 1
             feat_classes[name] = self.feature_mappings[name_split[0]](name_split[1], delim=self.delim, ndim=self.ndim, feat_dim=feat_dim)
 
-            shape = (feats_cur.values()[0].shape[0],feat_classes[name].dim())
+            shape = (list(feats_cur.values())[0].shape[0],feat_classes[name].dim())
             result[name] = np.ones(shape) * feat_classes[name].default_value
 
             vigra_feat_names.add(name_split[1])
@@ -209,7 +215,7 @@ class FeatureManager( object ):
         # initialize squared distances
         for idx in range(self.n_best):
             name = 'SquaredDistances_' + str(idx)
-            result[name] = np.ones((feats_cur.values()[0].shape[0], 1)) * self.squared_distance_default
+            result[name] = np.ones((list(feats_cur.values())[0].shape[0], 1)) * self.squared_distance_default
 
         # construct mapping which we only need if label_image_filename was given and the features 'filename' and 'id' exist
         if label_image_filename is not None and 'filename' in feats_next and 'id' in feats_next: 
@@ -236,8 +242,8 @@ class FeatureManager( object ):
 
                 roi = []
                 for idx,coord in enumerate(idx_cur):
-                    start = max(coord - self.template_size/2, 0)
-                    stop = min(coord + self.template_size/2, img_next.shape[idx])
+                    start = max(coord - old_div(self.template_size,2), 0)
+                    stop = min(coord + old_div(self.template_size,2), img_next.shape[idx])
                     roi.append(slice(int(start),int(stop)))
 
                 # find all coms in the neighborhood of com_cur by checking the next frame's labelimage in the roi
@@ -271,7 +277,7 @@ class FeatureManager( object ):
                 result[name][label_cur] = sq_dist_label[idx][1]
 
             # add all other features
-            for name, feat_class in feat_classes.items():
+            for name, feat_class in list(feat_classes.items()):
                 if feat_class.feats_name == 'SquaredDistances':
                     f_next = sq_dist_label[0:2,1]
                     f_cur = None

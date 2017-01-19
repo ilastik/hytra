@@ -1,6 +1,9 @@
 from __future__ import unicode_literals
 # pythonpath modification to make hytra and empryonic available 
 # for import without requiring it to be installed
+from builtins import zip
+from builtins import map
+from builtins import range
 import os
 import sys
 sys.path.insert(0, os.path.abspath('../..'))
@@ -23,7 +26,7 @@ def find_splits(filename, start_frame):
     # reads the man_track.txt file
     with open(filename, 'rt') as tracks:
         for line in tracks:
-            track_start = map(int, line.split())
+            track_start = list(map(int, line.split()))
             if track_start[3] > 0:
                 num_splits += 1
                 # parent = 0 is appearance, otherwise a split
@@ -47,7 +50,7 @@ def remap_label_image(label_image, mapping):
     returns a new label image with remapped object pixel values 
     """
     remapped_label_image = np.zeros_like(label_image)
-    for src, dest in mapping.iteritems():
+    for src, dest in list(mapping.items()):
         remapped_label_image[label_image == src] = dest
 
     return remapped_label_image
@@ -94,7 +97,7 @@ def find_label_image_remapping(label_image):
 
     # otherwise, create the appropriate mapping
     continuous_labels = list(range(len(labels)))
-    return dict(zip(labels, continuous_labels))
+    return dict(list(zip(labels, continuous_labels)))
 
 def save_label_image_for_frame(options, label_volume, out_h5, frame, mapping_per_frame=None):
     """
@@ -194,15 +197,15 @@ def create_label_volume(options):
 
         # intersect track id sets of both frames, and place moves in HDF5 file
         tracks_in_both_frames = objects_per_frame[frame - 1] & objects_per_frame[frame] - set([0])
-        moves = zip(list(tracks_in_both_frames), list(tracks_in_both_frames))
+        moves = list(zip(list(tracks_in_both_frames), list(tracks_in_both_frames)))
 
         # add the found splits as both, mitosis and split events
-        if frame in split_events.keys():
+        if frame in list(split_events.keys()):
             splits_in_frame = split_events[frame]
 
             # make sure all splits have the same dimension
             splits = []
-            for key, value in splits_in_frame.iteritems():
+            for key, value in list(splits_in_frame.items()):
                 value = [v for v in value if v in objects_per_frame[frame]]
 
                 if key not in objects_per_frame[frame - 1]:

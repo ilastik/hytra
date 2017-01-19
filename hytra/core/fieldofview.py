@@ -1,7 +1,10 @@
 from __future__ import unicode_literals
+from __future__ import division
+from builtins import object
+from past.utils import old_div
 import numpy as np
 
-class FieldOfView:
+class FieldOfView(object):
     """
     Replacement for pgmlink's field of view by simply copy'n'pasting it and adjusting so that it works.
     FIXME: Could be made much nicer in python, using more Numpy functionality...
@@ -30,7 +33,7 @@ class FieldOfView:
     def __hesse_normal(self, v1, v2):
         temp = self.__cross(v1, v2)
         n = self.__norm(temp)
-        return temp / n
+        return old_div(temp, n)
     
     def __abs_distance(self, p1, p2, p3, q):
         u = p2 - p1

@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 from __future__ import print_function
 from __future__ import unicode_literals
+from __future__ import division
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import sys
 
 import argparse
@@ -32,7 +36,7 @@ def check_detections_frame(gt_labels, timestep, frame_labels, threshold):
         for label_b in label_set:
             overlap_pixel_count = np.sum(tmp == label_b)
             label_b_count = np.sum(label_image_b == label_b)
-            ratio = float(overlap_pixel_count) / float(label_b_count)
+            ratio = old_div(float(overlap_pixel_count), float(label_b_count))
             overlap_ratios.append((label_b, ratio))
 
         # return ratio
@@ -75,7 +79,7 @@ def check_detections_frame(gt_labels, timestep, frame_labels, threshold):
             needed_splits += len(candidates) - 1
 
     false_negatives = sum(gt_labels_unmatched.values())
-    for i, val in gt_labels_unmatched.iteritems():
+    for i, val in gt_labels_unmatched.items():
         if val == 0:
             continue
         print("False Negative gt label {} at timestep {}".format(i, timestep))
@@ -97,7 +101,7 @@ def check_detections(options):
 
     with h5py.File(options.ground_truth_labeling, 'r') as ground_truth:
         frame_filenames_ids = [(options.new_labeling_dir + "/%04d.h5" % t, t)
-                               for t in xrange(options.min_ts, options.max_ts + 1)]
+                               for t in range(options.min_ts, options.max_ts + 1)]
         print("Checking detections from frame {} to {}".format(options.min_ts, options.max_ts))
 
         if options.use_compute_nodes:
@@ -380,7 +384,7 @@ def check_edges(options, gt2frame_assignments, frame2gt_assignments):
     edge_change = 0
 
     with h5py.File(options.ground_truth_labeling, 'r') as ground_truth:
-        frame_filenames_ids = [(options.new_labeling_dir + "/%04d.h5" % t, t) for t in xrange(options.min_ts, options.max_ts + 1)]
+        frame_filenames_ids = [(options.new_labeling_dir + "/%04d.h5" % t, t) for t in range(options.min_ts, options.max_ts + 1)]
         print("Checking edges from frame {} to {}".format(options.min_ts, options.max_ts))
 
         for filename, timestep in frame_filenames_ids:
@@ -450,7 +454,7 @@ def compute_tra_loss(options):
     print("Orignal model has {} nodes and {} edges".format(num_gt_detections, num_gt_edges))
 
     print("Extracted events yield tra_p={} and tra_e={}".format(tra_p, tra_e))
-    return min(tra_p, tra_e) / tra_e
+    return old_div(min(tra_p, tra_e), tra_e)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Compute TRA loss between 0 and 1 of a new labeling compared to ground truth')

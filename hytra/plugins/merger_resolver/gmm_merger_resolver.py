@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+from builtins import zip
 from hytra.pluginsystem import merger_resolver_plugin
 import numpy as np
 
@@ -19,7 +20,7 @@ class GMMMergerResolver(merger_resolver_plugin.MergerResolverPlugin):
         return gmm
 
     def getObjectInitializationList(self, gmm):
-        return zip(gmm.weights_, gmm.covars_, gmm.means_)
+        return list(zip(gmm.weights_, gmm.covars_, gmm.means_))
 
     def resolveMergerForCoords(self, coordinates, mergerCount, initializations=None):
         """

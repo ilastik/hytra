@@ -1,4 +1,7 @@
 from __future__ import unicode_literals
+from builtins import zip
+from builtins import str
+from builtins import range
 import os
 import numpy as np
 import logging
@@ -24,7 +27,7 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
         
         # Find mergers in the given model and result
         traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(self.model)
-        timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
+        timesteps = [t for t in list(traxelIdPerTimestepToUniqueIdMap.keys())]
 
         mergers, detections, links, divisions = hytra.core.jsongraph.getMergersDetectionsLinksDivisions(self.result, uuidToTraxelMap)
         
@@ -56,7 +59,7 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
         **Returns** a nested dictionary, indexed first by time, then object Id, containing a list of new segmentIDs per merger
         """
         traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(self.model)
-        timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
+        timesteps = [t for t in list(traxelIdPerTimestepToUniqueIdMap.keys())]
                 
         # compute new object features
         objectFeatures = self._computeObjectFeatures(timesteps)
@@ -161,7 +164,7 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
         t = str(timestep)
         detections = self.detectionsPerTimestep[t]
  
-        for idx, coordinates in coordinatesForObjectIds.items():            
+        for idx, coordinates in list(coordinatesForObjectIds.items()):            
             node = (timestep, idx)
             if node not in self.resolvedGraph:
                 continue
@@ -202,7 +205,7 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
                             self.resolvedGraph.add_edge(e[0], newNode)
  
                 self.resolvedGraph.remove_node(node)
-                self.unresolvedGraph.node[node]['newIds'] = range(nextObjectId, nextObjectId + count)
+                self.unresolvedGraph.node[node]['newIds'] = list(range(nextObjectId, nextObjectId + count))
                 nextObjectId += count
  
             # each unresolved node stores its fitted shape(s) to be used

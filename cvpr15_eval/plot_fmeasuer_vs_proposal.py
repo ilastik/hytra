@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 from __future__ import unicode_literals
+from builtins import zip
+from builtins import str
 import os.path
 import sys
 
@@ -75,7 +77,7 @@ if __name__ == "__main__":
         # print            data[-1]
         # print zip(*data[-1])     
         data[-1] = sorted(data[-1], key=lambda pair: pair[0])
-        index, pre, rec, fme = zip(*data[-1]) 
+        index, pre, rec, fme = list(zip(*data[-1])) 
         # plt.plot(index, pre, 'r-',label="pre")
         # plt.plot(index, rec, 'g-',label="rec")
         if len(options.legend) > 0:

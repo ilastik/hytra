@@ -1,7 +1,12 @@
 from __future__ import print_function
 from __future__ import unicode_literals
+from __future__ import division
 # pythonpath modification to make hytra available 
 # for import without requiring it to be installed
+from builtins import str
+from builtins import range
+from past.utils import old_div
+from builtins import object
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
@@ -176,8 +181,8 @@ def generate_traxelstore(h5file,
     if z_range is None:
         z_range = [0, sys.maxsize]
 
-    shape_t = len(h5file[options.obj_count_path].keys())
-    keys_sorted = range(shape_t)
+    shape_t = len(list(h5file[options.obj_count_path].keys()))
+    keys_sorted = list(range(shape_t))
 
     if time_range is not None:
         if time_range[1] == -1:
@@ -188,7 +193,7 @@ def generate_traxelstore(h5file,
 
     # use this as Traxelstore dummy if we're not using pgmlink
     if not withPgmlink:
-        class TSDummy:
+        class TSDummy(object):
             traxels = []
             def bounding_box(self):
                 return [time_range[0], 0,0,0, time_range[1], 1,1,1]
@@ -297,7 +302,7 @@ def generate_traxelstore(h5file,
 
 
 def getH5Dataset(h5group, ds_name):
-    if ds_name in h5group.keys():
+    if ds_name in list(h5group.keys()):
         return np.array(h5group[ds_name])
 
     return np.array([])
@@ -333,7 +338,7 @@ def getTraxelStore(options, ilp_fn, time_range, shape):
 
         logging.getLogger('hypotheses_graph_to_json.py').debug('/'.join(options.label_img_path.strip('/').split('/')[:-1]))
 
-        if h5file['/'.join(options.label_img_path.strip('/').split('/')[:-1])].values()[0].shape[3] == 1:
+        if list(h5file['/'.join(options.label_img_path.strip('/').split('/')[:-1])].values())[0].shape[3] == 1:
             ndim = 2
         logging.getLogger('hypotheses_graph_to_json.py').debug('ndim={}'.format(ndim))
 
@@ -533,7 +538,7 @@ def getTransitionFeaturesDist(traxelA, traxelB, transitionParam, max_state):
     """
     positions = [np.array([t.X(), t.Y(), t.Z()]) for t in [traxelA, traxelB]]
     dist = np.linalg.norm(positions[0] - positions[1])
-    prob = np.exp(-dist / transitionParam)
+    prob = np.exp(old_div(-dist, transitionParam))
     return [1.0 - prob] + [prob] * (max_state - 1)
 
 
@@ -556,7 +561,7 @@ def getBoundaryCostMultiplier(traxel, fov, margin, t0, t1, forAppearance):
         return 1.0
     else:
         if margin > 0:
-            return float(dist) / margin
+            return old_div(float(dist), margin)
         else:
             return 1.0
 

@@ -1,6 +1,8 @@
 from __future__ import unicode_literals
 # pythonpath modification to make hytra and empryonic available 
 # for import without requiring it to be installed
+from builtins import str
+from builtins import range
 import os
 import sys
 sys.path.insert(0, os.path.abspath('../..'))
@@ -54,7 +56,7 @@ def save_frame_to_tif(timestep, label_image, options):
         filename = options.output_dir + '/mask' + format(timestep, "0{}".format(options.filename_zero_padding)) + '.tif'
     label_image = np.swapaxes(label_image, 0, 1)
     if len(label_image.shape) == 2: # 2d
-        vigra.impex.writeImage(label_image.astype('uint16'), str(filename))
+        vigra.impex.writeImage(label_image.astype('uint16'), bytes(filename))
     else: # 3D
         label_image = np.transpose(label_image, axes=[2, 0, 1])
         tifffile.imsave(str(filename), label_image.astype('uint16'))
@@ -67,7 +69,7 @@ def save_tracks(tracks, num_frames, options):
     else:
         filename = options.output_dir + '/res_track.txt'
     with open(filename, 'wt') as f:
-        for key, value in tracks.iteritems():
+        for key, value in list(tracks.items()):
             if len(value) == 2:
                 value.append(num_frames - 1)
             # our track value contains parent, begin, end
@@ -81,7 +83,7 @@ def remap_label_image(label_image, mapping):
     returns a new label image with remapped object pixel values 
     """
     remapped_label_image = np.zeros(label_image.shape, dtype=label_image.dtype)
-    for dest, src in mapping.iteritems():
+    for dest, src in list(mapping.items()):
         remapped_label_image[label_image == dest] = src
 
     return remapped_label_image
@@ -144,7 +146,7 @@ def convert_label_volume(options):
             if src == 0 or dest == 0 or not src in old_label_image_indices or not dest in label_image_indices:
                 continue
             # see whether this was a track continuation or the first leg of a new track
-            if src in old_mapping.keys():
+            if src in list(old_mapping.keys()):
                 mapping[dest] = old_mapping[src]
             elif len(splits)==0 or src not in list(splits[:,0]):
                 mapping[dest] = new_track_id
@@ -156,7 +158,7 @@ def convert_label_volume(options):
             # end parent track
             parent = splits[s, 0]
 
-            if parent in old_mapping.keys():
+            if parent in list(old_mapping.keys()):
                 tracks[old_mapping[parent]].append(frame - 1)
             elif not parent in old_label_image_indices:
                 logging.getLogger('hdf5_to_ctc.py').warning("Found division where parent id was not present in previous frame")

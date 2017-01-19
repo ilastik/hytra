@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
-import ConfigParser
+from future import standard_library
+standard_library.install_aliases()
+import configparser
 import io
 
 sample_config = """
@@ -7,5 +9,5 @@ sample_config = """
 colormap3d: gray
 """
 
-cfg = ConfigParser.SafeConfigParser()
+cfg = configparser.SafeConfigParser()
 cfg.readfp(io.BytesIO(sample_config))

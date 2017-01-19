@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+from builtins import object
 from yapsy.PluginManager import PluginManager
 from yapsy.FilteredPluginManager import FilteredPluginManager
 import logging

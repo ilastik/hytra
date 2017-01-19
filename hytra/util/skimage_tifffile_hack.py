@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+from builtins import str
 from skimage.external import tifffile
 
 def hack(input_tif):

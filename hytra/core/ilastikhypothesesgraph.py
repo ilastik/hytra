@@ -1,4 +1,7 @@
 from __future__ import unicode_literals
+from __future__ import division
+from builtins import str
+from past.utils import old_div
 import logging
 import numpy as np
 from hytra.core.hypothesesgraph import HypothesesGraph, getTraxelFeatureVector, negLog, listify
@@ -119,7 +122,7 @@ class IlastikHypothesesGraph(HypothesesGraph):
         """
         positions = [np.array([t.X(), t.Y(), t.Z()]) for t in [traxelA, traxelB]]
         dist = np.linalg.norm(positions[0] - positions[1])
-        prob = np.exp(-dist / transitionParam)
+        prob = np.exp(old_div(-dist, transitionParam))
 
         return [1.0 - prob] + [prob] * (max_state - 1)
 
@@ -179,7 +182,7 @@ class IlastikHypothesesGraph(HypothesesGraph):
             return 1.0
         else:
             if margin > 0:
-                return float(dist) / margin
+                return old_div(float(dist), margin)
             else:
                 return 1.0
 

@@ -1,5 +1,9 @@
 from __future__ import print_function
 from __future__ import unicode_literals
+from builtins import str
+from builtins import zip
+from builtins import map
+from builtins import range
 import optparse
 import numpy as np
 import h5py
@@ -61,7 +65,7 @@ def generate_groundtruth(options):
     with h5py.File(options.input_file, 'r') as inputfile:
 
         if(options.end == -1):
-            options.end = int(inputfile["tracking"].keys()[-1])
+            options.end = int(list(inputfile["tracking"].keys())[-1])
 
 
         inId_to_outId_dics = {}
@@ -81,7 +85,7 @@ def generate_groundtruth(options):
         print("labelfile.shape: ",labelfile)#.shape
 
 
-        for t in xrange(options.start,options.end+1,1):
+        for t in range(options.start,options.end+1,1):
 
             # #just for fun :)
             sys.stdout.write('\r')
@@ -170,14 +174,14 @@ def generate_groundtruth(options):
                             inId_to_outId_dics[t][inId] = inId_to_outId_dics[t][inId][0]
                         else:
                             pixelList = pixelsOfInterest.tolist()
-                            possibleIdsDic = dict(zip(pixelList,map(pixelList.count,pixelList)))
+                            possibleIdsDic = dict(list(zip(pixelList,list(map(pixelList.count,pixelList)))))
                             for idx in [0]:# +inId_to_outId_dics[t].keys():
                                 if idx in possibleIdsDic:
                                     del possibleIdsDic[idx]
                             # print pixelsOfInterest
                             #find label with largest area
                             # print max(possibleIdsDic.iteritems(), key=operator.itemgetter(1))[0],inId_to_outId_dics[t][inId][0]
-                            mostAreaLabel = max(possibleIdsDic.iteritems(), key=operator.itemgetter(1))[0]
+                            mostAreaLabel = max(iter(possibleIdsDic.items()), key=operator.itemgetter(1))[0]
                             # print possibleIdsDic
                             # print "choose ",mostAreaLabel," of ", possibleIdsDic
 
@@ -196,7 +200,7 @@ def generate_groundtruth(options):
                     trackingdata.create_dataset("Mergers", data=np.asarray(merlist), dtype='u2') 
 
                 if(len(inId_to_outId_funct) > 1):
-                    if("Moves" in inputfile["tracking"][options.format.format(t)].keys()):
+                    if("Moves" in list(inputfile["tracking"][options.format.format(t)].keys())):
                         moves = np.array(inputfile["tracking"][options.format.format(t)]["Moves"]).squeeze().astype(np.int)
                         moves = np.reshape(moves, (-1,2))
 
@@ -242,7 +246,7 @@ def generate_groundtruth(options):
                         movelist = [mov for mov in movelist if (not -1 in mov)]
                         movedict[t] = moves
 
-                    if("Splits" in inputfile["tracking"][options.format.format(t)].keys()):
+                    if("Splits" in list(inputfile["tracking"][options.format.format(t)].keys())):
                         splits = np.array(inputfile["tracking"][options.format.format(t)]["Splits"]).squeeze().astype(np.int)
                         splits = np.reshape(splits,(-1,3))
 

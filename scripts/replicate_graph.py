@@ -2,6 +2,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 # pythonpath modification to make hytra and empryonic available 
 # for import without requiring it to be installed
+from builtins import range
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))

@@ -257,7 +257,7 @@ def test_insertAndExtractSolution():
             ref = [m for m in outSolutionDict[group] if m['id'] == entry['id']]
             assert(len(ref)<=1)
             if len(ref) == 1:
-                for k,v in ref[0].items():
+                for k,v in list(ref[0].items()):
                     assert(v==entry[k])
             else:
                 assert(entry['value'] == 0)
@@ -268,7 +268,7 @@ def test_insertAndExtractSolution():
             ref = [m for m in solutionDict[group] if m['id'] == entry['id']]
             assert(len(ref)<=1)
             if len(ref) == 1:
-                for k,v in ref[0].items():
+                for k,v in list(ref[0].items()):
                     assert(v==entry[k])
             else:
                 assert(entry['value'] == 0)

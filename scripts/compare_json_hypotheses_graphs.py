@@ -20,10 +20,10 @@ if __name__ == "__main__":
         modelA = json.load(f)
 
     traxelIdPerTimestepToUniqueIdMap = modelA['traxelToUniqueId']
-    timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
+    timesteps = [t for t in list(traxelIdPerTimestepToUniqueIdMap.keys())]
     uuidToTraxelMapA = {}
     for t in timesteps:
-        for i in traxelIdPerTimestepToUniqueIdMap[t].keys():
+        for i in list(traxelIdPerTimestepToUniqueIdMap[t].keys()):
             uuid = traxelIdPerTimestepToUniqueIdMap[t][i]
             if uuid not in uuidToTraxelMapA:
                 uuidToTraxelMapA[uuid] = []
@@ -34,10 +34,10 @@ if __name__ == "__main__":
         modelB = json.load(f)
 
     traxelIdPerTimestepToUniqueIdMap = modelB['traxelToUniqueId']
-    timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
+    timesteps = [t for t in list(traxelIdPerTimestepToUniqueIdMap.keys())]
     uuidToTraxelMapB = {}
     for t in timesteps:
-        for i in traxelIdPerTimestepToUniqueIdMap[t].keys():
+        for i in list(traxelIdPerTimestepToUniqueIdMap[t].keys()):
             uuid = traxelIdPerTimestepToUniqueIdMap[t][i]
             if uuid not in uuidToTraxelMapB:
                 uuidToTraxelMapB[uuid] = []
@@ -52,7 +52,7 @@ if __name__ == "__main__":
     nodeMapBtoA = {}
     for a in nodesA:
         trackletA = uuidToTraxelMapA[a]
-        for b, trackletB in uuidToTraxelMapB.iteritems():
+        for b, trackletB in uuidToTraxelMapB.items():
             if trackletA == trackletB:
                 assert b in nodesB
                 nodeMapAtoB[a] = b

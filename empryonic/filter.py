@@ -4,6 +4,8 @@ from __future__ import unicode_literals
 # (c) Bernhard X. Kausler, 2010
 #
 
+from builtins import str
+from builtins import filter
 import h5py
 import os, sys
 import os.path as path
@@ -41,11 +43,11 @@ def filterFeaturesByRandomForest(h5In, h5Out, rfFile, featsInds):
                matrix
     '''
     rf = vigra.learning.RandomForest(rfFile,'RandomForest')
-    nFeats = sum(len(featsInds[f]) for f in featsInds.keys())
+    nFeats = sum(len(featsInds[f]) for f in list(featsInds.keys()))
     def rfFilter(labelGroup):
         idx = 0
         feats = np.zeros( (1, nFeats), dtype=np.float32 )
-        for f in featsInds.keys():
+        for f in list(featsInds.keys()):
             ds = labelGroup[f]
             feats[0,idx:idx+len(featsInds[f])] = ds[featsInds[f]] 
             idx += len(featsInds[f])
@@ -70,9 +72,9 @@ def filterFeaturesByPredicate(h5In, h5Out, predicate):
     # filter by predicate #
     #######################
     featuresGroup = inFile[featurebasepath]
-    labelGroups = filter(lambda item: isinstance(item, h5py.Group), featuresGroup.itervalues())
+    labelGroups = [item for item in iter(featuresGroup.values()) if isinstance(item, h5py.Group)]
     
-    validLabelGroups = filter( predicate, labelGroups )
+    validLabelGroups = list(filter( predicate, labelGroups ))
     print("# of accepted cells: " + str(len(validLabelGroups)))
 
     #####################
@@ -96,7 +98,7 @@ def filterFeaturesByPredicate(h5In, h5Out, predicate):
     inLabelcontent = featuresGroup[labelcontent].value
     outLabelcontent = np.zeros(inLabelcontent.shape, dtype=inLabelcontent.dtype)
 
-    validLabels = filter(lambda item: item.isdigit(), outFeaturesGroup.keys())
+    validLabels = [item for item in list(outFeaturesGroup.keys()) if item.isdigit()]
     for label in validLabels:
         outLabelcontent[int(label) - 1] = 1
     outFeaturesGroup.create_dataset(labelcontent, data=np.array(outLabelcontent, dtype=np.uint16))

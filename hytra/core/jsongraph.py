@@ -3,6 +3,9 @@ Utilities that help with loading / saving as well as constructing and parsing
 hypotheses graphs stored in our json (or python dictionary) format.
 '''
 from __future__ import unicode_literals
+from builtins import str
+from builtins import range
+from builtins import object
 import copy
 import logging
 import numpy as np
@@ -37,17 +40,17 @@ def getMappingsBetweenUUIDsAndTraxels(model):
 
     # create reverse mapping from json uuid to (timestep,ID)
     traxelIdPerTimestepToUniqueIdMap = model['traxelToUniqueId']
-    timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
+    timesteps = [t for t in list(traxelIdPerTimestepToUniqueIdMap.keys())]
     uuidToTraxelMap = {}
     for t in timesteps:
-        for i in traxelIdPerTimestepToUniqueIdMap[t].keys():
+        for i in list(traxelIdPerTimestepToUniqueIdMap[t].keys()):
             uuid = traxelIdPerTimestepToUniqueIdMap[t][i]
             if uuid not in uuidToTraxelMap:
                 uuidToTraxelMap[uuid] = []
             uuidToTraxelMap[uuid].append((int(t), int(i)))
 
     # sort the list of traxels per UUID by their timesteps
-    for v in uuidToTraxelMap.values():
+    for v in list(uuidToTraxelMap.values()):
         v.sort(key=lambda timestepIdTuple: timestepIdTuple[0])
 
     return traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap
@@ -63,7 +66,7 @@ def getMergersDetectionsLinksDivisions(result, uuidToTraxelMap):
     links = [(uuidToTraxelMap[int(entry['src'])][-1], uuidToTraxelMap[int(entry['dest'])][0]) for entry in result['linkingResults'] if entry['value'] > 0]
 
     # add all internal links of tracklets
-    for v in uuidToTraxelMap.values():
+    for v in list(uuidToTraxelMap.values()):
         prev = None
         for timestepIdTuple in v:
             if prev is not None:
@@ -357,7 +360,7 @@ class JsonTrackingGraph(object):
         **Returns:** the unique ID of the newly created node in the graph
         '''
         detection = {'id':self._nextUuid, 'features':features}
-        for k,v in kwargs.iteritems():
+        for k,v in list(kwargs.items()):
             if v != None:
                 detection[k] = v
 
@@ -371,7 +374,7 @@ class JsonTrackingGraph(object):
         Add a link to the JSON encoded graph between two nodes which are identified by their unique ids
         '''
         link = {'src':srcUuid, 'dest':destUuid, 'features':features}
-        for k,v in kwargs.iteritems():
+        for k,v in list(kwargs.items()):
             link[k] = v
 
         self.model['linkingHypotheses'].append(link)

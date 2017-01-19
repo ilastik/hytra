@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+from builtins import range
 import logging
 from libdvid import DVIDNodeService, DVIDServerService
 import h5py

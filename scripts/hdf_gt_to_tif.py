@@ -10,6 +10,7 @@ from __future__ import unicode_literals
 #  --input-file ~/Documents/data/rapoport/rapoport_ground_truth_sub_tolerant.h5 --label-image volume
 ###################################################################################
 
+from builtins import range
 import argparse
 import numpy as np
 import h5py

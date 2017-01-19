@@ -2,6 +2,8 @@ from __future__ import print_function
 from __future__ import unicode_literals
 # pythonpath modification to make hytra available 
 # for import without requiring it to be installed
+from builtins import str
+from builtins import range
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
@@ -18,17 +20,17 @@ except ImportError:
 from hytra.util.progressbar import ProgressBar
 
 def get_uuid_to_traxel_map(traxelIdPerTimestepToUniqueIdMap):
-    timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
+    timesteps = [t for t in list(traxelIdPerTimestepToUniqueIdMap.keys())]
     uuidToTraxelMap = {}
     for t in timesteps:
-        for i in traxelIdPerTimestepToUniqueIdMap[t].keys():
+        for i in list(traxelIdPerTimestepToUniqueIdMap[t].keys()):
             uuid = traxelIdPerTimestepToUniqueIdMap[t][i]
             if uuid not in uuidToTraxelMap:
                 uuidToTraxelMap[uuid] = []
             uuidToTraxelMap[uuid].append((int(t), int(i)))
 
     # sort the list of traxels per UUID by their timesteps
-    for v in uuidToTraxelMap.values():
+    for v in list(uuidToTraxelMap.values()):
         v.sort(key=lambda timestepIdTuple: timestepIdTuple[0])
 
     return uuidToTraxelMap
@@ -46,7 +48,7 @@ def getShape(labelImageFilename, labelImagePath):
     extract the shape from the labelimage
     """
     with h5py.File(labelImageFilename, 'r') as h5file:
-        shape = h5file['/'.join(labelImagePath.split('/')[:-1])].values()[0].shape[1:4]
+        shape = list(h5file['/'.join(labelImagePath.split('/')[:-1])].values())[0].shape[1:4]
         return shape
 
 def relabelImage(volume, replace):
@@ -106,7 +108,7 @@ if __name__ == "__main__":
     links = [(uuidToTraxelMap[int(entry['src'])][-1], uuidToTraxelMap[int(entry['dest'])][0]) for entry in result['linkingResults'] if entry['value'] > 0]
 
     # add all internal links of tracklets
-    for v in uuidToTraxelMap.values():
+    for v in list(uuidToTraxelMap.values()):
         prev = None
         for timestepIdTuple in v:
             if prev is not None:

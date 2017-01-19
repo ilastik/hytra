@@ -1,5 +1,8 @@
 from __future__ import print_function
 from __future__ import unicode_literals
+from builtins import str
+from builtins import range
+from builtins import object
 import vigra
 import numpy as np
 import h5py
@@ -12,7 +15,7 @@ def getLogger():
     ''' logger to be used in this module '''
     return logging.getLogger(__name__)
 
-class RandomForestClassifier:
+class RandomForestClassifier(object):
     """
     A random forest (RF) classifier wraps a list of RFs as used in ilastik,
     and allows to read the RFs trained by ilastik, as well as which features were selected.
@@ -44,12 +47,12 @@ class RandomForestClassifier:
                 fullPath = '/'.join([self._classifierPath, self._options.classifierForestsGroupName])
             randomForests = []
             getLogger().info(" Attempting to read {} classifier(s) in {} from {}".format(
-                len([key for key in h5file[fullPath].keys() if 'Forest' in key]), self._ilpFilename, fullPath))
+                len([key for key in list(h5file[fullPath].keys()) if 'Forest' in key]), self._ilpFilename, fullPath))
 
-            for k in h5file[fullPath].keys():
+            for k in list(h5file[fullPath].keys()):
                 if 'Forest' in k:
                     getLogger().info(" Reading forest: {}".format( str('/'.join([fullPath, k])) ) )
-                    rf = vigra.learning.RandomForest(str(self._ilpFilename), str('/'.join([fullPath, k])))
+                    rf = vigra.learning.RandomForest(bytes(self._ilpFilename), bytes('/'.join([fullPath, k])))
                     randomForests.append(rf)
             return randomForests
 
@@ -64,9 +67,9 @@ class RandomForestClassifier:
                 fullPath = '/'.join([self._classifierPath, self._options.selectedFeaturesGroupName])
             featureNameList = []
 
-            for feature_group_name in h5file[fullPath].keys():
+            for feature_group_name in list(h5file[fullPath].keys()):
                 feature_group = h5file[fullPath][feature_group_name]
-                for feature in feature_group.keys():
+                for feature in list(feature_group.keys()):
                     # discard squared distances feature
                     if feature == 'ChildrenRatio_SquaredDistances':
                         continue

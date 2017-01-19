@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from __future__ import print_function
 from __future__ import unicode_literals
+from builtins import range
 import numpy as np
 import matplotlib.pyplot as plt
 import argparse
@@ -79,7 +80,7 @@ if __name__ == "__main__":
     m2 = scatterplot(gpc_proposals, 'Gaussian Process Classifier', 'g', plt, ground_truth_label, ground_truth_label_class_multiplier_list, options.loss_weights)
     m3 = scatterplot(perturbnmap_proposals, 'Perturb-and-MAP', 'c', plt, ground_truth_label, ground_truth_label_class_multiplier_list, options.loss_weights)
     max_val = max([m1, m2, m3])
-    plt.plot(range(max_val), range(max_val), 'r--', label='_')
+    plt.plot(list(range(max_val)), list(range(max_val)), 'r--', label='_')
     plt.xlabel("Loss w.r.t. ground truth")
     plt.ylabel("Loss w.r.t. other proposals")
     plt.legend()

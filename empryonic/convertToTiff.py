@@ -1,6 +1,9 @@
 #!/usr/bin/python
 
 from __future__ import unicode_literals
+from __future__ import division
+from builtins import range
+from past.utils import old_div
 import h5py
 import vigra
 import os
@@ -30,7 +33,7 @@ def convertToTiff(h5filename, stackdir, dataTransposed=True, threshold=100,
     # image slices are indexed. In theory, it should be floor(...)+1
     # instead of ceil(...)+1, but we err on the safe side due to possible
     # rounding errors.
-    fieldWidth=math.ceil(math.log(nSlices)/math.log(10))+1 
+    fieldWidth=math.ceil(old_div(math.log(nSlices),math.log(10)))+1 
     fileName = 'slice_%%0%du.tiff' % fieldWidth
     if not os.access(stackdir, os.F_OK):
         os.mkdir(stackdir)
@@ -40,7 +43,7 @@ def convertToTiff(h5filename, stackdir, dataTransposed=True, threshold=100,
         else:
             imSlice = data[:,:,i]
         imSlice[imSlice<threshold]=threshold
-        imSlice = (imSlice-threshold)/scaleFactor
+        imSlice = old_div((imSlice-threshold),scaleFactor)
         imSlice[imSlice>255]=255
         vigra.impex.writeImage(imSlice, stackdir+(fileName % i), \
                                dtype='UINT8')

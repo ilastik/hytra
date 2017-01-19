@@ -1,5 +1,10 @@
 from __future__ import print_function
 from __future__ import unicode_literals
+from __future__ import division
+from builtins import map
+from builtins import str
+from past.utils import old_div
+from builtins import object
 import unittest as _ut
 import numpy as np
 from empryonic import io as _io
@@ -303,7 +308,8 @@ def subset_by_correspondence(match_prev, match_curr, events, other_events):
         if translated and translated in other_events:
             ret.add(e)
 
-    map(reducer, events)
+    [reducer(x) for x in events]
+    # list(map(reducer, events))
     #for e in events:
     #    translated = e.translate(match_prev, match_curr)
     #    if translated and translated in list(other_events): # sets compare by hash, lists by eq
@@ -750,27 +756,27 @@ class TestTaxonomy( _ut.TestCase ):
 
     def test_precision( self ):
         t = Taxonomy(self.typical)
-        self.assertEqual(t.precision(type=int), 2./4.)
+        self.assertEqual(t.precision(type=int), old_div(2.,4.))
 
     def test_precision_given_visibility( self ):
         t = Taxonomy(self.typical)
-        self.assertEqual(t.precision_given_visibility(type=int), 2./3.)
+        self.assertEqual(t.precision_given_visibility(type=int), old_div(2.,3.))
 
     def test_recall( self ):
         t = Taxonomy(self.typical)
-        self.assertEqual(t.recall(type=int), 2./5.)
+        self.assertEqual(t.recall(type=int), old_div(2.,5.))
 
     def test_recall_given_visibility( self ):
         t = Taxonomy(self.typical)
-        self.assertEqual(t.recall_given_visibility(type=int), 2./4.)
+        self.assertEqual(t.recall_given_visibility(type=int), old_div(2.,4.))
 
     def test_f_measure( self ):
         t = Taxonomy(self.typical)
-        self.assertEqual(t.f_measure(type=int), 4./9.)
+        self.assertEqual(t.f_measure(type=int), old_div(4.,9.))
 
     def test_f_measure_given_visibility( self ):
         t = Taxonomy(self.typical)
-        self.assertEqual(t.f_measure_given_visibility(type=int), 4./7.)
+        self.assertEqual(t.f_measure_given_visibility(type=int), old_div(4.,7.))
 
 class Test_classify_event_sets( _ut.TestCase ):
     def test_typical( self ):
@@ -817,17 +823,17 @@ class Test_classify_event_sets( _ut.TestCase ):
         t = classify_event_sets(base_events, cont_events, prev_assoc, curr_assoc)
         import math
 
-        self.assertEqual(t.precision(), 2./4.)
-        self.assertEqual(t.recall(), 2./5.)
-        self.assertEqual(t.f_measure(), 4./9.)
+        self.assertEqual(t.precision(), old_div(2.,4.))
+        self.assertEqual(t.recall(), old_div(2.,5.))
+        self.assertEqual(t.f_measure(), old_div(4.,9.))
 
-        self.assertEqual(t.precision(Move), 1./3.)
+        self.assertEqual(t.precision(Move), old_div(1.,3.))
         self.assertEqual(t.recall(Move), 1.)
-        self.assertEqual(t.f_measure(Move), 2./4.)
+        self.assertEqual(t.f_measure(Move), old_div(2.,4.))
 
         self.assertEqual(t.precision(Division), 1.)
         self.assertEqual(t.recall(Division), 1.)
-        self.assertEqual(t.f_measure(Division), 2./2.)
+        self.assertEqual(t.f_measure(Division), old_div(2.,2.))
 
         self.assertTrue(math.isnan(t.precision(Appearance)))
         self.assertEqual(t.recall(Appearance), 0.)

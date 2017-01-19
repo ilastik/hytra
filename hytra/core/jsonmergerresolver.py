@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+from builtins import str
 import copy
 import logging
 import h5py
@@ -85,12 +86,12 @@ class JsonMergerResolver(hytra.core.mergerresolver.MergerResolver):
                 ndims, rawImages[str(intT)], mask, intT, self.raw_filename)
             frameFeatureItems = []
             for f in frameFeatureDicts:
-                frameFeatureItems = frameFeatureItems + f.items()
+                frameFeatureItems = frameFeatureItems + list(f.items())
             frameFeatures = dict(frameFeatureItems)
 
             # extract all features for this one object
             objectFeatureDict = {}
-            for k, v in frameFeatures.iteritems():
+            for k, v in list(frameFeatures.items()):
                 if k in ignoreNames:
                     continue
                 elif 'Polygon' in k:

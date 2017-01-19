@@ -4,6 +4,7 @@ a ground truth mapping, in the presence of multiple competing segmentation hypot
 '''
 from __future__ import unicode_literals
 
+from builtins import object
 import logging
 import numpy as np
 import attr
@@ -57,7 +58,7 @@ def trainDetectionClassifier(hypothesesGraph, gtFrameIdToGlobalIdsWithScoresMap,
     getLogger().debug("construct feature matrix")
     node = selectedSamples[0].node
     if selectedFeatures is None:
-        selectedFeatures = nodeTraxelMap[node].Features.keys()
+        selectedFeatures = list(nodeTraxelMap[node].Features.keys())
         forbidden = ['JaccardScores', 'id', 'filename', 'Polygon', 'detProb', 'divProb', 'com']
         forbidden += [f for f in selectedFeatures if f.count('_') > 0]
         for f in forbidden:

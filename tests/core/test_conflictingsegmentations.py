@@ -53,8 +53,8 @@ def test_twoSegmentations():
     assert(len(probabilityGenerator.TraxelsPerFrame[1]) == 3)
     assert(len(probabilityGenerator.TraxelsPerFrame[2]) == 3)
     assert(len(probabilityGenerator.TraxelsPerFrame[3]) == 4)
-    filenamesPerTraxel = [t.segmentationFilename for t in probabilityGenerator.TraxelsPerFrame[3].values()]
-    idsPerTraxel = [t.idInSegmentation for t in probabilityGenerator.TraxelsPerFrame[3].values()]
+    filenamesPerTraxel = [t.segmentationFilename for t in list(probabilityGenerator.TraxelsPerFrame[3].values())]
+    idsPerTraxel = [t.idInSegmentation for t in list(probabilityGenerator.TraxelsPerFrame[3].values())]
     assert(idsPerTraxel.count(1) == 2)
     assert(idsPerTraxel.count(2) == 2)
     assert(filenamesPerTraxel.count('tests/multiSegmentationHypothesesTestDataset/segmentation.h5') == 2)
@@ -117,7 +117,7 @@ def test_twoSegmentations():
             value = 0 
         numActivePerFrame.setdefault(timeframe, []).append(value) 
 
-    for _, v in numActivePerFrame.iteritems():
+    for _, v in list(numActivePerFrame.items()):
         assert(sum(v) == 2)        
 
     edgeFlow = 0

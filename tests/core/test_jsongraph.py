@@ -428,7 +428,7 @@ def test_loading_no_divisions():
     assert(links == [((0, 1), (1, 1)), ((2, 1), (3, 2)), ((2, 1), (3, 1)), ((1, 1), (2, 1)), ((0, 2), (1, 1))])
 
     # events per timestep
-    timesteps = traxelIdPerTimestepToUniqueIdMap.keys()
+    timesteps = list(traxelIdPerTimestepToUniqueIdMap.keys())
     mergersPerTimestep = jg.getMergersPerTimestep(mergers, timesteps)
     assert(mergersPerTimestep == {'0': {}, '1': {1: 2}, '2': {1: 2}, '3': {}})
 

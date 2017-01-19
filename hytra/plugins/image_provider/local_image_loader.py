@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+from builtins import range
 from hytra.pluginsystem import image_provider_plugin
 import hytra.util.axesconversion
 import numpy as np
@@ -47,7 +48,7 @@ class LocalImageLoader(image_provider_plugin.ImageProviderPlugin):
             elif 'LabelImage_v2' in PathInResource:
                 # loop though all blocks in h5 file and read the blockshape, and figure out whether this frame is in there.
                 labelImage = None
-                for block in h5file[PathInResource].values():
+                for block in list(h5file[PathInResource].values()):
                     assert 'blockSlice' in block.attrs
                     blockSlice = block.attrs['blockSlice']
                     bs = blockSlice[1:-1]
@@ -73,7 +74,7 @@ class LocalImageLoader(image_provider_plugin.ImageProviderPlugin):
         Works with both `PathInResource` styles: LabelImage and LabelImage_v2
         """
         with h5py.File(Resource, 'r') as h5file:
-            shape = h5file['/'.join(PathInResource.split('/')[:-1])].values()[0].shape[1:4]
+            shape = list(h5file['/'.join(PathInResource.split('/')[:-1])].values())[0].shape[1:4]
             self.shape = shape
             return shape
 
@@ -86,7 +87,7 @@ class LocalImageLoader(image_provider_plugin.ImageProviderPlugin):
         Return tuple of (first frame, last frame)
         """
         with h5py.File(Resource, 'r') as h5file:
-            maxTime = len(h5file['/'.join(PathInResource.split('/')[:-1])].keys())
+            maxTime = len(list(h5file['/'.join(PathInResource.split('/')[:-1])].keys()))
             return (0, maxTime)
 
     def exportLabelImage(self, labelimage, timeframe, Resource, PathInResource):
@@ -100,7 +101,7 @@ class LocalImageLoader(image_provider_plugin.ImageProviderPlugin):
             elif 'LabelImage_v2' in PathInResource:
                 # loop though all blocks in h5 file and read the blockshape, and figure out whether this frame is in there.
                 labelImage = None
-                if PathInResource in h5file and len(h5file[PathInResource].keys()) > 0:
+                if PathInResource in h5file and len(list(h5file[PathInResource].keys())) > 0:
                     lastBlock = sorted(h5file[PathInResource].keys())[-1]
                     lastBlockNr = int(lastBlock.replace('block', ''))
                 else:

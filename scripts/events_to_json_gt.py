@@ -2,6 +2,8 @@ from __future__ import print_function
 from __future__ import unicode_literals
 # pythonpath modification to make hytra available
 # for import without requiring it to be installed
+from builtins import str
+from builtins import range
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
@@ -173,7 +175,7 @@ if __name__ == "__main__":
 
         # add all nodes as two networkx nodes with an arc between them
         # that has the capacity of the detection's cell count
-        for obj, val in objectCounts.iteritems():
+        for obj, val in objectCounts.items():
             graph.add_node(sourceNodeName(obj))
             graph.add_node(targetNodeName(obj))
             graph.add_edge(sourceNodeName(obj), targetNodeName(obj), capacity=int(val), cost=0)
@@ -192,7 +194,7 @@ if __name__ == "__main__":
                 graph.add_edge('source', targetNodeName(obj), capacity=1, cost=0)
 
         # add move edges with their transition cost (assume weight = 1 as we do not include any other costs)
-        for target, sources in activeIncomingLinks.iteritems():
+        for target, sources in activeIncomingLinks.items():
             for s in sources:
                 cost = -1.0
                 found = False
@@ -220,7 +222,7 @@ if __name__ == "__main__":
         # flowCost, flowDict = nx.capacity_scaling(graph, demand='demand', capacity='capacity', weight='cost')
 
         # translate result back to our original edges
-        for target, sources in activeIncomingLinks.iteritems():
+        for target, sources in activeIncomingLinks.items():
             for s in sources:
                 try:
                     addLinkToJson(s, target, flowDict[targetNodeName(s)][sourceNodeName(target)])
@@ -230,7 +232,7 @@ if __name__ == "__main__":
                     pass
 
         # add all object counts to JSON, which have possibly been updated according to missing links in model
-        for obj, val in objectCounts.iteritems():
+        for obj, val in objectCounts.items():
             detection = {}
             detection['id'] = int(obj)
             fixedValue = flowDict[sourceNodeName(obj)][targetNodeName(obj)]

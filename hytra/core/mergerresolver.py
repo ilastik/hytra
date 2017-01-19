@@ -1,4 +1,9 @@
 from __future__ import unicode_literals
+from __future__ import division
+from builtins import str
+from builtins import range
+from builtins import object
+from past.utils import old_div
 import logging
 import itertools
 import os
@@ -55,7 +60,7 @@ class MergerResolver(object):
             
             # Add division parameter to nodes
             # TODO: Add the division parameter only to nodes that contain divisions (we're already doing these with 'count')
-            lastframe = max(divisionsPerTimestep.keys(), key=int)
+            lastframe = max(list(divisionsPerTimestep.keys()), key=int)
             for node in self.unresolvedGraph.nodes_iter(): 
                 timestep, idx = node
 
@@ -80,7 +85,7 @@ class MergerResolver(object):
                 ''' add a node to the unresolved graph and fill in the properties `division` and `count` '''
                 intT, idx = node
     
-                lastframe = max(divisionsPerTimestep.keys(), key=int)
+                lastframe = max(list(divisionsPerTimestep.keys()), key=int)
                 if divisionsPerTimestep is not None and int(intT) < int(lastframe):
                     division = idx in divisionsPerTimestep[str(intT + 1)] # +1 screams for lastframe condition.
                 else:
@@ -191,7 +196,7 @@ class MergerResolver(object):
                                 self.resolvedGraph.add_edge(e[0], newNode)
 
                     self.resolvedGraph.remove_node(node)
-                    self.unresolvedGraph.node[node]['newIds'] = range(nextObjectId, nextObjectId + count)
+                    self.unresolvedGraph.node[node]['newIds'] = list(range(nextObjectId, nextObjectId + count))
                     nextObjectId += count
 
                 # each unresolved node stores its fitted shape(s) to be used
@@ -246,7 +251,7 @@ class MergerResolver(object):
                 probs = transitionClassifier.predictProbabilities(featVec)[0]
             else:
                 dist = np.linalg.norm(featuresAtDest['RegionCenter'] - featuresAtSrc['RegionCenter'])
-                prob = np.exp(-dist / transitionParameter)
+                prob = np.exp(old_div(-dist, transitionParameter))
                 probs = [1.0 - prob, prob]
 
             trackingGraph.addLinkingHypotheses(src, dest, listify(negLog(probs)))
@@ -389,7 +394,7 @@ class MergerResolver(object):
         traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(self.model)
         # timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
         # there might be empty frames. We want them as output too.
-        timesteps = [str(t).decode("utf-8") for t in range(int(min(traxelIdPerTimestepToUniqueIdMap.keys())) , int(max(traxelIdPerTimestepToUniqueIdMap.keys()))+1 )]
+        timesteps = [str(t) for t in range(int(min(traxelIdPerTimestepToUniqueIdMap.keys())) , int(max(traxelIdPerTimestepToUniqueIdMap.keys()))+1 )]
 
         mergers, detections, links, divisions = hytra.core.jsongraph.getMergersDetectionsLinksDivisions(self.result, uuidToTraxelMap)
 

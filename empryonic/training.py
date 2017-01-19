@@ -2,6 +2,9 @@
 
 from __future__ import print_function
 from __future__ import unicode_literals
+from builtins import str
+from builtins import range
+from builtins import object
 from enthought.mayavi import mlab
 import h5py
 import numpy as np
@@ -23,7 +26,7 @@ one. The labels are saved as plain text.
 
 """
 
-class training():
+class training(object):
     """
     This class allows to view the segmentation and tracking of two adjacent time frames.
     

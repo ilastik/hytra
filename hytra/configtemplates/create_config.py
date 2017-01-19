@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+from builtins import zip
 import argparse
 import jinja2
 import itertools
@@ -25,7 +26,7 @@ if __name__ == '__main__':
     options, unknown = parser.parse_known_args()
 
     assert(len(unknown) % 2 == 0)
-    dictParameters = zip(unknown[0::2], unknown[1::2])
+    dictParameters = list(zip(unknown[0::2], unknown[1::2]))
 
     with open(options.template_filename, 'r') as f:
         template_string = f.read()

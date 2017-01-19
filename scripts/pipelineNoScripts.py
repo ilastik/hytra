@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 
 # pythonpath modification to make hytra available
 # for import without requiring it to be installed
+from builtins import zip
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
@@ -32,7 +33,7 @@ def convertToDict(unknown):
             values.append(True)
         else:
             values.append(unknown[i + 1])
-    return dict(zip(keys, values))
+    return dict(list(zip(keys, values)))
 
 def constructFov(shape, t0, t1, scale=[1, 1, 1]):
     [xshape, yshape, zshape] = shape

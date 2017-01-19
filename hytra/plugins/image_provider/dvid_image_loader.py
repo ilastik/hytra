@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+from builtins import str
 from hytra.pluginsystem import image_provider_plugin
 import numpy as np
 import json_tricks as json

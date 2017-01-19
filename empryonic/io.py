@@ -1,6 +1,10 @@
 from __future__ import print_function
 from __future__ import absolute_import
 from __future__ import unicode_literals
+from builtins import map
+from builtins import str
+from builtins import range
+from builtins import object
 import os.path as _path
 
 import h5py
@@ -36,7 +40,7 @@ def __loadDatasets( filenames, h5path):
     else:
         def loader( filename ):
             return __loadDataset(filename, h5path)
-        return map(loader, filenames)
+        return list(map(loader, filenames))
 
 
 def loadRaw( filenames, h5path = "raw/volume"):
@@ -69,13 +73,13 @@ def iterSegmentation( filenames, h5path = "raw/volume" ):
 
 
 
-def filenames(path, range = xrange(1,11)):
+def filenames(path, range = range(1,11)):
     '''Generate a list of filenames from a template.
 
     path: a filename template; for instance "/data/file_%03d.h5"
     range: list of numbers
     '''
-    return map(lambda i: path % i, range)
+    return [path % i for i in range]
 
 
 
@@ -103,7 +107,7 @@ def tracklet_from_labelgroup( h5_labelgroup, timestep = None, position = 'mean',
         raise ValueError('tracklet_from_labelgroup: invalid position: ' + str(position))
     pos_feat = 'com' if position == 'mean' else 'intmaxpos'
 
-    if pos_feat not in h5_labelgroup.keys():
+    if pos_feat not in list(h5_labelgroup.keys()):
         raise Exception(position + " feature not present in label group " + str(h5_labelgroup))
 
     # read out coordinates
@@ -193,12 +197,12 @@ class LineageH5( h5py.File ):
         self._z_scale = 1.0
 
     def init_tracking( self, div=np.empty(0), mov=np.empty(0), dis=np.empty(0), app=np.empty(0)):
-        if "tracking" in self.keys():
+        if "tracking" in list(self.keys()):
             del self["tracking"]
         self.create_group("tracking")
 
     def has_tracking( self ):
-        if "tracking" in self.keys():
+        if "tracking" in list(self.keys()):
             return True
         else:
             return False
@@ -210,31 +214,31 @@ class LineageH5( h5py.File ):
         self.update_moves(new)
 
     def update_moves( self, mov_pairs ):
-        if _path.basename(self.mov_ds) in self[self.track_gn].keys():
+        if _path.basename(self.mov_ds) in list(self[self.track_gn].keys()):
             del self[self.mov_ds]
         if len(mov_pairs) > 0:
             self[self.track_gn].create_dataset("Moves", data=np.asarray( mov_pairs, dtype=np.int32))
 
     def get_moves( self ):
-        if self.has_tracking() and _path.basename(self.mov_ds) in self[self.track_gn].keys():
+        if self.has_tracking() and _path.basename(self.mov_ds) in list(self[self.track_gn].keys()):
             return self[self.mov_ds].value
         else:
             return np.empty(0)
 
     def get_mergers( self ):
-        if self.has_tracking() and _path.basename(self.merg_ds) in self[self.track_gn].keys():
+        if self.has_tracking() and _path.basename(self.merg_ds) in list(self[self.track_gn].keys()):
             return self[self.merg_ds].value
         else:
             return np.empty(0)
 
     def get_multiFrameMoves( self ):
-         if self.has_tracking() and _path.basename(self.multi_ds) in self[self.track_gn].keys():
+         if self.has_tracking() and _path.basename(self.multi_ds) in list(self[self.track_gn].keys()):
             return self[self.multi_ds].value
          else:
             return np.empty(0)
 
     def get_move_energies( self ):
-        if _path.basename(self.mov_ener_ds) in self[self.track_gn].keys():
+        if _path.basename(self.mov_ener_ds) in list(self[self.track_gn].keys()):
             e = self[self.mov_ener_ds].value
             if isinstance(e, np.ndarray):
                 return e
@@ -245,19 +249,19 @@ class LineageH5( h5py.File ):
         
 
     def get_divisions( self ):
-        if self.has_tracking() and _path.basename(self.div_ds) in self[self.track_gn].keys():
+        if self.has_tracking() and _path.basename(self.div_ds) in list(self[self.track_gn].keys()):
             return self[self.div_ds].value
         else:
             return np.empty(0)
 
     def update_divisions( self, div_triples ):
-        if _path.basename(self.div_ds) in self[self.track_gn].keys():
+        if _path.basename(self.div_ds) in list(self[self.track_gn].keys()):
             del self[self.div_ds]
         if len(div_triples) > 0:
             self[self.track_gn].create_dataset("Splits", data=np.asarray( div_triples, dtype=np.int32))
 
     def get_division_energies( self ):
-        if _path.basename(self.div_ener_ds) in self[self.track_gn].keys():
+        if _path.basename(self.div_ener_ds) in list(self[self.track_gn].keys()):
             e = self[self.div_ener_ds].value
             if isinstance(e, np.ndarray):
                 return e
@@ -267,7 +271,7 @@ class LineageH5( h5py.File ):
             return np.empty(0)
 
     def get_disappearances( self ):
-        if self.has_tracking() and _path.basename(self.dis_ds) in self[self.track_gn].keys():
+        if self.has_tracking() and _path.basename(self.dis_ds) in list(self[self.track_gn].keys()):
             dis = self[self.dis_ds].value
             if isinstance(dis, np.ndarray):
                 return dis
@@ -277,13 +281,13 @@ class LineageH5( h5py.File ):
             return np.empty(0)
 
     def update_disappearances( self, dis_singlets ):
-        if _path.basename(self.dis_ds) in self[self.track_gn].keys():
+        if _path.basename(self.dis_ds) in list(self[self.track_gn].keys()):
             del self[self.dis_ds]
         if len(dis_singlets) > 0:
             self[self.track_gn].create_dataset("Disappearances", data=np.asarray( dis_singlets, dtype=np.int32))
         
     def get_disappearance_energies( self ):
-        if _path.basename(self.dis_ener_ds) in self[self.track_gn].keys():
+        if _path.basename(self.dis_ener_ds) in list(self[self.track_gn].keys()):
             e = self[self.dis_ener_ds].value
             if isinstance(e, np.ndarray):
                 return e
@@ -294,7 +298,7 @@ class LineageH5( h5py.File ):
 
 
     def get_appearances( self ):
-        if self.has_tracking() and _path.basename(self.app_ds) in self[self.track_gn].keys():
+        if self.has_tracking() and _path.basename(self.app_ds) in list(self[self.track_gn].keys()):
             app = self[self.app_ds].value
             if isinstance(app, np.ndarray):
                 return app
@@ -304,13 +308,13 @@ class LineageH5( h5py.File ):
             return np.empty(0)
 
     def update_appearances( self, app_singlets ):
-        if _path.basename(self.app_ds) in self[self.track_gn].keys():
+        if _path.basename(self.app_ds) in list(self[self.track_gn].keys()):
             del self[self.app_ds]
         if len(app_singlets) > 0:
             self[self.track_gn].create_dataset("Appearances", data=np.asarray( app_singlets, dtype=np.int32))
 
     def get_appearance_energies( self ):
-        if _path.basename(self.app_ener_ds) in self[self.track_gn].keys():
+        if _path.basename(self.app_ener_ds) in list(self[self.track_gn].keys()):
             e = self[self.app_ener_ds].value
             if isinstance(e, np.ndarray):
                 return e
@@ -356,7 +360,7 @@ class LineageH5( h5py.File ):
         if prediction_threshold:
             print("LineageH5::cTraxels: predicition threshold %f" % prediction_threshold)
         # probe for objects group (higher io performance than features group)
-        if 'objects' in self.keys():
+        if 'objects' in list(self.keys()):
             return self._cTraxels_from_objects_group( as_python_list, prediction_threshold )
         # use old 'features' format for traxels
         else:
@@ -376,7 +380,7 @@ class LineageH5( h5py.File ):
         elif prediction_threshold:
             raise Exception("prediction_threshold set, but no prediction dataset found")
         features = {}
-        for name in features_g.keys():
+        for name in list(features_g.keys()):
             features[name] = features_g[name].value
 
         if as_python_list:
@@ -395,7 +399,7 @@ class LineageH5( h5py.File ):
                 tr.set_z_scale(self._z_scale)
                 tr.Id = int(ids[idx])
                 tr.Timestep = self.timestep
-                for name_value in features.items():
+                for name_value in list(features.items()):
                     tr.add_feature_array(str(name_value[0]), len(name_value[1][idx]))
                     for i,v in enumerate(name_value[1][idx]):
                         tr.set_feature_value(str(name_value[0]), i, float(v))
@@ -419,7 +423,7 @@ class LineageH5( h5py.File ):
             def __init__( self, invalid_labels=[], timestep=0):
                 self.current_ctracklet = None
                 self.timestep = timestep
-                self.invalid_labels = map(int, invalid_labels )
+                self.invalid_labels = list(map(int, invalid_labels ))
                 
             def __call__(self, name, obj):
                 # name is the full path inside feature group

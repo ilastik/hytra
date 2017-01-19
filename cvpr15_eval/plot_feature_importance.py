@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 from __future__ import print_function
 from __future__ import unicode_literals
+from __future__ import division
+from builtins import zip
+from builtins import range
+from past.utils import old_div
 import os.path
 import sys
 
@@ -74,20 +78,20 @@ if __name__ == "__main__":
     plt.figure()
     ax = plt.axes()
 
-    weights = zip(*weightList)
+    weights = list(zip(*weightList))
 
     if options.non_zero:
-        weights,feature_names = zip(*[d for d in zip(weights,feature_names) if np.any(np.array(d[0])>options.limit) ])
+        weights,feature_names = list(zip(*[d for d in zip(weights,feature_names) if np.any(np.array(d[0])>options.limit) ]))
 
     if options.sort:
         sortingmeasure = [np.sum(np.array(d)) for d in weights]
-        weights,feature_names = zip(*[(x,f) for (s,x,f) in sorted(zip(sortingmeasure,weights,feature_names), key=lambda pair: pair[0],reverse=True)])
+        weights,feature_names = list(zip(*[(x,f) for (s,x,f) in sorted(zip(sortingmeasure,weights,feature_names), key=lambda pair: pair[0],reverse=True)]))
 
-    width = 1./(len(weightList)+1)
+    width = old_div(1.,(len(weightList)+1))
     offset = -0.5 * width * (NumberOfWeightFiles-1)
     x_pos = 1.0 * np.arange(len(feature_names))
     l = ''
-    for i in xrange(NumberOfWeightFiles):
+    for i in range(NumberOfWeightFiles):
         if len(options.legend) > 0:
             l = labels[i]
         plt.bar(x_pos+offset, [w[i] for w in weights], color=colors[i],align='center', width=width,log=options.logscale,linewidth=0,label=l)

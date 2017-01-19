@@ -1,6 +1,8 @@
 from __future__ import unicode_literals
 # pythonpath modification to make hytra and empryonic available 
 # for import without requiring it to be installed
+from builtins import str
+from builtins import range
 import os
 import sys
 sys.path.insert(0, os.path.abspath('../..'))
@@ -26,7 +28,7 @@ def save_frame_to_tif(timestep, label_image, options):
         filename = options.output_dir + '/mask' + format(timestep, "0{}".format(options.filename_zero_padding)) + '.tif'
     label_image = np.swapaxes(label_image, 0, 1)
     if len(label_image.shape) == 2: # 2d
-        vigra.impex.writeImage(label_image.astype('uint16'), str(filename))
+        vigra.impex.writeImage(label_image.astype('uint16'), bytes(filename))
     else: # 3D
         label_image = np.transpose(label_image, axes=[2, 0, 1])
         tifffile.imsave(filename, label_image.astype('uint16'))
@@ -44,7 +46,7 @@ def save_tracks(tracks, options):
     else:
         filename = options.output_dir + '/res_track.txt'
     with open(filename, 'wt') as f:
-        for key, value in tracks.iteritems():
+        for key, value in list(tracks.items()):
             if key ==  None:
                 continue
             # our track value contains parent, begin, end
@@ -58,7 +60,7 @@ def remap_label_image(label_image, mapping):
     returns a new label image with remapped object pixel values 
     """
     remapped_label_image = np.zeros(label_image.shape, dtype=label_image.dtype)
-    for dest, src in mapping.iteritems():
+    for dest, src in list(mapping.items()):
         remapped_label_image[label_image == dest] = src
 
     return remapped_label_image
@@ -120,7 +122,7 @@ if __name__ == "__main__":
         trackId = hypothesesGraph._graph.node[n]['trackId']
         if trackId is not None:
             frameMapping[n[1]] = trackId
-        if trackId in tracks.keys():
+        if trackId in list(tracks.keys()):
             tracks[trackId].append(n[0])
         else:
             tracks[trackId] = [n[0]]
@@ -134,14 +136,14 @@ if __name__ == "__main__":
     # write res_track.txt
     getLogger().debug("Writing track text file")
     trackDict = {}
-    for trackId, timestepList in tracks.iteritems():
+    for trackId, timestepList in list(tracks.items()):
         timestepList.sort()
-        if trackId in trackParents.keys():
+        if trackId in list(trackParents.keys()):
             parent = trackParents[trackId]
         else:
             parent = 0
         # jumping over time frames, so creating 
-        if trackId in gapTrackParents.keys():
+        if trackId in list(gapTrackParents.keys()):
             if gapTrackParents[trackId] != trackId:
                 parent = gapTrackParents[trackId]
                 getLogger().info("Jumping over one time frame in this link: trackid: {}, parent: {}, time: {}".format(trackId, parent, min(timestepList)))
@@ -159,7 +161,7 @@ if __name__ == "__main__":
         label_image = imageProvider.getLabelImageForFrame(args.label_image_filename, args.label_image_path, timeframe)
 
         # check if frame is empty
-        if timeframe in mappings.keys():
+        if timeframe in list(mappings.keys()):
             remapped_label_image = remap_label_image(label_image, mappings[timeframe])
             save_frame_to_tif(timeframe, remapped_label_image, args)
         else:

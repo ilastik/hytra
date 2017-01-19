@@ -1,6 +1,9 @@
 #!/usr/bin/python
 from __future__ import print_function
 from __future__ import unicode_literals
+from __future__ import division
+from builtins import range
+from past.utils import old_div
 import operator
 from h5py import h5s, h5d, h5f, h5g
 import numpy as np
@@ -134,11 +137,11 @@ def visualizeGraph( fileStr, fileNrs, dotNameLinear, penWidthNodes=2, penWidthEd
         allCellStrs.append( (cellStr2, cii2[0], cii2[1], cii2[2]) )
         newLivingCells[ splits[iS, 1] ] = (cellStr1, [cii1[2]])
         ints1 = motherInts + [cii1[2]]
-        meanInt1 = reduce(operator.add, ints1) / len(ints1)
+        meanInt1 = old_div(reduce(operator.add, ints1), len(ints1))
         edgesLin.append(motherStr + ' -- ' + cellStr1 + ' [penwidth=%f];' % (meanInt1*penWidthEdges))
         newLivingCells[ splits[iS, 2] ] = (cellStr2, [cii2[2]])
         ints2 = motherInts + [cii2[2]]
-        meanInt2 = reduce(operator.add, ints2) / len(ints2)
+        meanInt2 = old_div(reduce(operator.add, ints2), len(ints2))
         edgesLin.append(motherStr + ' -- ' + cellStr2 + ' [penwidth=%f];' % (meanInt2*penWidthEdges))
         cellIdx = cellIdx + 2
     if 'Appearances' in gid:
@@ -157,7 +160,7 @@ def visualizeGraph( fileStr, fileNrs, dotNameLinear, penWidthNodes=2, penWidthEd
         cellStr = 'D%d_%d' % (fn, disapps[iDA])
         print(cellStr + ' [shape=point, penwidth=%f];' % (minIndex*penWidthNodes), file=outLin)
         (motherStr, motherInts) = livingCells[ disapps[iDA] ]
-        meanInt = reduce(operator.add, motherInts) / len(motherInts)
+        meanInt = old_div(reduce(operator.add, motherInts), len(motherInts))
         edgesLin.append(motherStr + ' -- ' + cellStr + ' [penwidth=%f];' % (meanInt*penWidthEdges) )
         cellIdx = cellIdx + 1
     fid.close()
@@ -168,11 +171,11 @@ def visualizeGraph( fileStr, fileNrs, dotNameLinear, penWidthNodes=2, penWidthEd
     livingCells = newLivingCells
     fnPrev = fn
   print('subgraph end {\nrank=same;', file=outLin)
-  for k in livingCells.keys():
+  for k in list(livingCells.keys()):
     cellStr = 'L%d' % k
     print(cellStr + ' [shape=none, penwidth=%f];' % (2*minIndex*penWidthNodes), file=outLin)
     (motherStr, motherInts) = livingCells[k]
-    meanInt = reduce(operator.add, motherInts)/len(motherInts)
+    meanInt = old_div(reduce(operator.add, motherInts),len(motherInts))
     edgesLin.append(motherStr + ' -- ' + cellStr + ' [penwidth=%f];' % (0.2*penWidthEdges) )
   print('}\n', file=outLin)
   for e in edgesLin:
@@ -188,12 +191,12 @@ if __name__ == '__main__':
   masterdir = '/home/fkaster/data_animal/gc/version2/';
   nCellsFileStr = masterdir + 'evaluation/nCells2.txt'
   fileStr = masterdir + '%04d_z-interpolation=2.h5'
-  endNrs = range(10, 61, 10)
+  endNrs = list(range(10, 61, 10))
   intensWindow = (200, 2000)
   rangeStart = 0
   nCells = dict()
   for en in endNrs:
-    fileNrs = range(rangeStart, en)  
+    fileNrs = list(range(rangeStart, en))  
     dotNameLin = masterdir + 'evaluation/hciLineageTree_%d.dot' % en
     currNCells = visualizeGraph(fileStr, fileNrs, dotNameLin, 10, 50, intensWindow, True) 
     nCells[en] = currNCells
