@@ -707,8 +707,6 @@ if __name__ == "__main__":
     else:
         options.avg_obj_size = obj_size
 
-    
-    
     # load traxelstore
     ts, fs, ndim, t0, t1, probGenerator, transitionClassifier = loadTraxelstoreAndTransitionClassifier(options, ilp_fn,
                                                                                                        time_range,

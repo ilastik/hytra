@@ -76,7 +76,7 @@ class JsonMergerResolver(hytra.core.mergerresolver.MergerResolver):
         getLogger().info("Data has dimensionality {}".format(ndims))
         for node in self.resolvedGraph.nodes_iter():
             intT, idx = node
-            if isinstance(idx, str) and idx.startswith('div-'):
+            if str(idx).startswith('div-'):
                 continue
 
             # mask out this object only and compute features
