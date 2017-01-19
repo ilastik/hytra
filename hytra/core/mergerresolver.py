@@ -102,29 +102,10 @@ class MergerResolver(object):
 
     def _prepareResolvedGraph(self):
         """
-        Split up the division nodes in the `unresolvedGraph` if they have two outgoing links
-        and add the duplicates to the resolved graph, which is apart from that a copy of
-        the `unresolvedGraph`.
-
+        
         ** returns ** the `resolvedGraph`
         """
         self.resolvedGraph = self.unresolvedGraph.copy()
-        numDivisionNodes = 0
-        for n in self.unresolvedGraph:
-            if self.unresolvedGraph.node[n]['division'] and len(self.unresolvedGraph.out_edges(n)) == 2:
-                # create a duplicate node, make one link start from there
-                duplicate = (n[0], 'div-{}'.format(numDivisionNodes))
-                numDivisionNodes += 1
-                self.resolvedGraph.add_node(duplicate, division=False, count=1)
-
-                # pick only one link
-                dest = self.unresolvedGraph.out_edges(n)[0][1]
-                self.resolvedGraph.add_edge(duplicate, dest)
-                self.resolvedGraph.remove_edge(n, dest)
-
-                # store node references
-                self.resolvedGraph.node[duplicate]['origin'] = n
-                self.resolvedGraph.node[n]['duplicate'] = duplicate
 
         return self.resolvedGraph
 
@@ -220,11 +201,20 @@ class MergerResolver(object):
         trackingGraph = JsonTrackingGraph()
         for node in self.resolvedGraph.nodes_iter():
             additionalFeatures = {}
+
+            # nodes with no in/out
+            numStates = 2
             if len(self.resolvedGraph.in_edges(node)) == 0:
-                additionalFeatures['appearanceFeatures'] = [[0], [0]]
+                # division nodes with no incoming arcs offer 2 units of flow without the need to de-merge
+                if self.unresolvedGraph.node[node]['division'] and len(self.unresolvedGraph.out_edges(node)) == 2:
+                    numStates = 3
+                additionalFeatures['appearanceFeatures'] = [[0]] * numStates
             if len(self.resolvedGraph.out_edges(node)) == 0:
+                assert(numStates == 2) # division nodes with no incoming should have outgoing, or they shouldn't show up in resolved graph
                 additionalFeatures['disappearanceFeatures'] = [[0], [0]]
-            uuid = trackingGraph.addDetectionHypotheses([[0], [1]], **additionalFeatures)
+
+            features = [[0]] + [[1]] * (numStates - 1)
+            uuid = trackingGraph.addDetectionHypotheses(features, **additionalFeatures)
             self.resolvedGraph.node[node]['id'] = uuid
 
         for edge in self.resolvedGraph.edges_iter():
