@@ -175,6 +175,26 @@ def test_boxesTestDataset():
     with open('../tests/boxesTestDataset/ctc_RES/res_track.txt', 'r') as resultFile:
         assert(resultFile.read() == '1 0 4 0\n2 0 6 0\n3 0 6 0\n4 5 6 1\n5 5 6 1\n')
 
+def test_divisionMergerTestDataset():
+    check_call(["python",
+                "../hytra/configtemplates/create_config.py",
+                "--in",
+                "../tests/divisionMergerTestDataset/config_template.ini",
+                "--out",
+                "../tests/divisionMergerTestDataset/test_config.ini",
+                "embryonicDir",
+                ".."
+                ])
+    check_call(["python", "pipeline.py", "--config", "../tests/divisionMergerTestDataset/test_config.ini"])
+
+    expectedIds = [[0, 1, 2, 3], [0, 1, 3, 4, 5], [0, 1, 3, 4, 5]]
+    for f in range(3):
+        frame = vigra.impex.readImage(b'../tests/divisionMergerTestDataset/ctc_RES/mask00{}.tif'.format(f))
+        assert(np.all(np.unique(frame) == expectedIds[f]))
+
+    with open('../tests/divisionMergerTestDataset/ctc_RES/res_track.txt', 'r') as resultFile:
+        assert(resultFile.read() == '1 0 2 0\n2 0 0 0\n3 0 2 0\n4 1 2 2\n5 1 2 2\n')
+
 if __name__ == "__main__":
     test_divisionTestDataset()
     test_mergerResolvingTestDataset()
@@ -183,3 +203,4 @@ if __name__ == "__main__":
     test_noscripts_mergerResolvingTestDataset()
     test_skipLinksTestDataset_withoutTracklets()
     test_boxesTestDataset()
+    test_divisionMergerTestDataset()
