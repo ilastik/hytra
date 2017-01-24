@@ -188,61 +188,63 @@ class HypothesesGraph(object):
         # because an empty frame does not create a key in the dictionary. E.g. for one frame in the middle of the
         # dataset, we won't access the last one.
         # Idea: take the max key in the dict. Remember, frame numbering starts with 0.
-        numFrames = max(probabilityGenerator.TraxelsPerFrame.keys()) + 1
+        frameMax = max(probabilityGenerator.TraxelsPerFrame.keys())
+        frameMin = min(probabilityGenerator.TraxelsPerFrame.keys())
+        numFrames = frameMax - frameMin + 1
         progressBar = ProgressBar(stop=numFrames*skipLinks)
         progressBar.show(0)
         
         for frame in range(numFrames):
             if frame > 0:
                 del kdTreeFrames[0] # this is the current frame
-                if frame + skipLinks < numFrames and frame + skipLinks in probabilityGenerator.TraxelsPerFrame.keys():
-                    kdTreeFrames.append(self._buildFrameKdTree(probabilityGenerator.TraxelsPerFrame[frame + skipLinks]))
-                    self._addNodesForFrame(frame + skipLinks, probabilityGenerator.TraxelsPerFrame[frame + skipLinks])
+                if frame + skipLinks < numFrames and frameMin + frame + skipLinks in probabilityGenerator.TraxelsPerFrame.keys():
+                    kdTreeFrames.append(self._buildFrameKdTree(probabilityGenerator.TraxelsPerFrame[frameMin + frame + skipLinks]))
+                    self._addNodesForFrame(frameMin + frame + skipLinks, probabilityGenerator.TraxelsPerFrame[frameMin + frame + skipLinks])
             else:
                 for i in range(0, skipLinks+1):
-                    if frame + i in probabilityGenerator.TraxelsPerFrame.keys(): # empty frame
-                        kdTreeFrames[i] = self._buildFrameKdTree(probabilityGenerator.TraxelsPerFrame[frame + i])
-                        self._addNodesForFrame(frame + i, probabilityGenerator.TraxelsPerFrame[frame + i])
+                    if frameMin + frame + i in probabilityGenerator.TraxelsPerFrame.keys(): # empty frame
+                        kdTreeFrames[i] = self._buildFrameKdTree(probabilityGenerator.TraxelsPerFrame[frameMin + frame + i])
+                        self._addNodesForFrame(frameMin + frame + i, probabilityGenerator.TraxelsPerFrame[frameMin + frame + i])
 
             # find forward links
-            if frame in probabilityGenerator.TraxelsPerFrame.keys(): # 'frame' could be empty
-                for obj, traxel in probabilityGenerator.TraxelsPerFrame[frame].iteritems():
+            if frameMin + frame in probabilityGenerator.TraxelsPerFrame.keys(): # 'frame' could be empty
+                for obj, traxel in probabilityGenerator.TraxelsPerFrame[frameMin + frame].iteritems():
                     divisionPreservingNumNearestNeighbors = numNearestNeighbors
                     if divisionPreservingNumNearestNeighbors < 2 \
                             and withDivisions \
                             and self._traxelMightDivide(traxel, divisionThreshold):
                         divisionPreservingNumNearestNeighbors = 2
                     for i in range(1, skipLinks+1):
-                        if frame + i < numFrames and frame + i in probabilityGenerator.TraxelsPerFrame.keys():
+                        if frame + i < numFrames and frameMin + frame + i in probabilityGenerator.TraxelsPerFrame.keys():
                             neighbors = (self._findNearestNeighbors(kdTreeFrames[i],
                                                                traxel,
                                                                divisionPreservingNumNearestNeighbors,
                                                                maxNeighborDist))
                             # type(neighbors) is list
                             for n in neighbors:
-                                checkNodeWhileAddingLinks(frame, obj)
-                                checkNodeWhileAddingLinks(frame + i, n)
-                                self._graph.add_edge((frame, obj), (frame + i, n))
-                                self._graph.edge[frame, obj][frame + i, n]['src'] = self._graph.node[(frame, obj)]['id']
-                                self._graph.edge[frame, obj][frame + i, n]['dest'] = self._graph.node[(frame + i, n)]['id']
+                                checkNodeWhileAddingLinks(frameMin + frame, obj)
+                                checkNodeWhileAddingLinks(frameMin + frame + i, n)
+                                self._graph.add_edge((frameMin + frame, obj), (frameMin + frame + i, n))
+                                self._graph.edge[frameMin + frame, obj][frameMin + frame + i, n]['src'] = self._graph.node[(frameMin + frame, obj)]['id']
+                                self._graph.edge[frameMin + frame, obj][frameMin + frame + i, n]['dest'] = self._graph.node[(frameMin + frame + i, n)]['id']
 
             # find backward links
             if forwardBackwardCheck:
                 for i in range(1, skipLinks+1):
                     if frame + i < numFrames:
-                        if frame + i in probabilityGenerator.TraxelsPerFrame.keys(): # empty frame
-                            for obj, traxel in probabilityGenerator.TraxelsPerFrame[frame + i].iteritems():
+                        if frameMin + frame + i in probabilityGenerator.TraxelsPerFrame.keys(): # empty frame
+                            for obj, traxel in probabilityGenerator.TraxelsPerFrame[frameMin + frame + i].iteritems():
                                 if kdTreeFrames[0] is not None:
                                     neighbors = (self._findNearestNeighbors(kdTreeFrames[0],
                                                                        traxel,
                                                                        numNearestNeighbors,
                                                                        maxNeighborDist))
                                     for n in neighbors:
-                                        checkNodeWhileAddingLinks(frame, n)
-                                        checkNodeWhileAddingLinks(frame + i, obj)
-                                        self._graph.add_edge((frame, n), (frame + i, obj))
-                                        self._graph.edge[frame, n][frame + i, obj]['src'] = self._graph.node[(frame, n)]['id']
-                                        self._graph.edge[frame, n][frame + i, obj]['dest'] = self._graph.node[(frame + i, obj)]['id']
+                                        checkNodeWhileAddingLinks(frameMin + frame, n)
+                                        checkNodeWhileAddingLinks(frameMin + frame + i, obj)
+                                        self._graph.add_edge((frameMin + frame, n), (frameMin + frame + i, obj))
+                                        self._graph.edge[frameMin + frame, n][frameMin + frame + i, obj]['src'] = self._graph.node[(frameMin + frame, n)]['id']
+                                        self._graph.edge[frameMin + frame, n][frameMin + frame + i, obj]['dest'] = self._graph.node[(frameMin + frame + i, obj)]['id']
                     progressBar.show()
         progressBar.show()
 
