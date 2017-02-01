@@ -169,6 +169,7 @@ if __name__ == "__main__":
     nodeIdRemapping = {}
     valuePerDetection = {}
 
+    modelIdx = 0
     for submodel, result in zip(submodels, results):
         divisionsPerDetection = {}
         
@@ -189,6 +190,8 @@ if __name__ == "__main__":
 
         # for every connected component, insert a node into the stitching graph
         connectedComponents = nx.connected_components(g)
+        _getLogger().info("Contracting tracks of submodel {}/{}".format(modelIdx, len(submodels)))
+
         for c in connectedComponents:
             # sum over features of dets + links
             linkFeatures = [link['features'] for idTuple, link in linksByIdTuple.iteritems() if idTuple[0] in c and idTuple[1] in c]
@@ -221,6 +224,7 @@ if __name__ == "__main__":
                 }
 
                 links.append(newL)
+        modelIdx += 1
     _getLogger().info("\tgot {} links from within the submodels".format(len(links)))
 
     # insert all edges crossing the splits that connect active detections
