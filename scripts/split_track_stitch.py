@@ -134,7 +134,7 @@ if __name__ == "__main__":
                 segmentationHypotheses.extend(detectionsPerTimestep[f])
 
         submodel['segmentationHypotheses'] = segmentationHypotheses
-        uuidsInSubmodel = [d['id'] for f in range(startTime, endTime) for d in detectionsPerTimestep[f]]
+        uuidsInSubmodel = set([d['id'] for f in range(startTime, endTime) for d in detectionsPerTimestep[f]])
         submodel['linkingHypotheses'] = [l for l in model['linkingHypotheses'] if (l['src'] in uuidsInSubmodel) and (l['dest'] in uuidsInSubmodel)]
         submodel['divisionHypotheses'] = []
         submodel['settings'] = model['settings']
