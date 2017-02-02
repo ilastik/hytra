@@ -28,12 +28,10 @@ class SplitTracking:
      
     @staticmethod
     def trackFlowBasedWithSplits(model, weights, numSplits):
-        print('Hello World')
-
         logging.basicConfig(level=logging.INFO)
 
         traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(model)
-    
+        
         detectionTimestepTuples = [(timestepIdTuple, entry) for entry in model['segmentationHypotheses'] for timestepIdTuple in uuidToTraxelMap[int(entry['id'])]]
         detectionsPerTimestep = {}
         for timestep_id, detection in detectionTimestepTuples:
@@ -68,6 +66,9 @@ class SplitTracking:
         lastFrame = max(detectionsPerTimestep.keys())
 
         numFramesPerSplit = (lastFrame - firstFrame) // numSplits
+    
+        # Check that number of frames per split is more than 2
+        assert numFramesPerSplit > 2 , "The number of splits is too large; submodel has less than 2 frames"
     
         # find points where TWO consecutive frames have a low merger score together!
         # find split points in a range of 10 frames before/after the desired split location
