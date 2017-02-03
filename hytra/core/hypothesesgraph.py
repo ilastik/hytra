@@ -191,7 +191,6 @@ class HypothesesGraph(object):
         frameMax = max(probabilityGenerator.TraxelsPerFrame.keys())
         frameMin = min(probabilityGenerator.TraxelsPerFrame.keys())
         numFrames = frameMax - frameMin + 1
-        getLogger().error("numFrames {} {}".format(numFrames,probabilityGenerator.TraxelsPerFrame.keys()))
         progressBar = ProgressBar(stop=numFrames*skipLinks)
         progressBar.show(0)
         
@@ -201,15 +200,12 @@ class HypothesesGraph(object):
                 getLogger().error(" --->if frame > 0")
                 del kdTreeFrames[0] # this is the current frame
                 if frame + skipLinks < numFrames and frameMin + frame + skipLinks in probabilityGenerator.TraxelsPerFrame.keys():
-                    getLogger().error("adding frameMin + frame + skipLinks {}".format(frameMin + frame + skipLinks))
                     kdTreeFrames.append(self._buildFrameKdTree(probabilityGenerator.TraxelsPerFrame[frameMin + frame + skipLinks]))
                     self._addNodesForFrame(frameMin + frame + skipLinks, probabilityGenerator.TraxelsPerFrame[frameMin + frame + skipLinks])
             else:
                 getLogger().error(" ...>ELSE")
                 for i in range(0, skipLinks+1):
-                    getLogger().error("i............... {}".format(i))
                     if frameMin + frame + i in probabilityGenerator.TraxelsPerFrame.keys(): # empty frame
-                        getLogger().error("adding frameMin + frame + i {}".format(frameMin + frame + i))
                         kdTreeFrames[i] = self._buildFrameKdTree(probabilityGenerator.TraxelsPerFrame[frameMin + frame + i])
                         self._addNodesForFrame(frameMin + frame + i, probabilityGenerator.TraxelsPerFrame[frameMin + frame + i])
 

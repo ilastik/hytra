@@ -745,7 +745,7 @@ if __name__ == "__main__":
             try:
                 divisionFeatures = getDivisionFeatures(traxel)
                 if divisionFeatures[0] > options.division_threshold:
-                    divisionFeatures = list(reversed(divisionFeatures))
+                    divisionFeatures = list(divisionFeatures)
                 else:
                     divisionFeatures = None
             except Exception as e:

@@ -206,7 +206,7 @@ class MergerResolver(object):
             numStates = 2
             if len(self.resolvedGraph.in_edges(node)) == 0:
                 # division nodes with no incoming arcs offer 2 units of flow without the need to de-merge
-                if self.unresolvedGraph.node[node]['division'] and len(self.unresolvedGraph.out_edges(node)) == 2:
+                if node in self.unresolvedGraph.nodes() and self.unresolvedGraph.node[node]['division'] and len(self.unresolvedGraph.out_edges(node)) == 2:
                     numStates = 3
                 additionalFeatures['appearanceFeatures'] = [[i**2 * 0.01] for i in range(numStates)]
             if len(self.resolvedGraph.out_edges(node)) == 0:

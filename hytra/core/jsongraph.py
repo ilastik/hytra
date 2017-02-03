@@ -81,13 +81,13 @@ def getMergersPerTimestep(mergers, timesteps):
     '''
     
     mergersDict = {} 
-    for time, id, count in mergers:
+    for time, tid, count in mergers:
         time = str(time)
         if time in mergersDict:
-            mergersDict[time][id] = count
+            mergersDict[time][tid] = count
         else:
             mergersDict[time] = {}
-            mergersDict[time][id] = count  
+            mergersDict[time][tid] = count  
     
     mergersPerTimestep = {}       
     for time in timesteps:
@@ -182,6 +182,10 @@ def negLog(features):
 def listify(l):
     ''' put every element of the list in it's own list, and thus extends the depth of nested lists by one '''
     return [[e] for e in l]
+
+def delistify(l):
+    ''' take every element out of it's own list '''
+    return [e[0] for e in l]
 
 def checkForConvexity(feats):
     ''' check whether the given array of numbers is convex, meaning that the difference between consecutive numbers never decreases '''
