@@ -23,11 +23,20 @@ def _getLogger():
     return logging.getLogger("split-track-stitch")
 
 class SplitTracking:
+    '''
+    Run DPCT flow-based tracking solveron sub-sections of video in order to parallelize tracking and speed up processing.
+    NOTE: This solver doesn't gurantee a global minimum! 
+    '''
     def __init__(self):
         pass
      
     @staticmethod
-    def trackFlowBasedWithSplits(model, weights, numSplits):
+    def trackFlowBasedWithSplits(model, weights, numSplits=0, numThreads=None):
+        # Run tracking on whole video (dont's split) if numSplits is 0
+        if numSplits==0:
+            _getLogger().info("WARNING: Running flow-based tracking without splits")
+            return dpct.trackFlowBased(model, weights)
+        
         logging.basicConfig(level=logging.INFO)
 
         traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(model)
@@ -130,14 +139,44 @@ class SplitTracking:
             _getLogger().info("\t contains {} nodes and {} edges".format(len(submodels[-1]['segmentationHypotheses']), len(submodels[-1]['linkingHypotheses'])))
             lastSplit = splitPoint + 1
     
-        # run tracking (in parallel??)
+        # run tracking (in parallel or single threaded)
+        import dpct   
+        
+        # Will store submodel results
         results = []
-        import dpct
-        for i, submodel in enumerate(submodels):
-            # TODO: be robust against changes of num weights!
-            # TODO: release GIL in tracking python wrappers to allow parallel solving!!
-            _getLogger().info("Tracking submodel {}/{}".format(i, len(submodels)))
-            results.append(dpct.trackFlowBased(submodel, weights))
+        
+        if numThreads:
+            _getLogger().info("Using {} threads for solver".format(numThreads))
+        
+            # dummy replicates the multiprocessing API using the threading module
+            # this is necessary to to prevent multiprocessing pickling error
+            # see: http://stackoverflow.com/questions/8804830/python-multiprocessing-pickling-error
+            from multiprocessing.dummy import Pool 
+        
+            # callback function
+            def result_callback(result):
+                results.append(result)
+            
+            pool = Pool(numThreads)
+            for i, submodel in enumerate(submodels):
+                # TODO: be robust against changes of num weights!
+                # TODO: release GIL in tracking python wrappers to allow parallel solving!!
+                _getLogger().info("Tracking submodel {}/{}".format(i, len(submodels)))
+    
+                pool.apply_async(dpct.trackFlowBased, args=(submodel, weights), callback=result_callback)
+                
+            # Close pool and run async tasks    
+            pool.close()
+            pool.join()
+        
+        else:
+            for i, submodel in enumerate(submodels):
+                # TODO: be robust against changes of num weights!
+                # TODO: release GIL in tracking python wrappers to allow parallel solving!!
+                _getLogger().info("Tracking submodel {}/{}".format(i, len(submodels)))
+                
+                results.append(dpct.trackFlowBased(submodel, weights))
+            
     
         # merge results
         # make detection weight higher, or accumulate energy over tracks (but what to do with mergers then?),
