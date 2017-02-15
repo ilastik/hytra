@@ -195,21 +195,17 @@ class HypothesesGraph(object):
         progressBar.show(0)
         
         for frame in range(numFrames):
-            getLogger().error("frame {}".format(frame))
             if frame > 0:
-                getLogger().error(" --->if frame > 0")
                 del kdTreeFrames[0] # this is the current frame
                 if frame + skipLinks < numFrames and frameMin + frame + skipLinks in probabilityGenerator.TraxelsPerFrame.keys():
                     kdTreeFrames.append(self._buildFrameKdTree(probabilityGenerator.TraxelsPerFrame[frameMin + frame + skipLinks]))
                     self._addNodesForFrame(frameMin + frame + skipLinks, probabilityGenerator.TraxelsPerFrame[frameMin + frame + skipLinks])
             else:
-                getLogger().error(" ...>ELSE")
                 for i in range(0, skipLinks+1):
                     if frameMin + frame + i in probabilityGenerator.TraxelsPerFrame.keys(): # empty frame
                         kdTreeFrames[i] = self._buildFrameKdTree(probabilityGenerator.TraxelsPerFrame[frameMin + frame + i])
                         self._addNodesForFrame(frameMin + frame + i, probabilityGenerator.TraxelsPerFrame[frameMin + frame + i])
 
-            getLogger().error(" len(kdTreeFrames) {}".format(len(kdTreeFrames)))
             # find forward links
             if frameMin + frame in probabilityGenerator.TraxelsPerFrame.keys(): # 'frame' could be empty
                 for obj, traxel in probabilityGenerator.TraxelsPerFrame[frameMin + frame].iteritems():
