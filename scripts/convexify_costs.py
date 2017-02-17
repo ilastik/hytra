@@ -16,7 +16,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='(Strictly!) Convexify the costs of a model to allow a flow-based solution',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-c', '--config', is_config_file=True, help='config file path', dest='config_file', required=True)
+    parser.add_argument('-c', '--config', is_config_file=True, help='config file path', dest='config_file')
     parser.add_argument('--graph-json-file', required=True, type=str, dest='model_filename',
                         help='Filename of the json model description')
     parser.add_argument('--out-json-file', default=None, type=str, dest='result_filename',
