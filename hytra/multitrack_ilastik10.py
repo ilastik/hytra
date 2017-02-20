@@ -1527,19 +1527,19 @@ if __name__ == "__main__":
         traxel_graph = hypotheses_graph
         hypotheses_graph = traxel_graph.generate_tracklet_graph()
 
-    tracker.plot_hypotheses_graph(
-        hypotheses_graph, 
-        "/Users/chaubold/Desktop/multitrack-graph.dot", 
-        not bool(options.without_tracklets),
-        not bool(options.without_divisions),
-        1,
-        1,
-        1,
-        1,
-        1,
-        options.trans_par,
-        options.border_width
-        )
+    # tracker.plot_hypotheses_graph(
+    #     hypotheses_graph, 
+    #     "/Users/chaubold/Desktop/multitrack-graph.dot", 
+    #     not bool(options.without_tracklets),
+    #     not bool(options.without_divisions),
+    #     1,
+    #     1,
+    #     1,
+    #     1,
+    #     1,
+    #     options.trans_par,
+    #     options.border_width
+    #     )
 
     # track!
     all_events = tracker.track(params, False)
