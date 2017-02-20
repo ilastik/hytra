@@ -64,7 +64,8 @@ def getConfigAndCommandLineArguments():
     # detection_rf_filename in general parser options
     parser.add_argument('--size-dependent-detection-prob', dest='size_dependent_detection_prob', action='store_true')
     # forbidden_cost in general parser options
-    # ep_gap in general parser options
+    parser.add_argument('--ep_gap', type=float, dest='ep_gap', default=0.01,
+                        help='stop optimization as soon as a feasible integer solution is found proved to be within the given percent of the optimal solution')
     parser.add_argument('--average-obj-size', dest='avg_obj_size', type=float, default=0)
     parser.add_argument('--without-tracklets', dest='without_tracklets', action='store_true')
     parser.add_argument('--motion-model-weight', dest='motionModelWeight', type=float, default=0.0,
@@ -768,6 +769,8 @@ if __name__ == "__main__":
     else:
         hypotheses_graph.insertEnergies()
         trackingGraph = hypotheses_graph.toTrackingGraph()
+
+    trackingGraph.model['settings']['optimizerEpGap'] = options.ep_gap
 
     # write everything to JSON
     hytra.core.jsongraph.writeToFormattedJSON(options.json_filename, trackingGraph.model)
