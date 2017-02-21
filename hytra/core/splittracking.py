@@ -31,15 +31,15 @@ class SplitTracking:
         pass
      
     @staticmethod
-    def trackFlowBasedWithSplits(model, weights, numSplits=0, numThreads=None):
+    def trackFlowBasedWithSplits(model, weights, numSplits=0, numThreads=None, withMergerResolver=None):
         # Run tracking on whole video (dont's split) if numSplits is 0
         if numSplits==0:
             _getLogger().info("WARNING: Running flow-based tracking without splits")
-            return dpct.trackFlowBased(model, weights)
+            return dpct.trackMaxFlow(model, weights)#dpct.trackFlowBased(model, weights)
         
         logging.basicConfig(level=logging.INFO)
 
-        traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(model)
+        _ , uuidToTraxelMap = hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(model)
         
         detectionTimestepTuples = [(timestepIdTuple, entry) for entry in model['segmentationHypotheses'] for timestepIdTuple in uuidToTraxelMap[int(entry['id'])]]
         detectionsPerTimestep = {}
@@ -53,6 +53,7 @@ class SplitTracking:
         for t in detectionsPerTimestep.keys():
             nonSingletonCosts = []
             for d in detectionsPerTimestep[t]:
+                d['nid'] = uuidToTraxelMap[d['id']][0]
                 detectionsById[d['id']] = d
                 f = d['features'][:]
                 del f[1]
@@ -64,12 +65,6 @@ class SplitTracking:
     
         # create a list of the sum of 2 neighboring elements (has len = len(nonSingletonCostsPerFrame) - 1)
         nonSingletonCostsPerFrameGap = [i + j for i, j in zip(nonSingletonCostsPerFrame[:-1], nonSingletonCostsPerFrame[1:])]
-    
-        # for debugging: show which frames could be interesting. The higher the value, the more are all objects in the frame true detections.
-        # import matplotlib.pyplot as plt
-        # plt.figure()
-        # plt.plot(nonSingletonCostsPerFrame)
-        # plt.show()
     
         firstFrame = min(detectionsPerTimestep.keys())
         lastFrame = max(detectionsPerTimestep.keys())
@@ -83,7 +78,7 @@ class SplitTracking:
         # find split points in a range of 10 frames before/after the desired split location
         # TODO: also consider divisions!
         splitPoints = []
-        border = 10
+        border = 10 #TODO: Adjust border according to size of video and number of prames per split
         if numFramesPerSplit < border*2:
             border = 1
     
@@ -93,13 +88,6 @@ class SplitTracking:
             splitPoints.append(desiredSplitPoint - border + np.argmax(subrange))
     
         _getLogger().info("Going to split hypotheses graph at frames {}".format(splitPoints))
-    
-        # for debugging: show chosen frames
-        # import matplotlib.pyplot as plt
-        # plt.figure()
-        # plt.plot(nonSingletonCostsPerFrame)
-        # plt.scatter(splitPoints, [nonSingletonCostsPerFrame[s] for s in splitPoints])
-        # plt.show()
     
         # split graph
         def getSubmodel(startTime, endTime):
@@ -124,7 +112,7 @@ class SplitTracking:
                     segmentationHypotheses.extend(detectionsPerTimestep[f])
     
             submodel['segmentationHypotheses'] = segmentationHypotheses
-            uuidsInSubmodel = set([d['id'] for f in range(startTime, endTime) for d in detectionsPerTimestep[f]])
+            uuidsInSubmodel = set([d['id'] for f in range(startTime, endTime) for d in detectionsPerTimestep[f]]) # TODO: This line can be optimized 
             submodel['linkingHypotheses'] = [l for l in model['linkingHypotheses'] if (l['src'] in uuidsInSubmodel) and (l['dest'] in uuidsInSubmodel)]
             submodel['divisionHypotheses'] = []
             submodel['settings'] = model['settings']
@@ -163,7 +151,10 @@ class SplitTracking:
                 # TODO: release GIL in tracking python wrappers to allow parallel solving!!
                 _getLogger().info("Tracking submodel {}/{}".format(i, len(submodels)))
     
-                pool.apply_async(dpct.trackFlowBased, args=(submodel, weights), callback=result_callback)
+                if withMergerResolver:
+                    pool.apply_async(dpct.trackMaxFlow, args=(submodel, weights), callback=result_callback)
+                else:
+                    pool.apply_async(dpct.trackFlowBased, args=(submodel, weights), callback=result_callback)
                 
             # Close pool and run async tasks    
             pool.close()
@@ -175,9 +166,11 @@ class SplitTracking:
                 # TODO: release GIL in tracking python wrappers to allow parallel solving!!
                 _getLogger().info("Tracking submodel {}/{}".format(i, len(submodels)))
                 
-                results.append(dpct.trackFlowBased(submodel, weights))
+                if withMergerResolver:
+                    results.append(dpct.trackMaxFlow(submodel, weights))
+                else:
+                    results.append(dpct.trackFlowBased(submodel, weights))
             
-    
         # merge results
         # make detection weight higher, or accumulate energy over tracks (but what to do with mergers then?),
         # or contract everything where source-node, link and destination have the same number of objects?
@@ -190,7 +183,7 @@ class SplitTracking:
         valuePerDetection = {}
     
         modelIdx = 0
-        for submodel, result in zip(submodels, results):
+        for submodel, result in zip(submodels, results):            
             divisionsPerDetection = {}
             
             # find connected components of graph where edges are only inserted if the value of the nodes agrees with the value along the link
@@ -218,20 +211,41 @@ class SplitTracking:
                 detFeatures = [detectionsById[i]['features'] for i in c]
                 accumulatedFeatures = np.sum([hytra.core.jsongraph.delistify(f) for f in linkFeatures + detFeatures], axis=0)
     
-                trackletId = min(c)
+                # Get tracklet ids from nodes at start and end times of tracklets
+                minTime = None
+                maxTime = None
+    
+                for n in c:
+                    if maxTime is None or detectionsById[n]['nid'][0] > maxTime:
+                        maxTime = detectionsById[n]['nid'][0]
+                        maxTrackletId = n
+                        
+                    if minTime is None or detectionsById[n]['nid'][0] < minTime:
+                        minTime = detectionsById[n]['nid'][0]
+                        minTrackletId = n 
+                    
                 contractedNode = {
-                    'id' : trackletId, 
+                    'id' : minTrackletId, 
                     'contains' : c,
-                    'features' : hytra.core.jsongraph.listify(accumulatedFeatures),
-                    'appearanceFeatures' : detectionsById[min(c)]['appearanceFeatures'],
-                    'disappearanceFeatures' : detectionsById[max(c)]['disappearanceFeatures'],
+                    'nid' : detectionsById[minTrackletId]['nid'],
+                    'minUid' : minTrackletId,
+                    'maxUid' : maxTrackletId,
+                    'features' : hytra.core.jsongraph.listify(accumulatedFeatures)#,
                 }
+                                
+                # Add appearance/disappearance features of endpoints
+                # TODO: Check if this is correct for the case of mergers
+                if 'appearanceFeatures' in detectionsById[minTrackletId]:#min(c)]:
+                    contractedNode['appearanceFeatures'] = detectionsById[minTrackletId]['appearanceFeatures']
+                if 'disappearanceFeatures' in detectionsById[maxTrackletId]:#max(c)
+                    contractedNode['disappearanceFeatures'] = detectionsById[maxTrackletId]['disappearanceFeatures']
+                            
                 if 'divisionFeatures' in detectionsById[max(c)]:
                     contractedNode['divisionFeatures'] = detectionsById[max(c)]['divisionFeatures']
                 tracklets.append(contractedNode)
     
                 for n in c:
-                    nodeIdRemapping[n] = trackletId
+                    nodeIdRemapping[n] = minTrackletId
     
             # add the remaining links to the stitching graph with adjusted source and destination
             for l in result['linkingResults']:
@@ -258,10 +272,14 @@ class SplitTracking:
                     newL['dest'] = nodeIdRemapping[d]
                     links.append(newL)
     
+        # Running solver for compressed tracklet model
         _getLogger().info("\t contains {} nodes and {} edges".format(len(tracklets), len(links)))
-        stitchingResult = dpct.trackFlowBased(stitchingModel, weights)
+        if withMergerResolver:
+            stitchingResult = dpct.trackMaxFlow(stitchingModel, weights)
+        else:
+            stitchingResult = dpct.trackFlowBased(stitchingModel, weights)
         
-        # TODO: extract full result
+        # Extracting full result
         trackletsById = dict([(t['id'], t) for t in tracklets])
         fullResult = {'detectionResults' : [], 'linkingResults' : [], 'divisionResults' : []}
         
@@ -281,8 +299,21 @@ class SplitTracking:
             v = lr['value'] 
             st = trackletsById[lr['src']]
             dt = trackletsById[lr['dest']]
+
             if v > 0:
-                fullResult['linkingResults'].append({'src': max(st['contains']), 'dest' : min(dt['contains']), 'value': v})
+                fullResult['linkingResults'].append({'src': st['maxUid'], 'dest' : dt['minUid'], 'value': v})
+
+        # Adding missing links with value set to 0 to the final result
+        nodeFlowMap = dict([(int(d['id']), int(d['value'])) for d in fullResult['detectionResults']])
+        arcFlowMap = dict([((int(l['src']), int(l['dest'])), int(l['value'])) for l in fullResult['linkingResults']])
+        
+        for detection in model['segmentationHypotheses']:
+            if int(detection['id']) not in nodeFlowMap:
+                fullResult['detectionResults'].append({'id': detection['id'], 'value': 0})
+        
+        for link in model['linkingHypotheses']:
+            if (int(link['src']), int(link['dest'])) not in arcFlowMap:
+                fullResult['linkingResults'].append({'src': link['src'], 'dest' : link['dest'], 'value': 0})
     
         return fullResult
 

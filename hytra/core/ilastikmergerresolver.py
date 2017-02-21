@@ -15,8 +15,8 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
     Specialization of merger resolving to work with the hypotheses graph given by ilastik,
     and to read/write images from/to the input/output slots of the respective operators. 
     '''
-    def __init__(self, hypothesesGraph, pluginPaths=[os.path.abspath('../hytra/plugins')], withFullGraph=False, verbose=False):
-        super(IlastikMergerResolver, self).__init__(pluginPaths, verbose)
+    def __init__(self, hypothesesGraph, pluginPaths=[os.path.abspath('../hytra/plugins')], withFullGraph=False, numSplits=None, verbose=False):
+        super(IlastikMergerResolver, self).__init__(pluginPaths, numSplits, verbose)
         trackingGraph = hypothesesGraph.toTrackingGraph(noFeatures=True)
         self.model = trackingGraph.model
         self.result = hypothesesGraph.getSolutionDictionary()
