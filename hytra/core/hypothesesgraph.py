@@ -69,6 +69,7 @@ class HypothesesGraph(object):
     def __init__(self):
         self._graph = nx.DiGraph()
         self.withTracklets = False
+        self.allowLengthOneTracks = True
         self._nextNodeUuid = 0
 
     def nodeIterator(self):
@@ -661,7 +662,7 @@ class HypothesesGraph(object):
             if traxelgraph.countIncomingObjects(n)[0] == 0 \
                 and 'value' in traxelgraph._graph.node[n] \
                 and traxelgraph._graph.node[n]['value'] > 0 \
-                and traxelgraph.countOutgoingObjects(n)[0] > 0: # we do not allow tracks of length 1 for now
+                and (self.allowLengthOneTracks or traxelgraph.countOutgoingObjects(n)[0] > 0):
                 # found start of a track
                 update_queue.append((n,max_lineage_id,max_track_id))
                 max_lineage_id += 1
