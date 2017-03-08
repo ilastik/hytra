@@ -69,7 +69,7 @@ class HypothesesGraph(object):
     def __init__(self):
         self._graph = nx.DiGraph()
         self.withTracklets = False
-        self.allowLengthOneTracks = False
+        self.allowLengthOneTracks = True
         self._nextNodeUuid = 0
 
     def nodeIterator(self):
