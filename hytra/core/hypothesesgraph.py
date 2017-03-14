@@ -71,6 +71,15 @@ class HypothesesGraph(object):
         self.withTracklets = False
         self.allowLengthOneTracks = True
         self._nextNodeUuid = 0
+        self.progressWindow = None
+
+    def exportProgress(self,part,num):
+        if not self.progressWindow==None:
+            self.progressWindow.trackProgress.progress.emit(part/float(num))
+
+    def exportStep(self,name):
+        if not self.progressWindow==None:
+            self.progressWindow.trackProgress.newStep.emit(name)
 
     def nodeIterator(self):
         return self._graph.nodes_iter()
@@ -89,6 +98,9 @@ class HypothesesGraph(object):
     
     def hasEdge(self, u, v):
         return self._graph.has_edge(u, v)
+
+    def setProgressWindow(self,progressWindow):
+        self.progressWindow = progressWindow
 
     @staticmethod
     def source(edge):
@@ -195,7 +207,11 @@ class HypothesesGraph(object):
         progressBar = ProgressBar(stop=numFrames*skipLinks)
         progressBar.show(0)
         
+
+        countFrames = 0
         for frame in range(numFrames):
+            countFrames += 1
+            self.exportProgress(countFrames,numFrames)
             if frame > 0:
                 del kdTreeFrames[0] # this is the current frame
                 if frame + skipLinks < numFrames and frameMin + frame + skipLinks in probabilityGenerator.TraxelsPerFrame.keys():
@@ -263,8 +279,13 @@ class HypothesesGraph(object):
         tracklet_graph.withTracklets = True
         tracklet_graph.referenceTraxelGraph = self
 
+        self.exportStep("Initializing Tracklet Graph")
         # initialize tracklet map to contain a list of only one traxel per node
+        countNodes = 0
+        numNodes = tracklet_graph.countNodes()
         for node in tracklet_graph._graph.nodes_iter():
+            countNodes += 1
+            self.exportProgress(countNodes,numNodes)
             tracklet_graph._graph.node[node]['tracklet'] = [tracklet_graph._graph.node[node]['traxel']]
             del tracklet_graph._graph.node[node]['traxel']
 
@@ -272,14 +293,24 @@ class HypothesesGraph(object):
         # are one, meaning the edge can be contracted
         links_to_be_contracted = []
         node_remapping = {}
+        self.exportStep("Finding Tracklets in Graph")
+        countEdges = 0
+        numEdges = tracklet_graph.countArcs()
         for edge in tracklet_graph._graph.edges_iter():
+            countEdges += 1
+            self.exportProgress(countEdges,numEdges)
             if tracklet_graph._graph.out_degree(edge[0]) == 1 and tracklet_graph._graph.in_degree(edge[1]) == 1:
                 links_to_be_contracted.append(edge)
                 for i in [0, 1]:
                     node_remapping[edge[i]] = edge[i]
 
         # apply edge contraction
+        self.exportStep("Contracting Edges in Tracklet Graph")
+        countLinks = 0
+        numLinks = len(links_to_be_contracted)
         for edge in links_to_be_contracted:
+            countLinks += 1
+            self.exportProgress(countLinks,numLinks)
             src = node_remapping[edge[0]]
             dest = node_remapping[edge[1]]
             if tracklet_graph._graph.in_degree(src) == 0 and tracklet_graph._graph.out_degree(dest) == 0:
