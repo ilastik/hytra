@@ -21,7 +21,8 @@ class MergerResolver(object):
     that handle reading/writing data to the respective sources.
     """
 
-    def __init__(self, pluginPaths=[os.path.abspath('../hytra/plugins')], verbose=False):
+    def __init__(self, pluginPaths=[os.path.abspath('../hytra/plugins')], verbose=False,
+                 exportStepFunction=None, exportProgressFunction=None):
         self.unresolvedGraph = None
         self.resolvedGraph = None
         self.mergersPerTimestep = None
@@ -33,6 +34,9 @@ class MergerResolver(object):
         # should be filled by constructors of derived classes!
         self.model = None
         self.result = None
+
+        self.exportStep = exportStepFunction
+        self.exportProgress = exportProgressFunction
 
     def _createUnresolvedGraph(self, divisionsPerTimestep, mergersPerTimestep, mergerLinks, withFullGraph=False):
         """
@@ -198,7 +202,7 @@ class MergerResolver(object):
         **Note:** cannot use `networkx` flow methods because they don't work with floating point weights.
         """
 
-        trackingGraph = JsonTrackingGraph()
+        trackingGraph = JsonTrackingGraph(exportStepFunction=self.exportStep,exportProgressFunction=self.exportProgress)
         for node in self.resolvedGraph.nodes_iter():
             additionalFeatures = {}
 

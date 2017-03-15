@@ -240,7 +240,9 @@ class JsonTrackingGraph(object):
                  result=None, 
                  model_filename=None, 
                  weights_filename=None, 
-                 result_filename=None):
+                 result_filename=None,
+                 exportStepFunction=None,
+                 exportProgressFunction=None):
         
         assert(weights is None or weights_filename is None)
         assert(model is None or model_filename is None)
@@ -290,6 +292,9 @@ class JsonTrackingGraph(object):
                 getMappingsBetweenUUIDsAndTraxels(self.model)
         
         self._nextUuid = 0
+
+        self.exportStep = exportStepFunction
+        self.exportProgress = exportProgressFunction
 
     def addDetectionHypothesesFromTracklet(self,
                                            listOfTraxels,
@@ -412,8 +417,15 @@ class JsonTrackingGraph(object):
         else:
             divisionHypotheses = []
 
-        progressBar = ProgressBar(stop=(len(segmentationHypotheses) + len(linkingHypotheses) + len(divisionHypotheses)))
+        if not self.exportStep==None:
+            self.exportStep("Convexify costs")
+        numElements = len(segmentationHypotheses) + len(linkingHypotheses) + len(divisionHypotheses)
+        countElements = 0
         for seg in segmentationHypotheses:
+            countElements += 1
+            if not self.exportProgress==None:
+                self.exportProgress(countElements/float(numElements))
+
             for f in ['features', 'appearanceFeatures', 'disappearanceFeatures']:
                 if f in seg:
                     try:
@@ -422,15 +434,18 @@ class JsonTrackingGraph(object):
                         getLogger().warning("Convexification failed for feature {} of :{}".format(f, seg))
                         exit(0)
             # division features are always convex (2 values defines just a line)
-            progressBar.show()
 
         for link in linkingHypotheses:
+            countElements += 1
+            if not self.exportProgress==None:
+                self.exportProgress(countElements/float(numElements))
             link['features'] = convexify(link['features'], epsilon)
-            progressBar.show()
 
         for division in divisionHypotheses:
+            countElements += 1
+            if not self.exportProgress==None:
+                self.exportProgress(countElements/float(numElements))
             division['features'] = convexify(division['features'], epsilon)
-            progressBar.show()
 
     def toHypothesesGraph(self):
         '''

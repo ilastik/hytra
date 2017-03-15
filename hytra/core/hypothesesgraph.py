@@ -6,7 +6,6 @@ import numpy as np
 from sklearn.neighbors import KDTree
 import hytra.core.jsongraph
 from hytra.core.jsongraph import negLog, listify
-from hytra.util.progressbar import ProgressBar
 
 
 def getLogger():
@@ -73,6 +72,12 @@ class HypothesesGraph(object):
         self._nextNodeUuid = 0
         self.exportStep=None
         self.exportProgress=None
+
+    def setExportStepFunction(self,exportStepFunction):
+        self.exportStep=exportStepFunction
+
+    def setExportProgressFunction(self,exportProgressFunction):
+        self.exportProgress=exportProgressFunction
 
     def __getstate__(self):
         """Return state values to be pickled."""
@@ -239,14 +244,16 @@ class HypothesesGraph(object):
         frameMax = max(probabilityGenerator.TraxelsPerFrame.keys())
         frameMin = min(probabilityGenerator.TraxelsPerFrame.keys())
         numFrames = frameMax - frameMin + 1
-        progressBar = ProgressBar(stop=numFrames*skipLinks)
-        progressBar.show(0)
-        
-        self.exportStep("Probability Generator")
+
+        stepStr = "Probability Generator"
+        if not self.exportStep==None:
+            self.exportStep(stepStr)
+
         countFrames = 0
         for frame in range(numFrames):
             countFrames += 1
-            self.exportProgress(countFrames,numFrames)
+            if not self.exportProgress==None:
+                self.exportProgress(countFrames/float(numFrames))
             if frame > 0:
                 del kdTreeFrames[0] # this is the current frame
                 if frame + skipLinks < numFrames and frameMin + frame + skipLinks in probabilityGenerator.TraxelsPerFrame.keys():
@@ -297,8 +304,6 @@ class HypothesesGraph(object):
                                         self._graph.add_edge((frameMin + frame, n), (frameMin + frame + i, obj))
                                         self._graph.edge[frameMin + frame, n][frameMin + frame + i, obj]['src'] = self._graph.node[(frameMin + frame, n)]['id']
                                         self._graph.edge[frameMin + frame, n][frameMin + frame + i, obj]['dest'] = self._graph.node[(frameMin + frame + i, obj)]['id']
-                    progressBar.show()
-        progressBar.show()
 
     def generateTrackletGraph(self):
         '''
@@ -314,13 +319,15 @@ class HypothesesGraph(object):
         tracklet_graph.withTracklets = True
         tracklet_graph.referenceTraxelGraph = self
 
-        self.exportStep("Initializing Tracklet Graph")
+        if not self.exportStep==None:
+            self.exportStep("Initializing Tracklet Graph")
         # initialize tracklet map to contain a list of only one traxel per node
         countNodes = 0
         numNodes = tracklet_graph.countNodes()
         for node in tracklet_graph._graph.nodes_iter():
             countNodes += 1
-            self.exportProgress(countNodes,numNodes)
+            if not self.exportProgress==None:
+                self.exportProgress(countNodes/float(numNodes))
             tracklet_graph._graph.node[node]['tracklet'] = [tracklet_graph._graph.node[node]['traxel']]
             del tracklet_graph._graph.node[node]['traxel']
 
@@ -328,24 +335,28 @@ class HypothesesGraph(object):
         # are one, meaning the edge can be contracted
         links_to_be_contracted = []
         node_remapping = {}
-        self.exportStep("Finding Tracklets in Graph")
+        if not self.exportStep==None:
+            self.exportStep("Finding Tracklets in Graph")
         countEdges = 0
         numEdges = tracklet_graph.countArcs()
         for edge in tracklet_graph._graph.edges_iter():
             countEdges += 1
-            self.exportProgress(countEdges,numEdges)
+            if not self.exportProgress==None:
+                self.exportProgress(countEdges/float(numEdges))
             if tracklet_graph._graph.out_degree(edge[0]) == 1 and tracklet_graph._graph.in_degree(edge[1]) == 1:
                 links_to_be_contracted.append(edge)
                 for i in [0, 1]:
                     node_remapping[edge[i]] = edge[i]
 
         # apply edge contraction
-        self.exportStep("Contracting Edges in Tracklet Graph")
+        if not self.exportStep==None:
+            self.exportStep("Contracting Edges in Tracklet Graph")
         countLinks = 0
         numLinks = len(links_to_be_contracted)
         for edge in links_to_be_contracted:
             countLinks += 1
-            self.exportProgress(countLinks,numLinks)
+            if not self.exportProgress==None:
+                self.exportProgress(countLinks/float(numLinks))
             src = node_remapping[edge[0]]
             dest = node_remapping[edge[1]]
             if tracklet_graph._graph.in_degree(src) == 0 and tracklet_graph._graph.out_degree(dest) == 0:
@@ -408,10 +419,13 @@ class HypothesesGraph(object):
         * `divisionProbabilityFunc`: should take a traxel and return its division probabilities ([probNoDiv, probDiv])
         '''
         numElements = self._graph.number_of_nodes() + self._graph.number_of_edges()
-        progressBar = ProgressBar(stop=numElements)
+        if not self.exportStep==None:
+            self.exportStep("Inserting energies")
 
         # insert detection probabilities for all detections (and some also get a div probability)
+        countElements = 0
         for n in self._graph.nodes_iter():
+            countElements += 1
             if not self.withTracklets:
                 # only one traxel, but make it a list so everything below works the same
                 traxels = [self._graph.node[n]['traxel']]
@@ -445,10 +459,15 @@ class HypothesesGraph(object):
             self._graph.node[n]['disappearanceFeatures'] = disappearanceFeatures
             self._graph.node[n]['timestep'] = [traxels[0].Timestep, traxels[-1].Timestep]
 
-            progressBar.show()
+            if not self.exportProgress==None:
+                self.exportProgress(countElements/float(numElements))
 
         # insert transition probabilities for all links
         for a in self._graph.edges_iter():
+            countElements += 1
+            if not self.exportProgress==None:
+                self.exportProgress(countElements/float(numElements))
+
             if not self.withTracklets:
                 srcTraxel = self._graph.node[self.source(a)]['traxel']
                 destTraxel = self._graph.node[self.target(a)]['traxel']
@@ -481,8 +500,6 @@ class HypothesesGraph(object):
             self._graph.edge[a[0]][a[1]]['dest'] = self._graph.node[a[1]]['id']
             self._graph.edge[a[0]][a[1]]['features'] = features
 
-            progressBar.show()
-        
     def getMappingsBetweenUUIDsAndTraxels(self):
         '''
         Extract the mapping from UUID to traxel and vice versa from the networkx graph.
@@ -587,7 +604,10 @@ class HypothesesGraph(object):
         model['exclusions'] = [list(t) for t in exclusions]
 
         # TODO: this recomputes the uuidToTraxelMap even though we have it already...
-        trackingGraph = hytra.core.jsongraph.JsonTrackingGraph(model=model)
+        trackingGraph = hytra.core.jsongraph.JsonTrackingGraph(
+            model=model,
+            exportStepFunction=self.exportStep,
+            exportProgressFunction=self.exportProgress)
         return trackingGraph
 
     def insertSolution(self, resultDictionary):
@@ -723,8 +743,17 @@ class HypothesesGraph(object):
         else:
             traxelgraph = self
 
+        if not self.exportStep==None:
+            self.exportStep("Compute lineage")
+
         # find start of lineages
+        numElements = 2*traxelgraph.countNodes()
+        countElements = 0
         for n in traxelgraph.nodeIterator():
+            countElements += 1
+            if not self.exportProgress==None:
+                self.exportProgress(countElements/float(numElements))
+
             if traxelgraph.countIncomingObjects(n)[0] == 0 \
                 and 'value' in traxelgraph._graph.node[n] \
                 and traxelgraph._graph.node[n]['value'] > 0 \
@@ -739,7 +768,10 @@ class HypothesesGraph(object):
 
 
         while len(update_queue) > 0:
+            countElements += 1
             current_node,lineage_id,track_id = update_queue.pop()
+            if not self.exportProgress==None:
+                self.exportProgress(countElements/float(numElements))
 
             # if we did not run merger resolving, it can happen that we reach a node several times,
             # and would propagate the new lineage+track IDs to all descendants again! We simply
