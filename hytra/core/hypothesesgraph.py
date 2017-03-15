@@ -71,6 +71,53 @@ class HypothesesGraph(object):
         self.withTracklets = False
         self.allowLengthOneTracks = True
         self._nextNodeUuid = 0
+        self.exportStep=None
+        self.exportProgress=None
+
+    def __getstate__(self):
+        """Return state values to be pickled."""
+        return (self._graph,
+                self.withTracklets,
+                self.allowLengthOneTracks,
+                self._nextNodeUuid,
+                self.maxNumObjects,
+                self.skipLinksBias,
+                self.transitionClassifier,
+                self.transitionParameter,
+                self.withDivisions,
+                self.fieldOfView,
+                self.probabilityGenerator,
+                self.timeRange,
+                self.numNearestNeighbors,
+                self.divisionThreshold,
+                self.borderAwareWidth,
+                self.maxNeighborDistance,
+                self.skipLinks
+                )
+
+    def __setstate__(self, state):
+        """Restore state from the unpickled state values."""
+        self._graph, \
+        self.withTracklets, \
+        self.allowLengthOneTracks, \
+        self._nextNodeUuid, \
+        self.maxNumObjects, \
+        self.skipLinksBias, \
+        self.transitionClassifier, \
+        self.transitionParameter, \
+        self.withDivisions, \
+        self.fieldOfView, \
+        self.probabilityGenerator, \
+        self.timeRange, \
+        self.numNearestNeighbors, \
+        self.divisionThreshold, \
+        self.borderAwareWidth, \
+        self.maxNeighborDistance, \
+        self.skipLinks \
+            = state
+
+        self.exportStep=None
+        self.exportProgress=None
 
     def nodeIterator(self):
         return self._graph.nodes_iter()
