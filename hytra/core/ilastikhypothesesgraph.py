@@ -28,7 +28,9 @@ class IlastikHypothesesGraph(HypothesesGraph):
                  transitionClassifier=None,
                  skipLinks=1,
                  skipLinksBias=20,
-                 progressWindow=None):
+                 progressWindow=None,
+                 exportStepFunction=None,
+                 exportProgressFunction=None):
         '''
         Constructor
         '''
@@ -49,6 +51,8 @@ class IlastikHypothesesGraph(HypothesesGraph):
         self.skipLinks = skipLinks
         self.skipLinksBias = skipLinksBias
         self.progressWindow = progressWindow
+        self.exportStep = exportStepFunction
+        self.exportProgress = exportProgressFunction
 
         # build hypotheses graph
         self.buildFromProbabilityGenerator(probabilityGenerator,

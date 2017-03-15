@@ -73,14 +73,6 @@ class HypothesesGraph(object):
         self._nextNodeUuid = 0
         self.progressWindow = None
 
-    def exportProgress(self,part,num):
-        if not self.progressWindow==None:
-            self.progressWindow.trackProgress.progress.emit(part/float(num))
-
-    def exportStep(self,name):
-        if not self.progressWindow==None:
-            self.progressWindow.trackProgress.newStep.emit(name)
-
     def nodeIterator(self):
         return self._graph.nodes_iter()
 
@@ -207,7 +199,7 @@ class HypothesesGraph(object):
         progressBar = ProgressBar(stop=numFrames*skipLinks)
         progressBar.show(0)
         
-
+        self.exportStep("Probability Generator")
         countFrames = 0
         for frame in range(numFrames):
             countFrames += 1
