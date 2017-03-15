@@ -28,7 +28,6 @@ class IlastikHypothesesGraph(HypothesesGraph):
                  transitionClassifier=None,
                  skipLinks=1,
                  skipLinksBias=20,
-                 progressWindow=None,
                  exportStepFunction=None,
                  exportProgressFunction=None):
         '''
@@ -50,7 +49,6 @@ class IlastikHypothesesGraph(HypothesesGraph):
         self.transitionParameter = transitionParameter
         self.skipLinks = skipLinks
         self.skipLinksBias = skipLinksBias
-        self.progressWindow = progressWindow
         self.exportStep = exportStepFunction
         self.exportProgress = exportProgressFunction
 

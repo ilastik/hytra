@@ -71,7 +71,6 @@ class HypothesesGraph(object):
         self.withTracklets = False
         self.allowLengthOneTracks = True
         self._nextNodeUuid = 0
-        self.progressWindow = None
 
     def nodeIterator(self):
         return self._graph.nodes_iter()
@@ -90,9 +89,6 @@ class HypothesesGraph(object):
     
     def hasEdge(self, u, v):
         return self._graph.has_edge(u, v)
-
-    def setProgressWindow(self,progressWindow):
-        self.progressWindow = progressWindow
 
     @staticmethod
     def source(edge):
