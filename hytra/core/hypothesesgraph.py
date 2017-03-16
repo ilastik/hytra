@@ -70,6 +70,9 @@ class HypothesesGraph(object):
         self.withTracklets = False
         self.allowLengthOneTracks = True
         self._nextNodeUuid = 0
+        
+        self.exportStep=None
+        self.exportProgress=None
 
     def nodeIterator(self):
         return self._graph.nodes_iter()
