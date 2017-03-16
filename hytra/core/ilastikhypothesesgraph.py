@@ -60,6 +60,12 @@ class IlastikHypothesesGraph(HypothesesGraph):
                                            divisionThreshold=divisionThreshold,
                                            skipLinks=skipLinks)
 
+    def setExportStepFunction(self,exportStepFunction):
+        self.exportStep=exportStepFunction
+
+    def setExportProgressFunction(self,exportProgressFunction):
+        self.exportProgress=exportProgressFunction
+
     def __getstate__(self):
         """Return state values to be pickled."""
         return (self._graph,
@@ -104,7 +110,7 @@ class IlastikHypothesesGraph(HypothesesGraph):
 
         self.exportStep=None
         self.exportProgress=None
-        
+
     def insertEnergies(self):
         """
         Inserts the energies (AKA features) into the graph, such that each node and link 

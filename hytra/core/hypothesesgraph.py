@@ -70,14 +70,6 @@ class HypothesesGraph(object):
         self.withTracklets = False
         self.allowLengthOneTracks = True
         self._nextNodeUuid = 0
-        self.exportStep=None
-        self.exportProgress=None
-
-    def setExportStepFunction(self,exportStepFunction):
-        self.exportStep=exportStepFunction
-
-    def setExportProgressFunction(self,exportProgressFunction):
-        self.exportProgress=exportProgressFunction
 
     def nodeIterator(self):
         return self._graph.nodes_iter()
@@ -273,6 +265,8 @@ class HypothesesGraph(object):
         tracklet_graph._graph = tracklet_graph._graph.copy()
         tracklet_graph.withTracklets = True
         tracklet_graph.referenceTraxelGraph = self
+        tracklet_graph.exportStep = self.exportStep
+        tracklet_graph.exportProgress = self.exportProgress
 
         if not self.exportStep==None:
             self.exportStep("Initializing Tracklet Graph")
