@@ -31,9 +31,9 @@ class SplitTracking:
         pass
      
     @staticmethod
-    def trackFlowBasedWithSplits(model, weights, numSplits=0, numThreads=None, withMergerResolver=None):
+    def trackFlowBasedWithSplits(model, weights, numSplits=None, numThreads=None, withMergerResolver=None):
         # Run tracking on whole video (dont's split) if numSplits is 0
-        if numSplits==0:
+        if numSplits is None:
             _getLogger().info("WARNING: Running flow-based tracking without splits")
             return dpct.trackMaxFlow(model, weights)#dpct.trackFlowBased(model, weights)
         
