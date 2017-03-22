@@ -3,7 +3,7 @@ import logging
 import numpy as np
 from hytra.core.hypothesesgraph import HypothesesGraph, getTraxelFeatureVector, negLog, listify
 import hytra.core.jsongraph
-from hytra.util.progressbar import ProgressBar
+from hytra.util.progressbar import ProgressBar, DefaultProgressVisitor
 
 def getLogger():
     ''' logger to be used in this module '''
@@ -28,8 +28,7 @@ class IlastikHypothesesGraph(HypothesesGraph):
                  transitionClassifier=None,
                  skipLinks=1,
                  skipLinksBias=20,
-                 exportStepFunction=None,
-                 exportProgressFunction=None):
+                 progressVisitor=DefaultProgressVisitor()):
         '''
         Constructor
         '''
@@ -49,8 +48,7 @@ class IlastikHypothesesGraph(HypothesesGraph):
         self.transitionParameter = transitionParameter
         self.skipLinks = skipLinks
         self.skipLinksBias = skipLinksBias
-        self.exportStep = exportStepFunction
-        self.exportProgress = exportProgressFunction
+        self.progressVisitor = progressVisitor
 
         # build hypotheses graph
         self.buildFromProbabilityGenerator(probabilityGenerator,
@@ -59,12 +57,6 @@ class IlastikHypothesesGraph(HypothesesGraph):
                                            withDivisions=withDivisions,
                                            divisionThreshold=divisionThreshold,
                                            skipLinks=skipLinks)
-
-    def setExportStepFunction(self,exportStepFunction):
-        self.exportStep=exportStepFunction
-
-    def setExportProgressFunction(self,exportProgressFunction):
-        self.exportProgress=exportProgressFunction
 
     def __getstate__(self):
         """Return state values to be pickled."""
@@ -108,8 +100,7 @@ class IlastikHypothesesGraph(HypothesesGraph):
         self.skipLinks \
             = state
 
-        self.exportStep=None
-        self.exportProgress=None
+        self.progressVisitor=DefaultProgressVisitor()
 
     def insertEnergies(self):
         """

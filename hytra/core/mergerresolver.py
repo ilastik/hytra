@@ -8,6 +8,7 @@ from hytra.pluginsystem.plugin_manager import TrackingPluginManager
 import hytra.core.probabilitygenerator as probabilitygenerator
 import hytra.core.jsongraph
 from hytra.core.jsongraph import negLog, listify, JsonTrackingGraph
+from hytra.util.progressbar import DefaultProgressVisitor
 
 
 def getLogger():
@@ -22,7 +23,7 @@ class MergerResolver(object):
     """
 
     def __init__(self, pluginPaths=[os.path.abspath('../hytra/plugins')], verbose=False,
-                 exportStepFunction=None, exportProgressFunction=None):
+                 progressVisitor=DefaultProgressVisitor()):
         self.unresolvedGraph = None
         self.resolvedGraph = None
         self.mergersPerTimestep = None
@@ -34,9 +35,7 @@ class MergerResolver(object):
         # should be filled by constructors of derived classes!
         self.model = None
         self.result = None
-
-        self.exportStep = exportStepFunction
-        self.exportProgress = exportProgressFunction
+        self.progressVisitor = progressVisitor
 
     def _createUnresolvedGraph(self, divisionsPerTimestep, mergersPerTimestep, mergerLinks, withFullGraph=False):
         """
@@ -202,7 +201,7 @@ class MergerResolver(object):
         **Note:** cannot use `networkx` flow methods because they don't work with floating point weights.
         """
 
-        trackingGraph = JsonTrackingGraph(exportStepFunction=self.exportStep,exportProgressFunction=self.exportProgress)
+        trackingGraph = JsonTrackingGraph(progressVisitor=self.progressVisitor)
         for node in self.resolvedGraph.nodes_iter():
             additionalFeatures = {}
 
