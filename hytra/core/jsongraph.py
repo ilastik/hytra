@@ -11,7 +11,7 @@ try:
 except ImportError:
     import json
 from hytra.util.progressbar import ProgressBar
-from hytra.util.progressbar import ProgressVisitor
+from hytra.util.progressbar import DefaultProgressVisitor
 
 # ----------------------------------------------------------------------------
 # Utility functions
@@ -242,7 +242,7 @@ class JsonTrackingGraph(object):
                  model_filename=None, 
                  weights_filename=None, 
                  result_filename=None,
-                 progressVisitor=ProgressVisitor()):
+                 progressVisitor=DefaultProgressVisitor()):
         
         assert(weights is None or weights_filename is None)
         assert(model is None or model_filename is None)

@@ -6,7 +6,7 @@ import numpy as np
 from sklearn.neighbors import KDTree
 import hytra.core.jsongraph
 from hytra.core.jsongraph import negLog, listify
-from hytra.util.progressbar import ProgressVisitor
+from hytra.util.progressbar import DefaultProgressVisitor
 
 
 def getLogger():
@@ -71,7 +71,7 @@ class HypothesesGraph(object):
         self.withTracklets = False
         self.allowLengthOneTracks = True
         self._nextNodeUuid = 0
-        self.progressVisitor=ProgressVisitor()
+        self.progressVisitor=DefaultProgressVisitor()
 
     def nodeIterator(self):
         return self._graph.nodes_iter()

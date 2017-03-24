@@ -72,13 +72,3 @@ class CommandLineProgressVisitor(DefaultProgressVisitor):
         except IOError:
             pass
 
-class ProgressVisitor(DefaultProgressVisitor):
-    def __init__(self):
-        pass
-
-    def setProgressVisitor(self,progressVisitor):
-        self.progressVisitor = progressVisitor
-        self._state = self.progressVisitor._state
-        self._start = self.progressVisitor._start
-        self._stop = self.progressVisitor._stop
-        self.state = self.progressVisitor.state
