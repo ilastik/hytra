@@ -3,7 +3,7 @@ import logging
 import numpy as np
 from hytra.core.hypothesesgraph import HypothesesGraph, getTraxelFeatureVector, negLog, listify
 import hytra.core.jsongraph
-from hytra.util.progressbar import ProgressBar
+from hytra.util.progressbar import ProgressBar, DefaultProgressVisitor
 
 def getLogger():
     ''' logger to be used in this module '''
@@ -27,7 +27,8 @@ class IlastikHypothesesGraph(HypothesesGraph):
                  transitionParameter=5.0,
                  transitionClassifier=None,
                  skipLinks=1,
-                 skipLinksBias=20):
+                 skipLinksBias=20,
+                 progressVisitor=DefaultProgressVisitor()):
         '''
         Constructor
         '''
@@ -47,6 +48,7 @@ class IlastikHypothesesGraph(HypothesesGraph):
         self.transitionParameter = transitionParameter
         self.skipLinks = skipLinks
         self.skipLinksBias = skipLinksBias
+        self.progressVisitor = progressVisitor
 
         # build hypotheses graph
         self.buildFromProbabilityGenerator(probabilityGenerator,
@@ -55,6 +57,50 @@ class IlastikHypothesesGraph(HypothesesGraph):
                                            withDivisions=withDivisions,
                                            divisionThreshold=divisionThreshold,
                                            skipLinks=skipLinks)
+
+    def __getstate__(self):
+        """Return state values to be pickled."""
+        return (self._graph,
+                self.withTracklets,
+                self.allowLengthOneTracks,
+                self._nextNodeUuid,
+                self.maxNumObjects,
+                self.skipLinksBias,
+                self.transitionClassifier,
+                self.transitionParameter,
+                self.withDivisions,
+                self.fieldOfView,
+                self.probabilityGenerator,
+                self.timeRange,
+                self.numNearestNeighbors,
+                self.divisionThreshold,
+                self.borderAwareWidth,
+                self.maxNeighborDistance,
+                self.skipLinks
+                )
+
+    def __setstate__(self, state):
+        """Restore state from the unpickled state values."""
+        self._graph, \
+        self.withTracklets, \
+        self.allowLengthOneTracks, \
+        self._nextNodeUuid, \
+        self.maxNumObjects, \
+        self.skipLinksBias, \
+        self.transitionClassifier, \
+        self.transitionParameter, \
+        self.withDivisions, \
+        self.fieldOfView, \
+        self.probabilityGenerator, \
+        self.timeRange, \
+        self.numNearestNeighbors, \
+        self.divisionThreshold, \
+        self.borderAwareWidth, \
+        self.maxNeighborDistance, \
+        self.skipLinks \
+            = state
+
+        self.progressVisitor=DefaultProgressVisitor()
 
     def insertEnergies(self):
         """
