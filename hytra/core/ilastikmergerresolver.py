@@ -283,7 +283,7 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
                 traxel.Timestep = n[0]
 
                 traxel.Features = {'com': self._fitToRegionCenter(fit)}
-                self.hypothesesGraph.addNodeFromTraxel(traxel, value=1, mergerValue=True, divisionValue=False)
+                self.hypothesesGraph.addNodeFromTraxel(traxel, value=1, mergerValue=n[1], divisionValue=False)
             
             # remove merger from HG, which also removes all edges that would otherwise be dangling
             self.hypothesesGraph._graph.remove_node(n)
