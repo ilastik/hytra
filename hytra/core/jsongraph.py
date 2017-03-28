@@ -480,4 +480,10 @@ class JsonTrackingGraph(object):
             hypothesesGraph.insertSolution(self.result)
         
         return hypothesesGraph
+    
+    def setTraxelToUniqueId(self, traxelIdPerTimestepToUniqueIdMap):
+        '''
+        Set traxelToUniqueId map.
+        '''
+        self.model['traxelToUniqueId'] = traxelIdPerTimestepToUniqueIdMap
 

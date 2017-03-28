@@ -9,6 +9,7 @@ import hytra.core.probabilitygenerator as probabilitygenerator
 import hytra.core.jsongraph
 from hytra.core.jsongraph import negLog, listify, JsonTrackingGraph
 from hytra.util.progressbar import DefaultProgressVisitor
+from hytra.core.splittracking import SplitTracking
 
 
 def getLogger():
@@ -22,8 +23,7 @@ class MergerResolver(object):
     that handle reading/writing data to the respective sources.
     """
 
-    def __init__(self, pluginPaths=[os.path.abspath('../hytra/plugins')], verbose=False,
-                 progressVisitor=DefaultProgressVisitor()):
+    def __init__(self, pluginPaths=[os.path.abspath('../hytra/plugins')], numSplits=None, verbose=False, progressVisitor=DefaultProgressVisitor()):
         self.unresolvedGraph = None
         self.resolvedGraph = None
         self.mergersPerTimestep = None
@@ -31,6 +31,7 @@ class MergerResolver(object):
         self.pluginManager = TrackingPluginManager(
             verbose=verbose, pluginPaths=pluginPaths)
         self.mergerResolverPlugin = self.pluginManager.getMergerResolver()
+        self.numSplits = numSplits
 
         # should be filled by constructors of derived classes!
         self.model = None
@@ -204,9 +205,11 @@ class MergerResolver(object):
         trackingGraph = JsonTrackingGraph(progressVisitor=self.progressVisitor)
         for node in self.resolvedGraph.nodes_iter():
             additionalFeatures = {}
+            additionalFeatures['nid'] = node
 
             # nodes with no in/out
             numStates = 2
+            
             if len(self.resolvedGraph.in_edges(node)) == 0:
                 # division nodes with no incoming arcs offer 2 units of flow without the need to de-merge
                 if node in self.unresolvedGraph.nodes() and self.unresolvedGraph.node[node]['division'] and len(self.unresolvedGraph.out_edges(node)) == 2:
@@ -244,11 +247,30 @@ class MergerResolver(object):
                 probs = [1.0 - prob, prob]
 
             trackingGraph.addLinkingHypotheses(src, dest, listify(negLog(probs)))
+            
+        # Set TraxelToUniqueId on resolvedGraph's json graph        
+        uuidToTraxelMap = {}
+        traxelIdPerTimestepToUniqueIdMap = {}
+
+        for node in self.resolvedGraph.nodes_iter():
+            uuid = self.resolvedGraph.node[node]['id']
+            uuidToTraxelMap[uuid] = [node]
+
+            for t in uuidToTraxelMap[uuid]:
+                traxelIdPerTimestepToUniqueIdMap.setdefault(str(t[0]), {})[str(t[1])] = uuid
+        
+        trackingGraph.setTraxelToUniqueId(traxelIdPerTimestepToUniqueIdMap)
 
         # track
         import dpct
+        
         weights = {"weights": [1, 1, 1, 1]}
-        mergerResult = dpct.trackMaxFlow(trackingGraph.model, weights)
+        
+        if not self.numSplits:
+            mergerResult = dpct.trackMaxFlow(trackingGraph.model, weights)
+        else:
+            getLogger().info("Running split tracking with {} splits.".format(self.numSplits))
+            mergerResult = SplitTracking.trackFlowBasedWithSplits(trackingGraph.model, weights, numSplits=self.numSplits, withMergerResolver=True)
 
         # transform results to dictionaries that can be indexed by id or (src,dest)
         nodeFlowMap = dict([(int(d['id']), int(d['value'])) for d in mergerResult['detectionResults']])
