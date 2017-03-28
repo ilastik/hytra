@@ -31,12 +31,10 @@ class SplitTracking:
         pass
      
     @staticmethod
-    def trackFlowBasedWithSplits(model, weights, numSplits=None, numThreads=None, withMergerResolver=None):
-        # Run tracking on whole video (dont's split) if numSplits is 0
-        if numSplits is None:
-            _getLogger().info("WARNING: Running flow-based tracking without splits")
-            return dpct.trackMaxFlow(model, weights)#dpct.trackFlowBased(model, weights)
-        
+    def trackFlowBasedWithSplits(model, weights, numFramesPerSplit, numThreads=None, withMergerResolver=None):   
+        '''
+        Splits video and runs tracking separately for each sub-section, followed by stitching together the results.
+        '''     
         logging.basicConfig(level=logging.INFO)
 
         _ , uuidToTraxelMap = hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(model)
@@ -45,6 +43,16 @@ class SplitTracking:
         detectionsPerTimestep = {}
         for timestep_id, detection in detectionTimestepTuples:
             detectionsPerTimestep.setdefault(int(timestep_id[0]), []).append(detection)
+            
+        firstFrame = min(detectionsPerTimestep.keys())
+        lastFrame = max(detectionsPerTimestep.keys())
+
+        # Run tracking on full video if he have less splits than 2
+        if (lastFrame - firstFrame) <= numFramesPerSplit*2:
+            _getLogger().info("WARNING: Running flow-based tracking without splits")
+            return dpct.trackMaxFlow(model, weights)#dpct.trackFlowBased(model, weights)            
+
+        numSplits = (lastFrame - firstFrame) // numFramesPerSplit 
     
         nonSingletonCostsPerFrame = []
         detectionsById = {}
@@ -66,11 +74,6 @@ class SplitTracking:
         # create a list of the sum of 2 neighboring elements (has len = len(nonSingletonCostsPerFrame) - 1)
         nonSingletonCostsPerFrameGap = [i + j for i, j in zip(nonSingletonCostsPerFrame[:-1], nonSingletonCostsPerFrame[1:])]
     
-        firstFrame = min(detectionsPerTimestep.keys())
-        lastFrame = max(detectionsPerTimestep.keys())
-
-        numFramesPerSplit = (lastFrame - firstFrame) // numSplits
-    
         # Check that number of frames per split is more than 2
         assert numFramesPerSplit > 2 , "The number of splits is too large; submodel has less than 2 frames"
     
@@ -86,9 +89,9 @@ class SplitTracking:
             desiredSplitPoint = s * numFramesPerSplit
             subrange = np.array(nonSingletonCostsPerFrameGap[desiredSplitPoint - border : desiredSplitPoint + border])
             splitPoints.append(desiredSplitPoint - border + np.argmax(subrange))
-    
+  
         _getLogger().info("Going to split hypotheses graph at frames {}".format(splitPoints))
-    
+
         # split graph
         def getSubmodel(startTime, endTime):
             # for each split: take detections from detectionsPerTimestep, store a list of the uuids, then add links by filtering for the uuids
