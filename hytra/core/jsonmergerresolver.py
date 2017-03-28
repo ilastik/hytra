@@ -26,7 +26,7 @@ class JsonMergerResolver(hytra.core.mergerresolver.MergerResolver):
                  raw_axes,
                  pluginPaths=[os.path.abspath('../hytra/plugins')],
                  verbose=False):
-        super(JsonMergerResolver, self).__init__(pluginPaths, verbose)
+        super(JsonMergerResolver, self).__init__(pluginPaths, verbose=verbose)
 
         # copy model and result because we will modify it here
         assert(isinstance(jsonTrackingGraph, JsonTrackingGraph))
