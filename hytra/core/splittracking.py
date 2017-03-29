@@ -17,6 +17,7 @@ import configargparse as argparse
 import numpy as np
 import networkx as nx
 import hytra.core.jsongraph
+import dpct
 
 def _getLogger():
     ''' logger to be used in this module '''
@@ -50,7 +51,10 @@ class SplitTracking:
         # Run tracking on full video if he have less splits than 2
         if (lastFrame - firstFrame) <= numFramesPerSplit*2:
             _getLogger().info("WARNING: Running flow-based tracking without splits")
-            return dpct.trackMaxFlow(model, weights)#dpct.trackFlowBased(model, weights)            
+            if withMergerResolver:
+                return dpct.trackMaxFlow(model, weights)
+            else:
+                return dpct.trackFlowBased(model, weights)
 
         numSplits = (lastFrame - firstFrame) // numFramesPerSplit 
     
@@ -129,10 +133,7 @@ class SplitTracking:
             submodels.append(getSubmodel(lastSplit, splitPoint + 1))
             _getLogger().info("\t contains {} nodes and {} edges".format(len(submodels[-1]['segmentationHypotheses']), len(submodels[-1]['linkingHypotheses'])))
             lastSplit = splitPoint + 1
-    
-        # run tracking (in parallel or single threaded)
-        import dpct   
-        
+            
         # Will store submodel results
         results = []
         
