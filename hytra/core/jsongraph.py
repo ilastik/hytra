@@ -2,6 +2,7 @@
 Utilities that help with loading / saving as well as constructing and parsing
 hypotheses graphs stored in our json (or python dictionary) format.
 '''
+from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 import copy
 import logging
 import numpy as np
@@ -10,6 +11,7 @@ try:
 except ImportError:
     import json
 from hytra.util.progressbar import ProgressBar
+from hytra.util.progressbar import DefaultProgressVisitor
 
 # ----------------------------------------------------------------------------
 # Utility functions
@@ -80,13 +82,13 @@ def getMergersPerTimestep(mergers, timesteps):
     '''
     
     mergersDict = {} 
-    for time, id, count in mergers:
+    for time, tid, count in mergers:
         time = str(time)
         if time in mergersDict:
-            mergersDict[time][id] = count
+            mergersDict[time][tid] = count
         else:
             mergersDict[time] = {}
-            mergersDict[time][id] = count  
+            mergersDict[time][tid] = count  
     
     mergersPerTimestep = {}       
     for time in timesteps:
@@ -165,7 +167,7 @@ def getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps):
                 if div_timestep == int(t) - 1:
                     # we have an active division of the mother cell "div_idx" in the previous frame
                     children = [b for a,b in linksPerTimestep[t] if a == div_idx]
-                    assert(len(children) == 2)
+                    assert len(children) == 2, "Expected two children of {}, but found {}".format((div_timestep, div_idx), children)
                     divisionsPerTimestep[t][div_idx] = children
     else:
         divisionsPerTimestep = dict([(t,{}) for t in timesteps])
@@ -181,6 +183,10 @@ def negLog(features):
 def listify(l):
     ''' put every element of the list in it's own list, and thus extends the depth of nested lists by one '''
     return [[e] for e in l]
+
+def delistify(l):
+    ''' take every element out of it's own list '''
+    return [e[0] for e in l]
 
 def checkForConvexity(feats):
     ''' check whether the given array of numbers is convex, meaning that the difference between consecutive numbers never decreases '''
@@ -235,7 +241,8 @@ class JsonTrackingGraph(object):
                  result=None, 
                  model_filename=None, 
                  weights_filename=None, 
-                 result_filename=None):
+                 result_filename=None,
+                 progressVisitor=DefaultProgressVisitor()):
         
         assert(weights is None or weights_filename is None)
         assert(model is None or model_filename is None)
@@ -285,6 +292,8 @@ class JsonTrackingGraph(object):
                 getMappingsBetweenUUIDsAndTraxels(self.model)
         
         self._nextUuid = 0
+
+        self.progressVisitor = progressVisitor
 
     def addDetectionHypothesesFromTracklet(self,
                                            listOfTraxels,
@@ -407,8 +416,12 @@ class JsonTrackingGraph(object):
         else:
             divisionHypotheses = []
 
-        progressBar = ProgressBar(stop=(len(segmentationHypotheses) + len(linkingHypotheses) + len(divisionHypotheses)))
+        self.progressVisitor.showState("Convexify costs")
+        numElements = len(segmentationHypotheses) + len(linkingHypotheses) + len(divisionHypotheses)
+        countElements = 0
         for seg in segmentationHypotheses:
+            countElements += 1
+            self.progressVisitor.showProgress(countElements/float(numElements))
             for f in ['features', 'appearanceFeatures', 'disappearanceFeatures']:
                 if f in seg:
                     try:
@@ -417,15 +430,16 @@ class JsonTrackingGraph(object):
                         getLogger().warning("Convexification failed for feature {} of :{}".format(f, seg))
                         exit(0)
             # division features are always convex (2 values defines just a line)
-            progressBar.show()
 
         for link in linkingHypotheses:
+            countElements += 1
+            self.progressVisitor.showProgress(countElements/float(numElements))
             link['features'] = convexify(link['features'], epsilon)
-            progressBar.show()
 
         for division in divisionHypotheses:
+            countElements += 1
+            self.progressVisitor.showProgress(countElements/float(numElements))
             division['features'] = convexify(division['features'], epsilon)
-            progressBar.show()
 
     def toHypothesesGraph(self):
         '''
@@ -466,4 +480,10 @@ class JsonTrackingGraph(object):
             hypothesesGraph.insertSolution(self.result)
         
         return hypothesesGraph
+    
+    def setTraxelToUniqueId(self, traxelIdPerTimestepToUniqueIdMap):
+        '''
+        Set traxelToUniqueId map.
+        '''
+        self.model['traxelToUniqueId'] = traxelIdPerTimestepToUniqueIdMap
 

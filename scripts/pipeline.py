@@ -1,7 +1,7 @@
 """
 Run the full pipeline, configured by a config file
 """
-
+from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 # pythonpath modification to make hytra available 
 # for import without requiring it to be installed
 import os
@@ -31,8 +31,8 @@ def run_pipeline(options, unknown):
     if options.do_ctc_raw_data_conversion:
         logging.info("Convert CTC raw data to HDF5...")
         check_call(["python", os.path.abspath("ctc/stack_to_h5.py"), "--config", options.config_file])
-
     if options.do_ctc_segmentation_conversion:
+
         logging.info("Convert CTC segmentation to HDF5...")
         check_call(["python", os.path.abspath("ctc/segmentation_to_hdf5.py"), "--config", options.config_file])
 
@@ -65,18 +65,28 @@ def run_pipeline(options, unknown):
                 import commentjson as json
             except ImportError:
                 import json
-            import dpct
+            
             import hytra.core.jsongraph
-
             with open(options.model_filename, 'r') as f:
                 model = json.load(f)
 
             with open(options.weight_filename, 'r') as f:
                 weights = json.load(f)
+            
+            if options.solver == "flow-based":
+                import dpct
+                result = dpct.trackFlowBased(model, weights)
+            elif options.solver == "ilp":
+                try:
+                    import multiHypoTracking_with_cplex as mht
+                except ImportError:
+                    try:
+                        import multiHypoTracking_with_gurobi as mht
+                    except ImportError:
+                        raise ImportError("Could not find multi hypotheses tracking ilp solver")
+                result = mht.track(model, weights)
 
-            result = dpct.trackFlowBased(model, weights)
             hytra.core.jsongraph.writeToFormattedJSON(options.result_filename, result)
-
 
     extra_params = []
     if options.do_merger_resolving:
@@ -117,6 +127,8 @@ if __name__ == "__main__":
     parser.add_argument("--do-merger-resolving", dest='do_merger_resolving', action='store_true', default=False)
     parser.add_argument("--export-format", dest='export_format', type=str, default=None,
                         help='Export format may be one of: "ilastikH5", "ctc", "labelimage", or None')
+    parser.add_argument("--solver", dest='solver', default='flow-based', type=str,
+                        help='Name of the solver to use, can be "ilp" or "flow-based"')
     parser.add_argument("--tracking-executable", dest='tracking_executable', default=None,
                         type=str, help='executable that can run tracking based on JSON specified models')
     parser.add_argument('--graph-json-file', type=str, dest='model_filename',

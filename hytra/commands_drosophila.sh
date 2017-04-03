@@ -28,7 +28,7 @@ rm ${OUT_DIR}/iter_0/*.h5
 
 OUT_DIR=/home/chaubold/data/iccv15/drosophila-old/result-cvpr16/m3-${DATE}-twostage-update-noswap
 mkdir ${OUT_DIR}
-log2file ${OUT_DIR}/log.txt pythonpython /home/chaubold/miniconda-2.7/envs/magnusson/src/embryonic/hytra/multitrack_ilastik10 --load-traxelstore /home/chaubold/software/embryonic/hytra/drosophila-2015-03-28_11-12-39.dump --method=conservation-twostage --max-number-objects=4 --min-size=4 --max-neighbor-distance=100 --division-threshold=0.1 --ep_gap=0.0 --div=40 --tr=33 --app=50 --dis=100 --trans-par=5 --border-width=5 --without-swaps --num-threads=1 -o ${OUT_DIR} /home/chaubold/data/iccv15/drosophila-old/conservationTracking_2013-08-23_cellcount-replaced.ilp
+log2file ${OUT_DIR}/log.txt python /home/chaubold/miniconda-2.7/envs/magnusson/src/embryonic/hytra/multitrack_ilastik10 --load-traxelstore /home/chaubold/software/embryonic/hytra/drosophila-2015-03-28_11-12-39.dump --method=conservation-twostage --max-number-objects=4 --min-size=4 --max-neighbor-distance=100 --division-threshold=0.1 --ep_gap=0.0 --div=40 --tr=33 --app=50 --dis=100 --trans-par=5 --border-width=5 --without-swaps --num-threads=1 -o ${OUT_DIR} /home/chaubold/data/iccv15/drosophila-old/conservationTracking_2013-08-23_cellcount-replaced.ilp
 python compare_tracking.py --quietly /home/chaubold/data/iccv15/drosophila-old/manual_tracking_20130910_size_geq4/ ${OUT_DIR}/iter_0 > ${OUT_DIR}/iter_0/result.txt
 rm ${OUT_DIR}/iter_0/*.h5
 

@@ -1,5 +1,6 @@
 # pythonpath modification to make hytra available 
 # for import without requiring it to be installed
+from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
@@ -63,7 +64,8 @@ def getConfigAndCommandLineArguments():
     # detection_rf_filename in general parser options
     parser.add_argument('--size-dependent-detection-prob', dest='size_dependent_detection_prob', action='store_true')
     # forbidden_cost in general parser options
-    # ep_gap in general parser options
+    parser.add_argument('--ep_gap', type=float, dest='ep_gap', default=0.01,
+                        help='stop optimization as soon as a feasible integer solution is found proved to be within the given percent of the optimal solution')
     parser.add_argument('--average-obj-size', dest='avg_obj_size', type=float, default=0)
     parser.add_argument('--without-tracklets', dest='without_tracklets', action='store_true')
     parser.add_argument('--motion-model-weight', dest='motionModelWeight', type=float, default=0.0,
@@ -432,10 +434,11 @@ def initializeConservationTracking(options, shape, t0, t1):
                                      options.mnd,
                                      not bool(options.without_divisions),
                                      options.division_threshold,
-                                     rf_fn,
+                                     str(rf_fn),
                                      fov,
-                                     "none",
-                                     track.ConsTrackingSolverType.CplexSolver)
+                                     str("none"),
+                                     track.ConsTrackingSolverType.CplexSolver,
+                                     ndim)
     elif options.method == 'conservation-dynprog':
         tracker = track.ConsTracking(int(options.max_num_objects),
                                      bool(options.size_dependent_detection_prob),
@@ -443,10 +446,11 @@ def initializeConservationTracking(options, shape, t0, t1):
                                      options.mnd,
                                      not bool(options.without_divisions),
                                      options.division_threshold,
-                                     rf_fn,
+                                     str(rf_fn),
                                      fov,
-                                     "none",
-                                     track.ConsTrackingSolverType.DynProgSolver)
+                                     str("none"),
+                                     track.ConsTrackingSolverType.DynProgSolver,
+                                     ndim)
     else:
         raise ValueError("Must be conservation or conservation-dynprog")
     return tracker, fov
@@ -521,7 +525,7 @@ def getDetectionFeatures(traxel, max_state):
 
 
 def getDivisionFeatures(traxel):
-    prob = traxel.get_feature_value("divProb", 0)
+    prob = hypothesesgraph.getTraxelFeatureVector(traxel, "divProb", 1)[0]
     return [1.0 - prob, prob]
 
 
@@ -545,8 +549,8 @@ def getTransitionFeaturesRF(traxelA, traxelB, transitionClassifier, probGenerato
     return [probs[0]] + [probs[1]] * (max_state - 1)
 
 
-def getBoundaryCostMultiplier(traxel, fov, margin, t0, t1):
-    if traxel.Timestep <= t0 or traxel.Timestep >= t1 - 1:
+def getBoundaryCostMultiplier(traxel, fov, margin, t0, t1, forAppearance):
+    if (traxel.Timestep <= t0 and forAppearance) or (traxel.Timestep >= t1 - 1 and not forAppearance):
         return 0.0
 
     dist = fov.spatial_distance_to_border(traxel.Timestep, traxel.X(), traxel.Y(), traxel.Z(), False)
@@ -684,6 +688,18 @@ if __name__ == "__main__":
     time_range = [options.mints, options.maxts]
     if options.maxts == -1 and options.mints == 0:
         time_range = None
+    
+    try:
+        # find shape of dataset
+        pluginManager = TrackingPluginManager(verbose=options.verbose, pluginPaths=options.pluginPaths)
+        shape = pluginManager.getImageProvider().getImageShape(ilp_fn, options.label_img_path)
+        data_time_range = pluginManager.getImageProvider().getTimeRange(ilp_fn, options.label_img_path)
+        
+        if time_range is not None and time_range[1] < 0:
+            time_range[1] += data_time_range[1]
+
+    except:
+        logging.warning("Could not read shape and time range from images")
 
     # set average object size if chosen
     obj_size = [0]
@@ -692,10 +708,6 @@ if __name__ == "__main__":
     else:
         options.avg_obj_size = obj_size
 
-    # find shape of dataset
-    pluginManager = TrackingPluginManager(verbose=options.verbose, pluginPaths=options.pluginPaths)
-    shape = pluginManager.getImageProvider().getImageShape(ilp_fn, options.label_img_path)
-    
     # load traxelstore
     ts, fs, ndim, t0, t1, probGenerator, transitionClassifier = loadTraxelstoreAndTransitionClassifier(options, ilp_fn,
                                                                                                        time_range,
@@ -727,17 +739,18 @@ if __name__ == "__main__":
             else:
                 return getTransitionFeaturesRF(srcTraxel, destTraxel, transitionClassifier, probGenerator, maxNumObjects + 1)
 
-        def boundaryCostMultiplierFunc(traxel):
-            return getBoundaryCostMultiplier(traxel, fov, margin, t0, t1)
+        def boundaryCostMultiplierFunc(traxel, forAppearance):
+            return getBoundaryCostMultiplier(traxel, fov, margin, t0, t1, forAppearance)
 
         def divisionProbabilityFunc(traxel):
             try:
                 divisionFeatures = getDivisionFeatures(traxel)
                 if divisionFeatures[0] > options.division_threshold:
-                    divisionFeatures = list(reversed(divisionFeatures))
+                    divisionFeatures = list(divisionFeatures)
                 else:
                     divisionFeatures = None
-            except:
+            except Exception as e:
+                print(e)
                 divisionFeatures = None
             return divisionFeatures
 
@@ -756,6 +769,8 @@ if __name__ == "__main__":
     else:
         hypotheses_graph.insertEnergies()
         trackingGraph = hypotheses_graph.toTrackingGraph()
+
+    trackingGraph.model['settings']['optimizerEpGap'] = options.ep_gap
 
     # write everything to JSON
     hytra.core.jsongraph.writeToFormattedJSON(options.json_filename, trackingGraph.model)

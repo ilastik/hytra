@@ -1,6 +1,8 @@
+from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 import copy
 import logging
 import h5py
+import numpy as np
 import os
 import hytra.core.mergerresolver
 from hytra.core.jsongraph import JsonTrackingGraph
@@ -24,7 +26,7 @@ class JsonMergerResolver(hytra.core.mergerresolver.MergerResolver):
                  raw_axes,
                  pluginPaths=[os.path.abspath('../hytra/plugins')],
                  verbose=False):
-        super(JsonMergerResolver, self).__init__(pluginPaths, verbose)
+        super(JsonMergerResolver, self).__init__(pluginPaths, verbose=verbose)
 
         # copy model and result because we will modify it here
         assert(isinstance(jsonTrackingGraph, JsonTrackingGraph))
@@ -57,9 +59,12 @@ class JsonMergerResolver(hytra.core.mergerresolver.MergerResolver):
         rawImages = {}
         labelImages = {}
         for t in timesteps:
-            rawImages[t] = self.imageProvider.getImageDataAtTimeFrame(self.raw_filename, self.raw_path, self.raw_axes, int(t))
-            labelImages[t] = self.imageProvider.getLabelImageForFrame(self.label_image_filename, self.label_image_path, int(t))
-            self.relabelMergers(labelImages[t], int(t))
+            if self.raw_filename is not None:
+                rawImages[str(t)] = self.imageProvider.getImageDataAtTimeFrame(self.raw_filename, self.raw_path, self.raw_axes, int(t))
+            else:
+                rawImages[str(t)] = self.imageProvider.getLabelImageForFrame(self.label_image_filename, self.label_image_path, int(t)).astype(np.float32)
+            labelImages[str(t)] = self.imageProvider.getLabelImageForFrame(self.label_image_filename, self.label_image_path, int(t))
+            self.relabelMergers(labelImages[str(t)], int(t))
 
         getLogger().info("Computing object features")
         objectFeatures = {}
@@ -71,7 +76,7 @@ class JsonMergerResolver(hytra.core.mergerresolver.MergerResolver):
         getLogger().info("Data has dimensionality {}".format(ndims))
         for node in self.resolvedGraph.nodes_iter():
             intT, idx = node
-            if isinstance(idx, str) and idx.startswith('div-'):
+            if str(idx).startswith('div-'):
                 continue
 
             # mask out this object only and compute features

@@ -20,6 +20,8 @@ tests/boxesTestDataset/*
 tests/mergerResolvingTestDataset/*
 tests/mergerResolvingTestDatasetNewLabelImage/*
 tests/multiSegmentationHypothesesTestDataset/ctc_out/*
+tests/skipLinksTestDataset/*
+tests/divisionMergerTestDataset/*
 *.dump
 
 # Compiled source #

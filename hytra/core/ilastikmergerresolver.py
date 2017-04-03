@@ -1,8 +1,10 @@
+from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 import os
 import numpy as np
 import logging
 import hytra.core.mergerresolver
 from hytra.core.probabilitygenerator import Traxel
+import hytra.core.probabilitygenerator
 
 def getLogger():
     ''' logger to be used in this module '''
@@ -13,8 +15,8 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
     Specialization of merger resolving to work with the hypotheses graph given by ilastik,
     and to read/write images from/to the input/output slots of the respective operators. 
     '''
-    def __init__(self, hypothesesGraph, pluginPaths=[os.path.abspath('../hytra/plugins')], withFullGraph=False, verbose=False):
-        super(IlastikMergerResolver, self).__init__(pluginPaths, verbose)
+    def __init__(self, hypothesesGraph, pluginPaths=[os.path.abspath('../hytra/plugins')], withFullGraph=False, numSplits=None, verbose=False):
+        super(IlastikMergerResolver, self).__init__(pluginPaths, numSplits, verbose)
         trackingGraph = hypothesesGraph.toTrackingGraph(noFeatures=True)
         self.model = trackingGraph.model
         self.result = hypothesesGraph.getSolutionDictionary()
@@ -266,6 +268,7 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
 
         This also stores the new solution (`value` property) in the new nodes and links
         """
+        
         # update nodes
         for n in self.unresolvedGraph.nodes_iter():
             # skip non-mergers
@@ -278,15 +281,29 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
                 traxel = Traxel()
                 traxel.Id = newId
                 traxel.Timestep = n[0]
-                traxel.Features = self._fitToRegionCenter(fit)
-                self.hypothesesGraph.addNodeFromTraxel(traxel, value=1)
+
+                traxel.Features = {'com': self._fitToRegionCenter(fit)}
+                self.hypothesesGraph.addNodeFromTraxel(traxel, value=1, mergerValue=n[1], divisionValue=False)
             
             # remove merger from HG, which also removes all edges that would otherwise be dangling
             self.hypothesesGraph._graph.remove_node(n)
 
-        # add new links
-        for edge in self.resolvedGraph.edges_iter():
-            srcId = self.resolvedGraph.node[edge[0]]['id']
-            destId = self.resolvedGraph.node[edge[1]]['id']
-            value = arcFlowMap[(srcId, destId)]
-            self.hypothesesGraph._graph.add_edge(edge[0], edge[1], value=value)
+        # add new links only for merger nodes
+        for edge in self.resolvedGraph.edges_iter(): 
+            # Add new edges that are connected to new merger nodes
+            if 'mergerValue' in self.hypothesesGraph._graph.node[edge[0]] or 'mergerValue' in self.hypothesesGraph._graph.node[edge[1]]:
+                srcId = self.resolvedGraph.node[edge[0]]['id']
+                destId = self.resolvedGraph.node[edge[1]]['id']
+                
+                edgeValue = arcFlowMap[(srcId, destId)]
+                
+                # edges connected to mergers are set to "not used" in order to prevent multiple active outgoing edges from single nodes. The correct edges will be added later.
+                if edgeValue > 0 and not self.resolvedGraph.node[edge[0]]['division']:
+                    for outEdge in self.hypothesesGraph._graph.out_edges(edge[0]):
+                        self.hypothesesGraph._graph.edge[outEdge[0]][outEdge[1]]['value'] = 0
+                     
+                    for inEdge in self.hypothesesGraph._graph.in_edges(edge[1]):
+                        self.hypothesesGraph._graph.edge[inEdge[0]][inEdge[1]]['value'] = 0
+                
+                # Add new edge connected to merger node
+                self.hypothesesGraph._graph.add_edge(edge[0], edge[1], value=edgeValue)

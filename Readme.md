@@ -1,6 +1,6 @@
 # Tracking Toolbox of the IAL Lab @ uni-heidelberg.de
 
-By Carsten Haubold, Steffen Wolf, Letitia Parcalabescu, Bernhard Kausler, Martin Schiegg, and more.
+By Carsten Haubold, Steffen Wolf, Letitia Parcalabescu, Bernhard Kausler, Martin Schiegg, Jaime I. Cervantes and more.
 
 * Build status: [ ![Circle CI](https://circleci.com/gh/chaubold/hytra.png?style=shield&circle-token=27b4fff289dfdb41575cecfab8e865c7cac6a099) ](https://circleci.com/gh/chaubold/hytra)
 * Usage documentation can be found in this [Google document](https://docs.google.com/document/d/1jxkYGlTEUCPqH03pip03eDBBX2pVYEhPGHHvbegHiWw/edit?usp=sharing)

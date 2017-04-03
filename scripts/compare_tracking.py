@@ -1,5 +1,6 @@
 # pythonpath modification to make hytra available 
 # for import without requiring it to be installed
+from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
@@ -19,7 +20,7 @@ import h5py
 
 def match(fn_pair):    
     assoc = m.match_files(fn_pair[0], fn_pair[1], options.threshold, options.ignore_z, options.swap_xy, verbose=False)
-    print "-> matched: " + path.basename(fn_pair[0]) + " <-> " + path.basename(fn_pair[1])
+    print("-> matched: " + path.basename(fn_pair[0]) + " <-> " + path.basename(fn_pair[1]))
     return assoc
 
 
@@ -50,7 +51,7 @@ def construct_associations(base_fns, cont_fns, timesteps, verbose=False):
             # cont_detection = f['objects/meta/detection'].value
 
         if verbose:
-            print "sanity checking %d" % t
+            print("sanity checking %d" % t)
         assert(np.all(base_ids == cont_ids))
         assert(np.all(base_valid == 1))
         assert(np.all(cont_valid == 1))
@@ -121,10 +122,10 @@ Compare two tracking results, based only on the association information in the t
         base_fns = base_fns[:options.max_ts]
 
     if len(base_fns) < 2:
-        print "Abort: at least two base files needed."
+        print("Abort: at least two base files needed.")
         sys.exit(1)
     if len(cont_fns) < 2:
-        print "Abort: at least two contestant files needed."
+        print("Abort: at least two contestant files needed.")
         sys.exit(1)
     # if len(base_fns) != len(cont_fns):
     #     print "Warning: number of base files has to match number of contestant files."
@@ -148,7 +149,7 @@ Compare two tracking results, based only on the association information in the t
     ts = []
     for i,v in enumerate(fn_pairs[1:]):
         if verbose:
-            print path.basename(v[0]), path.basename(v[1])
+            print(path.basename(v[0]), path.basename(v[1]))
         t = quant.compute_taxonomy(assocs[i], assocs[i+1], v[0], v[1], i + first_timestep + 1)
         ts.append(t)
         #sys.stdout.write('%d ' % i)
@@ -163,12 +164,11 @@ Compare two tracking results, based only on the association information in the t
     ## report results
     ##
     if verbose:
-        print "Measuring performance..."
-        print "-> Precision: %.3f" % overall.precision()
-        print "-> Recall: %.3f" % overall.recall()
-        print "-> F-measure %.3f: " % overall.f_measure()
-        print "Check", 2.*overall.precision() * overall.recall() / (overall.precision() + overall.recall())
-        print
-        print overall
+        print("Measuring performance...")
+        print("-> Precision: %.3f" % overall.precision())
+        print("-> Recall: %.3f" % overall.recall())
+        print("-> F-measure %.3f: " % overall.f_measure())
+        print("Check", 2.*overall.precision() * overall.recall() / (overall.precision() + overall.recall()))
+        print(overall)
     else:
-        print overall.to_line()
+        print(overall.to_line())

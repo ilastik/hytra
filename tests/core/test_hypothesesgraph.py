@@ -1,3 +1,4 @@
+from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 import hytra.core.hypothesesgraph as hg
 import hytra.core.probabilitygenerator as pg
 import networkx as nx
@@ -313,7 +314,7 @@ def test_insertEnergies():
     def divProbFunc(traxel):
         return traxel.Features['divProb']
     
-    def boundaryCostFunc(traxel):
+    def boundaryCostFunc(traxel, forAppearance):
         return 1.0
     
     def transProbFunc(traxelA, traxelB):

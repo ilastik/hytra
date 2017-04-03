@@ -1,5 +1,6 @@
 # pythonpath modification to make hytra and empryonic available 
 # for import without requiring it to be installed
+from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
@@ -184,24 +185,24 @@ class TransitionClassifier:
                 (np.asarray(self.labels)).astype("uint32").reshape(-1, 1))
         logger.info("RF trained with OOB Error {}".format(oob))
 
-    def predictSample(self, test_data=None, f1=None, f2=None):
-        if test_data is not None:
-            return self.rf.predictLabels(test_data.astype('float32'))
-        else:
-            data = self.constructSampleFeatureVector(f1, f2)
-            if len(data.shape) < 2:
-                data = np.expand_dims(data, axis=0)
-            return self.rf.predictLabels(data.astype('float32'))
+    # def predictSample(self, test_data=None, f1=None, f2=None):
+    #     if test_data is not None:
+    #         return self.rf.predictLabels(test_data.astype('float32'))
+    #     else:
+    #         data = self.constructSampleFeatureVector(f1, f2)
+    #         if len(data.shape) < 2:
+    #             data = np.expand_dims(data, axis=0)
+    #         return self.rf.predictLabels(data.astype('float32'))
 
-    def predictProbabilities(self, test_data=None, f1=None, f2=None):
-        if test_data is not None:
-            return self.rf.predictProbabilities(test_data.astype('float32'))
-        else:
-            data = self.constructSampleFeatureVector(f1, f2)
-            print(data)
-            if len(data.shape) < 2:
-                data = np.expand_dims(data, axis=0)
-            return self.rf.predictProbabilities(data.astype('float32'))
+    # def predictProbabilities(self, test_data=None, f1=None, f2=None):
+    #     if test_data is not None:
+    #         return self.rf.predictProbabilities(test_data.astype('float32'))
+    #     else:
+    #         data = self.constructSampleFeatureVector(f1, f2)
+    #         print(data)
+    #         if len(data.shape) < 2:
+    #             data = np.expand_dims(data, axis=0)
+    #         return self.rf.predictProbabilities(data.astype('float32'))
 
     def predictLabels(self, test_data, threshold=0.5):
         prob = self.rf.predictProbabilities(test_data.astype('float32'))
@@ -293,11 +294,11 @@ if __name__ == '__main__':
         trackingPluginManager = TrackingPluginManager(verbose=args.verbose, 
                                                       pluginPaths=args.pluginPaths)
         features = compute_features(rawimage,
-                                        read_in_images(initFrame, endFrame, files, args.groundtruth_axes[dataset]),
-                                        initFrame,
-                                        endFrame,
-                                        trackingPluginManager,
-                                        rawimage_filename)
+                                    read_in_images(initFrame, endFrame, files, args.groundtruth_axes[dataset]),
+                                    initFrame,
+                                    endFrame,
+                                    trackingPluginManager,
+                                    rawimage_filename)
         logger.info('Done computing features from dataset {}'.format(dataset))
 
         selectedFeatures = find_features_without_NaNs(features)

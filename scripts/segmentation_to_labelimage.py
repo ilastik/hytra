@@ -1,5 +1,6 @@
 # pythonpath modification to make hytra and empryonic available 
 # for import without requiring it to be installed
+from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))

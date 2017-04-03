@@ -5,6 +5,7 @@ track them, and create a final result by cherry-picking the segments that were p
 
 # pythonpath modification to make hytra available
 # for import without requiring it to be installed
+from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 import os
 import sys
 import gzip

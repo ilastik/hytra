@@ -1,8 +1,9 @@
+from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 import logging
 import numpy as np
 from hytra.core.hypothesesgraph import HypothesesGraph, getTraxelFeatureVector, negLog, listify
 import hytra.core.jsongraph
-from hytra.util.progressbar import ProgressBar
+from hytra.util.progressbar import ProgressBar, DefaultProgressVisitor
 
 def getLogger():
     ''' logger to be used in this module '''
@@ -26,7 +27,8 @@ class IlastikHypothesesGraph(HypothesesGraph):
                  transitionParameter=5.0,
                  transitionClassifier=None,
                  skipLinks=1,
-                 skipLinksBias=20):
+                 skipLinksBias=20,
+                 progressVisitor=DefaultProgressVisitor()):
         '''
         Constructor
         '''
@@ -46,6 +48,7 @@ class IlastikHypothesesGraph(HypothesesGraph):
         self.transitionParameter = transitionParameter
         self.skipLinks = skipLinks
         self.skipLinksBias = skipLinksBias
+        self.progressVisitor = progressVisitor
 
         # build hypotheses graph
         self.buildFromProbabilityGenerator(probabilityGenerator,
@@ -54,6 +57,50 @@ class IlastikHypothesesGraph(HypothesesGraph):
                                            withDivisions=withDivisions,
                                            divisionThreshold=divisionThreshold,
                                            skipLinks=skipLinks)
+
+    def __getstate__(self):
+        """Return state values to be pickled."""
+        return (self._graph,
+                self.withTracklets,
+                self.allowLengthOneTracks,
+                self._nextNodeUuid,
+                self.maxNumObjects,
+                self.skipLinksBias,
+                self.transitionClassifier,
+                self.transitionParameter,
+                self.withDivisions,
+                self.fieldOfView,
+                self.probabilityGenerator,
+                self.timeRange,
+                self.numNearestNeighbors,
+                self.divisionThreshold,
+                self.borderAwareWidth,
+                self.maxNeighborDistance,
+                self.skipLinks
+                )
+
+    def __setstate__(self, state):
+        """Restore state from the unpickled state values."""
+        self._graph, \
+        self.withTracklets, \
+        self.allowLengthOneTracks, \
+        self._nextNodeUuid, \
+        self.maxNumObjects, \
+        self.skipLinksBias, \
+        self.transitionClassifier, \
+        self.transitionParameter, \
+        self.withDivisions, \
+        self.fieldOfView, \
+        self.probabilityGenerator, \
+        self.timeRange, \
+        self.numNearestNeighbors, \
+        self.divisionThreshold, \
+        self.borderAwareWidth, \
+        self.maxNeighborDistance, \
+        self.skipLinks \
+            = state
+
+        self.progressVisitor=DefaultProgressVisitor()
 
     def insertEnergies(self):
         """
@@ -72,8 +119,8 @@ class IlastikHypothesesGraph(HypothesesGraph):
             else:
                 return self.getTransitionFeaturesRF(srcTraxel, destTraxel, self.transitionClassifier, self.probabilityGenerator, self.maxNumObjects + 1)
 
-        def boundaryCostMultiplierFunc(traxel):
-            return self.getBoundaryCostMultiplier(traxel, self.fieldOfView, self.borderAwareWidth, self.timeRange[0], self.timeRange[-1])
+        def boundaryCostMultiplierFunc(traxel, forAppearance):
+            return self.getBoundaryCostMultiplier(traxel, self.fieldOfView, self.borderAwareWidth, self.timeRange[0], self.timeRange[-1], forAppearance)
 
         def divisionProbabilityFunc(traxel):
             if self.withDivisions:
@@ -164,13 +211,13 @@ class IlastikHypothesesGraph(HypothesesGraph):
 
 
 
-    def getBoundaryCostMultiplier(self, traxel, fov, margin, t0, t1):
+    def getBoundaryCostMultiplier(self, traxel, fov, margin, t0, t1, forAppearance):
         """
         A traxel's appearance and disappearance probability decrease linearly within a `margin` to the image border
         which is defined by the field of view `fov`. 
         Traxels in the first frame appear for free, and traxels in the last frame disappear for free.
         """
-        if traxel.Timestep <= t0 or traxel.Timestep >= t1 - 1:
+        if (traxel.Timestep <= t0 and forAppearance) or (traxel.Timestep >= t1 - 1 and not forAppearance):
             return 0.0
 
         dist = fov.spatial_distance_to_border(traxel.Timestep, traxel.X(), traxel.Y(), traxel.Z(), False)
@@ -184,16 +231,16 @@ class IlastikHypothesesGraph(HypothesesGraph):
 
 
 def convertLegacyHypothesesGraphToJsonGraph(hypothesesGraph,
-                                      nodeIterator,
-                                      arcIterator,
-                                      withTracklets,
-                                      maxNumObjects,
-                                      numElements,
-                                      traxelMap,
-                                      detectionProbabilityFunc,
-                                      transitionProbabilityFunc,
-                                      boundaryCostMultiplierFunc,
-                                      divisionProbabilityFunc):
+                                            nodeIterator,
+                                            arcIterator,
+                                            withTracklets,
+                                            maxNumObjects,
+                                            numElements,
+                                            traxelMap,
+                                            detectionProbabilityFunc,
+                                            transitionProbabilityFunc,
+                                            boundaryCostMultiplierFunc,
+                                            divisionProbabilityFunc):
     '''
     Build a json representation of this hypotheses graph, by transforming the probabilities for certain
     events (given by the `*ProbabilityFunc`-functions per traxel) into energies. If the given graph
@@ -216,19 +263,12 @@ def convertLegacyHypothesesGraphToJsonGraph(hypothesesGraph,
      ([prob0objects, prob1object,...])
     * `transitionProbabilityFunc`: should take two traxels and return this link's probabilities
      ([prob0objectsInTransition, prob1objectsInTransition,...])
-    * `boundaryCostMultiplierFunc`: should take a traxel and return a scalar multiplier between 0 and 1 for the
-     appearance/disappearance cost that depends on the traxel's distance to the spacial and time boundary
+    * `boundaryCostMultiplierFunc`: should take a traxel and a boolean that is true if we are seeking for an appearance cost multiplier, 
+      false for disappearance, and return a scalar multiplier between 0 and 1 for the
+      appearance/disappearance cost that depends on the traxel's distance to the spacial and time boundary
     * `divisionProbabilityFunc`: should take a traxel and return its division probabilities
      ([probNoDiv, probDiv])
     '''
-
-    ## TODO: store probabilities inside the networkx-graph and then 
-    ## use the following networkx functionality to make this much nicer:
-    # a = json_graph.node_link_data(g, attrs={'source':'src', 'target':'dest', 'id':'id', 'key':'test'})
-    # a['segmentationHypotheses'] = a['nodes']
-    # del a['nodes']
-    # a['linkingHypotheses'] = a['links']
-    # del a['nodes']
 
     getLogger().info("Creating JSON graph from legacy hypotheses graph")
     progressBar = ProgressBar(stop=numElements)
@@ -259,8 +299,8 @@ def convertLegacyHypothesesGraphToJsonGraph(hypothesesGraph,
             divisionFeatures = listify(negLog(divisionFeatures))
 
         # appearance/disappearance
-        appearanceFeatures = listify([0.0] + [boundaryCostMultiplierFunc(traxels[0])] * maxNumObjects)
-        disappearanceFeatures = listify([0.0] + [boundaryCostMultiplierFunc(traxels[-1])] * maxNumObjects)
+        appearanceFeatures = listify([0.0] + [boundaryCostMultiplierFunc(traxels[0], True)] * maxNumObjects)
+        disappearanceFeatures = listify([0.0] + [boundaryCostMultiplierFunc(traxels[-1], False)] * maxNumObjects)
 
         trackingGraph.addDetectionHypothesesFromTracklet(traxels,
                                                          detectionFeatures,
