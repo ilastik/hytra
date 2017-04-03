@@ -9,7 +9,10 @@ import logging
 import h5py
 import vigra
 from vigra import numpy as np
-import commentjson as json
+try:
+    import commentjson as json
+except ImportError:
+    import json
 from hytra.util.progressbar import ProgressBar
 
 def get_uuid_to_traxel_map(traxelIdPerTimestepToUniqueIdMap):
@@ -163,5 +166,5 @@ if __name__ == "__main__":
     # save to disk
     if os.path.exists(args.out):
         os.remove(args.out)
-    vigra.impex.writeHDF5(resultVolume, args.out, 'exported_data')
+    vigra.impex.writeHDF5(resultVolume, args.out, 'exported_data', compression='gzip', chunks=True)
 

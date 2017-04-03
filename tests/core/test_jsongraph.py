@@ -338,6 +338,7 @@ def return_example_model():
             }
         },
         "exclusions": [],
+        "divisionHypotheses": [],
         "settings": {
             "optimizerNumThreads": 1,
             "optimizerEpGap": 0.01,
@@ -464,3 +465,13 @@ def test_toHypoGraph():
             assert(hypothesesGraph._graph.edge[a[0]][a[1]]['value'] == 2)
         else:
             assert(hypothesesGraph._graph.edge[a[0]][a[1]]['value'] == 1)
+
+def test_weightListToFromDict():
+    model = return_example_model()
+    weights = [0,1,2,3,4]
+    trackingGraph = jg.JsonTrackingGraph(model=model)
+    wd = trackingGraph.weightsListToDict(weights)
+    assert(wd['weights'] == [0,1,3,4])
+    
+    otherWeights = trackingGraph.weightsDictToList(wd)
+    assert(otherWeights == [0,1,0,3,4])

@@ -172,13 +172,19 @@ class FeatureManager( object ):
         return result
  
 
-    def computeFeatures_at(self, feats_cur, feats_next, img_next, feat_names): 
+    def computeFeatures_at(self, feats_cur, feats_next, img_next, feat_names, label_image_filename=None):
+        '''
+        **Parameters:**
+    
+        * if `label_image_filename` is given, it is used to filter the objects from the feature dictionaries 
+          that belong to that label image only (in the JST setting) 
+        ''' 
 
 #        n_labels = feats_cur.values()[0].shape[0]
         result = {}
         
+        # find available features
         vigra_feat_names = set([self.com_name_cur, self.com_name_next, self.size_name])
-
         feat_classes = {}
 
         for name in feat_names:
@@ -199,20 +205,32 @@ class FeatureManager( object ):
 
             vigra_feat_names.add(name_split[1])
         
-
+        # initialize squared distances
         for idx in range(self.n_best):
             name = 'SquaredDistances_' + str(idx)
             result[name] = np.ones((feats_cur.values()[0].shape[0], 1)) * self.squared_distance_default
 
+        # construct mapping which we only need if label_image_filename was given and the features 'filename' and 'id' exist
+        if label_image_filename is not None and 'filename' in feats_next and 'id' in feats_next: 
+            global_indices_current_label_image_only = [l for l, f in enumerate(feats_next['filename']) if f == label_image_filename] 
+            local_to_global_index_map = dict( [(feats_next['id'][l], l) for l in global_indices_current_label_image_only] )
+
+        # for every object in this frame, check which objects are in the vicinity in the next frame
+        valid_indices = [0]
         for label_cur, com_cur in enumerate(feats_cur[self.com_name_cur]):
+            if label_image_filename is not None and 'filename' in feats_cur and feats_cur['filename'][label_cur] != label_image_filename:
+                # in the JST context, only look at objects from a given segmentation hypotheses set
+                continue
             if label_cur == 0:
                 continue
 
+            valid_indices.append(label_cur)
             feats_next_subset = {}
             for k in vigra_feat_names:
                 feats_next_subset[k] = {}
 
             if feats_next is not None and img_next is not None:
+                # find roi around the center of the current object
                 idx_cur = [round(x) for x in com_cur]
 
                 roi = []
@@ -221,14 +239,19 @@ class FeatureManager( object ):
                     stop = min(coord + self.template_size/2, img_next.shape[idx])
                     roi.append(slice(int(start),int(stop)))
 
-                # find all coms in the neighborhood of com_cur
+                # find all coms in the neighborhood of com_cur by checking the next frame's labelimage in the roi
                 subimg_next = img_next[roi]
                 labels_next = np.unique(subimg_next).tolist()
+
+                # if 'id' in features, map the labels first -- because labels_next refers image object ids, 
+                # whereas the features are the union of objects from several segmentations
+                if 'id' in feats_next:
+                    labels_next = [local_to_global_index_map[l] for l in labels_next if l != 0]
 
                 for l in labels_next:
                     if l != 0:
                         for n in vigra_feat_names:
-                            feats_next_subset[n][l] = np.array([feats_next[n][l]]).flatten()                            
+                            feats_next_subset[n][l] = np.array([feats_next[n][l]]).flatten()                          
 
             sq_dist_label = self._getBestSquaredDistances(com_cur, feats_next_subset[self.com_name_next], 
                                 self.size_filter, feats_next_subset[self.size_name], default_value=self.squared_distance_default)
@@ -255,10 +278,12 @@ class FeatureManager( object ):
                     f_cur = np.array([feats_cur[feat_class.feats_name][label_cur]]).flatten()
                     f_next = np.array([feats_next_subset_best[feat_class.feats_name]]).reshape((-1,f_cur.shape[0]))
                 result[name][label_cur] = feat_class.compute(f_cur, f_next)
+        
+        # return only valid labels
+        for feature_name in result:
+            result[feature_name] = result[feature_name][valid_indices] 
 
         return result
-
-
 
 if __name__ == '__main__':
     import vigra

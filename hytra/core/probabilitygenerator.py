@@ -29,6 +29,9 @@ class Traxel(object):
         # dictionary of a np.array per feature (keys should be strings!)
         self.Features = {}
 
+        # conflicting traxel ids in the same frame
+        self.conflictingTraxelIds = None
+
     def set_x_scale(self, val):
         self._scale[0] = val
 
@@ -178,7 +181,7 @@ def computeDivisionFeaturesOnCloud(frameT,
 
     # compute features
     fm = hytra.core.divisionfeatures.FeatureManager(ndim=numDimensions)
-    feats = fm.computeFeatures_at(featuresAtT, featuresAtTPlus1, labelImageAtTPlus1, divisionFeatureNames)
+    feats = fm.computeFeatures_at(featuresAtT, featuresAtTPlus1, labelImageAtTPlus1, divisionFeatureNames, labelImageFilename)
 
     return frameT, feats
 
@@ -248,16 +251,7 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
         self._divisionClassifier = None
         self._transitionClassifier = None
 
-        if ilpOptions.objectCountClassifierPath != None and ilpOptions.objectCountClassifierFilename != None:
-            self._countClassifier = RandomForestClassifier(ilpOptions.objectCountClassifierPath,
-                                                           ilpOptions.objectCountClassifierFilename, ilpOptions)
-        print ilpOptions.divisionClassifierPath
-        if ilpOptions.divisionClassifierPath != None and ilpOptions.divisionClassifierFilename != None:
-            self._divisionClassifier = RandomForestClassifier(ilpOptions.divisionClassifierPath,
-                                                              ilpOptions.divisionClassifierFilename, ilpOptions)
-        if ilpOptions.transitionClassifierPath != None and ilpOptions.transitionClassifierFilename != None:
-            self._transitionClassifier = RandomForestClassifier(ilpOptions.transitionClassifierPath,
-                                                                ilpOptions.transitionClassifierFilename, ilpOptions)
+        self._loadClassifiers()
 
         self.shape, self.timeRange = self._getShapeAndTimeRange()
 
@@ -278,6 +272,40 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
 
         self.TraxelsPerFrame = {}
         ''' this public variable contains all traxels if we're not using pgmlink '''
+    
+    def _loadClassifiers(self):
+        if self._options.objectCountClassifierPath != None and self._options.objectCountClassifierFilename != None:
+            self._countClassifier = RandomForestClassifier(self._options.objectCountClassifierPath,
+                                                           self._options.objectCountClassifierFilename, self._options)
+        if self._options.divisionClassifierPath != None and self._options.divisionClassifierFilename != None:
+            self._divisionClassifier = RandomForestClassifier(self._options.divisionClassifierPath,
+                                                              self._options.divisionClassifierFilename, self._options)
+        if self._options.transitionClassifierPath != None and self._options.transitionClassifierFilename != None:
+            self._transitionClassifier = RandomForestClassifier(self._options.transitionClassifierPath,
+                                                                self._options.transitionClassifierFilename, self._options)
+    
+    def __getstate__(self):
+        '''
+        We define __getstate__ and __setstate__ to exclude the random forests from being pickled,
+        as that is not allowed.
+
+        See https://docs.python.org/3/library/pickle.html#pickle-state for more details.
+        '''
+        # Copy the object's state from self.__dict__ which contains
+        # all our instance attributes. Always use the dict.copy()
+        # method to avoid modifying the original state.
+        state = self.__dict__.copy()
+        # Remove the unpicklable entries.
+        del state['_countClassifier']
+        del state['_divisionClassifier']
+        del state['_transitionClassifier']
+        return state
+
+    def __setstate__(self, state):
+        # Restore instance attributes
+        self.__dict__.update(state)
+        # Restore the random forests by reading them from scratch
+        self._loadClassifiers()
 
     def computeRegionFeatures(self, rawImage, labelImage, frameNumber):
         """
@@ -440,14 +468,14 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
                     jobs = []
                     for frame in range(self.timeRange[0], self.timeRange[1] - 1):
                         jobs.append(executor.submit(computeDivisionFeaturesOnCloud,
-                            frame,
-                            featuresPerFrame[frame],
-                            featuresPerFrame[frame + 1],
-                            self._pluginManager.getImageProvider(),
-                            self._options.labelImageFilename,
-                            self._options.labelImagePath,
-                            self.getNumDimensions(),
-                            self._divisionFeatureNames
+                                                    frame,
+                                                    featuresPerFrame[frame],
+                                                    featuresPerFrame[frame + 1],
+                                                    self._pluginManager.getImageProvider(),
+                                                    self._options.labelImageFilename,
+                                                    self._options.labelImagePath,
+                                                    self.getNumDimensions(),
+                                                    self._divisionFeatureNames
                         ))
 
                     for job in concurrent.futures.as_completed(jobs):
@@ -465,21 +493,21 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
             import random
             import dispy
             cluster = dispy.JobCluster(computeRegionFeaturesOnCloud,
-                                        nodes=dispyNodeIps,
-                                        loglevel=logging.DEBUG,
-                                        depends=[self._pluginManager],
-                                        secret="teamtracking")
+                                       nodes=dispyNodeIps,
+                                       loglevel=logging.DEBUG,
+                                       depends=[self._pluginManager],
+                                       secret="teamtracking")
 
             jobs = []
             for frame in range(self.timeRange[0], self.timeRange[1]):
                 job = cluster.submit(frame,
-                                    self._options.rawImageFilename,
-                                    self._options.rawImagePath,
-                                    self._options.rawImageAxes,
-                                    self._options.labelImageFilename,
-                                    self._options.labelImagePath,
-                                    turnOffFeatures,
-                                    pluginPaths=['/home/carstenhaubold/embryonic/plugins'])
+                                     self._options.rawImageFilename,
+                                     self._options.rawImagePath,
+                                     self._options.rawImageAxes,
+                                     self._options.labelImageFilename,
+                                     self._options.labelImagePath,
+                                     turnOffFeatures,
+                                     pluginPaths=['/home/carstenhaubold/embryonic/plugins'])
                 job.id = frame
                 jobs.append(job)
 
@@ -504,7 +532,8 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
 
     def _setTraxelFeatureArray(self, traxel, featureArray, name):
         ''' store the specified `featureArray` in a `traxel`'s feature dictionary under the specified key=`name` '''
-        featureArray = featureArray.flatten()
+        if isinstance(featureArray, np.ndarray):
+            featureArray = featureArray.flatten()
         traxel.add_feature_array(name, len(featureArray))
         for i, v in enumerate(featureArray):
             traxel.set_feature_value(name, i, float(v))
@@ -550,9 +579,9 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
             for objectId in range(1, features.values()[0].shape[0]):
                 # print("Frame {} Object {}".format(frame, objectId))
                 pixelSize = features['Count'][objectId]
-                if self._options.sizeFilter is not None \
+                if pixelSize == 0 or (self._options.sizeFilter is not None \
                         and (pixelSize < self._options.sizeFilter[0] \
-                                     or pixelSize > self._options.sizeFilter[1]):
+                                     or pixelSize > self._options.sizeFilter[1])):
                     continue
 
                 # create traxel
@@ -565,25 +594,30 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
 
                 # add raw features
                 for key, val in features.iteritems():
-                    try:
-                        if isinstance(val, list):  # polygon feature returns a list!
-                            featureValues = val[objectId]
-                        else:
-                            featureValues = val[objectId, ...]
-                    except:
-                        getLogger().error(
-                            "Could not get feature values of {} for key {} from matrix with shape {}".format(
-                                objectId, key, val.shape))
-                        raise AssertionError()
-                    try:
-                        self._setTraxelFeatureArray(traxel, featureValues, key)
-                        if key == 'RegionCenter':
-                            self._setTraxelFeatureArray(traxel, featureValues, 'com')
-                    except:
-                        getLogger().error(
-                            "Could not add feature array {} of shape {} for {}".format(
-                                featureValues, featureValues.shape, key))
-                        raise AssertionError()
+                    if key == 'id':
+                        traxel.idInSegmentation = val[objectId]
+                    elif key == 'filename':
+                        traxel.segmentationFilename = val[objectId]
+                    else:
+                        try:
+                            if isinstance(val, list):  # polygon feature returns a list!
+                                featureValues = val[objectId]
+                            else:
+                                featureValues = val[objectId, ...]
+                        except:
+                            getLogger().error(
+                                "Could not get feature values of {} for key {} from matrix with shape {}".format(
+                                    objectId, key, val.shape))
+                            raise AssertionError()
+                        try:
+                            self._setTraxelFeatureArray(traxel, featureValues, key)
+                            if key == 'RegionCenter':
+                                self._setTraxelFeatureArray(traxel, featureValues, 'com')
+                        except:
+                            getLogger().error(
+                                "Could not add feature array {} for {}".format(
+                                    featureValues, key))
+                            raise AssertionError()
 
                 # add random forest predictions
                 if self._countClassifier is not None:
@@ -608,13 +642,6 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
 
         if usePgmlink:
             return ts, fs
-
-    def getTransitionProbability(self, timeframeA, objectIdA, timeframeB, objectIdB):
-        """
-        Evaluate the transition classifier for the two given objects,
-        as this probability doesn't go into pgmlink's traxelstore.
-        """
-        raise NotImplementedError()
 
     def getTraxelFeatureDict(self, frame, objectId):
         """

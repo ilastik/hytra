@@ -36,8 +36,6 @@ dependencies:
       conda install -y jinja2;
       conda install -y yapsy -c ilastik;
       conda install -y dpct -c chaubold;
-      conda install -y scipy=0.17.0=np19py27_2
-    # the last line is a hack because the scipy 0.16.0 package that we install by default is messed up (misses gfortran).
 
 ## Customize test commands
 test:

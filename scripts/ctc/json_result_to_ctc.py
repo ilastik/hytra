@@ -156,12 +156,10 @@ if __name__ == "__main__":
 
     for timeframe in range(timeRange[0], timeRange[1]):
         label_image = imageProvider.getLabelImageForFrame(args.label_image_filename, args.label_image_path, timeframe)
+
         # check if frame is empty
         if timeframe in mappings.keys():
             remapped_label_image = remap_label_image(label_image, mappings[timeframe])
             save_frame_to_tif(timeframe, remapped_label_image, args)
         else:
             save_frame_to_tif(timeframe, label_image, args)
-
-
-

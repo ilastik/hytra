@@ -7,9 +7,14 @@ class ConvexHullObjectFeatures(object_feature_computation_plugin.ObjectFeatureCo
     Computes the convex hull based vigra features
     """
     worksForDimensions = [2]
-    omittedFeatures = ['Polygon', 'Defect Center', 'Center', 'Input Center']
+    omittedFeatures = ['Polygon']
 
     def computeFeatures(self, rawImage, labelImage, frameNumber, rawFilename):
-        return vigra.analysis.extractConvexHullFeatures(labelImage.squeeze().astype(np.uint32),
-                                                        ignoreLabel=0)
+        featureDict =  vigra.analysis.extractConvexHullFeatures(labelImage.squeeze().astype(np.uint32),
+                                                                ignoreLabel=0)
+        if 'Center' in featureDict:
+            # old vigra versions simply call that feature "Center" which conflicts with other features 
+            featureDict['Hull Center'] = featureDict['Center']
+            del featureDict['Center']
+        return featureDict
 

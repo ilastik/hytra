@@ -2,10 +2,13 @@
 Utilities that help with loading / saving as well as constructing and parsing
 hypotheses graphs stored in our json (or python dictionary) format.
 '''
-
+import copy
 import logging
 import numpy as np
-import commentjson as json
+try:
+    import commentjson as json
+except ImportError:
+    import json
 from hytra.util.progressbar import ProgressBar
 
 # ----------------------------------------------------------------------------
@@ -70,17 +73,78 @@ def getMergersDetectionsLinksDivisions(result, uuidToTraxelMap):
 
 def getMergersPerTimestep(mergers, timesteps):
     ''' returns mergersPerTimestep = { "<timestep>": {<idx>: <count>, <idx>: <count>, ...}, "<timestep>": {...}, ... } '''
-    mergersPerTimestep = dict([(t, dict([(idx, count) for timestep, idx, count in mergers if timestep == int(t)])) for t in timesteps])
+    
+    '''
+    TODO: We're storing all the mergers in a dict in order to increase speed at the expense of efficiency. 
+    This could certainly be done faster and memory-efficient if we just return the merger dict for all times, without using the timestep loop.
+    '''
+    
+    mergersDict = {} 
+    for time, id, count in mergers:
+        time = str(time)
+        if time in mergersDict:
+            mergersDict[time][id] = count
+        else:
+            mergersDict[time] = {}
+            mergersDict[time][id] = count  
+    
+    mergersPerTimestep = {}       
+    for time in timesteps:
+        if time in mergersDict:
+            mergersPerTimestep[time] = mergersDict[time]
+        else:
+            mergersPerTimestep[time] = {}
+    
     return mergersPerTimestep
 
 def getDetectionsPerTimestep(detections, timesteps):
     ''' returns detectionsPerTimestep = { "<timestep>": [<idx>, <idx>, ...], "<timestep>": [...], ...} '''
-    detectionsPerTimestep = dict([(t, [idx for timestep, idx in detections if timestep == int(t)]) for t in timesteps])
+    
+    '''
+    TODO: We're storing all the detections in a dict in order to increase speed at the expense of efficiency. 
+    This could certainly be done faster and memory-efficient if we just return the detections dict for all times, without using the timestep loop.
+    '''
+    
+    detectionsDict = {}
+    for time, id in detections:
+        time = str(time)
+        if time in detectionsDict:
+            detectionsDict[time].append(id)
+        else:
+            detectionsDict[time] = [id]
+
+    detectionsPerTimestep = {}
+    for time in timesteps:
+        if time in detectionsDict:
+            detectionsPerTimestep[time] = detectionsDict[time]
+        else:
+            detectionsPerTimestep[time] = []
+
     return detectionsPerTimestep
     
 def getLinksPerTimestep(links, timesteps):
     ''' returns linksPerTimestep = { "<timestep>": [(<idxA> (at previous timestep), <idxB> (at timestep)), (<idxA>, <idxB>), ...], ...} '''
-    linksPerTimestep = dict([(t, [(a[1], b[1]) for a, b in links if b[0] == int(t)]) for t in timesteps])
+    
+    '''
+    TODO: We're storing all the links in a dict in order to increase speed at the expense of efficiency. 
+    This could certainly be done faster and memory-efficient if we just return the links dict for all times, without using the timestep loop.
+    '''
+    
+    linksDict = {}
+    for source, target in links:
+        time = str(target[0])
+        if time in linksDict:
+            linksDict[time].append((source[1], target[1]))
+        else:
+            linksDict[time] = [(source[1], target[1])]
+    
+    linksPerTimestep = {}        
+    for time in timesteps:
+        if time in linksDict:
+            linksPerTimestep[time] = linksDict[time]
+        else:
+            linksPerTimestep[time] = []
+    
     return linksPerTimestep
 
 def getMergerLinks(linksPerTimestep, mergersPerTimestep, timesteps):
@@ -195,6 +259,8 @@ class JsonTrackingGraph(object):
                         }
                 }
         else:
+            assert('segmentationHypotheses' in model)
+            assert('linkingHypotheses' in model)
             self.model = model
         self.weights = weights
         self.result = result
@@ -247,6 +313,39 @@ class JsonTrackingGraph(object):
                                            appearanceFeatures=appearanceFeatures,
                                            disappearanceFeatures=disappearanceFeatures)
 
+    def hasDivisions(self):
+        '''
+        check all division and segmentation hypotheses whether there is any possible division present,
+        because only then we need the division weight to be passed in. 
+        '''
+        if 'divisionHypotheses' in self.model and len(self.model['divisionHypotheses']) > 0:
+            return True
+
+        for s in self.model['segmentationHypotheses']:
+            if 'divisionFeatures' in s and len(s['divisionFeatures']) > 0:
+                return True
+        return False
+
+    def weightsListToDict(self, listOfWeights):
+        '''
+        Given a list of 5 weights for `[transWeight, detWeight, divWeight, appearance_cost, disappearance_cost]`,
+        **return** a weight dict that matches the current tracking model.
+        '''
+        assert(len(listOfWeights) == 5)
+        w = copy.deepcopy(listOfWeights)
+        if not self.hasDivisions():
+            del w[2]
+        return {'weights': w}
+
+    def weightsDictToList(self, weightsDict):
+        '''
+        **return** a 5-element list for [transWeight, detWeight, divWeight, appearance_cost, disappearance_cost], given a dict of weights. 
+        '''
+        assert('weights' in weightsDict)
+        w = copy.deepcopy(weightsDict['weights'])
+        if not self.hasDivisions():
+            w.insert(2, 0)
+        return w
 
     def addDetectionHypotheses(self, features, **kwargs):
         '''
