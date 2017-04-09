@@ -16,9 +16,9 @@ import copy
 import configargparse as argparse
 import numpy as np
 import networkx as nx
+import time
 import hytra.core.jsongraph
 import concurrent.futures
-import dpct
 
 def _getLogger():
     ''' logger to be used in this module '''
@@ -27,6 +27,7 @@ def _getLogger():
 def track(model, weights, solver='flow'):
     ''' solver may be flow or ilp '''
     if solver == 'flow':
+        import dpct
         return dpct.trackFlowBased(model, weights)
     else:
         try:
@@ -39,10 +40,18 @@ def track(model, weights, solver='flow'):
         return mht.track(model, weights)
 
 
-def trackAndContractSubmodel(submodel, weights, modelIdx, solver, linksByIdTuple, detectionsById):
+def trackAndContractSubmodel(submodel, weights, modelIdx, solver):
     try:
         _getLogger().info("Tracking submodel {}".format(modelIdx))
         result = track(submodel, weights, solver)
+
+        linksByIdTuple = {}
+        for l in submodel['linkingHypotheses']:
+            linksByIdTuple[(l['src'], l['dest'])] = l
+
+        detectionsById = {}
+        for d in submodel['segmentationHypotheses']:
+            detectionsById[d['id']] = d
 
         tracklets = []
         links = []
@@ -73,7 +82,8 @@ def trackAndContractSubmodel(submodel, weights, modelIdx, solver, linksByIdTuple
 
         for c in connectedComponents:
             # sum over features of dets + links
-            linkFeatures = [link['features'] for idTuple, link in linksByIdTuple.iteritems() if idTuple[0] in c and idTuple[1] in c]
+            linksInTracklet = [idTuple for idTuple in linksByIdTuple.keys() if idTuple[0] in c and idTuple[1] in c]
+            linkFeatures = [linksByIdTuple[idTuple]['features'] for idTuple in linksInTracklet]
             detFeatures = [detectionsById[i]['features'] for i in c]
             accumulatedFeatures = np.sum([hytra.core.jsongraph.delistify(f) for f in linkFeatures + detFeatures], axis=0)
             
@@ -93,6 +103,7 @@ def trackAndContractSubmodel(submodel, weights, modelIdx, solver, linksByIdTuple
             contractedNode = {
                 'id' : minTrackletId, 
                 'contains' : set(c),
+                'links' : linksInTracklet,
                 'nid' : detectionsById[minTrackletId]['nid'],
                 'minUid' : minTrackletId,
                 'maxUid' : maxTrackletId,
@@ -261,9 +272,7 @@ def main(args):
                                         submodel,
                                         weights,
                                         i,
-                                        args.solver,
-                                        linksByIdTuple,
-                                        detectionsById
+                                        args.solver
             ))
 
         for job in concurrent.futures.as_completed(jobs):
@@ -302,15 +311,15 @@ def main(args):
     trackletsById = dict([(t['id'], t) for t in tracklets])
     fullResult = {'detectionResults' : [], 'linkingResults' : [], 'divisionResults' : []}
     
+    t0 = time.time()
     for dr in stitchingResult['detectionResults']:
         v = dr['value'] 
         t = trackletsById[dr['id']]
         if v > 0:
             for originalUuid in t['contains']:
                 fullResult['detectionResults'].append({'id': originalUuid, 'value': v})
-            for s, d in linksByIdTuple.keys():
-                if s in t['contains'] and d in t['contains']:
-                    fullResult['linkingResults'].append({'src': s, 'dest' : d, 'value': v})
+            for s, d in t['links']:
+                fullResult['linkingResults'].append({'src': s, 'dest' : d, 'value': v})
         else:
             _getLogger().debug("Skipped detection {} while stitching!".format(t))
 
@@ -325,6 +334,9 @@ def main(args):
         v = dr['value']
         t = trackletsById[dr['id']]
         fullResult['divisionResults'].append({'id': t['maxUid'], 'value': v})
+    
+    t1 = time.time()
+    _getLogger().info("Extracting result took {} secs".format(t1-t0))
 
     _getLogger().info("Saving stitched result to {}".format(args.results_filename))
     hytra.core.jsongraph.writeToFormattedJSON(args.results_filename, fullResult)
