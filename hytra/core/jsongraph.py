@@ -320,7 +320,8 @@ class JsonTrackingGraph(object):
         return self.addDetectionHypotheses(detectionFeatures,
                                            divisionFeatures=divisionFeatures,
                                            appearanceFeatures=appearanceFeatures,
-                                           disappearanceFeatures=disappearanceFeatures)
+                                           disappearanceFeatures=disappearanceFeatures,
+                                           **kwargs)
 
     def hasDivisions(self):
         '''
