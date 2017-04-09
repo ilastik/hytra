@@ -24,7 +24,8 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
         
         # Find mergers in the given model and result
         traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(self.model)
-        timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
+        # there might be empty frames. We want them as output too.
+        timesteps = [str(t).decode("utf-8") for t in range(int(min(traxelIdPerTimestepToUniqueIdMap.keys())), max([int(idx) for idx in traxelIdPerTimestepToUniqueIdMap.keys()]) + 1)]
 
         mergers, detections, links, divisions = hytra.core.jsongraph.getMergersDetectionsLinksDivisions(self.result, uuidToTraxelMap)
         
@@ -56,7 +57,8 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
         **Returns** a nested dictionary, indexed first by time, then object Id, containing a list of new segmentIDs per merger
         """
         traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(self.model)
-        timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
+        # there might be empty frames. We want them as output too.
+        timesteps = [str(t).decode("utf-8") for t in range(int(min(traxelIdPerTimestepToUniqueIdMap.keys())), max([int(idx) for idx in traxelIdPerTimestepToUniqueIdMap.keys()]) + 1)]
                 
         # compute new object features
         objectFeatures = self._computeObjectFeatures(timesteps)
