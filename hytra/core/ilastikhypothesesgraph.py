@@ -81,24 +81,44 @@ class IlastikHypothesesGraph(HypothesesGraph):
 
     def __setstate__(self, state):
         """Restore state from the unpickled state values."""
-        self._graph, \
-        self.withTracklets, \
-        self.allowLengthOneTracks, \
-        self._nextNodeUuid, \
-        self.maxNumObjects, \
-        self.skipLinksBias, \
-        self.transitionClassifier, \
-        self.transitionParameter, \
-        self.withDivisions, \
-        self.fieldOfView, \
-        self.probabilityGenerator, \
-        self.timeRange, \
-        self.numNearestNeighbors, \
-        self.divisionThreshold, \
-        self.borderAwareWidth, \
-        self.maxNeighborDistance, \
-        self.skipLinks \
-            = state
+
+        try:
+            self._graph, \
+            self.withTracklets, \
+            self.allowLengthOneTracks, \
+            self._nextNodeUuid, \
+            self.maxNumObjects, \
+            self.skipLinksBias, \
+            self.transitionClassifier, \
+            self.transitionParameter, \
+            self.withDivisions, \
+            self.fieldOfView, \
+            self.probabilityGenerator, \
+            self.timeRange, \
+            self.numNearestNeighbors, \
+            self.divisionThreshold, \
+            self.borderAwareWidth, \
+            self.maxNeighborDistance, \
+            self.skipLinks \
+                = state
+        except:
+            self.withTracklets, \
+            self.allowLengthOneTracks, \
+            self._nextNodeUuid, \
+            self.maxNumObjects, \
+            self.skipLinksBias, \
+            self.transitionClassifier, \
+            self.transitionParameter, \
+            self.withDivisions, \
+            self.fieldOfView, \
+            self.probabilityGenerator, \
+            self.timeRange, \
+            self.numNearestNeighbors, \
+            self.divisionThreshold, \
+            self.borderAwareWidth, \
+            self.maxNeighborDistance, \
+            self.skipLinks \
+                = state
 
         self.progressVisitor=DefaultProgressVisitor()
 
