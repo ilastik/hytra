@@ -308,7 +308,7 @@ def generate_traxelstore(h5file,
         start_time = time.time()
 
         with h5py.File(options.raw_filename, 'r') as raw_h5:
-            shape = h5file['/'.join(options.label_img_path.split('/')[:-1])].values()[0].shape[1:4]
+            shape = list(h5file['/'.join(options.label_img_path.split('/')[:-1])].values())[0].shape[1:4]
             shape = (len(h5file['/'.join(options.label_img_path.split('/')[:-1])].values()),) + shape
             print("Shape is {}".format(shape))
 
@@ -381,7 +381,7 @@ def getTraxelStore(options, ilp_fn,time_range, shape):
 
         print '/'.join(options.label_img_path.strip('/').split('/')[:-1])
 
-        if h5file['/'.join(options.label_img_path.strip('/').split('/')[:-1])].values()[0].shape[3] == 1:
+        if list(h5file['/'.join(options.label_img_path.strip('/').split('/')[:-1])].values())[0].shape[3] == 1:
             ndim = 2
         print 'ndim=', ndim
 
@@ -535,7 +535,7 @@ if __name__ == "__main__":
 
     # find shape of dataset
     with h5py.File(ilp_fn, 'r') as h5file:
-        shape = h5file['/'.join(options.label_img_path.split('/')[:-1])].values()[0].shape[1:4]
+        shape = list(h5file['/'.join(options.label_img_path.split('/')[:-1])].values())[0].shape[1:4]
 
     if path.exists(os.path.join(options.out_dir, 'probabilities.dump')):
         import pickle

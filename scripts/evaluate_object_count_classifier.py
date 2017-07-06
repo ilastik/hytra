@@ -119,7 +119,7 @@ if __name__ == "__main__":
     numMergers = 0
     truePositives = 0
     squaredError = 0.0
-    for obj, gtCount in objectCounts.iteritems():
+    for obj, gtCount in objectCounts.items():
         predictedObjCount = getPredictedCount(obj)
         squaredError += (gtCount - predictedObjCount)**2
 

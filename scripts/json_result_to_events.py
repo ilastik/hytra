@@ -32,9 +32,9 @@ def writeEvents(timestep, activeLinks, activeDivisions, mergers, detections, fn,
         # convert to ndarray for better indexing
         dis = np.asarray(dis)
         app = np.asarray(app)
-        div = np.asarray([[k, v[0], v[1]] for k,v in activeDivisions.iteritems()])
+        div = np.asarray([[k, v[0], v[1]] for k,v in activeDivisions.items()])
         mov = np.asarray(activeLinks)
-        mer = np.asarray([[k,v] for k,v in mergers.iteritems()])
+        mer = np.asarray([[k,v] for k,v in mergers.items()])
         mul = np.asarray(mul)
 
         shape = pluginManager.getImageProvider().getImageShape(ilpFilename, labelImagePath)
@@ -121,7 +121,7 @@ if __name__ == "__main__":
     traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(model)
     # timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
     # there might be empty frames. We want them as output too. A little messy, but:
-    timesteps = [str(t).decode("utf-8") for t in range(int(min(traxelIdPerTimestepToUniqueIdMap.keys())), max([int(idx) for idx in traxelIdPerTimestepToUniqueIdMap.keys()])+1 )]
+    timesteps = [str(t) for t in range(int(min(traxelIdPerTimestepToUniqueIdMap.keys())), max([int(idx) for idx in traxelIdPerTimestepToUniqueIdMap.keys()])+1 )]
 
     mergers, detections, links, divisions = hytra.core.jsongraph.getMergersDetectionsLinksDivisions(result, uuidToTraxelMap)
 

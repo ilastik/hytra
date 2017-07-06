@@ -51,7 +51,7 @@ if __name__ == "__main__":
     nodeMapBtoA = {}
     for a in nodesA:
         trackletA = uuidToTraxelMapA[a]
-        for b, trackletB in uuidToTraxelMapB.iteritems():
+        for b, trackletB in uuidToTraxelMapB.items():
             if trackletA == trackletB:
                 assert b in nodesB
                 nodeMapAtoB[a] = b

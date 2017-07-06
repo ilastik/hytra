@@ -225,7 +225,7 @@ def calculate_detection_measures(comparison_dictionaries):
     true_value = []
     predicted_value = []
     for ground_truth_to_result, result_to_ground_truth in comparison_dictionaries:
-        for key, value in ground_truth_to_result.iteritems():
+        for key, value in ground_truth_to_result.items():
             if value > -1:
                 true_value.append(1)
                 predicted_value.append(1)
@@ -233,7 +233,7 @@ def calculate_detection_measures(comparison_dictionaries):
                 true_value.append(1)
                 predicted_value.append(0)
 
-        for key, value in result_to_ground_truth.iteritems():
+        for key, value in result_to_ground_truth.items():
             if value > -1:
                 continue
             else:
@@ -249,8 +249,8 @@ def calculate_detection_measures(comparison_dictionaries):
 def calculate_tracking_measures(tracking_ground_truth, tracking_prediction, comparison_dictionaries, verbose = True, with_tolerant_splits=False):
     measures = defaultdict(lambda : defaultdict(dict))
     labels = extract_tracking_labels(tracking_ground_truth, tracking_prediction, comparison_dictionaries, verbose, with_tolerant_splits)
-    for condition_type, events in labels.iteritems():
-        for event, label_type in events.iteritems():
+    for condition_type, events in labels.items():
+        for event, label_type in events.items():
             precision, recall, f_measure, support = metrics.precision_recall_fscore_support(label_type['ground_truth'],
                                                                                             label_type['prediction'],
                                                                                             labels = [0,1], pos_label=1)
@@ -741,13 +741,13 @@ def main():
                 tracking_ground_truth = ground_truth_file[options.tracking_ground_truth_group]
                 tracking_prediction = result_file[options.tracking_result_group]
                 measures = calculate_tracking_measures(tracking_ground_truth, tracking_prediction, comparison_dictionaries, verbose = not(options.quietly), with_tolerant_splits = options.with_tolerant_splits)
-        for key, value in measures.iteritems():
+        for key, value in measures.items():
             if not(options.quietly):
                 print key
-            for k, v in value.iteritems():
+            for k, v in value.items():
                 if not(options.quietly):
                     print '  ', k
-                for g, w in v.iteritems():
+                for g, w in v.items():
                     if not(options.quietly):
                         print '     %-*s' % (20, g), w
                     else:

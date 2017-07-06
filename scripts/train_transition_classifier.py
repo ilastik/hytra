@@ -105,7 +105,7 @@ def find_features_without_NaNs(features):
     """
     selectedFeatures = features[0].keys()
     for featuresPerFrame in features:
-        for key, value in featuresPerFrame.iteritems():
+        for key, value in featuresPerFrame.items():
             if not isinstance(value, list) and (np.any(np.isnan(value)) or np.any(np.isinf(value))):
                 try:
                     selectedFeatures.remove(key)

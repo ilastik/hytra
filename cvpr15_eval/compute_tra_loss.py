@@ -73,7 +73,7 @@ def check_detections_frame(gt_labels, timestep, frame_labels, threshold):
             needed_splits += len(candidates) - 1
 
     false_negatives = sum(gt_labels_unmatched.values())
-    for i, val in gt_labels_unmatched.iteritems():
+    for i, val in gt_labels_unmatched.items():
         if val == 0:
             continue
         print("False Negative gt label {} at timestep {}".format(i, timestep))

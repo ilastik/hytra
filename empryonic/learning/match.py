@@ -11,12 +11,12 @@ def idAssoc_from_trackletAssoc( assoc ):
     ret['lhs'] = dict()
     ret['rhs'] = dict()
     
-    for i,v in assoc['lhs'].iteritems():
+    for i,v in assoc['lhs'].items():
         if v:
             ret['lhs'][i.id] = v.id
         else:
             ret['lhs'][i.id] = None
-    for i,v in assoc['rhs'].iteritems():
+    for i,v in assoc['rhs'].items():
         if v:
             ret['rhs'][i.id] = v.id
         else:

@@ -174,8 +174,8 @@ def generate_groundtruth(options):
                                     del possibleIdsDic[idx]
                             # print pixelsOfInterest
                             #find label with largest area
-                            # print max(possibleIdsDic.iteritems(), key=operator.itemgetter(1))[0],inId_to_outId_dics[t][inId][0]
-                            mostAreaLabel = max(possibleIdsDic.iteritems(), key=operator.itemgetter(1))[0]
+                            # print max(possibleIdsDic.items(), key=operator.itemgetter(1))[0],inId_to_outId_dics[t][inId][0]
+                            mostAreaLabel = max(possibleIdsDic.items(), key=operator.itemgetter(1))[0]
                             # print possibleIdsDic
                             # print "choose ",mostAreaLabel," of ", possibleIdsDic
 

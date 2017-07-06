@@ -210,7 +210,7 @@ class SplitTracking:
     
             for c in connectedComponents:
                 # sum over features of dets + links
-                linkFeatures = [link['features'] for idTuple, link in linksByIdTuple.iteritems() if idTuple[0] in c and idTuple[1] in c]
+                linkFeatures = [link['features'] for idTuple, link in linksByIdTuple.items() if idTuple[0] in c and idTuple[1] in c]
                 detFeatures = [detectionsById[i]['features'] for i in c]
                 accumulatedFeatures = np.sum([hytra.core.jsongraph.delistify(f) for f in linkFeatures + detFeatures], axis=0)
     
@@ -265,9 +265,9 @@ class SplitTracking:
         _getLogger().info("\tgot {} links from within the submodels".format(len(links)))
     
         # insert all edges crossing the splits that connect active detections
-        detectionIdsPerTimestep = dict( [(k, [d['id'] for d in v]) for k, v in detectionsPerTimestep.iteritems()])
+        detectionIdsPerTimestep = dict( [(k, [d['id'] for d in v]) for k, v in detectionsPerTimestep.items()])
         for splitPoint in splitPoints[:-1]:
-            for idTuple, link in linksByIdTuple.iteritems():
+            for idTuple, link in linksByIdTuple.items():
                 s, d = idTuple
                 if s in detectionIdsPerTimestep[splitPoint] and d in detectionIdsPerTimestep[splitPoint + 1] and valuePerDetection[s] > 0 and valuePerDetection[d] > 0:
                     newL = copy.deepcopy(link)

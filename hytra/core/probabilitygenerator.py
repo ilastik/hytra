@@ -126,7 +126,7 @@ def computeRegionFeaturesOnCloud(frame,
     # WARNING: if there are multiple features with the same name, they will be overwritten!
     frameFeatureItems = []
     for f in moreFeats:
-        frameFeatureItems = frameFeatureItems + f.items()
+        frameFeatureItems = frameFeatureItems + list(f.items())
     frameFeatures = dict(frameFeatureItems)
 
     # delete all ignored features
@@ -177,7 +177,7 @@ def computeDivisionFeaturesOnCloud(frameT,
     '''
 
     # get the label image of the next frame
-    if frameT + 1 < imageProviderPlugin.getTimeRange(labelImageFilename, labelImagePath):
+    if frameT + 1 < imageProviderPlugin.getTimeRange(labelImageFilename, labelImagePath)[1]:
         labelImageAtTPlus1 = imageProviderPlugin.getLabelImageForFrame(labelImageFilename, labelImagePath, frameT + 1)
 
     # compute features
@@ -566,7 +566,7 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
         progressBar = ProgressBar(stop=len(self._featuresPerFrame))
         progressBar.show(increase=0)
 
-        for frame, features in self._featuresPerFrame.iteritems():
+        for frame, features in self._featuresPerFrame.items():
             # predict random forests
             if self._countClassifier is not None:
                 objectCountProbabilities = self._countClassifier.predictProbabilities(
@@ -577,7 +577,7 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
                     features=None, featureDict=features)
 
             # create traxels for all objects
-            for objectId in range(1, features.values()[0].shape[0]):
+            for objectId in range(1, list(features.values())[0].shape[0]):
                 # print("Frame {} Object {}".format(frame, objectId))
                 pixelSize = features['Count'][objectId]
                 if pixelSize == 0 or (self._options.sizeFilter is not None \
@@ -594,7 +594,7 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
                 traxel.Timestep = frame
 
                 # add raw features
-                for key, val in features.iteritems():
+                for key, val in features.items():
                     if key == 'id':
                         traxel.idInSegmentation = val[objectId]
                     elif key == 'filename':
@@ -650,7 +650,7 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
         """
         assert self._featuresPerFrame != None
         traxelFeatureDict = {}
-        for k, v in self._featuresPerFrame[frame].iteritems():
+        for k, v in self._featuresPerFrame[frame].items():
             if 'Polygon' in k:
                 traxelFeatureDict[k] = v[objectId]
             else:

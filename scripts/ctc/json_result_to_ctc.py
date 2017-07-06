@@ -43,7 +43,7 @@ def save_tracks(tracks, options):
     else:
         filename = options.output_dir + '/res_track.txt'
     with open(filename, 'wt') as f:
-        for key, value in tracks.iteritems():
+        for key, value in tracks.items():
             if key ==  None:
                 continue
             # our track value contains parent, begin, end
@@ -57,7 +57,7 @@ def remap_label_image(label_image, mapping):
     returns a new label image with remapped object pixel values 
     """
     remapped_label_image = np.zeros(label_image.shape, dtype=label_image.dtype)
-    for dest, src in mapping.iteritems():
+    for dest, src in mapping.items():
         remapped_label_image[label_image == dest] = src
 
     return remapped_label_image
@@ -133,7 +133,7 @@ if __name__ == "__main__":
     # write res_track.txt
     getLogger().debug("Writing track text file")
     trackDict = {}
-    for trackId, timestepList in tracks.iteritems():
+    for trackId, timestepList in tracks.items():
         timestepList.sort()
         if trackId in trackParents.keys():
             parent = trackParents[trackId]
