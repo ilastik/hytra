@@ -19,7 +19,7 @@ def angle(v1, v2):
     except Exception as e:
         #print str(e), ': math.acos(', dotproduct(v1, v2) / (length(v1) * length(v2)), '), v1 =', v1, ', v2 =', v2
         radians = 0
-    return (radians*180)/math.pi
+    return (float(radians)*180.0)/math.pi
 
 
 
