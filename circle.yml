@@ -36,7 +36,7 @@ dependencies:
       conda install -y vigra -c akreshuk -c conda-forge;
       conda install -y dpct -c chaubold;
       conda remove -y tifffile;
-      conda install -t tifffile -c akreshuk;
+      conda install -y tifffile -c akreshuk;
 
 ## Customize test commands
 test:
