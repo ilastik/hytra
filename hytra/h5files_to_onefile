@@ -18,13 +18,13 @@ def stackLabelImages(fn_ilp, fn_out, path_ilp='TrackingFeatureExtraction/LabelIm
             if ds_name_out in f_out[path_out].keys():
                 del f_out[path_out][ds_name_out]
 
-            shape_out = list(ilp_group.values()[0].shape)
+            shape_out = list(list(ilp_group.values())[0].shape)
             shape_out[t_axis] = num_ts #len(ilp_group.values())
             chunks = [ 64, ] * len(shape_out)
             chunks[t_axis] = 1
             for i in range(len(chunks)):
                 chunks[i] = min(chunks[i], shape_out[i])
-            ds_out = f_out[path_out].create_dataset(name=ds_name_out, shape=shape_out, chunks=tuple(chunks), compression=1, dtype=ilp_group.values()[0].dtype)
+            ds_out = f_out[path_out].create_dataset(name=ds_name_out, shape=shape_out, chunks=tuple(chunks), compression=1, dtype=list(ilp_group.values())[0].dtype)
     
             slicing = [slice(None),] * len(shape_out)
             for t in range(shape_out[t_axis]):

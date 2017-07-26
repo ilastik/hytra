@@ -133,7 +133,7 @@ class TrackingPluginManager(object):
 
     def setImageProvider(self, imageProviderName):
         ''' set the used image provier plugin name '''
-    	self.chosen_data_provider = imageProviderName
+        self.chosen_data_provider = imageProviderName
 
     def getImageProvider(self):
         ''' get an instance of the selected image provider plugin '''

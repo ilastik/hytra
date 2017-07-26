@@ -159,7 +159,7 @@ def track_subgraphs(graph,
     num_overlap_vars = sum([1 for values in solutions.values() if len(values) > 1])
     num_disagreeing_overlap_vars = sum([1 for values in solutions.values() if len(values) > 1 and values[0] != values[1]])
 
-    for key, values in solutions.iteritems():
+    for key, values in solutions.items():
         if len(values) > 1 and values[0] != values[1]:
             print("\tFound disagreement at {}: {} != {}".format(key, values[0], values[1]))
 
@@ -235,7 +235,7 @@ if __name__ == "__main__":
 
     # find shape of dataset
     with h5py.File(ilp_fn, 'r') as h5file:
-        shape = h5file['/'.join(options.label_img_path.split('/')[:-1])].values()[0].shape[1:4]
+        shape = list(h5file['/'.join(options.label_img_path.split('/')[:-1])].values())[0].shape[1:4]
 
     # read all traxels into TraxelStore
     ts, fs, max_traxel_id_at, ndim, t0, t1 = multitrack.getTraxelStore(options, ilp_fn, time_range, shape)

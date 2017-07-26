@@ -117,7 +117,7 @@ def constructFov(shape, t0, t1, scale=[1, 1, 1]):
 #             value = 0 
 #         numActivePerFrame.setdefault(timeframe, []).append(value) 
 
-#     for _, v in numActivePerFrame.iteritems():
+#     for _, v in numActivePerFrame.items():
 #         assert(sum(v) == 2)        
 
 #     edgeFlow = 0

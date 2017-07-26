@@ -105,7 +105,7 @@ def computeJaccardScoresOnCloud(frame,
                     gtToGlobalIdMap.setdefault((frame, gtLabel), []).append((globalIdA, jaccardScore))
 
     # sort all gt mappings by ascending jaccard score
-    for _, v in gtToGlobalIdMap.iteritems():
+    for _, v in gtToGlobalIdMap.items():
         v.sort(key=lambda x: x[1]) 
 
     return frame, scores, gtToGlobalIdMap
@@ -203,7 +203,7 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
             for job in concurrent.futures.as_completed(jobs):
                 progressBar.show()
                 frame, overlaps = job.result()
-                for objectId, overlapIds in overlaps.iteritems():
+                for objectId, overlapIds in overlaps.items():
                     if self.TraxelsPerFrame[frame][objectId].conflictingTraxelIds is None:
                         self.TraxelsPerFrame[frame][objectId].conflictingTraxelIds = []
                     self.TraxelsPerFrame[frame][objectId].conflictingTraxelIds.extend(overlapIds)
@@ -265,7 +265,7 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
             for job in concurrent.futures.as_completed(jobs):
                 progressBar.show()
                 frame, scores, frameGtToGlobalIdMap = job.result()
-                for objectId, individualScores in scores.iteritems():
+                for objectId, individualScores in scores.items():
                     self.TraxelsPerFrame[frame][objectId].Features['JaccardScores'] = individualScores
                 gtFrameIdToGlobalIdsWithScoresMap.update(frameGtToGlobalIdMap)
         
@@ -275,7 +275,7 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
         # create JSON result by mapping it to the hypotheses graph
         traxelIdPerTimestepToUniqueIdMap, _ = hypothesesGraph.getMappingsBetweenUUIDsAndTraxels()
         detectionResults = []
-        for gtFrameAndId, globalIdsAndScores in gtFrameIdToGlobalIdsWithScoresMap.iteritems():
+        for gtFrameAndId, globalIdsAndScores in gtFrameIdToGlobalIdsWithScoresMap.items():
             detectionResults.append({"id": traxelIdPerTimestepToUniqueIdMap[str(gtFrameAndId[0])][str(globalIdsAndScores[-1][0])], "value":1})
         
         # read tracks from textfile
@@ -342,7 +342,7 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
 
         # construct divisions
         divisionResults = []
-        for parent, childrenFrameIds in descendants.iteritems():
+        for parent, childrenFrameIds in descendants.items():
             if len(childrenFrameIds) != 2:
                 getLogger().warning("Found track {} that had descendants, but not exactly two. Ignoring it".format(parent))
                 continue
@@ -392,7 +392,7 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
         # get num elements:
         numElements = None
 
-        for _, v in featureDict.iteritems():
+        for _, v in featureDict.items():
             try:
                 currentNumElements = v.shape[0]
             except:
@@ -413,7 +413,7 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
 
         Ignores the 0th element in each feature vector of nextDict
         """
-        for k, v in nextDict.iteritems():
+        for k, v in nextDict.items():
             assert(k in originalDict) # all frames should have the same features
             if isinstance(v, np.ndarray):
                 originalDict[k] = np.concatenate((originalDict[k], v[1:]))
@@ -424,7 +424,7 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
         """
         populates the `self._labelImageFrameIdToGlobalId` dictionary
         """
-        for frame, featureDict in featuresPerFrame.iteritems():
+        for frame, featureDict in featuresPerFrame.items():
             for newId, (filename, objectId) in enumerate(zip(featureDict['filename'], featureDict['id'])):
                 self._labelImageFrameIdToGlobalId[(filename, frame, objectId)] = newId
 

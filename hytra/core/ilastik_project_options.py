@@ -37,12 +37,12 @@ def extractWeightDictFromIlastikProject(ilpFilename, basePath='/ConservationTrac
     **Returns** a dictionary with weights that can be passed on to the solvers directly
     """
     with h5py.File(ilpFilename, 'r') as h5file:
-        withDivisions = h5file[basePath + '/withDivisions'].value
-        transitionWeight = h5file[basePath + '/transWeight'].value
+        withDivisions = bool(h5file[basePath + '/withDivisions'].value)
+        transitionWeight = float(h5file[basePath + '/transWeight'].value)
         detectionWeight = 10.0
-        divisionWeight = h5file[basePath + '/divWeight'].value
-        appearanceWeight = h5file[basePath + '/appearanceCost'].value
-        disappearanceWeight = h5file[basePath + '/disappearanceCost'].value
+        divisionWeight = float(h5file[basePath + '/divWeight'].value)
+        appearanceWeight = float(h5file[basePath + '/appearanceCost'].value)
+        disappearanceWeight = float(h5file[basePath + '/disappearanceCost'].value)
     
     if withDivisions:
         weights = {'weights' : [transitionWeight, detectionWeight, divisionWeight, appearanceWeight, disappearanceWeight]}

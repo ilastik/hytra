@@ -135,7 +135,7 @@ def trackAndContractSubmodel(submodel, weights, modelIdx, solver):
 
                 links.append(newL)
 
-        _getLogger().info("Found divisions at {}".format([k for k, v in divisionsPerDetection.iteritems() if v is True]))
+        _getLogger().info("Found divisions at {}".format([k for k, v in divisionsPerDetection.items() if v is True]))
         return modelIdx, result, links, tracklets, nodeIdRemapping, valuePerDetection, sum(1 for v in divisionsPerDetection.values() if v is True)
     except:
         _getLogger().exception('Exception while processing submodel')
@@ -289,8 +289,8 @@ def main(args):
     _getLogger().info("\tfound {} divisions within the submodels".format(numDivisions))
 
     # insert all edges crossing the splits that connect active detections
-    detectionIdsPerTimestep = dict( [(k, [d['id'] for d in v]) for k, v in detectionsPerTimestep.iteritems()])
-    for idTuple, link in linksByIdTuple.iteritems():
+    detectionIdsPerTimestep = dict( [(k, [d['id'] for d in v]) for k, v in detectionsPerTimestep.items()])
+    for idTuple, link in linksByIdTuple.items():
         s, d = idTuple
         for splitPoint in splitPoints[:-1]:
             if s in detectionIdsPerTimestep[splitPoint] and d in detectionIdsPerTimestep[splitPoint + 1] and valuePerDetection[s] > 0 and valuePerDetection[d] > 0:

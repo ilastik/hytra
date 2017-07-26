@@ -158,7 +158,7 @@ class MergerResolver(object):
                 # What does pgmlink do in that case?
 
                 # use merger resolving plugin to fit `count` objects, also updates labelimage!
-                fittedObjects = self.mergerResolverPlugin.resolveMerger(labelImage, idx, nextObjectId, count, initializations)
+                fittedObjects = list(self.mergerResolverPlugin.resolveMerger(labelImage, idx, nextObjectId, count, initializations))
                 assert(len(fittedObjects) == count)
 
                 # split up node if count > 1, duplicate incoming and outgoing arcs
@@ -405,7 +405,7 @@ class MergerResolver(object):
         traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(self.model)
         # timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
         # there might be empty frames. We want them as output too.
-        timesteps = [str(t).decode("utf-8") for t in range(int(min(traxelIdPerTimestepToUniqueIdMap.keys())), max(
+        timesteps = [str(t) for t in range(int(min(traxelIdPerTimestepToUniqueIdMap.keys())), max(
             [int(idx) for idx in traxelIdPerTimestepToUniqueIdMap.keys()]) + 1)]
 
         mergers, detections, links, divisions = hytra.core.jsongraph.getMergersDetectionsLinksDivisions(self.result, uuidToTraxelMap)

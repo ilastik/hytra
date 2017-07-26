@@ -26,7 +26,7 @@ def test_mergerResolvingTestDataset():
     check_call(["python", "pipeline.py", "--config", "../tests/mergerResolvingTestDataset/test_config.ini"])
 
     for f in range(4):
-        frame = vigra.impex.readImage(b'../tests/mergerResolvingTestDataset/ctc_RES/mask00{}.tif'.format(f))
+        frame = vigra.impex.readImage('../tests/mergerResolvingTestDataset/ctc_RES/mask00{}.tif'.format(f))
         assert(np.all(np.unique(frame) == [0,1,2]))
 
     with open('../tests/mergerResolvingTestDataset/ctc_RES/res_track.txt', 'r') as resultFile:
@@ -46,7 +46,7 @@ def test_mergerResolvingTestDatasetNewLabelImage():
     check_call(["python", "pipeline.py", "--config", "../tests/mergerResolvingTestDatasetNewLabelImage/test_config.ini"])
 
     for f in range(4):
-        frame = vigra.impex.readImage(b'../tests/mergerResolvingTestDatasetNewLabelImage/ctc_RES/mask00{}.tif'.format(f))
+        frame = vigra.impex.readImage('../tests/mergerResolvingTestDatasetNewLabelImage/ctc_RES/mask00{}.tif'.format(f))
         assert(np.all(np.unique(frame) == [0,1,2]))
 
     with open('../tests/mergerResolvingTestDatasetNewLabelImage/ctc_RES/res_track.txt', 'r') as resultFile:
@@ -65,7 +65,7 @@ def test_mergerResolvingTestDataset_withoutTracklets():
     check_call(["python", "pipeline.py", "--config", "../tests/mergerResolvingTestDataset/test_config.ini", "--without-tracklets"])
 
     for f in range(4):
-        frame = vigra.impex.readImage(b'../tests/mergerResolvingTestDataset/ctc_RES/mask00{}.tif'.format(f))
+        frame = vigra.impex.readImage('../tests/mergerResolvingTestDataset/ctc_RES/mask00{}.tif'.format(f))
         assert(np.all(np.unique(frame) == [0,1,2]))
 
     with open('../tests/mergerResolvingTestDataset/ctc_RES/res_track.txt', 'r') as resultFile:
@@ -85,7 +85,7 @@ def test_divisionTestDataset():
 
     expectedIds = [[0, 1], [0, 1], [0, 2, 3], [0, 2, 3]]
     for f in range(4):
-        frame = vigra.impex.readImage(b'../tests/divisionTestDataset/ctc_RES/mask00{}.tif'.format(f))
+        frame = vigra.impex.readImage('../tests/divisionTestDataset/ctc_RES/mask00{}.tif'.format(f))
         assert(np.all(np.unique(frame) == expectedIds[f]))
 
     with open('../tests/divisionTestDataset/ctc_RES/res_track.txt', 'r') as resultFile:
@@ -105,7 +105,7 @@ def test_divisionTestDataset_withoutTracklets():
 
     expectedIds = [[0, 1], [0, 1], [0, 2, 3], [0, 2, 3]]
     for f in range(4):
-        frame = vigra.impex.readImage(b'../tests/divisionTestDataset/ctc_RES/mask00{}.tif'.format(f))
+        frame = vigra.impex.readImage('../tests/divisionTestDataset/ctc_RES/mask00{}.tif'.format(f))
         assert(np.all(np.unique(frame) == expectedIds[f]))
 
     with open('../tests/divisionTestDataset/ctc_RES/res_track.txt', 'r') as resultFile:
@@ -124,7 +124,7 @@ def test_noscripts_mergerResolvingTestDataset():
     check_call(["python", "pipelineNoScripts.py", "--config", "../tests/mergerResolvingTestDataset/test_config.ini"])
 
     for f in range(4):
-        frame = vigra.impex.readImage(b'../tests/mergerResolvingTestDataset/ctc_RES/mask00{}.tif'.format(f))
+        frame = vigra.impex.readImage('../tests/mergerResolvingTestDataset/ctc_RES/mask00{}.tif'.format(f))
         assert(np.all(np.unique(frame) == [0,1,2]))
 
     with open('../tests/mergerResolvingTestDataset/ctc_RES/res_track.txt', 'r') as resultFile:
@@ -143,7 +143,7 @@ def test_skipLinksTestDataset_withoutTracklets():
     check_call(["python", "pipeline_skip_links.py", "--config", "../tests/skipLinksTestDataset/test_config.ini"])
 
     for f in range(4):
-        frame = vigra.impex.readImage(b'../tests/skipLinksTestDataset/ctc_RES/mask00{}.tif'.format(f))
+        frame = vigra.impex.readImage('../tests/skipLinksTestDataset/ctc_RES/mask00{}.tif'.format(f))
         if f == 1: # the second frame is empty
             assert(np.all(np.unique(frame) == [0]))
         elif f==0:
@@ -169,7 +169,7 @@ def test_boxesTestDataset():
 
     expectedIds = [[0, 1, 2, 3], [0, 1, 2, 3], [0, 1, 2, 3], [0, 1, 2, 3], [0, 1, 2, 3], [0, 2, 3, 4, 5], [0, 2, 3, 4, 5]]
     for f in range(4):
-        frame = vigra.impex.readImage(b'../tests/boxesTestDataset/ctc_RES/mask00{}.tif'.format(f))
+        frame = vigra.impex.readImage('../tests/boxesTestDataset/ctc_RES/mask00{}.tif'.format(f))
         assert(np.all(np.unique(frame) == expectedIds[f]))
 
     with open('../tests/boxesTestDataset/ctc_RES/res_track.txt', 'r') as resultFile:
@@ -189,7 +189,7 @@ def test_divisionMergerTestDataset():
 
     expectedIds = [[0, 1, 2, 3], [0, 1, 3, 4, 5], [0, 1, 3, 4, 5]]
     for f in range(3):
-        frame = vigra.impex.readImage(b'../tests/divisionMergerTestDataset/ctc_RES/mask00{}.tif'.format(f))
+        frame = vigra.impex.readImage('../tests/divisionMergerTestDataset/ctc_RES/mask00{}.tif'.format(f))
         assert(np.all(np.unique(frame) == expectedIds[f]))
 
     with open('../tests/divisionMergerTestDataset/ctc_RES/res_track.txt', 'r') as resultFile:

@@ -51,6 +51,9 @@ class LocalImageLoader(image_provider_plugin.ImageProviderPlugin):
                     assert 'blockSlice' in block.attrs
                     blockSlice = block.attrs['blockSlice']
                     bs = blockSlice[1:-1]
+                    if isinstance(bs, bytes):
+                        bs = bs.decode()
+
                     roi = [(int(r.split(':')[0]), int(r.split(':')[1])) for r in bs.split(',')]
                     if timeframe in range(roi[0][0], roi[0][1]):
                         timeStart = timeframe - roi[0][0]
@@ -73,7 +76,7 @@ class LocalImageLoader(image_provider_plugin.ImageProviderPlugin):
         Works with both `PathInResource` styles: LabelImage and LabelImage_v2
         """
         with h5py.File(Resource, 'r') as h5file:
-            shape = h5file['/'.join(PathInResource.split('/')[:-1])].values()[0].shape[1:4]
+            shape = list(h5file['/'.join(PathInResource.split('/')[:-1])].values())[0].shape[1:4]
             self.shape = shape
             return shape
 

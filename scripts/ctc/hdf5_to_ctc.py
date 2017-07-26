@@ -66,7 +66,7 @@ def save_tracks(tracks, num_frames, options):
     else:
         filename = options.output_dir + '/res_track.txt'
     with open(filename, 'wt') as f:
-        for key, value in tracks.iteritems():
+        for key, value in tracks.items():
             if len(value) == 2:
                 value.append(num_frames - 1)
             # our track value contains parent, begin, end
@@ -80,7 +80,7 @@ def remap_label_image(label_image, mapping):
     returns a new label image with remapped object pixel values 
     """
     remapped_label_image = np.zeros(label_image.shape, dtype=label_image.dtype)
-    for dest, src in mapping.iteritems():
+    for dest, src in mapping.items():
         remapped_label_image[label_image == dest] = src
 
     return remapped_label_image

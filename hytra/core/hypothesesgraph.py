@@ -142,7 +142,7 @@ class HypothesesGraph(object):
         """
         objectIdList = []
         features = []
-        for obj, traxel in traxelDict.iteritems():
+        for obj, traxel in traxelDict.items():
             if obj == 0:
                 continue
             objectIdList.append(obj)
@@ -154,7 +154,7 @@ class HypothesesGraph(object):
         """
         Insert nodes for all objects in this frame, with the attribute "traxel"
         """
-        for obj, traxel in traxelDict.iteritems():
+        for obj, traxel in traxelDict.items():
             if obj == 0:
                 continue
             self._graph.add_node((frame, obj), traxel=traxel, id=self._nextNodeUuid)
@@ -213,7 +213,7 @@ class HypothesesGraph(object):
 
             # find forward links
             if frameMin + frame in probabilityGenerator.TraxelsPerFrame.keys(): # 'frame' could be empty
-                for obj, traxel in probabilityGenerator.TraxelsPerFrame[frameMin + frame].iteritems():
+                for obj, traxel in probabilityGenerator.TraxelsPerFrame[frameMin + frame].items():
                     divisionPreservingNumNearestNeighbors = numNearestNeighbors
                     if divisionPreservingNumNearestNeighbors < 2 \
                             and withDivisions \
@@ -238,7 +238,7 @@ class HypothesesGraph(object):
                 for i in range(1, skipLinks+1):
                     if frame + i < numFrames:
                         if frameMin + frame + i in probabilityGenerator.TraxelsPerFrame.keys(): # empty frame
-                            for obj, traxel in probabilityGenerator.TraxelsPerFrame[frameMin + frame + i].iteritems():
+                            for obj, traxel in probabilityGenerator.TraxelsPerFrame[frameMin + frame + i].items():
                                 if kdTreeFrames[0] is not None:
                                     neighbors = (self._findNearestNeighbors(kdTreeFrames[0],
                                                                        traxel,

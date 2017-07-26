@@ -46,7 +46,7 @@ def remap_label_image(label_image, mapping):
     returns a new label image with remapped object pixel values 
     """
     remapped_label_image = np.zeros_like(label_image)
-    for src, dest in mapping.iteritems():
+    for src, dest in mapping.items():
         remapped_label_image[label_image == src] = dest
 
     return remapped_label_image
@@ -201,7 +201,7 @@ def create_label_volume(options):
 
             # make sure all splits have the same dimension
             splits = []
-            for key, value in splits_in_frame.iteritems():
+            for key, value in splits_in_frame.items():
                 value = [v for v in value if v in objects_per_frame[frame]]
 
                 if key not in objects_per_frame[frame - 1]:

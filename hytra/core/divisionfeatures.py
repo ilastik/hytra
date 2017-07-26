@@ -19,7 +19,7 @@ def angle(v1, v2):
     except Exception as e:
         #print str(e), ': math.acos(', dotproduct(v1, v2) / (length(v1) * length(v2)), '), v1 =', v1, ', v2 =', v2
         radians = 0
-    return (radians*180)/math.pi
+    return (float(radians)*180.0)/math.pi
 
 
 
@@ -181,7 +181,7 @@ class FeatureManager( object ):
           that belong to that label image only (in the JST setting) 
         ''' 
 
-#        n_labels = feats_cur.values()[0].shape[0]
+#        n_labels = list(feats_cur.values())[0].shape[0]
         result = {}
         
         # find available features
@@ -194,14 +194,14 @@ class FeatureManager( object ):
                 continue
             
             if len(name_split) != 2:                
-                raise Exception, 'tracking features consist of an operator and a feature name only, given name={}'.format(name_split) 
+                raise ValueError('tracking features consist of an operator and a feature name only, given name={}'.format(name_split))
             if len(feats_cur[name_split[1]].shape) > 1:
                 feat_dim = feats_cur[name_split[1]].shape[1]
             else:
                 feat_dim = 1
             feat_classes[name] = self.feature_mappings[name_split[0]](name_split[1], delim=self.delim, ndim=self.ndim, feat_dim=feat_dim)
 
-            shape = (feats_cur.values()[0].shape[0],feat_classes[name].dim())
+            shape = (list(feats_cur.values())[0].shape[0],feat_classes[name].dim())
             result[name] = np.ones(shape) * feat_classes[name].default_value
 
             vigra_feat_names.add(name_split[1])
@@ -209,7 +209,7 @@ class FeatureManager( object ):
         # initialize squared distances
         for idx in range(self.n_best):
             name = 'SquaredDistances_' + str(idx)
-            result[name] = np.ones((feats_cur.values()[0].shape[0], 1)) * self.squared_distance_default
+            result[name] = np.ones((list(feats_cur.values())[0].shape[0], 1)) * self.squared_distance_default
 
         # construct mapping which we only need if label_image_filename was given and the features 'filename' and 'id' exist
         if label_image_filename is not None and 'filename' in feats_next and 'id' in feats_next: 

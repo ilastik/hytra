@@ -232,7 +232,7 @@ def generate_traxelstore(h5file,
             elif len(region_centers[idx]) == 3:
                 x, y, z = region_centers[idx]
             else:
-                raise Exception, "The RegionCenter feature must have dimensionality 2 or 3."
+                raise Exception("The RegionCenter feature must have dimensionality 2 or 3.")
             size = pixel_count[idx]
             if (x < x_range[0] or x >= x_range[1] or
                         y < y_range[0] or y >= y_range[1] or
@@ -333,7 +333,7 @@ def getTraxelStore(options, ilp_fn, time_range, shape):
 
         logging.getLogger('hypotheses_graph_to_json.py').debug('/'.join(options.label_img_path.strip('/').split('/')[:-1]))
 
-        if h5file['/'.join(options.label_img_path.strip('/').split('/')[:-1])].values()[0].shape[3] == 1:
+        if list(h5file['/'.join(options.label_img_path.strip('/').split('/')[:-1])].values())[0].shape[3] == 1:
             ndim = 2
         logging.getLogger('hypotheses_graph_to_json.py').debug('ndim={}'.format(ndim))
 
@@ -700,6 +700,7 @@ if __name__ == "__main__":
 
     except:
         logging.warning("Could not read shape and time range from images")
+        shape=None
 
     # set average object size if chosen
     obj_size = [0]

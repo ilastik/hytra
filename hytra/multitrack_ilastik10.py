@@ -233,7 +233,7 @@ copied but linked to the original files to improve execution speed and storage r
 
 def extract_coordinates(coordinate_map, h5file, traxel, options):
     # add coordinate lists with armadillo matrixes
-    shape = h5file['/'.join(options.label_img_path.split('/')[:-1])].values()[0].shape[1:4]
+    shape = list(h5file['/'.join(options.label_img_path.split('/')[:-1])].values())[0].shape[1:4]
     ndim = 2 if shape[-1]==1 else 3
 
     # print("Extracting coordinates of potential merger: timestep {} id {}".format(traxel.Timestep, traxel.Id))
@@ -260,7 +260,7 @@ def extract_coordinates(coordinate_map, h5file, traxel, options):
 
 def update_merger_features(coordinate_map, h5file, merger_traxel, new_traxel_ids, raw_h5, options, fs, ts, timestep):
     # add coordinate lists with armadillo matrixes
-    shape = h5file['/'.join(options.label_img_path.split('/')[:-1])].values()[0].shape[1:4]
+    shape = list(h5file['/'.join(options.label_img_path.split('/')[:-1])].values())[0].shape[1:4]
     ndim = 2 if shape[-1]==1 else 3
 
     # print("Updating label image of merger traxel: timestep {} id {}".format(merger_traxel.Timestep, merger_traxel.Id))
@@ -535,7 +535,7 @@ def generate_traxelstore(h5file,
         start_time = time.time()
 
         with h5py.File(options.raw_filename, 'r') as raw_h5:
-            shape = h5file['/'.join(options.label_img_path.split('/')[:-1])].values()[0].shape[1:4]
+            shape = list(h5file['/'.join(options.label_img_path.split('/')[:-1])].values())[0].shape[1:4]
             shape = (len(h5file['/'.join(options.label_img_path.split('/')[:-1])].values()),) + shape
             print("Shape is {}".format(shape))
 
@@ -952,7 +952,7 @@ def getTraxelStore(options, ilp_fn,time_range, shape):
 
         print '/'.join(options.label_img_path.strip('/').split('/')[:-1])
 
-        if h5file['/'.join(options.label_img_path.strip('/').split('/')[:-1])].values()[0].shape[3] == 1:
+        if list(h5file['/'.join(options.label_img_path.strip('/').split('/')[:-1])].values())[0].shape[3] == 1:
             ndim = 2
         print 'ndim=', ndim
 
@@ -1420,7 +1420,7 @@ if __name__ == "__main__":
 
     # find shape of dataset
     with h5py.File(ilp_fn, 'r') as h5file:
-        shape = h5file['/'.join(options.label_img_path.split('/')[:-1])].values()[0].shape[1:4]
+        shape = list(h5file['/'.join(options.label_img_path.split('/')[:-1])].values())[0].shape[1:4]
 
     # read all traxels into TraxelStore
     ts, fs, max_traxel_id_at, ndim, t0, t1 = getTraxelStore(options, ilp_fn, time_range, shape)

@@ -366,7 +366,7 @@ class JsonTrackingGraph(object):
         **Returns:** the unique ID of the newly created node in the graph
         '''
         detection = {'id':self._nextUuid, 'features':features}
-        for k,v in kwargs.iteritems():
+        for k,v in kwargs.items():
             if v != None:
                 detection[k] = v
 
@@ -380,7 +380,7 @@ class JsonTrackingGraph(object):
         Add a link to the JSON encoded graph between two nodes which are identified by their unique ids
         '''
         link = {'src':srcUuid, 'dest':destUuid, 'features':features}
-        for k,v in kwargs.iteritems():
+        for k,v in kwargs.items():
             link[k] = v
 
         self.model['linkingHypotheses'].append(link)

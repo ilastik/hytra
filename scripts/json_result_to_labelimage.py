@@ -45,7 +45,7 @@ def getShape(labelImageFilename, labelImagePath):
     extract the shape from the labelimage
     """
     with h5py.File(labelImageFilename, 'r') as h5file:
-        shape = h5file['/'.join(labelImagePath.split('/')[:-1])].values()[0].shape[1:4]
+        shape = list(h5file['/'.join(labelImagePath.split('/')[:-1])].values())[0].shape[1:4]
         return shape
 
 def relabelImage(volume, replace):

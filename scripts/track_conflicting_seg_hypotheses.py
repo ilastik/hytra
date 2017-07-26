@@ -44,8 +44,8 @@ def remap_label_image(label_images, mapping):
     given a label image and a mapping, creates and 
     returns a new label image with remapped object pixel values 
     """
-    remapped_label_image = np.zeros(label_images.values()[0].shape, dtype=label_images.values()[0].dtype)
-    for origObject, trackId in mapping.iteritems():
+    remapped_label_image = np.zeros(list(label_images.values())[0].shape, dtype=list(label_images.values())[0].dtype)
+    for origObject, trackId in mapping.items():
         objectId, filename = origObject
         remapped_label_image[label_images[filename] == objectId] = trackId
 
@@ -75,7 +75,7 @@ def save_tracks(tracks, options):
     else:
         filename = options.output_dir + '/res_track.txt'
     with open(filename, 'wt') as f:
-        for key, value in tracks.iteritems():
+        for key, value in tracks.items():
             if key ==  None:
                 continue
             # our track value contains parent, begin, end
@@ -297,7 +297,7 @@ def run_pipeline(options):
     # write res_track.txt
     getLogger().info("Writing track text file")
     trackDict = {}
-    for trackId, timestepList in tracks.iteritems():
+    for trackId, timestepList in tracks.items():
         timestepList.sort()
         try:
             parent = trackParents[trackId]

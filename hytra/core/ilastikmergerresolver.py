@@ -25,7 +25,7 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
         # Find mergers in the given model and result
         traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(self.model)
         # there might be empty frames. We want them as output too.
-        timesteps = [str(t).decode("utf-8") for t in range(int(min(traxelIdPerTimestepToUniqueIdMap.keys())), max([int(idx) for idx in traxelIdPerTimestepToUniqueIdMap.keys()]) + 1)]
+        timesteps = [str(t) for t in range(int(min(traxelIdPerTimestepToUniqueIdMap.keys())), max([int(idx) for idx in traxelIdPerTimestepToUniqueIdMap.keys()]) + 1)]
 
         mergers, detections, links, divisions = hytra.core.jsongraph.getMergersDetectionsLinksDivisions(self.result, uuidToTraxelMap)
         
@@ -58,7 +58,7 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
         """
         traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(self.model)
         # there might be empty frames. We want them as output too.
-        timesteps = [str(t).decode("utf-8") for t in range(int(min(traxelIdPerTimestepToUniqueIdMap.keys())), max([int(idx) for idx in traxelIdPerTimestepToUniqueIdMap.keys()]) + 1)]
+        timesteps = [str(t) for t in range(int(min(traxelIdPerTimestepToUniqueIdMap.keys())), max([int(idx) for idx in traxelIdPerTimestepToUniqueIdMap.keys()]) + 1)]
                 
         # compute new object features
         objectFeatures = self._computeObjectFeatures(timesteps)
@@ -184,7 +184,7 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
             getLogger().debug("Looking at node {} in timestep {} with count {}".format(idx, t, count))         
  
             # use merger resolving plugin to fit `count` objects
-            fittedObjects = self.mergerResolverPlugin.resolveMergerForCoords(coordinates, count, initializations)
+            fittedObjects = list(self.mergerResolverPlugin.resolveMergerForCoords(coordinates, count, initializations))
             
             assert(len(fittedObjects) == count)
  
