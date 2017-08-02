@@ -322,11 +322,11 @@ if __name__ == '__main__':
                     sampleVolume[idx, 2, ...] = gt_labelimage[k][boundingBox.origin[0]:boundingBox.origin[0]+boundingBox.shape[0],
                                                               boundingBox.origin[1]:boundingBox.origin[1]+boundingBox.shape[1],
                                                               boundingBox.origin[2]:boundingBox.origin[2]+boundingBox.shape[2],
-                                                              0]
+                                                              0] == i[0]
                     sampleVolume[idx, 3, ...] = gt_labelimage[k + 1][boundingBox.origin[0]:boundingBox.origin[0]+boundingBox.shape[0],
                                                                      boundingBox.origin[1]:boundingBox.origin[1]+boundingBox.shape[1],
                                                                      boundingBox.origin[2]:boundingBox.origin[2]+boundingBox.shape[2], 
-                                                                     0]
+                                                                     0] == i[1]
                     labels[idx] = l
                     idx += 1
 
