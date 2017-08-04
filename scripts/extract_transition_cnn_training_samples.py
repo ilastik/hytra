@@ -265,8 +265,8 @@ if __name__ == '__main__':
         logger.info("Using features: {}".format(selectedFeatures))
         pos_labels = read_positiveLabels(initFrame, endFrame, files)
         neg_labels = negativeLabels(features, pos_labels)
-        all_labels = [pos_labels, neg_labels]
-        numSamples += 2 * sum([len(l) for l in pos_labels]) + sum([len(l) for l in neg_labels])
+        all_labels = [neg_labels, pos_labels]
+        numSamples += 2* sum([len(l) for l in pos_labels]) + sum([len(l) for l in neg_labels])
         logger.info('Done extracting {} samples'.format(numSamples))
 
         # find biggest required bounding box:
@@ -310,6 +310,7 @@ if __name__ == '__main__':
                     # logger.info("Bounding Box before expanding: {}".format(boundingBox))
                     # logger.info("Requiring size {}, where image has shape {}".format(maxBoundingBoxSize, imageShape))
                     boundingBox.expandToRequestedSize(imageShape, maxBoundingBoxSize)
+
                     # logger.info("Bounding Box after expanding: {}".format(boundingBox))
                     sampleVolume[idx, 0, ...] = rawimage[boundingBox.origin[0]:boundingBox.origin[0]+boundingBox.shape[0],
                                                          boundingBox.origin[1]:boundingBox.origin[1]+boundingBox.shape[1],
@@ -329,6 +330,27 @@ if __name__ == '__main__':
                                                                      0] == i[1]
                     labels[idx] = l
                     idx += 1
+
+                    if l == 1:
+                        # save positive training examples also the other way round, backwards in time
+                        sampleVolume[idx, 1, ...] = rawimage[boundingBox.origin[0]:boundingBox.origin[0]+boundingBox.shape[0],
+                                                             boundingBox.origin[1]:boundingBox.origin[1]+boundingBox.shape[1],
+                                                             boundingBox.origin[2]:boundingBox.origin[2]+boundingBox.shape[2],
+                                                             k, 0]
+                        sampleVolume[idx, 0, ...] = rawimage[boundingBox.origin[0]:boundingBox.origin[0]+boundingBox.shape[0],
+                                                             boundingBox.origin[1]:boundingBox.origin[1]+boundingBox.shape[1],
+                                                             boundingBox.origin[2]:boundingBox.origin[2]+boundingBox.shape[2], 
+                                                             k + 1, 0]
+                        sampleVolume[idx, 3, ...] = gt_labelimage[k][boundingBox.origin[0]:boundingBox.origin[0]+boundingBox.shape[0],
+                                                                  boundingBox.origin[1]:boundingBox.origin[1]+boundingBox.shape[1],
+                                                                  boundingBox.origin[2]:boundingBox.origin[2]+boundingBox.shape[2],
+                                                                  0] == i[0]
+                        sampleVolume[idx, 2, ...] = gt_labelimage[k + 1][boundingBox.origin[0]:boundingBox.origin[0]+boundingBox.shape[0],
+                                                                         boundingBox.origin[1]:boundingBox.origin[1]+boundingBox.shape[1],
+                                                                         boundingBox.origin[2]:boundingBox.origin[2]+boundingBox.shape[2], 
+                                                                         0] == i[1]
+                        labels[idx] = l
+                        idx += 1
 
     logger.info('Done extracting samples, saving to disk')
 
