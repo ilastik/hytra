@@ -757,7 +757,7 @@ class HypothesesGraph(object):
                                             max_track_id))
                             max_track_id += 1
 
-    def pruneGraphToSolution(self, distanceToSolution=0, maxNumObjects=1):
+    def pruneGraphToSolution(self, distanceToSolution=0):
         '''
         creates a new pruned HypothesesGraph that around the result. Assumes that value==0 corresponds
         to unlabeled parts of the graph.
@@ -794,6 +794,7 @@ class HypothesesGraph(object):
         # has all the outgoing edges with value 0, we remove all these outgoing edges
         for n in self.nodeIterator():
             if 'appearance' in self._graph.node[n].keys() and self._graph.node[n]['appearance']:
+                maxNumObjects = len(self._graph.node[n]['appearanceFeatures'])-1
                 self._graph.node[n]['appearanceFeatures'] = listify([0.0] + [1.0] * maxNumObjects)
             else:
                 allArcsWithValueZero = True
@@ -808,6 +809,7 @@ class HypothesesGraph(object):
                         self._graph.remove_edges_from(in_edges)
 
             if 'disappearance' in self._graph.node[n].keys() and self._graph.node[n]['disappearance']:
+                maxNumObjects = len(self._graph.node[n]['disappearanceFeatures'])-1
                 self._graph.node[n]['disappearanceFeatures'] = listify([0.0] + [1.0] * maxNumObjects)
             else:
                 allArcsWithValueZero = True
