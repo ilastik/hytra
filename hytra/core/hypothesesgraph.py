@@ -757,7 +757,7 @@ class HypothesesGraph(object):
                                             max_track_id))
                             max_track_id += 1
 
-    def pruneGraphToSolution(self, distanceToSolution=0):
+    def pruneGraphToSolution(self, distanceToSolution=0, maxNumObjects=1):
         '''
         creates a new pruned HypothesesGraph that around the result. Assumes that value==0 corresponds
         to unlabeled parts of the graph.
@@ -786,6 +786,40 @@ class HypothesesGraph(object):
                     prunedGraph._graph.add_node(src,**self._graph.node[src])
                     prunedGraph._graph.add_node(dest,**self._graph.node[dest])
                     prunedGraph._graph.add_edge(src,dest,**self._graph.edge[src][dest])
+
+        # in case a node is NOT an appearance and
+        # has all the incoming edges with value 0, we remove all these incoming edges
+        #
+        # in case a node is NOT a disappearance and
+        # has all the outgoing edges with value 0, we remove all these outgoing edges
+        for n in self.nodeIterator():
+            if 'appearance' in self._graph.node[n].keys() and self._graph.node[n]['appearance']:
+                self._graph.node[n]['appearanceFeatures'] = listify([0.0] + [1.0] * maxNumObjects)
+            else:
+                allArcsWithValueZero = True
+                in_edges = self._graph.in_edges(n)
+                for edge in list(in_edges):
+                    if 'value' in self._graph.edge[edge[0]][edge[1]].keys() and not self._graph.edge[edge[0]][edge[1]]['value'] == 0:
+                        allArcsWithValueZero = False
+                        break
+
+                if allArcsWithValueZero:
+                    if not in_edges == []:
+                        self._graph.remove_edges_from(in_edges)
+
+            if 'disappearance' in self._graph.node[n].keys() and self._graph.node[n]['disappearance']:
+                self._graph.node[n]['disappearanceFeatures'] = listify([0.0] + [1.0] * maxNumObjects)
+            else:
+                allArcsWithValueZero = True
+                out_edges = self._graph.out_edges(n)
+                for edge in list(out_edges):
+                    if 'value' in self._graph.edge[edge[0]][edge[1]].keys() and not self._graph.edge[edge[0]][edge[1]]['value'] == 0:
+                        allArcsWithValueZero = False
+                        break
+
+                if allArcsWithValueZero:
+                    if not out_edges == []:
+                        self._graph.remove_edges_from(out_edges)
 
         return prunedGraph
     
