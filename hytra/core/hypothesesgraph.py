@@ -793,10 +793,7 @@ class HypothesesGraph(object):
         # in case a node is NOT a disappearance and
         # has all the outgoing edges with value 0, we remove all these outgoing edges
         for n in self.nodeIterator():
-            if 'appearance' in self._graph.node[n].keys() and self._graph.node[n]['appearance']:
-                maxNumObjects = len(self._graph.node[n]['appearanceFeatures'])-1
-                self._graph.node[n]['appearanceFeatures'] = listify([0.0] + [1.0] * maxNumObjects)
-            else:
+            if not ('appearance' in self._graph.node[n].keys() and self._graph.node[n]['appearance']):
                 allArcsWithValueZero = True
                 in_edges = self._graph.in_edges(n)
                 for edge in list(in_edges):
@@ -804,14 +801,13 @@ class HypothesesGraph(object):
                         allArcsWithValueZero = False
                         break
 
+                maxNumObjects = len(self._graph.node[n]['appearanceFeatures'])-1
+                self._graph.node[n]['appearanceFeatures'] = listify([0.0] + [0.0] * maxNumObjects)
                 if allArcsWithValueZero:
                     if not in_edges == []:
                         self._graph.remove_edges_from(in_edges)
 
-            if 'disappearance' in self._graph.node[n].keys() and self._graph.node[n]['disappearance']:
-                maxNumObjects = len(self._graph.node[n]['disappearanceFeatures'])-1
-                self._graph.node[n]['disappearanceFeatures'] = listify([0.0] + [1.0] * maxNumObjects)
-            else:
+            if not('disappearance' in self._graph.node[n].keys() and self._graph.node[n]['disappearance']):
                 allArcsWithValueZero = True
                 out_edges = self._graph.out_edges(n)
                 for edge in list(out_edges):
@@ -819,6 +815,8 @@ class HypothesesGraph(object):
                         allArcsWithValueZero = False
                         break
 
+                maxNumObjects = len(self._graph.node[n]['disappearanceFeatures'])-1
+                self._graph.node[n]['disappearanceFeatures'] = listify([0.0] + [0.0] * maxNumObjects)
                 if allArcsWithValueZero:
                     if not out_edges == []:
                         self._graph.remove_edges_from(out_edges)
