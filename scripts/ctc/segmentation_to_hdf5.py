@@ -18,6 +18,7 @@ def segmentation_to_hdf5(options):
     and each of these datasets has shape 1(t),x,y,z,1(c).
     """
     out_h5 = h5py.File(options.hdf5Path, 'w')
+    time = 0
     for timeframe in range(len(options.tif_input_files)):
         data = tifffile.imread(options.tif_input_files[timeframe])
         

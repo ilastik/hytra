@@ -16,10 +16,12 @@ from hytra.util.skimage_tifffile_hack import hack
 def convert_to_volume(options):
     # data = tifffile.imread(options.input_file)
     path, files = hack(options.input_file)
+    logging.getLogger('stack_to_h5.py').debug("Found {} input tif files".format(len(files)))
     os.chdir(path)
     data = tifffile.imread(files)
+    logging.getLogger('stack_to_h5.py').debug("Input shape is {}".format(data.shape))
     reshapedData = hytra.util.axesconversion.adjustOrder(data, options.tif_input_axes, options.output_axes)
-    logging.getLogger('stack_to_h5.py').info("Saving h5 volume of shape {}".format(data.shape))
+    logging.getLogger('stack_to_h5.py').debug("Saving h5 volume of shape {} and dtype {}".format(reshapedData.shape, reshapedData.dtype))
     vigra.writeHDF5(reshapedData, options.output_file, options.output_path)
 
 if __name__ == "__main__":
