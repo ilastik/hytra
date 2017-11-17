@@ -581,8 +581,9 @@ class HypothesesGraph(object):
         if "linkingResults" in resultDictionary and resultDictionary["linkingResults"] is not None: 
             for link in resultDictionary["linkingResults"]:
                 source, dest = uuidToTraxelMap[link["src"]][-1], uuidToTraxelMap[link["dest"]][0]
-                traxelgraph._graph.edge[source][dest]['value'] = link["value"]
-                traxelgraph._graph.edge[source][dest]['gap'] = dest[0] - source[0]
+                if source in list(traxelgraph._graph.edge.keys()) and dest in list(traxelgraph._graph.edge[source].keys()):
+                    traxelgraph._graph.edge[source][dest]['value'] = link["value"]
+                    traxelgraph._graph.edge[source][dest]['gap'] = dest[0] - source[0]
 
         if "divisionResults" in resultDictionary and resultDictionary["divisionResults"] is not None:
             for division in resultDictionary["divisionResults"]:
