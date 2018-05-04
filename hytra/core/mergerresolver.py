@@ -91,7 +91,10 @@ class MergerResolver(object):
                     division = False
                 count = 1
                 if idx in mergersPerTimestep[str(intT)]:
-                    assert(not division)
+                    strMsg = "Tracking algorithm does not allow objects classified as mergers AND divisions. " +\
+                           "Retrain your classifiers using Uncertainty Layer to obtain accurate probabilities " +\
+                           "while avoiding this forbidden configuration."
+                    assert(not division), strMsg
                     count = mergersPerTimestep[str(intT)][idx]
                 self.unresolvedGraph.add_node(node, division=division, count=count)
     
