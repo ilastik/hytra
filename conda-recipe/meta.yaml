@@ -27,6 +27,7 @@ requirements:
   run:
     - python >=2.7
     - dpct
+    - networkx <={{ networkx }}
     - yapsy
     - vigra
     - scikit-learn
