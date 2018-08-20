@@ -35,8 +35,19 @@ requirements:
     - h5py
 
 test:
+  source_files:
+    - tests/*
+    - scripts/*
+    - empryonic/*
+    - hytra/*
+  requires:
+    - configargparse
+    - nose
+    - jinja2
   imports:
     - hytra
+  commands:
+    - nosetests tests
 
 about:
   home: https://github.com/chaubold/hytra
