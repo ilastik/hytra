@@ -1,42 +1,56 @@
+version: 2
 ## Customize the test machine
-machine:
-  environment:
-    CONDA_ROOT: /home/ubuntu/miniconda
-    TEST_ENV_NAME: test-env
-    TEST_ENV_PREFIX: /home/ubuntu/miniconda/envs/test-env
-    PATH: ${TEST_ENV_PREFIX}/bin:${CONDA_ROOT}/bin:${PATH}
-    PYTHONPATH: ${TEST_ENV_PREFIX}/lib/python3.6/site-packages/
-  
-## Customize dependencies
-dependencies:
-  cache_directories:
-    - /home/ubuntu/miniconda
+jobs:
+  build:
+    working_directory: ~/hytra/hytra
+    parallelism: 1
+    shell: /bin/bash --login
+    environment:
+      CONDA_ROOT: /home/ubuntu/miniconda
+      TEST_ENV_NAME: test-env
+      TEST_ENV_PREFIX: /home/ubuntu/miniconda/envs/test-env
+    docker:
+    - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
+      command: /sbin/init
+    steps:
+    - run: echo 'export PATH=${TEST_ENV_PREFIX}/bin:${CONDA_ROOT}/bin:${PATH}' >> $BASH_ENV
+    - run: echo 'export PYTHONPATH=${PYTHONPATH}:${TEST_ENV_PREFIX}/lib/python3.6/site-packages/' >> $BASH_ENV
+    - checkout
 
-  override:
-    # Download/install conda (if not already cached)
-    - >
-      if [[ ! -d ${CONDA_ROOT} ]]; then
-          echo "Installing Miniconda...";
-          wget --quiet https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh &&
-          bash Miniconda3-latest-Linux-x86_64.sh -b -p ${CONDA_ROOT};
-      else
-          echo "Using cached Miniconda install";
-      fi
+    - restore_cache:
+        keys:
+          # This branch if available
+          - v0.0.1-dep-{{ .Branch }}-
+          # Default branch if not
+          - v0.0.1-dep-master-
+          # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
+          - v0.0.1-dep-
 
-    - >
-      if [ ! -d ${TEST_ENV_PREFIX} ]; then
-          conda create -y -n ${TEST_ENV_NAME} -c ilastik-forge -c conda-forge python=3.6 numpy=1.12 ilastik-dependencies-no-solvers;
-      else
-          conda install -y -n ${TEST_ENV_NAME} -c ilastik-forge -c conda-forge python=3.6 numpy=1.12 ilastik-dependencies-no-solvers;
-      fi
+    - run: |
+        if [[ ! -d ${CONDA_ROOT} ]]; then
+            echo "Installing Miniconda...";
+            wget --quiet https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh &&
+            bash Miniconda3-latest-Linux-x86_64.sh -b -p ${CONDA_ROOT};
+        else
+            echo "Using cached Miniconda install";
+        fi
 
-    - >
-      source /home/ubuntu/miniconda/bin/activate ${TEST_ENV_NAME};
-      conda install -y configargparse -c conda-forge;
+    - run: |
+        if [ ! -d ${TEST_ENV_PREFIX} ]; then
+            conda create -y -n ${TEST_ENV_NAME} -c ilastik-forge -c conda-forge ilastik-dependencies-no-solvers;
+        else
+            conda install -y -n ${TEST_ENV_NAME} -c ilastik-forge -c conda-forge ilastik-dependencies-no-solvers;
+        fi
 
-## Customize test commands
-test:
-  override:
-    - >
-      source /home/ubuntu/miniconda/bin/activate ${TEST_ENV_NAME};
-      nosetests tests
+    - run: |
+        source ${CONDA_ROOT}/bin/activate ${TEST_ENV_NAME} &&
+        conda install -y configargparse -c conda-forge
+
+    - save_cache:
+        key: v0.0.1-dep-{{ .Branch }}-{{ epoch }}
+        paths:
+        - /home/ubuntu/miniconda
+
+    - run: |
+        source ${CONDA_ROOT}/bin/activate ${TEST_ENV_NAME} &&
+        nosetests tests;
