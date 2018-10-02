@@ -14,17 +14,20 @@ source:
   path: ../
 
 build:
+  noarch: python
   number: 0
-  string: py{{CONDA_PY}}_{{PKG_BUILDNUM}}_g{{GIT_FULL_HASH[:7]}}
+  string: py_{{PKG_BUILDNUM}}_g{{GIT_FULL_HASH[:7]}}
+  script: python -m pip install --no-deps --ignore-installed .
 
 requirements:
   build:
-    - python
-    - setuptools
+    - python  {{ python }}
+    - pip
 
   run:
-    - python
+    - python >=2.7
     - dpct
+    - networkx <={{ networkx }}
     - yapsy
     - vigra
     - scikit-learn
@@ -32,8 +35,19 @@ requirements:
     - h5py
 
 test:
+  source_files:
+    - tests/*
+    - scripts/*
+    - empryonic/*
+    - hytra/*
+  requires:
+    - configargparse
+    - nose
+    - jinja2
   imports:
     - hytra
+  commands:
+    - nosetests tests
 
 about:
   home: https://github.com/chaubold/hytra
