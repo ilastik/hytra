@@ -3,9 +3,6 @@ Given a hypotheses graph and weights, this script tries to find split points whe
 splits the graph into N parts, and tracks them independently.
 '''
 from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
-import os
-import sys
-sys.path.insert(0, os.path.abspath('..'))
 # standard imports
 try:
     import commentjson as json

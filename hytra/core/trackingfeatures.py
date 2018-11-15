@@ -1,6 +1,4 @@
 import sys
-sys.path.append('../.')
-sys.path.append('.')
 import h5py
 import pgmlink as track
 import numpy as np

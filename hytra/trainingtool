@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 import sys
-sys.path.append('../.')
-sys.path.append('.')
-
 import os
 import os.path as path
 import getpass
@@ -14,9 +11,11 @@ import time
 import numpy as np
 import h5py
 
+sys.path.append(path.join(path.dirname(__file__), path.pardir))
+sys.path.append(path.dirname(__file__))
+
 from empryonic import traininggui
 
-       
 if __name__=="__main__":
     usage = """%prog FILES [options]
     Run a graphical user interface to visualize and label objects in Digital Embryos HDF5 files. Random Forest classifiers can be trained and used for predicion.
