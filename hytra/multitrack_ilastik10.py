@@ -1,8 +1,4 @@
 import sys
-
-sys.path.append('../.')
-sys.path.append('.')
-
 import os
 import os.path as path
 import getpass
@@ -16,6 +12,10 @@ import itertools
 import vigra
 import copy
 import pgmlink as track
+
+sys.path.append(path.join(path.dirname(__file__), path.pardir))
+sys.path.append(path.dirname(__file__))
+
 from hytra.core.trackingfeatures import extract_features_and_compute_score, get_feature_vector
 from hytra.util.progressbar import ProgressBar
 from empryonic import io
