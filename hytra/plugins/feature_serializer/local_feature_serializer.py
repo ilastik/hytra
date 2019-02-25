@@ -1,4 +1,3 @@
-from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 from hytra.pluginsystem import feature_serializer_plugin
 import numpy as np
 

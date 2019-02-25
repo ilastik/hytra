@@ -1,4 +1,3 @@
-from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 from hytra.pluginsystem import transition_feature_vector_construction_plugin
 import numpy as np
 from compiler.ast import flatten

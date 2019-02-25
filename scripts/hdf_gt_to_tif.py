@@ -7,7 +7,6 @@
 # python hdf_gt_to_tif.py --output-dir ~/Documents/data/rapoport \ 
 #  --input-file ~/Documents/data/rapoport/rapoport_ground_truth_sub_tolerant.h5 --label-image volume
 ###################################################################################
-from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 import argparse
 import numpy as np
 import h5py

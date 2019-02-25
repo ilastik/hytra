@@ -1,4 +1,3 @@
-from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 import logging
 
 from hytra.core.ilastik_project_options import IlastikProjectOptions
