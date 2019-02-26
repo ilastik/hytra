@@ -1,6 +1,10 @@
 from hytra.pluginsystem import feature_serializer_plugin
-import json_tricks as json
 from libdvid import DVIDNodeService
+
+try:
+    import json_tricks as json
+except ImportError:
+    import json
 
 
 class DvidFeatureSerializer(feature_serializer_plugin.FeatureSerializerPlugin):
