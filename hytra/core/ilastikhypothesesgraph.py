@@ -4,9 +4,9 @@ from hytra.core.hypothesesgraph import HypothesesGraph, getTraxelFeatureVector, 
 import hytra.core.jsongraph
 from hytra.util.progressbar import ProgressBar, DefaultProgressVisitor
 
-def getLogger():
-    ''' logger to be used in this module '''
-    return logging.getLogger(__name__)
+
+logger = logging.getLogger(__name__)
+
 
 class IlastikHypothesesGraph(HypothesesGraph):
     '''
@@ -273,7 +273,7 @@ def convertLegacyHypothesesGraphToJsonGraph(hypothesesGraph,
      ([probNoDiv, probDiv])
     '''
 
-    getLogger().info("Creating JSON graph from legacy hypotheses graph")
+    logger.info("Creating JSON graph from legacy hypotheses graph")
     progressBar = ProgressBar(stop=numElements)
     trackingGraph = hytra.core.jsongraph.JsonTrackingGraph()
 

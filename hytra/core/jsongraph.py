@@ -15,9 +15,8 @@ from hytra.util.progressbar import DefaultProgressVisitor
 # ----------------------------------------------------------------------------
 # Utility functions
 
-def getLogger():
-    ''' logger to be used in this module '''
-    return logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
+
 
 def readFromJSON(filename):
     ''' Read a dictionary from JSON '''
@@ -222,7 +221,7 @@ def convexify(listOfNumbers, eps):
     try:
         checkForConvexity(features)
     except:
-        getLogger().warning("Failed convexifying {}".format(features))
+        logger.warning("Failed convexifying {}".format(features))
     return listify(features.flatten())
 
 # ----------------------------------------------------------------------------
@@ -274,15 +273,15 @@ class JsonTrackingGraph(object):
 
         # load from file if specified
         if model_filename is not None:
-            getLogger().debug("Loading model file: " + model_filename)
+            logger.debug("Loading model file: " + model_filename)
             self.model = readFromJSON(model_filename)
 
         if weights_filename is not None:
-            getLogger().debug("Loading weights file: " + weights_filename)
+            logger.debug("Loading weights file: " + weights_filename)
             self.weights = readFromJSON(weights_filename)
 
         if result_filename is not None:
-            getLogger().debug("Loading result file: " + result_filename)
+            logger.debug("Loading result file: " + result_filename)
             self.result = readFromJSON(result_filename)
 
         # further initializations
@@ -427,7 +426,7 @@ class JsonTrackingGraph(object):
                     try:
                         seg[f] = convexify(seg[f], epsilon)
                     except:
-                        getLogger().warning("Convexification failed for feature {} of :{}".format(f, seg))
+                        logger.warning("Convexification failed for feature {} of :{}".format(f, seg))
                         exit(0)
             # division features are always convex (2 values defines just a line)
 
@@ -471,7 +470,7 @@ class JsonTrackingGraph(object):
                 srcTracklet = self.uuidToTraxelMap[l['src']]
                 destTracklet = self.uuidToTraxelMap[l['dest']]
             except:
-                getLogger().warning("Failed finding {} from JSON['linkingHypotheses'] in uuidToTraxelMap".format((l['dest'], l['src'])))
+                logger.warning("Failed finding {} from JSON['linkingHypotheses'] in uuidToTraxelMap".format((l['dest'], l['src'])))
             hypothesesGraph._graph.add_edge((srcTracklet[0][0], srcTracklet[0][1]), 
                                             ((destTracklet[0][0], destTracklet[0][1])))
 
@@ -486,4 +485,3 @@ class JsonTrackingGraph(object):
         Set traxelToUniqueId map.
         '''
         self.model['traxelToUniqueId'] = traxelIdPerTimestepToUniqueIdMap
-

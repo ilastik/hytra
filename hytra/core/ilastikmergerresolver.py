@@ -5,9 +5,9 @@ import hytra.core.mergerresolver
 from hytra.core.probabilitygenerator import Traxel
 import hytra.core.probabilitygenerator
 
-def getLogger():
-    ''' logger to be used in this module '''
-    return logging.getLogger(__name__)
+
+logger = logging.getLogger(__name__)
+
 
 class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
     '''
@@ -64,15 +64,15 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
 
         # load transition classifier if any
         if transition_classifier_filename is not None:
-            getLogger().info("\tLoading transition classifier")
+            logger.info("\tLoading transition classifier")
             transitionClassifier = probabilitygenerator.RandomForestClassifier(
                 transition_classifier_path, transition_classifier_filename)
         else:
-            getLogger().info("\tUsing distance based transition energies")
+            logger.info("\tUsing distance based transition energies")
             transitionClassifier = None
 
         # run min-cost max-flow to find merger assignments
-        getLogger().info("Running min-cost max-flow to find resolved merger assignments")
+        logger.info("Running min-cost max-flow to find resolved merger assignments")
 
         nodeFlowMap, arcFlowMap = self._minCostMaxFlowMergerResolving(objectFeatures, transitionClassifier)
 
@@ -180,7 +180,7 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
                 # so there are 3 initializations for the 2-merger, and two initializations for the 1 merger?
                 # What does pgmlink do in that case?
                 
-            getLogger().debug("Looking at node {} in timestep {} with count {}".format(idx, t, count))         
+            logger.debug("Looking at node {} in timestep {} with count {}".format(idx, t, count))         
  
             # use merger resolving plugin to fit `count` objects
             fittedObjects = list(self.mergerResolverPlugin.resolveMergerForCoords(coordinates, count, initializations))

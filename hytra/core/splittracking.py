@@ -14,9 +14,9 @@ import networkx as nx
 import hytra.core.jsongraph
 import dpct
 
-def _getLogger():
-    ''' logger to be used in this module '''
-    return logging.getLogger("split-track-stitch")
+
+logger = logging.getLogger("split-track-stitch")
+
 
 class SplitTracking:
     '''
@@ -45,7 +45,7 @@ class SplitTracking:
 
         # Run tracking on full video if he have less splits than 2
         if (lastFrame - firstFrame) <= numFramesPerSplit*2:
-            _getLogger().info("WARNING: Running flow-based tracking without splits")
+            logger.info("WARNING: Running flow-based tracking without splits")
             if withMergerResolver:
                 return dpct.trackMaxFlow(model, weights)
             else:
@@ -89,7 +89,7 @@ class SplitTracking:
             subrange = np.array(nonSingletonCostsPerFrameGap[desiredSplitPoint - border : desiredSplitPoint + border])
             splitPoints.append(desiredSplitPoint - border + np.argmax(subrange))
   
-        _getLogger().info("Going to split hypotheses graph at frames {}".format(splitPoints))
+        logger.info("Going to split hypotheses graph at frames {}".format(splitPoints))
 
         # split graph
         def getSubmodel(startTime, endTime):
@@ -124,16 +124,16 @@ class SplitTracking:
         lastSplit = 0
         splitPoints.append(lastFrame) # so that we get the last split as well
         for splitPoint in splitPoints:
-            _getLogger().info("Creating submodel from t={} to t={}...".format(lastSplit, splitPoint + 1))
+            logger.info("Creating submodel from t={} to t={}...".format(lastSplit, splitPoint + 1))
             submodels.append(getSubmodel(lastSplit, splitPoint + 1))
-            _getLogger().info("\t contains {} nodes and {} edges".format(len(submodels[-1]['segmentationHypotheses']), len(submodels[-1]['linkingHypotheses'])))
+            logger.info("\t contains {} nodes and {} edges".format(len(submodels[-1]['segmentationHypotheses']), len(submodels[-1]['linkingHypotheses'])))
             lastSplit = splitPoint + 1
             
         # Will store submodel results
         results = []
         
         if numThreads:
-            _getLogger().info("Using {} threads for solver".format(numThreads))
+            logger.info("Using {} threads for solver".format(numThreads))
         
             # dummy replicates the multiprocessing API using the threading module
             # this is necessary to to prevent multiprocessing pickling error
@@ -148,7 +148,7 @@ class SplitTracking:
             for i, submodel in enumerate(submodels):
                 # TODO: be robust against changes of num weights!
                 # TODO: release GIL in tracking python wrappers to allow parallel solving!!
-                _getLogger().info("Tracking submodel {}/{}".format(i, len(submodels)))
+                logger.info("Tracking submodel {}/{}".format(i, len(submodels)))
     
                 if withMergerResolver:
                     pool.apply_async(dpct.trackMaxFlow, args=(submodel, weights), callback=result_callback)
@@ -163,7 +163,7 @@ class SplitTracking:
             for i, submodel in enumerate(submodels):
                 # TODO: be robust against changes of num weights!
                 # TODO: release GIL in tracking python wrappers to allow parallel solving!!
-                _getLogger().info("Tracking submodel {}/{}".format(i, len(submodels)))
+                logger.info("Tracking submodel {}/{}".format(i, len(submodels)))
                 
                 if withMergerResolver:
                     results.append(dpct.trackMaxFlow(submodel, weights))
@@ -174,7 +174,7 @@ class SplitTracking:
         # make detection weight higher, or accumulate energy over tracks (but what to do with mergers then?),
         # or contract everything where source-node, link and destination have the same number of objects?
         # We choose the last option.
-        _getLogger().info("Setting up model for stitching")
+        logger.info("Setting up model for stitching")
         tracklets = []
         links = []
         stitchingModel = {'segmentationHypotheses': tracklets, 'linkingHypotheses': links, 'divisionHypotheses' : [], 'settings' : model['settings']}
@@ -202,7 +202,7 @@ class SplitTracking:
     
             # for every connected component, insert a node into the stitching graph
             connectedComponents = nx.connected_components(g)
-            _getLogger().info("Contracting tracks of submodel {}/{}".format(modelIdx, len(submodels)))
+            logger.info("Contracting tracks of submodel {}/{}".format(modelIdx, len(submodels)))
     
             for c in connectedComponents:
                 # sum over features of dets + links
@@ -258,7 +258,7 @@ class SplitTracking:
     
                     links.append(newL)
             modelIdx += 1
-        _getLogger().info("\tgot {} links from within the submodels".format(len(links)))
+        logger.info("\tgot {} links from within the submodels".format(len(links)))
     
         # insert all edges crossing the splits that connect active detections
         detectionIdsPerTimestep = dict( [(k, [d['id'] for d in v]) for k, v in detectionsPerTimestep.items()])
@@ -272,7 +272,7 @@ class SplitTracking:
                     links.append(newL)
     
         # Running solver for compressed tracklet model
-        _getLogger().info("\t contains {} nodes and {} edges".format(len(tracklets), len(links)))
+        logger.info("\t contains {} nodes and {} edges".format(len(tracklets), len(links)))
         if withMergerResolver:
             stitchingResult = dpct.trackMaxFlow(stitchingModel, weights)
         else:
@@ -292,7 +292,7 @@ class SplitTracking:
                     if s in t['contains'] and d in t['contains']:
                         fullResult['linkingResults'].append({'src': s, 'dest' : d, 'value': v})
             else:
-                _getLogger().warning("Skipped detection {} while stitching!".format(t))
+                logger.warning("Skipped detection {} while stitching!".format(t))
     
         for lr in stitchingResult['linkingResults']:
             v = lr['value'] 

@@ -6,9 +6,9 @@ import os
 import hytra.core.mergerresolver
 from hytra.core.jsongraph import JsonTrackingGraph
 
-def getLogger():
-    ''' logger to be used in this module '''
-    return logging.getLogger(__name__)
+
+logger = logging.getLogger(__name__)
+
 
 class JsonMergerResolver(hytra.core.mergerresolver.MergerResolver):
     '''
@@ -46,7 +46,7 @@ class JsonMergerResolver(hytra.core.mergerresolver.MergerResolver):
         self.raw_axes = raw_axes
         self.pluginManager.setImageProvider('LocalImageLoader')
         self.imageProvider = self.pluginManager.getImageProvider()
-    
+
 
     def _computeObjectFeatures(self, timesteps):
         """
@@ -65,14 +65,14 @@ class JsonMergerResolver(hytra.core.mergerresolver.MergerResolver):
             labelImages[str(t)] = self.imageProvider.getLabelImageForFrame(self.label_image_filename, self.label_image_path, int(t))
             self.relabelMergers(labelImages[str(t)], int(t))
 
-        getLogger().info("Computing object features")
+        logger.info("Computing object features")
         objectFeatures = {}
         imageShape = self.imageProvider.getImageShape(self.label_image_filename, self.label_image_path)
-        getLogger().info("Found image of shape {}".format(imageShape))
+        logger.info("Found image of shape {}".format(imageShape))
         # ndims = len(np.array(imageShape).squeeze()) - 1 # get rid of axes with length 1, and minus time axis
         # there is no time axis...
         ndims = len([i for i in imageShape if i != 1])
-        getLogger().info("Data has dimensionality {}".format(ndims))
+        logger.info("Data has dimensionality {}".format(ndims))
         for node in self.resolvedGraph.nodes_iter():
             intT, idx = node
             if str(idx).startswith('div-'):

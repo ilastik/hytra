@@ -9,8 +9,9 @@ from hytra.pluginsystem.plugin_manager import TrackingPluginManager
 from hytra.core.random_forest_classifier import RandomForestClassifier
 from hytra.core.ilastik_project_options import IlastikProjectOptions
 
-def getLogger():
-    return logging.getLogger("ProbabilityGenerator")
+
+logger = logging.getLogger("ProbabilityGenerator")
+
 
 class Traxel(object):
     """
@@ -526,7 +527,7 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
             #         featuresPerFrame[frame].update(self._extractDivisionFeaturesForFrame(frame, featuresPerFrame)[1])
         
         t1 = time.time()
-        getLogger().info("Feature computation took {} secs".format(t1 - t0))
+        logger.info("Feature computation took {} secs".format(t1 - t0))
         
         return featuresPerFrame
 
@@ -558,10 +559,10 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
             else:
                 assert (fs is not None)
 
-        getLogger().info("Extracting features...")
+        logger.info("Extracting features...")
         self._featuresPerFrame = self._extractAllFeatures(dispyNodeIps=dispyNodeIps, turnOffFeatures=turnOffFeatures)
 
-        getLogger().info("Creating traxels...")
+        logger.info("Creating traxels...")
         progressBar = ProgressBar(stop=len(self._featuresPerFrame))
         progressBar.show(increase=0)
 
@@ -605,7 +606,7 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
                             else:
                                 featureValues = val[objectId, ...]
                         except:
-                            getLogger().error(
+                            logger.error(
                                 "Could not get feature values of {} for key {} from matrix with shape {}".format(
                                     objectId, key, val.shape))
                             raise AssertionError()
@@ -614,7 +615,7 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
                             if key == 'RegionCenter':
                                 self._setTraxelFeatureArray(traxel, featureValues, 'com')
                         except:
-                            getLogger().error(
+                            logger.error(
                                 "Could not add feature array {} for {}".format(
                                     featureValues, key))
                             raise AssertionError()

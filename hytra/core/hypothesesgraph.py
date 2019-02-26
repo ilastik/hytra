@@ -8,9 +8,7 @@ from hytra.core.jsongraph import negLog, listify
 from hytra.util.progressbar import DefaultProgressVisitor
 
 
-def getLogger():
-    ''' logger to be used in this module '''
-    return logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def getTraxelFeatureVector(traxel, featureName, maxNumDimensions=3):
@@ -23,15 +21,15 @@ def getTraxelFeatureVector(traxel, featureName, maxNumDimensions=3):
             result.append(traxel.get_feature_value(str(featureName), i))
         except:
             if i == 0:
-                getLogger().error("Error when accessing feature {}[{}] for traxel (Id={},Timestep={})".format(featureName,
-                                                                                                              i,
-                                                                                                              traxel.Id,
-                                                                                                              traxel.Timestep))
-                getLogger().error("Available features are: ")
-                getLogger().error(traxel.print_available_features())
+                logger.error(
+                    f"Error when accessing feature {featureName}[{i}] for "
+                    f"traxel (Id={traxel.Id},Timestep={traxel.Timestep})"
+                )
+                logger.error(traxel.print_available_features())
                 raise Exception
             else:
-                getLogger().error("Error: Classifier was trained with less merger than maxNumObjects {}.".format(maxNumDimensions))
+                logger.error(
+                    f"Error: Classifier was trained with less merger than maxNumObjects {maxNumDimensions}.")
                 raise Exception
     return result
 
@@ -182,7 +180,7 @@ class HypothesesGraph(object):
 
         def checkNodeWhileAddingLinks(frame, obj):
             if (frame, obj) not in self._graph:
-                getLogger().warning("Adding node ({}, {}) when setting up links".format(frame, obj))
+                logger.warning("Adding node ({}, {}) when setting up links".format(frame, obj))
 
         kdTreeFrames = [None]*(skipLinks + 1)
         # len(probabilityGenerator.TraxelsPerFrame.keys()) is NOT an indicator for the total number of frames,
@@ -258,7 +256,7 @@ class HypothesesGraph(object):
 
         The `'tracklet'` node map contains a list of traxels that each node represents.
         '''
-        getLogger().info("generating tracklet graph...")
+        logger.info("generating tracklet graph...")
         tracklet_graph = copy.copy(self)
         tracklet_graph._graph = tracklet_graph._graph.copy()
         tracklet_graph.withTracklets = True
@@ -313,7 +311,7 @@ class HypothesesGraph(object):
                 node_remapping[(t.Timestep, t.Id)] = src
             tracklet_graph._graph.remove_node(dest)
 
-        getLogger().info("tracklet graph has {} nodes and {} edges (before {},{})".format(
+        logger.info("tracklet graph has {} nodes and {} edges (before {},{})".format(
             tracklet_graph.countNodes(), tracklet_graph.countArcs(), self.countNodes(), self.countArcs()))
 
         return tracklet_graph
@@ -527,7 +525,7 @@ class HypothesesGraph(object):
             
             if traxel.conflictingTraxelIds is not None:
                 if self.withTracklets:
-                    getLogger().error("Exclusion constraints do not work with tracklets yet!")
+                    logger.error("Exclusion constraints do not work with tracklets yet!")
                 
                 conflictingIds = [traxelIdPerTimestepToUniqueIdMap[str(traxel.Timestep)][str(i)] for i in traxel.conflictingTraxelIds]
                 myId = traxelIdPerTimestepToUniqueIdMap[str(traxel.Timestep)][str(traxel.Id)]
@@ -713,7 +711,7 @@ class HypothesesGraph(object):
             # stop propagating in that case and just use the lineageID that reached the node first.
             if traxelgraph._graph.node[current_node].get("lineageId", None) is not None and \
                 traxelgraph._graph.node[current_node].get("trackId", None) is not None:
-                getLogger().debug("Several tracks are merging here, stopping a later one")
+                logger.debug("Several tracks are merging here, stopping a later one")
                 continue
 
             # set a new trackID
@@ -723,7 +721,7 @@ class HypothesesGraph(object):
             numberOfOutgoingObject, numberOfOutgoingEdges = traxelgraph.countOutgoingObjects(current_node)
             
             if (numberOfOutgoingObject != numberOfOutgoingEdges):
-                getLogger().warning("running lineage computation on unresolved graphs depends on a race condition")
+                logger.warning("running lineage computation on unresolved graphs depends on a race condition")
 
             if 'divisionValue' in traxelgraph._graph.node[current_node] and traxelgraph._graph.node[current_node]['divisionValue']:
                 assert(traxelgraph.countOutgoingObjects(current_node)[1] == 2)
@@ -740,7 +738,7 @@ class HypothesesGraph(object):
                         max_track_id += 1
             else:
                 if traxelgraph.countOutgoingObjects(current_node)[1] > 1:
-                    getLogger().debug('Found merger splitting into several objects, propagating lineage and track to all descendants!')
+                    logger.debug('Found merger splitting into several objects, propagating lineage and track to all descendants!')
 
                 for a in traxelgraph._graph.out_edges(current_node):
                     if 'value' in traxelgraph._graph.edge[current_node][a[1]] and traxelgraph._graph.edge[current_node][a[1]]['value'] > 0:
@@ -808,10 +806,10 @@ class HypothesesGraph(object):
                     maxNumObjectsAppearance = maxNumObjectsApp
                 elif not maxNumObjectsApp == maxNumObjectsAppearance:
                     correctAppearanceFeatureLength = False
-                    getLogger().info('Appearance/disappearance features have different lengths!')
+                    logger.info('Appearance/disappearance features have different lengths!')
             except:
                 withAppearanceFeatures = False
-                getLogger().info('There are no appearance features in node properties!')
+                logger.info('There are no appearance features in node properties!')
                 break
 
             try:
@@ -820,10 +818,10 @@ class HypothesesGraph(object):
                     maxNumObjectsDisappearance = maxNumObjectsDis
                 elif not maxNumObjectsDis == maxNumObjectsDisappearance:
                     correctDisappearanceFeatureLength = False
-                    getLogger().info('Disappearance features have different lengths!')
+                    logger.info('Disappearance features have different lengths!')
             except:
                 withDisappearanceFeatures = False
-                getLogger().info('There are no disappearance features in node properties!')
+                logger.info('There are no disappearance features in node properties!')
                 break
 
         if withAppearanceFeatures and withDisappearanceFeatures:
@@ -831,7 +829,7 @@ class HypothesesGraph(object):
                 maxNumObjects = maxNumObjectsAppearance
             else:
                 correctFeatureLength = False
-                getLogger().info('Appearance and disappearance features have different lengths!')
+                logger.info('Appearance and disappearance features have different lengths!')
         else:
             withFeatures = False
 
@@ -872,7 +870,7 @@ class HypothesesGraph(object):
         try:
             return self._graph.node[(int(timestep), int(objectId))][attribute]
         except KeyError:
-            getLogger().error(attribute + ' not found in graph node properties, call computeLineage() first!')
+            logger.error(attribute + ' not found in graph node properties, call computeLineage() first!')
             raise
 
     def getLineageId(self, timestep, objectId):

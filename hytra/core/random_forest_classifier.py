@@ -3,12 +3,11 @@ import numpy as np
 import h5py
 import os
 import logging
-from hytra.pluginsystem.plugin_manager import TrackingPluginManager
 from hytra.core.ilastik_project_options import IlastikProjectOptions
 
-def getLogger():
-    ''' logger to be used in this module '''
-    return logging.getLogger(__name__)
+
+logger = logging.getLogger(__name__)
+
 
 class RandomForestClassifier:
     """
@@ -41,12 +40,12 @@ class RandomForestClassifier:
             else:
                 fullPath = '/'.join([self._classifierPath, self._options.classifierForestsGroupName])
             randomForests = []
-            getLogger().info(" Attempting to read {} classifier(s) in {} from {}".format(
+            logger.info(" Attempting to read {} classifier(s) in {} from {}".format(
                 len([key for key in h5file[fullPath].keys() if 'Forest' in key]), self._ilpFilename, fullPath))
 
             for k in h5file[fullPath].keys():
                 if 'Forest' in k:
-                    getLogger().info(" Reading forest: {}".format( str('/'.join([fullPath, k])) ) )
+                    logger.info(" Reading forest: {}".format( str('/'.join([fullPath, k])) ) )
                     rf = vigra.learning.RandomForest(str(self._ilpFilename), str('/'.join([fullPath, k])))
                     randomForests.append(rf)
             return randomForests
@@ -120,7 +119,7 @@ class RandomForestClassifier:
         assert (len(features.shape) == 2)
         # assert(features.shape[1] == self._randomForests[0].featureCount())
         if not features.shape[1] == self._randomForests[0].featureCount():
-            getLogger().error(
+            logger.error(
                 "Cannot predict from features of shape {} if {} features are expected".format(features.shape,
                       self._randomForests[0].featureCount()))
             print(features)
@@ -137,16 +136,16 @@ class RandomForestClassifier:
         """
         Train the random forest given feature matrix and labels
         """
-        getLogger().info(
+        logger.info(
             "Training classifier from {} positive and {} negative labels".format(
                 np.count_nonzero(np.asarray(labels)), len(labels) - np.count_nonzero(np.asarray(labels))))
-        getLogger().info("Training classifier from a feature vector of length {}".format(featureMatrix.shape))
+        logger.info("Training classifier from a feature vector of length {}".format(featureMatrix.shape))
 
         self._randomForests = [vigra.learning.RandomForest()]
         oob = self._randomForests[0].learnRF(
             np.asarray(featureMatrix).astype("float32"),
             (np.asarray(labels)).astype("uint32").reshape(-1, 1))
-        getLogger().info("RF trained with OOB Error {}".format(oob))
+        logger.info("RF trained with OOB Error {}".format(oob))
     
     def save(self, outputFilename=None, classifierPath='/'):
         """

@@ -11,9 +11,7 @@ from hytra.util.progressbar import DefaultProgressVisitor
 from hytra.core.splittracking import SplitTracking
 
 
-def getLogger():
-    ''' logger to be used in this module '''
-    return logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class MergerResolver(object):
@@ -146,7 +144,7 @@ class MergerResolver(object):
                 count = 1
                 if idx in mergersPerTimestep[t]:
                     count = mergersPerTimestep[t][idx]
-                getLogger().debug("Looking at node {} in timestep {} with count {}".format(idx, t, count))
+                logger.debug("Looking at node {} in timestep {} with count {}".format(idx, t, count))
                 
                 # collect initializations from incoming
                 initializations = []
@@ -234,9 +232,9 @@ class MergerResolver(object):
                     featVec = self.pluginManager.applyTransitionFeatureVectorConstructionPlugins(
                         featuresAtSrc, featuresAtDest, transitionClassifier.selectedFeatures)
                 except:
-                    getLogger().error("Could not compute transition features of link {}->{}:".format(src, dest))
-                    getLogger().error(featuresAtSrc)
-                    getLogger().error(featuresAtDest)
+                    logger.error("Could not compute transition features of link {}->{}:".format(src, dest))
+                    logger.error(featuresAtSrc)
+                    logger.error(featuresAtDest)
                     raise
                 featVec = np.expand_dims(np.array(featVec), axis=0)
                 probs = transitionClassifier.predictProbabilities(featVec)[0]
@@ -268,7 +266,7 @@ class MergerResolver(object):
         if not self.numSplits:
             mergerResult = dpct.trackMaxFlow(trackingGraph.model, weights)
         else:
-            getLogger().info("Running split tracking with {} splits.".format(self.numSplits))
+            logger.info("Running split tracking with {} splits.".format(self.numSplits))
             mergerResult = SplitTracking.trackFlowBasedWithSplits(trackingGraph.model, weights, numSplits=self.numSplits, withMergerResolver=True)
 
         # transform results to dictionaries that can be indexed by id or (src,dest)
@@ -414,7 +412,7 @@ class MergerResolver(object):
 
         # it may be, that there are no mergers, so do basically nothing, just copy all the ingoing data
         if len(mergers) == 0:
-            getLogger().info("The maximum number of objects is 1, so nothing to be done. Writing the output...")
+            logger.info("The maximum number of objects is 1, so nothing to be done. Writing the output...")
             self._exportRefinedSegmentation(timesteps)
 
         else:
@@ -439,16 +437,16 @@ class MergerResolver(object):
             # ------------------------------------------------------------
             # load transition classifier if any
             if transition_classifier_filename is not None:
-                getLogger().info("\tLoading transition classifier")
+                logger.info("\tLoading transition classifier")
                 transitionClassifier = probabilitygenerator.RandomForestClassifier(
                     transition_classifier_path, transition_classifier_filename)
             else:
-                getLogger().info("\tUsing distance based transition energies")
+                logger.info("\tUsing distance based transition energies")
                 transitionClassifier = None
 
             # ------------------------------------------------------------
             # run min-cost max-flow to find merger assignments
-            getLogger().info("Running min-cost max-flow to find resolved merger assignments")
+            logger.info("Running min-cost max-flow to find resolved merger assignments")
 
             nodeFlowMap, arcFlowMap = self._minCostMaxFlowMergerResolving(objectFeatures, transitionClassifier)
 

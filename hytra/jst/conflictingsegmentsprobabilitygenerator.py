@@ -6,8 +6,9 @@ import concurrent.futures
 from hytra.core.probabilitygenerator import IlpProbabilityGenerator, computeDivisionFeaturesOnCloud, computeRegionFeaturesOnCloud, DummyExecutor
 from hytra.util.progressbar import ProgressBar
 
-def getLogger():
-    return logging.getLogger(__name__)
+
+logger = logging.getLogger(__name__)
+
 
 def findConflictingHypothesesInSeparateProcess(frame,
                                                labelImageFilenames,
@@ -174,17 +175,17 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
         Check which objects are overlapping between the different segmentation hypotheses,
         and store that information in every traxel.
         """
-        getLogger().info("Checking for overlapping segmentation hypotheses...")
+        logger.info("Checking for overlapping segmentation hypotheses...")
         t0 = time.time()
 
         # find exclusion constraints
         if self._useMultiprocessing:
             # use ProcessPoolExecutor, which instanciates as many processes as there CPU cores by default
             ExecutorType = concurrent.futures.ProcessPoolExecutor
-            getLogger().info('Parallelizing via multiprocessing on all cores!')
+            logger.info('Parallelizing via multiprocessing on all cores!')
         else:
             ExecutorType = DummyExecutor
-            getLogger().info('Running on single core!')
+            logger.info('Running on single core!')
 
         jobs = []
         progressBar = ProgressBar(stop=self.timeRange[1] - self.timeRange[0])
@@ -208,7 +209,7 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
                     self.TraxelsPerFrame[frame][objectId].conflictingTraxelIds.extend(overlapIds)
         
         t1 = time.time()
-        getLogger().info("Finding overlaps took {} secs".format(t1 - t0))
+        logger.info("Finding overlaps took {} secs".format(t1 - t0))
 
     def findGroundTruthJaccardScoreAndMapping(self, 
                                               hypothesesGraph,
@@ -232,17 +233,17 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
         The nodes in the hypotheses graph are indexed by (frame, globalId), the resulting dict must use UUIDs.
         """
 
-        getLogger().info("Computing Jaccard scores w.r.t. GroundTruth ...")
+        logger.info("Computing Jaccard scores w.r.t. GroundTruth ...")
         t0 = time.time()
 
         # find exclusion constraints
         if self._useMultiprocessing:
             # use ProcessPoolExecutor, which instanciates as many processes as there CPU cores by default
             ExecutorType = concurrent.futures.ProcessPoolExecutor
-            getLogger().info('Parallelizing via multiprocessing on all cores!')
+            logger.info('Parallelizing via multiprocessing on all cores!')
         else:
             ExecutorType = DummyExecutor
-            getLogger().info('Running on single core!')
+            logger.info('Running on single core!')
 
         jobs = []
         progressBar = ProgressBar(stop=self.timeRange[1] - self.timeRange[0])
@@ -269,7 +270,7 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
                 gtFrameIdToGlobalIdsWithScoresMap.update(frameGtToGlobalIdMap)
         
         t1 = time.time()
-        getLogger().info("Finding jaccard scores took {} secs".format(t1 - t0))
+        logger.info("Finding jaccard scores took {} secs".format(t1 - t0))
 
         # create JSON result by mapping it to the hypotheses graph
         traxelIdPerTimestepToUniqueIdMap, _ = hypothesesGraph.getMappingsBetweenUUIDsAndTraxels()
@@ -294,24 +295,24 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
             if gtSrc in gtFrameIdToGlobalIdsWithScoresMap:
                 src = (gtSrc[0], gtFrameIdToGlobalIdsWithScoresMap[gtSrc][-1][0])
             else:
-                getLogger().warning("GT link's source node {} has no match in the segmentation hypotheses".format(gtSrc))
+                logger.warning("GT link's source node {} has no match in the segmentation hypotheses".format(gtSrc))
                 return False
 
             if gtDest in gtFrameIdToGlobalIdsWithScoresMap:
                 dest = (gtDest[0], gtFrameIdToGlobalIdsWithScoresMap[gtDest][-1][0])
             else:
-                getLogger().warning("GT link's destination node {} has no match in the segmentation hypotheses".format(gtDest))
+                logger.warning("GT link's destination node {} has no match in the segmentation hypotheses".format(gtDest))
                 return False
             
             # then map them to the hypotheses graph
             if not hypothesesGraph.hasNode(src):
-                getLogger().warning("Source node of GT link {} was not found in graph".format((gtSrc, gtDest)))
+                logger.warning("Source node of GT link {} was not found in graph".format((gtSrc, gtDest)))
                 return False
             if not hypothesesGraph.hasNode(dest):
-                getLogger().warning("Destination node of GTlink {} was not found in graph".format((gtSrc, gtDest)))
+                logger.warning("Destination node of GTlink {} was not found in graph".format((gtSrc, gtDest)))
                 return False
             if not hypothesesGraph.hasEdge(src, dest):
-                getLogger().warning("Nodes are present, but GT link {} was not found in graph".format((gtSrc, gtDest)))
+                logger.warning("Nodes are present, but GT link {} was not found in graph".format((gtSrc, gtDest)))
                 return False
             return True
 
@@ -328,7 +329,7 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
             # add transitions along track
             for frame in range(startFrame, min(endFrame, self.timeRange[1])):
                 if not checkLinkExists((frame, trackId), (frame + 1, trackId)):
-                    getLogger().warning("Ignoring GT link from {} to {}".format((frame, trackId), (frame + 1, trackId)))
+                    logger.warning("Ignoring GT link from {} to {}".format((frame, trackId), (frame + 1, trackId)))
                     missingLinks += 1
                     continue
 
@@ -343,10 +344,10 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
         divisionResults = []
         for parent, childrenFrameIds in descendants.items():
             if len(childrenFrameIds) != 2:
-                getLogger().warning("Found track {} that had descendants, but not exactly two. Ignoring it".format(parent))
+                logger.warning("Found track {} that had descendants, but not exactly two. Ignoring it".format(parent))
                 continue
             if childrenFrameIds[0][0] != childrenFrameIds[1][0]:
-                getLogger().warning("Track {} divided, but children are not in same timeframe. Ignoring it".format(parent))
+                logger.warning("Track {} divided, but children are not in same timeframe. Ignoring it".format(parent))
                 continue
 
             # all good, found a proper division. Make sure the mother-daughter-links are available in the hypotheses graph 
@@ -361,7 +362,7 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
                 divisionResults.append({"id": gtIdPerFrameToUuid(divisionFrame, parent), "value": 1})
                 for i in [0, 1]:
                     if not checkLinkExists((divisionFrame, parent), (childrenFrameIds[i][0], childrenFrameIds[i][1])):
-                        getLogger().warning("Ignoring GT link from {} to {}".format((frame, trackId), (frame + 1, trackId)))
+                        logger.warning("Ignoring GT link from {} to {}".format((frame, trackId), (frame + 1, trackId)))
                         continue
                     link = {
                         "src":gtIdPerFrameToUuid(divisionFrame, parent),
@@ -370,10 +371,10 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
                     }
                     linkingResults.append(link)
             else:
-                getLogger().warning("Division of {} ignored, could not find the links to the children, or not all participating GT nodes found a mapping".format(parent))
+                logger.warning("Division of {} ignored, could not find the links to the children, or not all participating GT nodes found a mapping".format(parent))
                 missingLinks += 1
 
-        getLogger().info("Ground Truth mapping could not find an equivalent for {} links, {} links projected.".format(missingLinks, len(linkingResults)))
+        logger.info("Ground Truth mapping could not find an equivalent for {} links, {} links projected.".format(missingLinks, len(linkingResults)))
 
         result = {}
         result['detectionResults'] = detectionResults
@@ -507,6 +508,6 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
         self._storeBackwardMapping(featuresPerFrame)
 
         t1 = time.time()
-        getLogger().info("Feature computation took {} secs".format(t1 - t0))
+        logger.info("Feature computation took {} secs".format(t1 - t0))
         
         return featuresPerFrame

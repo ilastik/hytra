@@ -19,9 +19,9 @@ import time
 import hytra.core.jsongraph
 import concurrent.futures
 
-def _getLogger():
-    ''' logger to be used in this module '''
-    return logging.getLogger("split-track-stitch")
+
+logger = logging.getLogger("split-track-stitch")
+
 
 def track(model, weights, solver='flow'):
     ''' solver may be flow or ilp '''
@@ -41,7 +41,7 @@ def track(model, weights, solver='flow'):
 
 def trackAndContractSubmodel(submodel, weights, modelIdx, solver):
     try:
-        _getLogger().info("Tracking submodel {}".format(modelIdx))
+        logger.info("Tracking submodel {}".format(modelIdx))
         result = track(submodel, weights, solver)
 
         linksByIdTuple = {}
@@ -77,7 +77,7 @@ def trackAndContractSubmodel(submodel, weights, modelIdx, solver):
 
         # for every connected component, insert a node into the stitching graph
         connectedComponents = nx.connected_components(g)
-        _getLogger().info("Contracting tracks of submodel {}".format(modelIdx))
+        logger.info("Contracting tracks of submodel {}".format(modelIdx))
 
         for c in connectedComponents:
             # sum over features of dets + links
@@ -134,10 +134,10 @@ def trackAndContractSubmodel(submodel, weights, modelIdx, solver):
 
                 links.append(newL)
 
-        _getLogger().info("Found divisions at {}".format([k for k, v in divisionsPerDetection.items() if v is True]))
+        logger.info("Found divisions at {}".format([k for k, v in divisionsPerDetection.items() if v is True]))
         return modelIdx, result, links, tracklets, nodeIdRemapping, valuePerDetection, sum(1 for v in divisionsPerDetection.values() if v is True)
     except:
-        _getLogger().exception('Exception while processing submodel')
+        logger.exception('Exception while processing submodel')
 
 def main(args):
     assert args.solver in ['flow', 'ilp'], "Invalid Solver selected"
@@ -147,7 +147,7 @@ def main(args):
 
     with open(args.weights_filename, 'r') as f:
         weights = json.load(f)
-    _getLogger().info("Done loading model and weights")
+    logger.info("Done loading model and weights")
 
     traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(model)
     assert not any(len(u2t) > 1 for u2t in uuidToTraxelMap.values()), "Doesn't work with tracklets yet!"
@@ -161,7 +161,7 @@ def main(args):
     detectionsById = {}
     linksByIdTuple = {}
 
-    _getLogger().info("Setup done. Searching for good split locations...")
+    logger.info("Setup done. Searching for good split locations...")
 
     for t in detectionsPerTimestep.keys():
         nonSingletonCosts = []
@@ -203,7 +203,7 @@ def main(args):
         subrange = np.array(nonSingletonCostsPerFrameGap[desiredSplitPoint - border : desiredSplitPoint + border])
         splitPoints.append(desiredSplitPoint - border + np.argmax(subrange))
 
-    _getLogger().info("Going to split hypotheses graph at frames {}".format(splitPoints))
+    logger.info("Going to split hypotheses graph at frames {}".format(splitPoints))
 
     # for debugging: show chosen frames
     # import matplotlib.pyplot as plt
@@ -245,9 +245,9 @@ def main(args):
     lastSplit = 0
     splitPoints.append(lastFrame) # so that we get the last split as well
     for splitPoint in splitPoints:
-        _getLogger().info("Creating submodel from t={} to t={}...".format(lastSplit, splitPoint + 1))
+        logger.info("Creating submodel from t={} to t={}...".format(lastSplit, splitPoint + 1))
         submodels.append(getSubmodel(lastSplit, splitPoint + 1))
-        _getLogger().info("\t contains {} nodes and {} edges".format(len(submodels[-1]['segmentationHypotheses']), len(submodels[-1]['linkingHypotheses'])))
+        logger.info("\t contains {} nodes and {} edges".format(len(submodels[-1]['segmentationHypotheses']), len(submodels[-1]['linkingHypotheses'])))
         lastSplit = splitPoint + 1
 
     # We will track in parallel now.
@@ -255,7 +255,7 @@ def main(args):
     # make detection weight higher, or accumulate energy over tracks (but what to do with mergers then?),
     # or contract everything where source-node, link and destination have the same number of objects?
     # We choose the last option.
-    _getLogger().info("Tracking in parallel and contracting tracks for stitching")
+    logger.info("Tracking in parallel and contracting tracks for stitching")
     results = []
     tracklets = []
     links = []
@@ -276,7 +276,7 @@ def main(args):
 
         for job in concurrent.futures.as_completed(jobs):
             idx, r, l, t, n, v, nd = job.result()
-            _getLogger().info("Finished tracking submodel {}".format(idx))
+            logger.info("Finished tracking submodel {}".format(idx))
             results.append(r) # can be randomly ordered!
             links.extend(l)
             tracklets.extend(t)
@@ -284,8 +284,8 @@ def main(args):
             valuePerDetection.update(v)
             numDivisions += nd
 
-    _getLogger().info("\tgot {} links from within the submodels".format(len(links)))
-    _getLogger().info("\tfound {} divisions within the submodels".format(numDivisions))
+    logger.info("\tgot {} links from within the submodels".format(len(links)))
+    logger.info("\tfound {} divisions within the submodels".format(numDivisions))
 
     # insert all edges crossing the splits that connect active detections
     detectionIdsPerTimestep = dict( [(k, [d['id'] for d in v]) for k, v in detectionsPerTimestep.items()])
@@ -298,13 +298,13 @@ def main(args):
                 newL['dest'] = nodeIdRemapping[d]
                 links.append(newL)
 
-    _getLogger().info("\tcontains {} nodes and {} edges".format(len(tracklets), len(links)))
+    logger.info("\tcontains {} nodes and {} edges".format(len(tracklets), len(links)))
     # hytra.core.jsongraph.writeToFormattedJSON('/Users/chaubold/Desktop/stitchingGraph.json', stitchingModel)
     stitchingModel['settings']['allowLengthOneTracks'] = True
     stitchingResult = track(stitchingModel, weights, args.solver)
     # hytra.core.jsongraph.writeToFormattedJSON('/Users/chaubold/Desktop/stitchingResult.json', stitchingResult)
     
-    _getLogger().info("Extracting stitched result...")
+    logger.info("Extracting stitched result...")
 
     # extract full result
     trackletsById = dict([(t['id'], t) for t in tracklets])
@@ -320,7 +320,7 @@ def main(args):
             for s, d in t['links']:
                 fullResult['linkingResults'].append({'src': s, 'dest' : d, 'value': v})
         else:
-            _getLogger().debug("Skipped detection {} while stitching!".format(t))
+            logger.debug("Skipped detection {} while stitching!".format(t))
 
     for lr in stitchingResult['linkingResults']:
         v = lr['value'] 
@@ -335,9 +335,9 @@ def main(args):
         fullResult['divisionResults'].append({'id': t['maxUid'], 'value': v})
     
     t1 = time.time()
-    _getLogger().info("Extracting result took {} secs".format(t1-t0))
+    logger.info("Extracting result took {} secs".format(t1-t0))
 
-    _getLogger().info("Saving stitched result to {}".format(args.results_filename))
+    logger.info("Saving stitched result to {}".format(args.results_filename))
     hytra.core.jsongraph.writeToFormattedJSON(args.results_filename, fullResult)
 
 if __name__ == "__main__":
@@ -363,7 +363,7 @@ if __name__ == "__main__":
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.INFO)
-    _getLogger().debug("Ignoring unknown parameters: {}".format(unknown))
+    logger.debug("Ignoring unknown parameters: {}".format(unknown))
 
     args.solver = args.solver.lower()
     

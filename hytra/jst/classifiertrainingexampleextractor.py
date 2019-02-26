@@ -7,9 +7,9 @@ import numpy as np
 import attr
 from hytra.core.random_forest_classifier import RandomForestClassifier
 
-def getLogger():
-    ''' logger to be used in this module '''
-    return logging.getLogger(__name__)
+
+logger = logging.getLogger(__name__)
+
 
 def trainDetectionClassifier(hypothesesGraph, gtFrameIdToGlobalIdsWithScoresMap, numSamples=100, selectedFeatures=None):
     """
@@ -22,7 +22,7 @@ def trainDetectionClassifier(hypothesesGraph, gtFrameIdToGlobalIdsWithScoresMap,
     **Returns**: a trained random forest
     """
     # create a list of all elements, sort them by their jaccard score, then pick from both ends?
-    getLogger().debug("Extracting candidates")
+    logger.debug("Extracting candidates")
 
     # create helper class for candidates, and store a list of these
     @attr.s
@@ -48,11 +48,11 @@ def trainDetectionClassifier(hypothesesGraph, gtFrameIdToGlobalIdsWithScoresMap,
     # use RandomForestClassifier's method "extractFeatureVector"
     selectedSamples = candidates[0:numSamples//2] + candidates[-numSamples//2-1:-1]
     labels = np.hstack([np.zeros(numSamples//2), np.ones(numSamples//2)])
-    getLogger().info("Using {} of {} available training examples".format(numSamples, len(candidates)))
+    logger.info("Using {} of {} available training examples".format(numSamples, len(candidates)))
 
     # TODO: make sure that the positive examples were all selected in the GT mapping
 
-    getLogger().debug("construct feature matrix")
+    logger.debug("construct feature matrix")
     node = selectedSamples[0].node
     if selectedFeatures is None:
         selectedFeatures = nodeTraxelMap[node].Features.keys()
@@ -61,7 +61,7 @@ def trainDetectionClassifier(hypothesesGraph, gtFrameIdToGlobalIdsWithScoresMap,
         for f in forbidden:
             if f in selectedFeatures:
                 selectedFeatures.remove(f)
-        getLogger().info("No list of selected features was specified, using {}".format(selectedFeatures))
+        logger.info("No list of selected features was specified, using {}".format(selectedFeatures))
 
     rf = RandomForestClassifier(selectedFeatures=selectedFeatures)
     features = rf.extractFeatureVector(nodeTraxelMap[node].Features, singleObject=True)
