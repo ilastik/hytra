@@ -18,7 +18,6 @@ class ImageProviderPlugin(IPlugin):
         """
         pass
 
-
     def getImageDataAtTimeFrame(self, Resource, PathInResource, axes, timeframe):
         """
         Loads image data from location.

@@ -1,6 +1,7 @@
 from skimage.external import tifffile
 import os.path
 
+
 def hack(input_tif):
     """
     This method allows to bypass the strange faulty behaviour of

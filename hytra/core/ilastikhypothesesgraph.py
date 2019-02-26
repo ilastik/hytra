@@ -1,6 +1,11 @@
 import logging
 import numpy as np
-from hytra.core.hypothesesgraph import HypothesesGraph, getTraxelFeatureVector, negLog, listify
+from hytra.core.hypothesesgraph import (
+    HypothesesGraph,
+    getTraxelFeatureVector,
+    negLog,
+    listify,
+)
 import hytra.core.jsongraph
 from hytra.util.progressbar import ProgressBar, DefaultProgressVisitor
 
@@ -9,28 +14,30 @@ logger = logging.getLogger(__name__)
 
 
 class IlastikHypothesesGraph(HypothesesGraph):
-    '''
+    """
     Hypotheses graph specialized for the ConservationTracking implementation in ilastik.
-    '''
+    """
 
-    def __init__(self, 
-                 probabilityGenerator,
-                 timeRange, 
-                 maxNumObjects, 
-                 numNearestNeighbors,
-                 fieldOfView,
-                 divisionThreshold=0.1,
-                 withDivisions=True,
-                 borderAwareWidth=10,
-                 maxNeighborDistance=200,
-                 transitionParameter=5.0,
-                 transitionClassifier=None,
-                 skipLinks=1,
-                 skipLinksBias=20,
-                 progressVisitor=DefaultProgressVisitor()):
-        '''
+    def __init__(
+        self,
+        probabilityGenerator,
+        timeRange,
+        maxNumObjects,
+        numNearestNeighbors,
+        fieldOfView,
+        divisionThreshold=0.1,
+        withDivisions=True,
+        borderAwareWidth=10,
+        maxNeighborDistance=200,
+        transitionParameter=5.0,
+        transitionClassifier=None,
+        skipLinks=1,
+        skipLinksBias=20,
+        progressVisitor=DefaultProgressVisitor(),
+    ):
+        """
         Constructor
-        '''
+        """
         super(IlastikHypothesesGraph, self).__init__()
 
         # store values
@@ -50,60 +57,48 @@ class IlastikHypothesesGraph(HypothesesGraph):
         self.progressVisitor = progressVisitor
 
         # build hypotheses graph
-        self.buildFromProbabilityGenerator(probabilityGenerator,
-                                           numNearestNeighbors=numNearestNeighbors,
-                                           maxNeighborDist=maxNeighborDistance,
-                                           withDivisions=withDivisions,
-                                           divisionThreshold=divisionThreshold,
-                                           skipLinks=skipLinks)
+        self.buildFromProbabilityGenerator(
+            probabilityGenerator,
+            numNearestNeighbors=numNearestNeighbors,
+            maxNeighborDist=maxNeighborDistance,
+            withDivisions=withDivisions,
+            divisionThreshold=divisionThreshold,
+            skipLinks=skipLinks,
+        )
 
     def __getstate__(self):
         """Return state values to be pickled."""
-        return (self._graph,
-                self.withTracklets,
-                self.allowLengthOneTracks,
-                self._nextNodeUuid,
-                self.maxNumObjects,
-                self.skipLinksBias,
-                self.transitionClassifier,
-                self.transitionParameter,
-                self.withDivisions,
-                self.fieldOfView,
-                self.probabilityGenerator,
-                self.timeRange,
-                self.numNearestNeighbors,
-                self.divisionThreshold,
-                self.borderAwareWidth,
-                self.maxNeighborDistance,
-                self.skipLinks
-                )
+        return (
+            self._graph,
+            self.withTracklets,
+            self.allowLengthOneTracks,
+            self._nextNodeUuid,
+            self.maxNumObjects,
+            self.skipLinksBias,
+            self.transitionClassifier,
+            self.transitionParameter,
+            self.withDivisions,
+            self.fieldOfView,
+            self.probabilityGenerator,
+            self.timeRange,
+            self.numNearestNeighbors,
+            self.divisionThreshold,
+            self.borderAwareWidth,
+            self.maxNeighborDistance,
+            self.skipLinks,
+        )
 
     def __setstate__(self, state):
         """Restore state from the unpickled state values."""
 
         try:
-            self._graph, \
-            self.withTracklets, \
-            self.allowLengthOneTracks, \
-            self._nextNodeUuid, \
-            self.maxNumObjects, \
-            self.skipLinksBias, \
-            self.transitionClassifier, \
-            self.transitionParameter, \
-            self.withDivisions, \
-            self.fieldOfView, \
-            self.probabilityGenerator, \
-            self.timeRange, \
-            self.numNearestNeighbors, \
-            self.divisionThreshold, \
-            self.borderAwareWidth, \
-            self.maxNeighborDistance, \
-            self.skipLinks \
-                = state
+            self._graph, self.withTracklets, self.allowLengthOneTracks, self._nextNodeUuid, self.maxNumObjects, self.skipLinksBias, self.transitionClassifier, self.transitionParameter, self.withDivisions, self.fieldOfView, self.probabilityGenerator, self.timeRange, self.numNearestNeighbors, self.divisionThreshold, self.borderAwareWidth, self.maxNeighborDistance, self.skipLinks = (
+                state
+            )
         except:
             pass
 
-        self.progressVisitor=DefaultProgressVisitor()
+        self.progressVisitor = DefaultProgressVisitor()
 
     def insertEnergies(self):
         """
@@ -118,12 +113,30 @@ class IlastikHypothesesGraph(HypothesesGraph):
 
         def transitionProbabilityFunc(srcTraxel, destTraxel):
             if self.transitionClassifier is None:
-                return self.getTransitionFeaturesDist(srcTraxel, destTraxel, self.transitionParameter, self.maxNumObjects + 1)
+                return self.getTransitionFeaturesDist(
+                    srcTraxel,
+                    destTraxel,
+                    self.transitionParameter,
+                    self.maxNumObjects + 1,
+                )
             else:
-                return self.getTransitionFeaturesRF(srcTraxel, destTraxel, self.transitionClassifier, self.probabilityGenerator, self.maxNumObjects + 1)
+                return self.getTransitionFeaturesRF(
+                    srcTraxel,
+                    destTraxel,
+                    self.transitionClassifier,
+                    self.probabilityGenerator,
+                    self.maxNumObjects + 1,
+                )
 
         def boundaryCostMultiplierFunc(traxel, forAppearance):
-            return self.getBoundaryCostMultiplier(traxel, self.fieldOfView, self.borderAwareWidth, self.timeRange[0], self.timeRange[-1], forAppearance)
+            return self.getBoundaryCostMultiplier(
+                traxel,
+                self.fieldOfView,
+                self.borderAwareWidth,
+                self.timeRange[0],
+                self.timeRange[-1],
+                forAppearance,
+            )
 
         def divisionProbabilityFunc(traxel):
             if self.withDivisions:
@@ -145,7 +158,8 @@ class IlastikHypothesesGraph(HypothesesGraph):
             transitionProbabilityFunc,
             boundaryCostMultiplierFunc,
             divisionProbabilityFunc,
-            self.skipLinksBias)
+            self.skipLinksBias,
+        )
 
     def getDetectionFeatures(self, traxel, max_state):
         """
@@ -153,14 +167,12 @@ class IlastikHypothesesGraph(HypothesesGraph):
         """
         return getTraxelFeatureVector(traxel, "detProb", max_state)
 
-
     def getDivisionFeatures(self, traxel):
         """
         Use the division probability stored in the features of the given traxel.
         """
         prob = traxel.get_feature_value("divProb", 0)
         return [1.0 - prob, prob]
-
 
     def getTransitionFeaturesDist(self, traxelA, traxelB, transitionParam, max_state):
         """
@@ -172,25 +184,33 @@ class IlastikHypothesesGraph(HypothesesGraph):
 
         return [1.0 - prob] + [prob] * (max_state - 1)
 
-
-    def getTransitionFeaturesRF(self, traxelA, traxelB, transitionClassifier, probabilityGenerator, max_state):
+    def getTransitionFeaturesRF(
+        self, traxelA, traxelB, transitionClassifier, probabilityGenerator, max_state
+    ):
         """
         Get the transition probabilities by predicting them with the classifier
         """
-        feats = [probabilityGenerator.getTraxelFeatureDict(obj.Timestep, obj.Id) for obj in [traxelA, traxelB]]
-        featVec = probabilityGenerator.getTransitionFeatureVector(feats[0], feats[1], transitionClassifier.selectedFeatures)
+        feats = [
+            probabilityGenerator.getTraxelFeatureDict(obj.Timestep, obj.Id)
+            for obj in [traxelA, traxelB]
+        ]
+        featVec = probabilityGenerator.getTransitionFeatureVector(
+            feats[0], feats[1], transitionClassifier.selectedFeatures
+        )
         probs = transitionClassifier.predictProbabilities(featVec)[0]
 
         # or image borders, so predict probability just by distance
         upperBound = self.fieldOfView.getUpperBound()
         lowerBound = self.fieldOfView.getLowerBound()
 
-        coordsMax = feats[0]['Coord<Maximum >']
-        boundMax = np.array(upperBound[1:len(coordsMax)+1])
-        coordsMin = feats[0]['Coord<Minimum >']
-        boundMin = np.array(lowerBound[1:len(coordsMin)+1])
+        coordsMax = feats[0]["Coord<Maximum >"]
+        boundMax = np.array(upperBound[1 : len(coordsMax) + 1])
+        coordsMin = feats[0]["Coord<Minimum >"]
+        boundMin = np.array(lowerBound[1 : len(coordsMin) + 1])
 
-        dist_border = self.fieldOfView.spatial_distance_to_border(traxelA.Timestep, traxelA.X(), traxelA.Y(), traxelA.Z(), False)
+        dist_border = self.fieldOfView.spatial_distance_to_border(
+            traxelA.Timestep, traxelA.X(), traxelA.Y(), traxelA.Z(), False
+        )
 
         # find the objects crossing the image border and return the distance based probability instead
         # REASON: The TC classifier gets confused by the feature values at the image border.
@@ -200,19 +220,21 @@ class IlastikHypothesesGraph(HypothesesGraph):
         # pure distance: 0.993
         # from all links: used distance 340 times, TC prob 3088 times used
 
-
         # experiments on Rapoport:
         # TC no border treatment: TRA measure 0.952467
         # TC with border treatment: 0.95267
         # pure distance: 0.951674
         # from all links: used distance 13598 times, TC prob 271502 times
 
-        if np.isclose(coordsMax, boundMax).any() or np.isclose(coordsMin, boundMin).any():
-            return self.getTransitionFeaturesDist(traxelA, traxelB, self.transitionParameter, self.maxNumObjects + 1)
+        if (
+            np.isclose(coordsMax, boundMax).any()
+            or np.isclose(coordsMin, boundMin).any()
+        ):
+            return self.getTransitionFeaturesDist(
+                traxelA, traxelB, self.transitionParameter, self.maxNumObjects + 1
+            )
         else:
             return [probs[0]] + [probs[1]] * (max_state - 1)
-
-
 
     def getBoundaryCostMultiplier(self, traxel, fov, margin, t0, t1, forAppearance):
         """
@@ -220,10 +242,14 @@ class IlastikHypothesesGraph(HypothesesGraph):
         which is defined by the field of view `fov`. 
         Traxels in the first frame appear for free, and traxels in the last frame disappear for free.
         """
-        if (traxel.Timestep <= t0 and forAppearance) or (traxel.Timestep >= t1 - 1 and not forAppearance):
+        if (traxel.Timestep <= t0 and forAppearance) or (
+            traxel.Timestep >= t1 - 1 and not forAppearance
+        ):
             return 0.0
 
-        dist = fov.spatial_distance_to_border(traxel.Timestep, traxel.X(), traxel.Y(), traxel.Z(), False)
+        dist = fov.spatial_distance_to_border(
+            traxel.Timestep, traxel.X(), traxel.Y(), traxel.Z(), False
+        )
         if dist > margin:
             return 1.0
         else:
@@ -233,18 +259,20 @@ class IlastikHypothesesGraph(HypothesesGraph):
                 return 1.0
 
 
-def convertLegacyHypothesesGraphToJsonGraph(hypothesesGraph,
-                                            nodeIterator,
-                                            arcIterator,
-                                            withTracklets,
-                                            maxNumObjects,
-                                            numElements,
-                                            traxelMap,
-                                            detectionProbabilityFunc,
-                                            transitionProbabilityFunc,
-                                            boundaryCostMultiplierFunc,
-                                            divisionProbabilityFunc):
-    '''
+def convertLegacyHypothesesGraphToJsonGraph(
+    hypothesesGraph,
+    nodeIterator,
+    arcIterator,
+    withTracklets,
+    maxNumObjects,
+    numElements,
+    traxelMap,
+    detectionProbabilityFunc,
+    transitionProbabilityFunc,
+    boundaryCostMultiplierFunc,
+    divisionProbabilityFunc,
+):
+    """
     Build a json representation of this hypotheses graph, by transforming the probabilities for certain
     events (given by the `*ProbabilityFunc`-functions per traxel) into energies. If the given graph
     contained tracklets (`withTracklets`), then also the probabilities over all contained traxels will be
@@ -271,7 +299,7 @@ def convertLegacyHypothesesGraphToJsonGraph(hypothesesGraph,
       appearance/disappearance cost that depends on the traxel's distance to the spacial and time boundary
     * `divisionProbabilityFunc`: should take a traxel and return its division probabilities
      ([probNoDiv, probDiv])
-    '''
+    """
 
     logger.info("Creating JSON graph from legacy hypotheses graph")
     progressBar = ProgressBar(stop=numElements)
@@ -291,7 +319,9 @@ def convertLegacyHypothesesGraphToJsonGraph(hypothesesGraph,
         for t in traxels:
             detectionFeatures += np.array(negLog(detectionProbabilityFunc(t)))
             if previousTraxel is not None:
-                detectionFeatures += np.array(negLog(transitionProbabilityFunc(previousTraxel, t)))
+                detectionFeatures += np.array(
+                    negLog(transitionProbabilityFunc(previousTraxel, t))
+                )
             previousTraxel = t
 
         detectionFeatures = listify(list(detectionFeatures))
@@ -302,15 +332,21 @@ def convertLegacyHypothesesGraphToJsonGraph(hypothesesGraph,
             divisionFeatures = listify(negLog(divisionFeatures))
 
         # appearance/disappearance
-        appearanceFeatures = listify([0.0] + [boundaryCostMultiplierFunc(traxels[0], True)] * maxNumObjects)
-        disappearanceFeatures = listify([0.0] + [boundaryCostMultiplierFunc(traxels[-1], False)] * maxNumObjects)
+        appearanceFeatures = listify(
+            [0.0] + [boundaryCostMultiplierFunc(traxels[0], True)] * maxNumObjects
+        )
+        disappearanceFeatures = listify(
+            [0.0] + [boundaryCostMultiplierFunc(traxels[-1], False)] * maxNumObjects
+        )
 
-        trackingGraph.addDetectionHypothesesFromTracklet(traxels,
-                                                         detectionFeatures,
-                                                         divisionFeatures,
-                                                         appearanceFeatures,
-                                                         disappearanceFeatures,
-                                                         timestep=[traxels[0].Timestep, traxels[-1].Timestep])
+        trackingGraph.addDetectionHypothesesFromTracklet(
+            traxels,
+            detectionFeatures,
+            divisionFeatures,
+            appearanceFeatures,
+            disappearanceFeatures,
+            timestep=[traxels[0].Timestep, traxels[-1].Timestep],
+        )
         progressBar.show()
 
     # add all links
@@ -319,10 +355,18 @@ def convertLegacyHypothesesGraphToJsonGraph(hypothesesGraph,
             srcTraxel = traxelMap[hypothesesGraph.source(a)]
             destTraxel = traxelMap[hypothesesGraph.target(a)]
         else:
-            srcTraxel = traxelMap[hypothesesGraph.source(a)][-1]  # src is last of the traxels in source tracklet
-            destTraxel = traxelMap[hypothesesGraph.target(a)][0]  # dest is first of traxels in destination tracklet
-        src = trackingGraph.traxelIdPerTimestepToUniqueIdMap[str(srcTraxel.Timestep)][str(srcTraxel.Id)]
-        dest = trackingGraph.traxelIdPerTimestepToUniqueIdMap[str(destTraxel.Timestep)][str(destTraxel.Id)]
+            srcTraxel = traxelMap[hypothesesGraph.source(a)][
+                -1
+            ]  # src is last of the traxels in source tracklet
+            destTraxel = traxelMap[hypothesesGraph.target(a)][
+                0
+            ]  # dest is first of traxels in destination tracklet
+        src = trackingGraph.traxelIdPerTimestepToUniqueIdMap[str(srcTraxel.Timestep)][
+            str(srcTraxel.Id)
+        ]
+        dest = trackingGraph.traxelIdPerTimestepToUniqueIdMap[str(destTraxel.Timestep)][
+            str(destTraxel.Id)
+        ]
 
         features = listify(negLog(transitionProbabilityFunc(srcTraxel, destTraxel)))
         trackingGraph.addLinkingHypotheses(src, dest, features)

@@ -3,7 +3,8 @@ This module provides some helper methods to deal with multidimensional arrays of
 """
 import numpy as np
 
-def adjustOrder(volume, inputAxes, outputAxes='txyzc'):
+
+def adjustOrder(volume, inputAxes, outputAxes="txyzc"):
     """
     This method allows to convert a given `volume` (with given `inputAxes` ordering)
     into a different axis ordering, specified as `outputAxes` string (e.g. "xyzt").
@@ -13,11 +14,11 @@ def adjustOrder(volume, inputAxes, outputAxes='txyzc'):
     The default format volumes are converted to is "txyzc", axes that are missing in the input
     volume are created with size 1.
     """
-    assert(isinstance(volume, np.ndarray))
-    assert(len(volume.shape) == len(inputAxes))
-    assert(len(outputAxes) >= len(inputAxes))
-    assert(not any(a not in 'txyzc' for a in outputAxes))
-    assert(not any(a not in 'txyzc' for a in inputAxes))
+    assert isinstance(volume, np.ndarray)
+    assert len(volume.shape) == len(inputAxes)
+    assert len(outputAxes) >= len(inputAxes)
+    assert not any(a not in "txyzc" for a in outputAxes)
+    assert not any(a not in "txyzc" for a in inputAxes)
 
     outVolume = volume
 
@@ -41,7 +42,8 @@ def adjustOrder(volume, inputAxes, outputAxes='txyzc'):
 
     return outVolume
 
-def getFrameSlicing(inputAxes, selectValue, selectAxis='t'):
+
+def getFrameSlicing(inputAxes, selectValue, selectAxis="t"):
     """
     This methods helps to get a slice of a multidimensional array of the specified `inputAxes`,
     where only for one specific axis (`selectAxis`) an index (or a list of indices, or a slicing object) is given.
@@ -49,8 +51,8 @@ def getFrameSlicing(inputAxes, selectValue, selectAxis='t'):
     Example: `myarray[getFrameSlicing('xzt', 3, t)]`
     Example: `myarray[getFrameSlicing('xzt', [3,7,9], t)]`
     """
-    assert(len(selectAxis) == 1)
-    assert(inputAxes.count(selectAxis) == 1)
+    assert len(selectAxis) == 1
+    assert inputAxes.count(selectAxis) == 1
     slicing = tuple()
     for a in inputAxes:
         if a == selectAxis:

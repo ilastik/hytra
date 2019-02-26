@@ -36,16 +36,17 @@ class GMMMergerResolver(merger_resolver_plugin.MergerResolverPlugin):
   
         **returns** a list of fitted objects
         """
-  
+
         # fit GMM to label image data
         gmm = self.initGMM(mergerCount, initializations)
         gmm.fit(coordinates)
-        assert(gmm.converged_)
-  
+        assert gmm.converged_
+
         return self.getObjectInitializationList(gmm)
 
-
-    def resolveMerger(self, labelImage, objectId, nextId, mergerCount, initializations=None):
+    def resolveMerger(
+        self, labelImage, objectId, nextId, mergerCount, initializations=None
+    ):
         """
         Resolve the object with the ID `objectId` in the `labelImage` into `mergerCount`
         new segments by fitting some kind of model. The `initializations` provide fits
@@ -56,13 +57,13 @@ class GMMMergerResolver(merger_resolver_plugin.MergerResolverPlugin):
   
         **returns** a list of fitted objects
         """
-  
+
         # fit GMM to label image data
         coordinates = np.transpose(np.vstack(np.where(labelImage == objectId)))
         gmm = self.initGMM(mergerCount, initializations)
         gmm.fit(coordinates)
-        assert(gmm.converged_)
-  
+        assert gmm.converged_
+
         return self.getObjectInitializationList(gmm)
 
     def updateLabelImage(self, labelImage, objectId, fits, newIds, offset=None):
@@ -71,13 +72,13 @@ class GMMMergerResolver(merger_resolver_plugin.MergerResolverPlugin):
         `labelImage` should be updated by replacing all pixels that were labelled with `objectId`
         to get a new Id depending on the fit.
         """
-        
+
         if len(fits) > 1:
-            assert(len(fits) == len(newIds))
+            assert len(fits) == len(newIds)
             # edit labelimage in-place
             coordinates = np.transpose(np.vstack(np.where(labelImage == objectId)))
             if offset is not None:
-                assert(coordinates.shape[1] == len(offset))
+                assert coordinates.shape[1] == len(offset)
                 coordinates = coordinates + offset
             gmm = self.initGMM(len(fits), fits)
             responsibilities = gmm.predict(coordinates)
