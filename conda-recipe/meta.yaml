@@ -27,7 +27,6 @@ requirements:
   run:
     - dpct
     - h5py
-    - jinja2
     - networkx >={{ networkx }}
     - python >=3.6
     - scikit-image
