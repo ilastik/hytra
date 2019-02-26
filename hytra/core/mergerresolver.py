@@ -66,7 +66,7 @@ class MergerResolver(object):
             # Add division parameter to nodes
             # TODO: Add the division parameter only to nodes that contain divisions (we're already doing these with 'count')
             lastframe = max(divisionsPerTimestep.keys(), key=int)
-            for node in self.unresolvedGraph.nodes_iter():
+            for node in self.unresolvedGraph.nodes():
                 timestep, idx = node
 
                 if divisionsPerTimestep is not None and int(timestep) < int(lastframe):
@@ -76,7 +76,7 @@ class MergerResolver(object):
                 else:
                     division = False
 
-                self.unresolvedGraph.node[node]["division"] = division
+                self.unresolvedGraph.nodes[node]["division"] = division
 
             # Add count parameter to nodes
             for t, link in mergerLinks:
@@ -84,7 +84,7 @@ class MergerResolver(object):
                     timestep, idx = node
                     if idx in mergersPerTimestep[str(timestep)]:
                         count = mergersPerTimestep[str(timestep)][idx]
-                        self.unresolvedGraph.node[node]["count"] = count
+                        self.unresolvedGraph.nodes[node]["count"] = count
 
         # Recompute graph only with merger nodes and neighbors
         else:
@@ -165,7 +165,7 @@ class MergerResolver(object):
                 initializations = []
                 for predecessor, _ in self.unresolvedGraph.in_edges(node):
                     initializations.extend(
-                        self.unresolvedGraph.node[predecessor]["fits"]
+                        self.unresolvedGraph.nodes[predecessor]["fits"]
                     )
                 # TODO: what shall we do if e.g. a 2-merger and a single object merge to 2 + 1,
                 # so there are 3 initializations for the 2-merger, and two initializations for the 1 merger?
@@ -190,8 +190,8 @@ class MergerResolver(object):
                         for e in self.unresolvedGraph.out_edges(node):
                             self.resolvedGraph.add_edge(newNode, e[1])
                         for e in self.unresolvedGraph.in_edges(node):
-                            if "newIds" in self.unresolvedGraph.node[e[0]]:
-                                for newId in self.unresolvedGraph.node[e[0]]["newIds"]:
+                            if "newIds" in self.unresolvedGraph.nodes[e[0]]:
+                                for newId in self.unresolvedGraph.nodes[e[0]]["newIds"]:
                                     self.resolvedGraph.add_edge(
                                         (e[0][0], newId), newNode
                                     )
@@ -199,7 +199,7 @@ class MergerResolver(object):
                                 self.resolvedGraph.add_edge(e[0], newNode)
 
                     self.resolvedGraph.remove_node(node)
-                    self.unresolvedGraph.node[node]["newIds"] = range(
+                    self.unresolvedGraph.nodes[node]["newIds"] = range(
                         nextObjectId, nextObjectId + count
                     )
                     nextObjectId += count
@@ -207,7 +207,7 @@ class MergerResolver(object):
                 # each unresolved node stores its fitted shape(s) to be used
                 # as initialization in the next frame, this way division duplicates
                 # and de-merged nodes in the resolved graph do not need to store a fit as well
-                self.unresolvedGraph.node[node]["fits"] = fittedObjects
+                self.unresolvedGraph.nodes[node]["fits"] = fittedObjects
 
         # import matplotlib.pyplot as plt
         # nx.draw_networkx(resolvedGraph)
@@ -229,7 +229,7 @@ class MergerResolver(object):
         """
 
         trackingGraph = JsonTrackingGraph(progressVisitor=self.progressVisitor)
-        for node in self.resolvedGraph.nodes_iter():
+        for node in self.resolvedGraph.nodes():
             additionalFeatures = {}
             additionalFeatures["nid"] = node
 
@@ -240,7 +240,7 @@ class MergerResolver(object):
                 # division nodes with no incoming arcs offer 2 units of flow without the need to de-merge
                 if (
                     node in self.unresolvedGraph.nodes()
-                    and self.unresolvedGraph.node[node]["division"]
+                    and self.unresolvedGraph.nodes[node]["division"]
                     and len(self.unresolvedGraph.out_edges(node)) == 2
                 ):
                     numStates = 3
@@ -257,11 +257,11 @@ class MergerResolver(object):
 
             features = [[i ** 2] for i in range(numStates)]
             uuid = trackingGraph.addDetectionHypotheses(features, **additionalFeatures)
-            self.resolvedGraph.node[node]["id"] = uuid
+            self.resolvedGraph.nodes[node]["id"] = uuid
 
         for edge in self.resolvedGraph.edges_iter():
-            src = self.resolvedGraph.node[edge[0]]["id"]
-            dest = self.resolvedGraph.node[edge[1]]["id"]
+            src = self.resolvedGraph.nodes[edge[0]]["id"]
+            dest = self.resolvedGraph.nodes[edge[1]]["id"]
 
             featuresAtSrc = objectFeatures[edge[0]]
             featuresAtDest = objectFeatures[edge[1]]
@@ -297,8 +297,8 @@ class MergerResolver(object):
         uuidToTraxelMap = {}
         traxelIdPerTimestepToUniqueIdMap = {}
 
-        for node in self.resolvedGraph.nodes_iter():
-            uuid = self.resolvedGraph.node[node]["id"]
+        for node in self.resolvedGraph.nodes():
+            uuid = self.resolvedGraph.nodes[node]["id"]
             uuidToTraxelMap[uuid] = [node]
 
             for t in uuidToTraxelMap[uuid]:
@@ -367,12 +367,12 @@ class MergerResolver(object):
 
         # insert new nodes and update UUID to traxel map
         nextUuid = max(uuidToTraxelMap.keys()) + 1
-        for node in self.unresolvedGraph.nodes_iter():
+        for node in self.unresolvedGraph.nodes():
             if (
-                "count" in self.unresolvedGraph.node[node]
-                and self.unresolvedGraph.node[node]["count"] > 1
+                "count" in self.unresolvedGraph.nodes[node]
+                and self.unresolvedGraph.nodes[node]["count"] > 1
             ):
-                newIds = self.unresolvedGraph.node[node]["newIds"]
+                newIds = self.unresolvedGraph.nodes[node]["newIds"]
                 del traxelIdPerTimestepToUniqueIdMap[str(node[0])][str(node[1])]
                 for newId in newIds:
                     newDetection = {}
@@ -431,16 +431,16 @@ class MergerResolver(object):
         ]
 
         # add new nodes
-        for node in self.unresolvedGraph.nodes_iter():
+        for node in self.unresolvedGraph.nodes():
             if (
-                "count" in self.unresolvedGraph.node[node]
-                and self.unresolvedGraph.node[node]["count"] > 1
+                "count" in self.unresolvedGraph.nodes[node]
+                and self.unresolvedGraph.nodes[node]["count"] > 1
             ):
-                newIds = self.unresolvedGraph.node[node]["newIds"]
+                newIds = self.unresolvedGraph.nodes[node]["newIds"]
                 for newId in newIds:
                     uuid = traxelIdPerTimestepToUniqueIdMap[str(node[0])][str(newId)]
                     resolvedNode = (node[0], newId)
-                    resolvedResultId = self.resolvedGraph.node[resolvedNode]["id"]
+                    resolvedResultId = self.resolvedGraph.nodes[resolvedNode]["id"]
                     newDetection = {"id": uuid, "value": nodeFlowMap[resolvedResultId]}
                     self.result["detectionResults"].append(newDetection)
 
@@ -453,8 +453,8 @@ class MergerResolver(object):
             newLink["dest"] = traxelIdPerTimestepToUniqueIdMap[str(edge[1][0])][
                 str(edge[1][1])
             ]
-            srcId = self.resolvedGraph.node[edge[0]]["id"]
-            destId = self.resolvedGraph.node[edge[1]]["id"]
+            srcId = self.resolvedGraph.nodes[edge[0]]["id"]
+            destId = self.resolvedGraph.nodes[edge[1]]["id"]
             newLink["value"] = arcFlowMap[(srcId, destId)]
             self.result["linkingResults"].append(newLink)
 
@@ -616,14 +616,14 @@ class MergerResolver(object):
 
             # return a dictionary telling about which mergers were resolved into what
             mergerDict = {}
-            for n in self.unresolvedGraph.nodes_iter():
+            for n in self.unresolvedGraph.nodes():
                 # skip non-mergers
                 if (
-                    not "newIds" in self.unresolvedGraph.node[n]
-                    or len(self.unresolvedGraph.node[n]["newIds"]) < 2
+                    not "newIds" in self.unresolvedGraph.nodes[n]
+                    or len(self.unresolvedGraph.nodes[n]["newIds"]) < 2
                 ):
                     continue
-                mergerDict.setdefault(n[0], {})[n[1]] = self.unresolvedGraph.node[n][
+                mergerDict.setdefault(n[0], {})[n[1]] = self.unresolvedGraph.nodes[n][
                     "newIds"
                 ]
 
@@ -644,8 +644,8 @@ class MergerResolver(object):
                     continue
 
                 # use fits stored in graph
-                fits = self.unresolvedGraph.node[node]["fits"]
-                newIds = self.unresolvedGraph.node[node]["newIds"]
+                fits = self.unresolvedGraph.nodes[node]["fits"]
+                newIds = self.unresolvedGraph.nodes[node]["newIds"]
 
                 # use merger resolving plugin to update labelImage with merger IDs
                 self.mergerResolverPlugin.updateLabelImage(

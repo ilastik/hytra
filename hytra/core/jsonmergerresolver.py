@@ -85,7 +85,7 @@ class JsonMergerResolver(hytra.core.mergerresolver.MergerResolver):
         # there is no time axis...
         ndims = len([i for i in imageShape if i != 1])
         logger.info("Data has dimensionality {}".format(ndims))
-        for node in self.resolvedGraph.nodes_iter():
+        for node in self.resolvedGraph.nodes():
             intT, idx = node
             if str(idx).startswith("div-"):
                 continue

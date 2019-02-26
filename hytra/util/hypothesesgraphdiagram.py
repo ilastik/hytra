@@ -260,7 +260,7 @@ class HypothesesGraphDiagram(object):
         nodeCoordsMap = {}
 
         # Draw nodes
-        for node in hypothesesGraph.nodes_iter():
+        for node in hypothesesGraph.nodes():
             time = node[0]
             id = node[1]
 
