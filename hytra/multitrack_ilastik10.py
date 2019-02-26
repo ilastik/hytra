@@ -9,7 +9,6 @@ import time
 import numpy as np
 import h5py
 import itertools
-import vigra
 import copy
 import pgmlink as track
 

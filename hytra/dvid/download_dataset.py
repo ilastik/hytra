@@ -1,9 +1,9 @@
 import logging
-from libdvid import DVIDNodeService, DVIDServerService
+from libdvid import DVIDNodeService
 import h5py
 import numpy as np
 import json_tricks.np as json
-from pluginsystem.plugin_manager import TrackingPluginManager
+
 
 if __name__ == "__main__":
     """

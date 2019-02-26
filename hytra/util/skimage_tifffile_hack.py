@@ -1,4 +1,3 @@
-from skimage.external import tifffile
 import os.path
 
 

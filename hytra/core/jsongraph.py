@@ -10,7 +10,6 @@ try:
     import commentjson as json
 except ImportError:
     import json
-from hytra.util.progressbar import ProgressBar
 from hytra.util.progressbar import DefaultProgressVisitor
 
 # ----------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as ET
 import argparse
 
+
 if __name__ == "__main__":
     """
     Transform tracking result and ilastik raw + segmentation data to the BigDataViewer format

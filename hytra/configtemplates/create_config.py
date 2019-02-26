@@ -1,6 +1,6 @@
 import argparse
 import jinja2
-import itertools
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

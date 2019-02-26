@@ -3,10 +3,6 @@ Given a hypotheses graph and weights, this script tries to find split points whe
 splits the graph into N parts, and tracks them independently.
 """
 # standard imports
-try:
-    import commentjson as json
-except ImportError:
-    import json
 import logging
 import copy
 import numpy as np

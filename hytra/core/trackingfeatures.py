@@ -4,7 +4,6 @@ import pgmlink as track
 import numpy as np
 import math
 import os
-import os.path as path
 import argparse
 from hytra.util.progressbar import ProgressBar
 
@@ -771,10 +770,10 @@ def analyze_lineage_dump(args):
     tracks, divisions, lineage_trees = load_lineage_dump(args.lineage_dump_file)
     # find gt an proposal files that start with a number and end with h5
 
-    # gt_filenames = [path.abspath(path.join(args.gt_path, fn))
+    # gt_filenames = [os.path.abspath(os.path.join(args.gt_path, fn))
     #                 for fn in os.listdir(args.gt_path) if fn.endswith('.h5') and fn[0].isdigit()]
     # gt_filenames.sort()
-    # proposal_filenames = [path.abspath(path.join(args.proposal_path, fn))
+    # proposal_filenames = [os.path.abspath(os.path.join(args.proposal_path, fn))
     #                       for fn in os.listdir(args.proposal_path) if fn.endswith('.h5') and fn[0].isdigit()]
     # proposal_filenames.sort()
 

@@ -1,7 +1,7 @@
 from hytra.pluginsystem import image_provider_plugin
 import numpy as np
 import json_tricks as json
-from libdvid import DVIDNodeService, DVIDServerService
+from libdvid import DVIDNodeService
 
 
 class DvidImageLoader(image_provider_plugin.ImageProviderPlugin):
