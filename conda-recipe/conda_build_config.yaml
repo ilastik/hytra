@@ -1,8 +1,4 @@
 networkx:
-  - 1.11
+  - 2
 python:
   - 3.6
-
-
-pin_run_as_build:
-  python: x.x
