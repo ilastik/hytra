@@ -399,7 +399,7 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
             self.hypothesesGraph._graph.remove_node(n)
 
         # add new links only for merger nodes
-        for edge in self.resolvedGraph.edges_iter():
+        for edge in self.resolvedGraph.edges():
             # Add new edges that are connected to new merger nodes
             if (
                 "mergerValue" in self.hypothesesGraph._graph.nodes[edge[0]]
@@ -413,12 +413,12 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
                 # edges connected to mergers are set to "not used" in order to prevent multiple active outgoing edges from single nodes. The correct edges will be added later.
                 if edgeValue > 0 and not self.resolvedGraph.nodes[edge[0]]["division"]:
                     for outEdge in self.hypothesesGraph._graph.out_edges(edge[0]):
-                        self.hypothesesGraph._graph.edge[outEdge[0]][outEdge[1]][
+                        self.hypothesesGraph._graph.edges[outEdge[0]][outEdge[1]][
                             "value"
                         ] = 0
 
                     for inEdge in self.hypothesesGraph._graph.in_edges(edge[1]):
-                        self.hypothesesGraph._graph.edge[inEdge[0]][inEdge[1]][
+                        self.hypothesesGraph._graph.edges[inEdge[0]][inEdge[1]][
                             "value"
                         ] = 0
 

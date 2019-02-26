@@ -259,7 +259,7 @@ class MergerResolver(object):
             uuid = trackingGraph.addDetectionHypotheses(features, **additionalFeatures)
             self.resolvedGraph.nodes[node]["id"] = uuid
 
-        for edge in self.resolvedGraph.edges_iter():
+        for edge in self.resolvedGraph.edges():
             src = self.resolvedGraph.nodes[edge[0]]["id"]
             dest = self.resolvedGraph.nodes[edge[1]]["id"]
 
@@ -385,7 +385,7 @@ class MergerResolver(object):
                     nextUuid += 1
 
         # insert new links
-        for edge in self.resolvedGraph.edges_iter():
+        for edge in self.resolvedGraph.edges():
             newLink = {}
             newLink["src"] = traxelIdPerTimestepToUniqueIdMap[str(edge[0][0])][
                 str(edge[0][1])
@@ -445,7 +445,7 @@ class MergerResolver(object):
                     self.result["detectionResults"].append(newDetection)
 
         # add new links
-        for edge in self.resolvedGraph.edges_iter():
+        for edge in self.resolvedGraph.edges():
             newLink = {}
             newLink["src"] = traxelIdPerTimestepToUniqueIdMap[str(edge[0][0])][
                 str(edge[0][1])

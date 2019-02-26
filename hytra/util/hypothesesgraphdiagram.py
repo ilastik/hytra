@@ -306,7 +306,7 @@ class HypothesesGraphDiagram(object):
                 )
 
         # Draw arcs
-        for arc in hypothesesGraph.edges_iter():
+        for arc in hypothesesGraph.edges():
             sourceNode = arc[0]
             targetNode = arc[1]
 
@@ -326,19 +326,19 @@ class HypothesesGraphDiagram(object):
 
                 if (
                     withArcValue
-                    and "value" in hypothesesGraph.edge[sourceNode][targetNode]
+                    and "value" in hypothesesGraph.edges[sourceNode][targetNode]
                 ):
                     linewidth += 1.5 * float(
-                        hypothesesGraph.edge[sourceNode][targetNode]["value"]
+                        hypothesesGraph.edges[sourceNode][targetNode]["value"]
                     )
-                    if hypothesesGraph.edge[sourceNode][targetNode]["value"] == 0:
+                    if hypothesesGraph.edges[sourceNode][targetNode]["value"] == 0:
                         color = "g"
                 elif (
                     withArcFeatures
-                    and "features" in hypothesesGraph.edge[sourceNode][targetNode]
+                    and "features" in hypothesesGraph.edges[sourceNode][targetNode]
                 ):
                     linewidth += 10.0 * float(
-                        hypothesesGraph.edge[sourceNode][targetNode]["features"][0][0]
+                        hypothesesGraph.edges[sourceNode][targetNode]["features"][0][0]
                     )
                 else:
                     linewidth = 1.0
