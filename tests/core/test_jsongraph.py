@@ -237,15 +237,15 @@ def test_toHypoGraph():
 
     for n in hypothesesGraph.nodeIterator():
         if n in [(1, 1), (2, 1)]:
-            assert hypothesesGraph._graph.node[n]["value"] == 2
+            assert hypothesesGraph._graph.nodes[n]["value"] == 2
         else:
-            assert hypothesesGraph._graph.node[n]["value"] == 1
+            assert hypothesesGraph._graph.nodes[n]["value"] == 1
 
     for a in hypothesesGraph.arcIterator():
         if a == ((1, 1), (2, 1)):
-            assert hypothesesGraph._graph.edge[a[0]][a[1]]["value"] == 2
+            assert hypothesesGraph._graph.edges[a[0], a[1]]["value"] == 2
         else:
-            assert hypothesesGraph._graph.edge[a[0]][a[1]]["value"] == 1
+            assert hypothesesGraph._graph.edges[a[0], a[1]]["value"] == 1
 
 
 def test_weightListToFromDict():

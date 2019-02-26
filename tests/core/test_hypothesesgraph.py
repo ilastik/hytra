@@ -1,6 +1,5 @@
 import hytra.core.hypothesesgraph as hg
 import hytra.core.probabilitygenerator as pg
-import networkx as nx
 import numpy as np
 from hytra.core.probabilitygenerator import Traxel
 
@@ -17,7 +16,7 @@ def test_trackletgraph():
     t = h.generateTrackletGraph()
     assert t.countArcs() == 1
     assert t.countNodes() == 2
-    assert "tracklet" in t._graph.node[(0, 1)]
+    assert "tracklet" in t._graph.nodes[(0, 1)]
 
 
 def test_computeLineagesAndPrune():
@@ -25,11 +24,11 @@ def test_computeLineagesAndPrune():
     h._graph.add_path([(0, 0), (1, 1), (2, 2)])
     h._graph.add_path([(1, 1), (2, 3), (3, 4)])
 
-    for n in h._graph.node:
-        h._graph.node[n]["id"] = n[1]
-        h._graph.node[n]["traxel"] = pg.Traxel()
-        h._graph.node[n]["traxel"].Id = n[1]
-        h._graph.node[n]["traxel"].Timestep = n[0]
+    for n in h._graph.nodes:
+        h._graph.nodes[n]["id"] = n[1]
+        h._graph.nodes[n]["traxel"] = pg.Traxel()
+        h._graph.nodes[n]["traxel"].Id = n[1]
+        h._graph.nodes[n]["traxel"].Timestep = n[0]
 
     solutionDict = {
         "detectionResults": [
@@ -59,11 +58,11 @@ def test_computeLineagesWithMergers():
     h._graph.add_path([(0, 0), (1, 1), (2, 2)])
     h._graph.add_path([(0, 5), (1, 1), (2, 3), (3, 4)])
 
-    for n in h._graph.node:
-        h._graph.node[n]["id"] = n[1]
-        h._graph.node[n]["traxel"] = pg.Traxel()
-        h._graph.node[n]["traxel"].Id = n[1]
-        h._graph.node[n]["traxel"].Timestep = n[0]
+    for n in h._graph.nodes:
+        h._graph.nodes[n]["id"] = n[1]
+        h._graph.nodes[n]["traxel"] = pg.Traxel()
+        h._graph.nodes[n]["traxel"].Id = n[1]
+        h._graph.nodes[n]["traxel"].Timestep = n[0]
 
     solutionDict = {
         "detectionResults": [
@@ -87,12 +86,12 @@ def test_computeLineagesWithMergers():
     h.insertSolution(solutionDict)
     h.computeLineage()
 
-    assert h._graph.node[(0, 0)]["lineageId"] == 2
-    assert h._graph.node[(0, 5)]["lineageId"] == 3
-    assert h._graph.node[(1, 1)]["lineageId"] == 3
-    assert h._graph.node[(1, 1)]["lineageId"] == 3
-    assert h._graph.node[(2, 3)]["lineageId"] == 3
-    assert h._graph.node[(3, 4)]["lineageId"] == 3
+    assert h._graph.nodes[(0, 0)]["lineageId"] == 2
+    assert h._graph.nodes[(0, 5)]["lineageId"] == 3
+    assert h._graph.nodes[(1, 1)]["lineageId"] == 3
+    assert h._graph.nodes[(1, 1)]["lineageId"] == 3
+    assert h._graph.nodes[(2, 3)]["lineageId"] == 3
+    assert h._graph.nodes[(3, 4)]["lineageId"] == 3
 
 
 def test_insertAndExtractSolution():
@@ -100,11 +99,11 @@ def test_insertAndExtractSolution():
     h._graph.add_path([(0, 0), (1, 1), (2, 2)])
     h._graph.add_path([(1, 1), (2, 3), (3, 4)])
 
-    for n in h._graph.node:
-        h._graph.node[n]["id"] = n[1]
-        h._graph.node[n]["traxel"] = pg.Traxel()
-        h._graph.node[n]["traxel"].Id = n[1]
-        h._graph.node[n]["traxel"].Timestep = n[0]
+    for n in h._graph.nodes:
+        h._graph.nodes[n]["id"] = n[1]
+        h._graph.nodes[n]["traxel"] = pg.Traxel()
+        h._graph.nodes[n]["traxel"].Id = n[1]
+        h._graph.nodes[n]["traxel"].Timestep = n[0]
 
     solutionDict = {
         "detectionResults": [
@@ -148,22 +147,22 @@ def test_insertAndExtractSolution():
             else:
                 assert entry["value"] == 0
 
-    assert h._graph.node[(1, 1)]["divisionValue"] == 1
-    assert h._graph.node[(2, 2)]["divisionValue"] == 0
-    assert h._graph.node[(0, 0)]["value"] == 1
-    assert h._graph.node[(1, 1)]["value"] == 1
-    assert h._graph.node[(2, 2)]["value"] == 1
-    assert h._graph.node[(2, 3)]["value"] == 1
-    assert h._graph.node[(3, 4)]["value"] == 0
-    assert h._graph.edge[(0, 0)][(1, 1)]["value"] == 1
-    assert h._graph.edge[(1, 1)][(2, 2)]["value"] == 1
-    assert h._graph.edge[(1, 1)][(2, 3)]["value"] == 1
-    assert h._graph.edge[(2, 3)][(3, 4)]["value"] == 0
+    assert h._graph.nodes[(1, 1)]["divisionValue"] == 1
+    assert h._graph.nodes[(2, 2)]["divisionValue"] == 0
+    assert h._graph.nodes[(0, 0)]["value"] == 1
+    assert h._graph.nodes[(1, 1)]["value"] == 1
+    assert h._graph.nodes[(2, 2)]["value"] == 1
+    assert h._graph.nodes[(2, 3)]["value"] == 1
+    assert h._graph.nodes[(3, 4)]["value"] == 0
+    assert h._graph.edges[(0, 0), (1, 1)]["value"] == 1
+    assert h._graph.edges[(1, 1), (2, 2)]["value"] == 1
+    assert h._graph.edges[(1, 1), (2, 3)]["value"] == 1
+    assert h._graph.edges[(2, 3), (3, 4)]["value"] == 0
 
     h.computeLineage()
-    assert set(h._graph.node[(1, 1)]["children"]) == set([(2, 2), (2, 3)])
-    assert h._graph.node[(2, 2)]["parent"] == (1, 1)
-    assert h._graph.node[(2, 3)]["parent"] == (1, 1)
+    assert set(h._graph.nodes[(1, 1)]["children"]) == set([(2, 2), (2, 3)])
+    assert h._graph.nodes[(2, 2)]["parent"] == (1, 1)
+    assert h._graph.nodes[(2, 3)]["parent"] == (1, 1)
 
 
 def test_insertEnergies():
@@ -179,8 +178,8 @@ def test_insertEnergies():
         t.Features["divProb"] = [0.2, 0.8]
         t.Features["com"] = [float(i[0]), 0.0]
 
-        h._graph.node[i]["traxel"] = t
-        h._graph.node[i]["id"] = uuid
+        h._graph.nodes[i]["traxel"] = t
+        h._graph.nodes[i]["id"] = uuid
 
     # set up some dummy functions to compute probabilities from a traxel
     def detProbFunc(traxel):
@@ -203,27 +202,27 @@ def test_insertEnergies():
     )
 
     for n in h.nodeIterator():
-        assert "features" in h._graph.node[n]
-        assert h._graph.node[n]["features"] == [
+        assert "features" in h._graph.nodes[n]
+        assert h._graph.nodes[n]["features"] == [
             [1.6094379124341003],
             [0.22314355131420971],
         ]
-        assert "divisionFeatures" in h._graph.node[n]
-        assert h._graph.node[n]["divisionFeatures"] == [
+        assert "divisionFeatures" in h._graph.nodes[n]
+        assert h._graph.nodes[n]["divisionFeatures"] == [
             [1.6094379124341003],
             [0.22314355131420971],
         ]
-        assert "appearanceFeatures" in h._graph.node[n]
-        assert h._graph.node[n]["appearanceFeatures"] == [[0.0], [1.0]]
-        assert "disappearanceFeatures" in h._graph.node[n]
-        assert h._graph.node[n]["disappearanceFeatures"] == [[0.0], [1.0]]
+        assert "appearanceFeatures" in h._graph.nodes[n]
+        assert h._graph.nodes[n]["appearanceFeatures"] == [[0.0], [1.0]]
+        assert "disappearanceFeatures" in h._graph.nodes[n]
+        assert h._graph.nodes[n]["disappearanceFeatures"] == [[0.0], [1.0]]
 
     for a in h.arcIterator():
-        assert "features" in h._graph.edge[a[0]][a[1]]
-        srcTraxel = h._graph.node[h.source(a)]["traxel"]
-        destTraxel = h._graph.node[h.target(a)]["traxel"]
+        assert "features" in h._graph.edges[a[0], a[1]]
+        srcTraxel = h._graph.nodes[h.source(a)]["traxel"]
+        destTraxel = h._graph.nodes[h.target(a)]["traxel"]
         frame_gap = destTraxel.Timestep - srcTraxel.Timestep
-        assert h._graph.edge[a[0]][a[1]]["features"] == [
+        assert h._graph.edges[a[0], a[1]]["features"] == [
             [0.45867514538708193],
             [1.0 + skipLinkBias * (frame_gap - 1)],
         ]
