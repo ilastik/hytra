@@ -1,8 +1,12 @@
-from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 from hytra.pluginsystem import image_provider_plugin
 import numpy as np
-import json_tricks as json
-from libdvid import DVIDNodeService, DVIDServerService
+from libdvid import DVIDNodeService
+
+try:
+    import json_tricks as json
+except ImportError:
+    import json
+
 
 class DvidImageLoader(image_provider_plugin.ImageProviderPlugin):
     """
@@ -12,12 +16,10 @@ class DvidImageLoader(image_provider_plugin.ImageProviderPlugin):
     shape = None
 
     def _getRawImageName(self, timeframe):
-        return "raw-"+str(timeframe)
-
+        return "raw-" + str(timeframe)
 
     def _getSegmentationName(self, timeframe):
-        return "seg-"+str(timeframe)
-
+        return "seg-" + str(timeframe)
 
     def getImageDataAtTimeFrame(self, Resource, PathInResource, axes, timeframe):
         """
@@ -27,12 +29,13 @@ class DvidImageLoader(image_provider_plugin.ImageProviderPlugin):
         """
         node_service = DVIDNodeService(Resource, PathInResource)
 
-        if (self.shape == None):
+        if self.shape == None:
             self.getImageShape(Resource, PathInResource)
 
-        raw_frame = node_service.get_gray3D(self._getRawImageName(timeframe), tuple(self.shape), (0,0,0))
+        raw_frame = node_service.get_gray3D(
+            self._getRawImageName(timeframe), tuple(self.shape), (0, 0, 0)
+        )
         return raw_frame
-
 
     def getLabelImageForFrame(self, Resource, PathInResource, timeframe):
         """
@@ -41,12 +44,15 @@ class DvidImageLoader(image_provider_plugin.ImageProviderPlugin):
         Return numpy array of image data at timeframe.
         """
 
-        if (self.shape == None):
+        if self.shape == None:
             self.getImageShape(Resource, PathInResource)
 
         node_service = DVIDNodeService(Resource, PathInResource)
-        seg_frame = np.array(node_service.get_labels3D(self._getSegmentationName(timeframe),
-                            tuple(self.shape), (0,0,0))).astype(np.uint32)
+        seg_frame = np.array(
+            node_service.get_labels3D(
+                self._getSegmentationName(timeframe), tuple(self.shape), (0, 0, 0)
+            )
+        ).astype(np.uint32)
         return seg_frame
 
     def getImageShape(self, Resource, PathInResource):
@@ -59,7 +65,7 @@ class DvidImageLoader(image_provider_plugin.ImageProviderPlugin):
 
         node_service = DVIDNodeService(Resource, PathInResource)
         config = json.loads(node_service.get("config", "imageInfo"))
-        self.shape =  config["shape"]
+        self.shape = config["shape"]
         return self.shape
 
     def getTimeRange(self, Resource, PathInResource):

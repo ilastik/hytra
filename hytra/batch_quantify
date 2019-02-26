@@ -3,7 +3,6 @@ import os
 import os.path as path
 import sys
 import cPickle
-import collections
 import multiprocessing
 import optparse
 

@@ -1,7 +1,6 @@
 """
 Run the full pipeline, configured by a config file
 """
-from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 # pythonpath modification to make hytra available 
 # for import without requiring it to be installed
 import os

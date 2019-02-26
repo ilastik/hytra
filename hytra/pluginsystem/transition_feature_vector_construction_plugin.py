@@ -1,4 +1,3 @@
-from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 from yapsy.IPlugin import IPlugin
 
 
@@ -28,7 +27,9 @@ class TransitionFeatureVectorConstructionPlugin(IPlugin):
         raise NotImplementedError()
         return []
 
-    def constructFeatureVector(self, featureDictObjectA, featureDictObjectB, selectedFeatures):
+    def constructFeatureVector(
+        self, featureDictObjectA, featureDictObjectB, selectedFeatures
+    ):
         """
         Set up a feature vector using the selected features of both objects.
         Return a list, not a numpy array!

@@ -25,14 +25,15 @@ requirements:
     - pip
 
   run:
-    - python >=2.7
     - dpct
-    - networkx <={{ networkx }}
-    - yapsy
-    - vigra
-    - scikit-learn
-    - scikit-image
     - h5py
+    - jinja2
+    - networkx >={{ networkx }}
+    - python >=3.6
+    - scikit-image
+    - scikit-learn
+    - vigra
+    - yapsy
 
 test:
   source_files:

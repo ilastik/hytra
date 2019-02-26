@@ -1,4 +1,3 @@
-from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 from yapsy.IPlugin import IPlugin
 
 
@@ -38,7 +37,9 @@ class MergerResolverPlugin(IPlugin):
 
         return []
 
-    def resolveMerger(self, labelImage, objectId, nextId, mergerCount, initializations=None):
+    def resolveMerger(
+        self, labelImage, objectId, nextId, mergerCount, initializations=None
+    ):
         """
         Resolve the object with the ID `objectId` in the `labelImage` into `mergerCount`
         new segments by fitting some kind of model. The `initializations` provide fits
@@ -52,7 +53,7 @@ class MergerResolverPlugin(IPlugin):
         raise NotImplementedError()
 
         return []
-    
+
     def updateLabelImage(self, labelImage, objectId, fits, newIds, offset=None):
         """
         Resolve the object with the ID `objectId` in the `labelImage` into the fitted models with the given new IDs.
