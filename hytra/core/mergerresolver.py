@@ -13,6 +13,10 @@ from hytra.core.splittracking import SplitTracking
 logger = logging.getLogger(__name__)
 
 
+class MergerResolverException(Exception):
+    pass
+
+
 class MergerResolver(object):
     """
     Base class for all merger resolving implementations. Use one of the derived classes
@@ -102,7 +106,13 @@ class MergerResolver(object):
                     division = False
                 count = 1
                 if idx in mergersPerTimestep[str(intT)]:
-                    assert not division
+                    if division is True:
+                        raise MergerResolverException(
+                            "Condition violation: Encountered object classified as merger AND division. "
+                            "Retrain your classifiers using Uncertainty Layer to obtain less ambiguous probabilities "
+                            "for divisions and mergers (object-count > 1)."
+                        )
+
                     count = mergersPerTimestep[str(intT)][idx]
                 self.unresolvedGraph.add_node(node, division=division, count=count)
 
