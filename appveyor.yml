@@ -1,0 +1,19 @@
+clone_folder: c:\projects\ilastik
+
+environment:
+  ENV_NAME: test-env
+  # set miniconda version explicitly
+  MINICONDA: C:\Miniconda37-x64
+
+
+install:
+  - set DEV_PREFIX=%MINICONDA%/envs/%ENV_NAME%
+  - "set PATH=%MINICONDA%;%MINICONDA%\\Scripts;%PATH%"
+  - conda config --set always_yes yes --set changeps1 no
+  - conda update -q conda
+  - conda install -c conda-forge conda-build conda-verify
+
+build: off
+
+test_script:
+  - conda build -c conda-forge conda-recipe
