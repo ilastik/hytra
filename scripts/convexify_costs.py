@@ -1,6 +1,5 @@
 # pythonpath modification to make hytra available 
 # for import without requiring it to be installed
-from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
@@ -9,8 +8,9 @@ import logging
 import configargparse as argparse
 from hytra.core.jsongraph import JsonTrackingGraph, writeToFormattedJSON
 
-def getLogger():
-    return logging.getLogger('convexify_costs.py')
+
+logger = logging.getLogger('convexify_costs.py')
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -33,7 +33,7 @@ if __name__ == "__main__":
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.INFO)
-    getLogger().debug("Ignoring unknown parameters: {}".format(unknown))
+    logger.debug("Ignoring unknown parameters: {}".format(unknown))
 
     trackingGraph = JsonTrackingGraph(model_filename=args.model_filename)
     trackingGraph.convexifyCosts(args.epsilon)

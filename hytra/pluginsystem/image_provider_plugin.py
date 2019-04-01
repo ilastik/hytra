@@ -1,4 +1,3 @@
-from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 from yapsy.IPlugin import IPlugin
 
 
@@ -18,7 +17,6 @@ class ImageProviderPlugin(IPlugin):
         Deactivation of plugin could do something, but not needed here
         """
         pass
-
 
     def getImageDataAtTimeFrame(self, Resource, PathInResource, axes, timeframe):
         """

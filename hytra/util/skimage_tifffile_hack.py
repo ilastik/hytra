@@ -1,6 +1,5 @@
-from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
-from skimage.external import tifffile
 import os.path
+
 
 def hack(input_tif):
     """

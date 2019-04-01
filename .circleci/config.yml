@@ -13,44 +13,56 @@ jobs:
     - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
       command: /sbin/init
     steps:
-    - run: echo 'export PATH=${TEST_ENV_PREFIX}/bin:${CONDA_ROOT}/bin:${PATH}' >> $BASH_ENV
-    - run: echo 'export PYTHONPATH=${PYTHONPATH}:${TEST_ENV_PREFIX}/lib/python3.6/site-packages/' >> $BASH_ENV
     - checkout
 
     - restore_cache:
         keys:
           # This branch if available
-          - v0.0.1-dep-{{ .Branch }}-
+          - v0.0.3-dep-{{ .Branch }}-
           # Default branch if not
-          - v0.0.1-dep-master-
+          - v0.0.3-dep-master-
           # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
-          - v0.0.1-dep-
+          - v0.0.3-dep-
 
-    - run: |
-        if [[ ! -d ${CONDA_ROOT} ]]; then
-            echo "Installing Miniconda...";
-            wget --quiet https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh &&
-            bash Miniconda3-latest-Linux-x86_64.sh -b -p ${CONDA_ROOT};
-        else
-            echo "Using cached Miniconda install";
-        fi
+    - run:
+        name: miniconda installation
+        command: |
+            if [[ ! -d ${CONDA_ROOT} ]]; then
+                echo "Installing Miniconda...";
+                wget --quiet https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh &&
+                bash Miniconda3-latest-Linux-x86_64.sh -b -p ${CONDA_ROOT};
+            else
+                echo "Using cached Miniconda install";
+            fi
+    - run:
+        name: make miniconda available
+        command: |
+          echo 'export PATH=${CONDA_ROOT}/bin:${PATH}' >> $BASH_ENV
+          echo ". /home/ubuntu/miniconda/etc/profile.d/conda.sh" >> ~/.bashrc
 
-    - run: |
-        if [ ! -d ${TEST_ENV_PREFIX} ]; then
-            conda create -y -n ${TEST_ENV_NAME} -c ilastik-forge -c conda-forge ilastik-dependencies-no-solvers;
-        else
-            conda install -y -n ${TEST_ENV_NAME} -c ilastik-forge -c conda-forge ilastik-dependencies-no-solvers;
-        fi
-
-    - run: |
-        source ${CONDA_ROOT}/bin/activate ${TEST_ENV_NAME} &&
-        conda install -y configargparse -c conda-forge
+    - run:
+        name: conda-build installation
+        command: conda install -y -c conda-forge/label/cf201901 conda-build conda-verify
 
     - save_cache:
-        key: v0.0.1-dep-{{ .Branch }}-{{ epoch }}
+        key: v0.0.3-dep-{{ .Branch }}-{{ epoch }}
         paths:
         - /home/ubuntu/miniconda
 
-    - run: |
-        source ${CONDA_ROOT}/bin/activate ${TEST_ENV_NAME} &&
-        nosetests tests;
+    - run:
+        name: build
+        command: conda build --no-test -c ilastik-forge -c conda-forge/label/cf201901 conda-recipe
+
+    - run:
+        name: create test environment
+        command: |
+          if [ ! -d ${TEST_ENV_PREFIX} ]; then
+              conda create -n ${TEST_ENV_NAME} -c local -c ilastik-forge -c conda-forge/label/cf201901 hytra nose jinja2 configargparse;
+          else
+              conda install -n ${TEST_ENV_NAME} -c local -c ilastik-forge -c conda-forge/label/cf201901 hytra nose jinja2 configargparse;
+          fi
+    - run:
+        name: test
+        command: |
+          conda activate ${TEST_ENV_NAME}  &&
+          nosetests tests;
