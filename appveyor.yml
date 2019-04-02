@@ -8,7 +8,7 @@ environment:
 
 install:
   - set DEV_PREFIX=%MINICONDA%/envs/%ENV_NAME%
-  - "set PATH=%MINICONDA%;%MINICONDA%\\Scripts;%PATH%"
+  - CALL %MINICONDA%/Scripts/activate.bat
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
   - conda install -c conda-forge conda-build conda-verify
@@ -16,4 +16,5 @@ install:
 build: off
 
 test_script:
+  - CALL %MINICONDA%/Scripts/activate.bat
   - conda build -c conda-forge conda-recipe
