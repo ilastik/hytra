@@ -170,7 +170,7 @@ def computeDivisionFeaturesOnCloud(
     frameT,
     featuresAtT,
     featuresAtTPlus1,
-    imageProviderPlugin,
+    pluginManager,
     labelImageFilename,
     labelImagePath,
     numDimensions,
@@ -191,6 +191,7 @@ def computeDivisionFeaturesOnCloud(
     **returns** a tuple of `frameT` and the dictionary of the newly computed division 
     features for `frameT`
     """
+    imageProviderPlugin = pluginManager.getImageProvider()
 
     # get the label image of the next frame
     if (
@@ -548,7 +549,7 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
                                 frame,
                                 featuresPerFrame[frame],
                                 featuresPerFrame[frame + 1],
-                                self._pluginManager.getImageProvider(),
+                                self._pluginManager,
                                 self._options.labelImageFilename,
                                 self._options.labelImagePath,
                                 self.getNumDimensions(),
