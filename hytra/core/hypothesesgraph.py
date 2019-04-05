@@ -435,7 +435,7 @@ class HypothesesGraph:
         * division energies: `self._graph.nodes[n]['divisionFeatures']`
         * appearance energies: `self._graph.nodes[n]['appearanceFeatures']`
         * disappearance energies: `self._graph.nodes[n]['disappearanceFeatures']`
-        * transition energies: `self._graph.edges[src][dest]['features']`
+        * transition energies: `self._graph.edges[src, dest]['features']`
         * additionally we also store the timestep (range for traxels) per node as `timestep` attribute
 
         ** Parameters: **
@@ -1041,8 +1041,8 @@ class HypothesesGraph:
                     in_edges = self._graph.in_edges(n)
                     for edge in list(in_edges):
                         if (
-                            "value" in self._graph.edges[edge[0]][edge[1]].keys()
-                            and not self._graph.edges[edge[0]][edge[1]]["value"] == 0
+                            "value" in self._graph.edges[edge[0], edge[1]].keys()
+                            and not self._graph.edges[edge[0], edge[1]]["value"] == 0
                         ):
                             allArcsWithValueZero = False
                             break
@@ -1062,8 +1062,8 @@ class HypothesesGraph:
                     out_edges = self._graph.out_edges(n)
                     for edge in list(out_edges):
                         if (
-                            "value" in self._graph.edges[edge[0]][edge[1]].keys()
-                            and not self._graph.edges[edge[0]][edge[1]]["value"] == 0
+                            "value" in self._graph.edges[edge[0], edge[1]].keys()
+                            and not self._graph.edges[edge[0], edge[1]]["value"] == 0
                         ):
                             allArcsWithValueZero = False
                             break

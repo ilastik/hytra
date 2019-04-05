@@ -326,19 +326,19 @@ class HypothesesGraphDiagram(object):
 
                 if (
                     withArcValue
-                    and "value" in hypothesesGraph.edges[sourceNode][targetNode]
+                    and "value" in hypothesesGraph.edges[sourceNode, targetNode]
                 ):
                     linewidth += 1.5 * float(
-                        hypothesesGraph.edges[sourceNode][targetNode]["value"]
+                        hypothesesGraph.edges[sourceNode, targetNode]["value"]
                     )
-                    if hypothesesGraph.edges[sourceNode][targetNode]["value"] == 0:
+                    if hypothesesGraph.edges[sourceNode, targetNode]["value"] == 0:
                         color = "g"
                 elif (
                     withArcFeatures
-                    and "features" in hypothesesGraph.edges[sourceNode][targetNode]
+                    and "features" in hypothesesGraph.edges[sourceNode, targetNode]
                 ):
                     linewidth += 10.0 * float(
-                        hypothesesGraph.edges[sourceNode][targetNode]["features"][0][0]
+                        hypothesesGraph.edges[sourceNode, targetNode]["features"][0][0]
                     )
                 else:
                     linewidth = 1.0
