@@ -155,7 +155,7 @@ class HypothesesGraph:
             objectIdList.append(obj)
             features.append(list(self._extractCenter(traxel)))
 
-        return (KDTree(features, metric="euclidean"), objectIdList)
+        return (KDTree(np.array(features), metric="euclidean"), objectIdList)
 
     def _addNodesForFrame(self, frame, traxelDict):
         """
