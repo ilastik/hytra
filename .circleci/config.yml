@@ -42,7 +42,7 @@ jobs:
 
     - run:
         name: conda-build installation
-        command: conda install -y -c conda-forge/label/cf201901 conda-build conda-verify
+        command: conda install -y -c conda-forge conda-build conda-verify
 
     - save_cache:
         key: v0.0.3-dep-{{ .Branch }}-{{ epoch }}
@@ -51,15 +51,15 @@ jobs:
 
     - run:
         name: build
-        command: conda build --no-test -c ilastik-forge -c conda-forge/label/cf201901 conda-recipe
+        command: conda build --no-test -c ilastik-forge -c conda-forge conda-recipe
 
     - run:
         name: create test environment
         command: |
           if [ ! -d ${TEST_ENV_PREFIX} ]; then
-              conda create -n ${TEST_ENV_NAME} -c local -c ilastik-forge -c conda-forge/label/cf201901 hytra nose jinja2 configargparse;
+              conda create -n ${TEST_ENV_NAME} -c local -c ilastik-forge -c conda-forge hytra nose jinja2 configargparse;
           else
-              conda install -n ${TEST_ENV_NAME} -c local -c ilastik-forge -c conda-forge/label/cf201901 hytra nose jinja2 configargparse;
+              conda install -n ${TEST_ENV_NAME} -c local -c ilastik-forge -c conda-forge hytra nose jinja2 configargparse;
           fi
     - run:
         name: test
