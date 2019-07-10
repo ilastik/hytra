@@ -155,7 +155,7 @@ class HypothesesGraph:
             objectIdList.append(obj)
             features.append(list(self._extractCenter(traxel)))
 
-        return (KDTree(features, metric="euclidean"), objectIdList)
+        return (KDTree(np.array(features), metric="euclidean"), objectIdList)
 
     def _addNodesForFrame(self, frame, traxelDict):
         """
@@ -1038,8 +1038,8 @@ class HypothesesGraph:
                     and self._graph.nodes[n]["appearance"]
                 ):
                     allArcsWithValueZero = True
-                    in_edges = self._graph.in_edges(n)
-                    for edge in list(in_edges):
+                    in_edges = list(self._graph.in_edges(n))
+                    for edge in in_edges:
                         if (
                             "value" in self._graph.edges[edge[0], edge[1]].keys()
                             and not self._graph.edges[edge[0], edge[1]]["value"] == 0
@@ -1059,8 +1059,8 @@ class HypothesesGraph:
                     and self._graph.nodes[n]["disappearance"]
                 ):
                     allArcsWithValueZero = True
-                    out_edges = self._graph.out_edges(n)
-                    for edge in list(out_edges):
+                    out_edges = list(self._graph.out_edges(n))
+                    for edge in out_edges:
                         if (
                             "value" in self._graph.edges[edge[0], edge[1]].keys()
                             and not self._graph.edges[edge[0], edge[1]]["value"] == 0

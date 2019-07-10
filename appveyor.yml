@@ -17,4 +17,4 @@ build: off
 
 test_script:
   - CALL %MINICONDA%/Scripts/activate.bat
-  - conda build -c conda-forge -c ilastik-forge conda-recipe
+  - conda build -c ilastik-forge -c conda-forge conda-recipe
