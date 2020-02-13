@@ -1,8 +1,9 @@
-# pythonpath modification to make hytra and empryonic available 
+# pythonpath modification to make hytra and empryonic available
 # for import without requiring it to be installed
 import os
 import sys
-sys.path.insert(0, os.path.abspath('..'))
+
+sys.path.insert(0, os.path.abspath(".."))
 # standard imports
 from compiler.ast import flatten
 import logging
@@ -14,17 +15,23 @@ from sklearn.neighbors import KDTree
 from hytra.pluginsystem.plugin_manager import TrackingPluginManager
 import hytra.util.axesconversion
 
-logger = logging.getLogger('TransitionClassifier')
+logger = logging.getLogger("TransitionClassifier")
 logger.setLevel(logging.DEBUG)
 
-np.seterr(all='raise')
+np.seterr(all="raise")
 
 # read in 'n2-n1' of images
 def read_in_images(n1, n2, files, axes):
-    gt_labelimage = [vigra.impex.readHDF5(f, 'segmentation/labels') for f in files[n1:n2]]
-    gt_labelimage = [hytra.util.axesconversion.adjustOrder(img, axes, 'xyzc') for img in gt_labelimage]
+    gt_labelimage = [
+        vigra.impex.readHDF5(f, "segmentation/labels") for f in files[n1:n2]
+    ]
+    gt_labelimage = [
+        hytra.util.axesconversion.adjustOrder(img, axes, "xyzc")
+        for img in gt_labelimage
+    ]
     logger.info("Found segmentation of shape {}".format(gt_labelimage[0].shape))
     return gt_labelimage
+
 
 # compute features from input data and return them
 def compute_features(raw_image, labeled_image, n1, n2, pluginManager, filepath):
@@ -33,21 +40,28 @@ def compute_features(raw_image, labeled_image, n1, n2, pluginManager, filepath):
     allFeat = []
     for i in range(0, n2 - n1):
         moreFeats, _ = pluginManager.applyObjectFeatureComputationPlugins(
-            len(raw_image.squeeze().shape)-1, raw_image[..., i, 0], labeled_image[i][..., 0], i, filepath)
+            len(raw_image.squeeze().shape) - 1,
+            raw_image[..., i, 0],
+            labeled_image[i][..., 0],
+            i,
+            filepath,
+        )
         frameFeatureItems = []
         for f in moreFeats:
             frameFeatureItems = frameFeatureItems + f.items()
         allFeat.append(dict(frameFeatureItems))
     return allFeat
 
+
 # read in 'n2-n1' of labels
 def read_positiveLabels(n1, n2, files):
-    gt_moves = [vigra.impex.readHDF5(f, 'tracking/Moves') for f in files[n1+1:n2]]
+    gt_moves = [vigra.impex.readHDF5(f, "tracking/Moves") for f in files[n1 + 1 : n2]]
     return gt_moves
 
-def getValidRegionCentersAndTheirIDs(featureDict, 
-                                     countFeatureName='Count', 
-                                     regionCenterName='RegionCenter'):
+
+def getValidRegionCentersAndTheirIDs(
+    featureDict, countFeatureName="Count", regionCenterName="RegionCenter"
+):
     """
     From the feature dictionary of a certain frame, 
     find all objects with pixel count > 0, and return their
@@ -55,10 +69,11 @@ def getValidRegionCentersAndTheirIDs(featureDict,
     """
     validObjectMask = featureDict[countFeatureName] > 0
     validObjectMask[0] = False
-    
+
     regionCenters = featureDict[regionCenterName][validObjectMask, :]
     objectIds = list(np.where(validObjectMask)[0])
     return regionCenters, objectIds
+
 
 def negativeLabels(features, positiveLabels):
     """
@@ -78,25 +93,42 @@ def negativeLabels(features, positiveLabels):
         frameNegLab = []
         # build kdtree for frame i
         centersAtI, objectIdsAtI = getValidRegionCentersAndTheirIDs(features[i])
-        kdt = KDTree(centersAtI, metric='euclidean')
+        kdt = KDTree(centersAtI, metric="euclidean")
         # find k=3 nearest neighbors of each object of frame i-1 in frame i
-        centersAtIMinusOne, objectIdsAtIMinusOne = getValidRegionCentersAndTheirIDs(features[i - 1])
+        centersAtIMinusOne, objectIdsAtIMinusOne = getValidRegionCentersAndTheirIDs(
+            features[i - 1]
+        )
         neighb = kdt.query(centersAtIMinusOne, k=3, return_distance=False)
         for j in range(0, neighb.shape[0]):  # for all valid objects in frame i-1
-            logger.debug('looking at neighbors of {} at position {}'.format(
-                objectIdsAtIMinusOne[j], features[i - 1]['RegionCenter'][objectIdsAtIMinusOne[j], ...]))
+            logger.debug(
+                "looking at neighbors of {} at position {}".format(
+                    objectIdsAtIMinusOne[j],
+                    features[i - 1]["RegionCenter"][objectIdsAtIMinusOne[j], ...],
+                )
+            )
             for m in range(0, neighb.shape[1]):  # for all neighbors
                 pair = [objectIdsAtIMinusOne[j], objectIdsAtI[neighb[j][m]]]
                 if pair not in positiveLabels[i - 1].tolist():
                     # add one because we've removed the first element when creating the KD tree
                     frameNegLab.append(pair)
-                    logger.debug("Adding negative example: {} at position {}".format(
-                        pair, features[i]['RegionCenter'][objectIdsAtI[neighb[j][m]], ...]))
+                    logger.debug(
+                        "Adding negative example: {} at position {}".format(
+                            pair,
+                            features[i]["RegionCenter"][
+                                objectIdsAtI[neighb[j][m]], ...
+                            ],
+                        )
+                    )
                 else:
-                    logger.debug("Discarding negative example {} which is a positive annotation".format(pair))
+                    logger.debug(
+                        "Discarding negative example {} which is a positive annotation".format(
+                            pair
+                        )
+                    )
         neg_lab.append(frameNegLab)
 
     return neg_lab
+
 
 def find_features_without_NaNs(features):
     """
@@ -105,19 +137,30 @@ def find_features_without_NaNs(features):
     selectedFeatures = features[0].keys()
     for featuresPerFrame in features:
         for key, value in featuresPerFrame.items():
-            if not isinstance(value, list) and (np.any(np.isnan(value)) or np.any(np.isinf(value))):
+            if not isinstance(value, list) and (
+                np.any(np.isnan(value)) or np.any(np.isinf(value))
+            ):
                 try:
                     selectedFeatures.remove(key)
                 except:
                     pass  # has already been deleted
-    forbidden = ["Global<Maximum >", "Global<Minimum >", 'Histogram', 'Polygon', 'Defect Center',
-                 'Center', 'Input Center', 'Weighted<RegionCenter>']
+    forbidden = [
+        "Global<Maximum >",
+        "Global<Minimum >",
+        "Histogram",
+        "Polygon",
+        "Defect Center",
+        "Center",
+        "Input Center",
+        "Weighted<RegionCenter>",
+    ]
     for f in forbidden:
         if f in selectedFeatures:
             selectedFeatures.remove(f)
 
     selectedFeatures.sort()
     return selectedFeatures
+
 
 class TransitionClassifier:
     def __init__(self, selectedFeatures, numSamples=None):
@@ -153,12 +196,14 @@ class TransitionClassifier:
             if self.mydata is None:
                 self.mydata = np.zeros((self._numSamples, features.shape[0]))
 
-            assert(self._nextIdx < self._numSamples)
+            assert self._nextIdx < self._numSamples
             self.mydata[self._nextIdx, :] = features
             self._nextIdx += 1
 
     def constructSampleFeatureVector(self, f1, f2, pluginManager):
-        featVec = pluginManager.applyTransitionFeatureVectorConstructionPlugins(f1, f2, self.selectedFeatures)
+        featVec = pluginManager.applyTransitionFeatureVectorConstructionPlugins(
+            f1, f2, self.selectedFeatures
+        )
         return np.array(featVec)
 
     # adding a comfortable function, where one can easily introduce the data
@@ -168,20 +213,29 @@ class TransitionClassifier:
 
     def train(self, withFeatureImportance=False):
         logger.info(
-        "Training classifier from {} positive and {} negative labels".format(
-            np.count_nonzero(np.asarray(self.labels)), len(self.labels) - np.count_nonzero(np.asarray(self.labels))))
-        logger.info("Training classifier from a feature vector of length {}".format(self.mydata.shape))
+            "Training classifier from {} positive and {} negative labels".format(
+                np.count_nonzero(np.asarray(self.labels)),
+                len(self.labels) - np.count_nonzero(np.asarray(self.labels)),
+            )
+        )
+        logger.info(
+            "Training classifier from a feature vector of length {}".format(
+                self.mydata.shape
+            )
+        )
 
         if withFeatureImportance:
             oob, featImportance = self.rf.learnRFWithFeatureSelection(
                 self.mydata.astype("float32"),
-                (np.asarray(self.labels)).astype("uint32").reshape(-1, 1))
+                (np.asarray(self.labels)).astype("uint32").reshape(-1, 1),
+            )
             logger.debug("RF feature importance: {}".format(featImportance))
             # logger.debug('Feature names: {}'.format(self.featureNames))
         else:
             oob = self.rf.learnRF(
                 self.mydata.astype("float32"),
-                (np.asarray(self.labels)).astype("uint32").reshape(-1, 1))
+                (np.asarray(self.labels)).astype("uint32").reshape(-1, 1),
+            )
         logger.info("RF trained with OOB Error {}".format(oob))
 
     # def predictSample(self, test_data=None, f1=None, f2=None):
@@ -204,54 +258,108 @@ class TransitionClassifier:
     #         return self.rf.predictProbabilities(data.astype('float32'))
 
     def predictLabels(self, test_data, threshold=0.5):
-        prob = self.rf.predictProbabilities(test_data.astype('float32'))
+        prob = self.rf.predictProbabilities(test_data.astype("float32"))
         res = np.copy(prob)
         for i in range(0, len(prob)):
             if prob[i][1] >= threshold:
-                res[i] = 1.
+                res[i] = 1.0
             else:
                 res[i] = 0
         return np.delete(res, 0, 1)
 
     def writeRF(self, outputFilename):
-        self.rf.writeHDF5(outputFilename, pathInFile='/ClassifierForests/Forest0000')
+        self.rf.writeHDF5(outputFilename, pathInFile="/ClassifierForests/Forest0000")
 
         # write selected features
-        with h5py.File(outputFilename, 'r+') as f:
-            featureNamesH5 = f.create_group('SelectedFeatures')
-            featureNamesH5 = featureNamesH5.create_group('Standard Object Features')
+        with h5py.File(outputFilename, "r+") as f:
+            featureNamesH5 = f.create_group("SelectedFeatures")
+            featureNamesH5 = featureNamesH5.create_group("Standard Object Features")
             for feature in self.selectedFeatures:
                 featureNamesH5.create_group(feature)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import configargparse as argparse
 
-    parser = argparse.ArgumentParser(description="trainRF",
-                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-c', '--config', is_config_file=True, help='config file path')
-    parser.add_argument("--groundtruth", dest='filepath', type=str, nargs='+',
-                        help="read ground truth from this folder. Can be also a list of paths, to train from more datasets.", metavar="FILE")
-    parser.add_argument("--groundtruth-axes", dest='groundtruth_axes', type=str, nargs='+', default=['xyzc'],
-                        help="axes ordering of the ground truth segmentations per frame (no t!), e.g. xyzc", metavar="FILE")
-    parser.add_argument("--raw-data-file", dest='rawimage_filename', type=str, nargs='+',
-                        help="filepath+name of the raw image. Can be a list of paths, to train from more datasets.", metavar="FILE")
-    parser.add_argument("--raw-data-path", dest='rawimage_h5_path', type=str,
-                        help="Path inside the rawimage HDF5 file", default='volume/data')
-    parser.add_argument("--raw-data-axes", dest='rawimage_axes', type=str, nargs='+', default=['txyzc'],
-                        help="axes ordering of the raw image, e.g. xyztc. Can be a list of paths, to train from more datasets.", metavar="FILE")
-    parser.add_argument("--init-frame", default=0, type=int, dest='initFrame',
-                        help="where to begin reading the frames")
-    parser.add_argument("--end-frame", default=-1, type=int, dest='endFrame',
-                        help="where to end frames")
-    parser.add_argument("--transition-classifier-file", dest='outputFilename', type=str,
-                        help="save RF into file", metavar="FILE")
-    parser.add_argument("--filepattern", dest='filepattern', type=str, nargs='+', default=['0*.h5'],
-                        help="File pattern of the ground truth files. Can be also a list of paths, to train from more datasets.")
-    parser.add_argument("--verbose", dest='verbose', action='store_true', default=False)
-    parser.add_argument('--plugin-paths', dest='pluginPaths', type=str, nargs='+',
-                        default=[os.path.abspath('../hytra/plugins')],
-                        help='A list of paths to search for plugins for the tracking pipeline.')
+    parser = argparse.ArgumentParser(
+        description="trainRF", formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument("-c", "--config", is_config_file=True, help="config file path")
+    parser.add_argument(
+        "--groundtruth",
+        dest="filepath",
+        type=str,
+        nargs="+",
+        help="read ground truth from this folder. Can be also a list of paths, to train from more datasets.",
+        metavar="FILE",
+    )
+    parser.add_argument(
+        "--groundtruth-axes",
+        dest="groundtruth_axes",
+        type=str,
+        nargs="+",
+        default=["xyzc"],
+        help="axes ordering of the ground truth segmentations per frame (no t!), e.g. xyzc",
+        metavar="FILE",
+    )
+    parser.add_argument(
+        "--raw-data-file",
+        dest="rawimage_filename",
+        type=str,
+        nargs="+",
+        help="filepath+name of the raw image. Can be a list of paths, to train from more datasets.",
+        metavar="FILE",
+    )
+    parser.add_argument(
+        "--raw-data-path",
+        dest="rawimage_h5_path",
+        type=str,
+        help="Path inside the rawimage HDF5 file",
+        default="volume/data",
+    )
+    parser.add_argument(
+        "--raw-data-axes",
+        dest="rawimage_axes",
+        type=str,
+        nargs="+",
+        default=["txyzc"],
+        help="axes ordering of the raw image, e.g. xyztc. Can be a list of paths, to train from more datasets.",
+        metavar="FILE",
+    )
+    parser.add_argument(
+        "--init-frame",
+        default=0,
+        type=int,
+        dest="initFrame",
+        help="where to begin reading the frames",
+    )
+    parser.add_argument(
+        "--end-frame", default=-1, type=int, dest="endFrame", help="where to end frames"
+    )
+    parser.add_argument(
+        "--transition-classifier-file",
+        dest="outputFilename",
+        type=str,
+        help="save RF into file",
+        metavar="FILE",
+    )
+    parser.add_argument(
+        "--filepattern",
+        dest="filepattern",
+        type=str,
+        nargs="+",
+        default=["0*.h5"],
+        help="File pattern of the ground truth files. Can be also a list of paths, to train from more datasets.",
+    )
+    parser.add_argument("--verbose", dest="verbose", action="store_true", default=False)
+    parser.add_argument(
+        "--plugin-paths",
+        dest="pluginPaths",
+        type=str,
+        nargs="+",
+        default=[os.path.abspath("../hytra/plugins")],
+        help="A list of paths to search for plugins for the tracking pipeline.",
+    )
 
     args, unknown = parser.parse_known_args()
 
@@ -262,21 +370,33 @@ if __name__ == '__main__':
         logger.setLevel(logging.INFO)
 
     logging.debug("Ignoring unknown parameters: {}".format(unknown))
-    
-    assert len(args.rawimage_filename) == len(args.rawimage_axes) == len(args.filepattern) == len(args.filepath) == len(args.groundtruth_axes)
-    
+
+    assert (
+        len(args.rawimage_filename)
+        == len(args.rawimage_axes)
+        == len(args.filepattern)
+        == len(args.filepath)
+        == len(args.groundtruth_axes)
+    )
+
     # read raw image
     numSamples = 0
     mlabels = None
 
     for dataset in range(len(args.rawimage_filename)):
         rawimage_filename = args.rawimage_filename[dataset]
-        with h5py.File(rawimage_filename, 'r') as h5raw:
-            rawimage = h5raw[args.rawimage_h5_path].value
+        with h5py.File(rawimage_filename, "r") as h5raw:
+            rawimage = h5raw[args.rawimage_h5_path][()]
 
         # transform such that the order is the following: X,Y,(Z),T, C
-        rawimage = hytra.util.axesconversion.adjustOrder(rawimage, args.rawimage_axes[dataset], 'xyztc')
-        logger.info('Done loading raw data from dataset {} of shape {}'.format(dataset, rawimage.shape))
+        rawimage = hytra.util.axesconversion.adjustOrder(
+            rawimage, args.rawimage_axes[dataset], "xyztc"
+        )
+        logger.info(
+            "Done loading raw data from dataset {} of shape {}".format(
+                dataset, rawimage.shape
+            )
+        )
 
         # find ground truth files
         # filepath is now a list of filepaths'
@@ -288,59 +408,87 @@ if __name__ == '__main__':
         endFrame = args.endFrame
         if endFrame < 0:
             endFrame += len(files)
-    
+
         # compute features
-        trackingPluginManager = TrackingPluginManager(verbose=args.verbose, 
-                                                      pluginPaths=args.pluginPaths)
-        features = compute_features(rawimage,
-                                    read_in_images(initFrame, endFrame, files, args.groundtruth_axes[dataset]),
-                                    initFrame,
-                                    endFrame,
-                                    trackingPluginManager,
-                                    rawimage_filename)
-        logger.info('Done computing features from dataset {}'.format(dataset))
+        trackingPluginManager = TrackingPluginManager(
+            verbose=args.verbose, pluginPaths=args.pluginPaths
+        )
+        features = compute_features(
+            rawimage,
+            read_in_images(initFrame, endFrame, files, args.groundtruth_axes[dataset]),
+            initFrame,
+            endFrame,
+            trackingPluginManager,
+            rawimage_filename,
+        )
+        logger.info("Done computing features from dataset {}".format(dataset))
 
         selectedFeatures = find_features_without_NaNs(features)
         pos_labels = read_positiveLabels(initFrame, endFrame, files)
         neg_labels = negativeLabels(features, pos_labels)
-        numSamples += 2 * sum([len(l) for l in pos_labels]) + sum([len(l) for l in neg_labels])
-        logger.info('Done extracting {} samples'.format(numSamples))
+        numSamples += 2 * sum([len(l) for l in pos_labels]) + sum(
+            [len(l) for l in neg_labels]
+        )
+        logger.info("Done extracting {} samples".format(numSamples))
         TC = TransitionClassifier(selectedFeatures, numSamples)
         if dataset > 0:
-            TC.labels = mlabels # restore labels overwritten by constructor
+            TC.labels = mlabels  # restore labels overwritten by constructor
 
         # compute featuresA for each object A from the feature matrix from Vigra
         def compute_ObjFeatures(features, obj):
             featureDict = {}
             for key in features:
-                if key == "Global<Maximum >" or key == "Global<Minimum >":  # this ones have only one element
+                if (
+                    key == "Global<Maximum >" or key == "Global<Minimum >"
+                ):  # this ones have only one element
                     featureDict[key] = features[key]
                 else:
                     featureDict[key] = features[key][obj]
             return featureDict
 
-
         for k in range(0, len(features) - 1):
             for i in pos_labels[k]:
                 # positive
-                logger.debug("Adding positive sample {} from pos {} to {}".format(
-                    i, features[k]['RegionCenter'][i[0]], features[k + 1]['RegionCenter'][i[1]]))
-                TC.addSample(compute_ObjFeatures(
-                    features[k], i[0]), compute_ObjFeatures(features[k + 1], i[1]), 1, trackingPluginManager)
-                TC.addSample(compute_ObjFeatures(
-                    features[k + 1], i[1]), compute_ObjFeatures(features[k], i[0]), 1, trackingPluginManager)
-            
+                logger.debug(
+                    "Adding positive sample {} from pos {} to {}".format(
+                        i,
+                        features[k]["RegionCenter"][i[0]],
+                        features[k + 1]["RegionCenter"][i[1]],
+                    )
+                )
+                TC.addSample(
+                    compute_ObjFeatures(features[k], i[0]),
+                    compute_ObjFeatures(features[k + 1], i[1]),
+                    1,
+                    trackingPluginManager,
+                )
+                TC.addSample(
+                    compute_ObjFeatures(features[k + 1], i[1]),
+                    compute_ObjFeatures(features[k], i[0]),
+                    1,
+                    trackingPluginManager,
+                )
+
             for i in neg_labels[k]:
                 # negative
-                logger.debug("Adding negative sample {} from pos {} to {}".format(i,
-                              features[k]['RegionCenter'][i[0]], features[k + 1]['RegionCenter'][i[1]]))
-                TC.addSample(compute_ObjFeatures(
-                    features[k], i[0]), compute_ObjFeatures(features[k + 1], i[1]), 0, trackingPluginManager)
-        mlabels =TC.labels
+                logger.debug(
+                    "Adding negative sample {} from pos {} to {}".format(
+                        i,
+                        features[k]["RegionCenter"][i[0]],
+                        features[k + 1]["RegionCenter"][i[1]],
+                    )
+                )
+                TC.addSample(
+                    compute_ObjFeatures(features[k], i[0]),
+                    compute_ObjFeatures(features[k + 1], i[1]),
+                    0,
+                    trackingPluginManager,
+                )
+        mlabels = TC.labels
 
-    logger.info('Done adding samples to RF. Beginning training...')
+    logger.info("Done adding samples to RF. Beginning training...")
     TC.train()
-    logger.info('Done training RF')
+    logger.info("Done training RF")
 
     srcObject = compute_ObjFeatures(features[0], 1)
     destObject = compute_ObjFeatures(features[1], 2)
