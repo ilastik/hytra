@@ -1,4 +1,4 @@
 networkx:
-  - 2
+  - 2.4
 python:
   - 3.7
