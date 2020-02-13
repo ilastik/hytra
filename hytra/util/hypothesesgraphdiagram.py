@@ -278,13 +278,13 @@ class HypothesesGraphDiagram(object):
                 edgeColor = "k"
 
                 # Display label and color from node value
-                if withNodeValue and "value" in hypothesesGraph.node[node]:
-                    faceColor = colors[hypothesesGraph.node[node]["value"]]
-                    nodeLabel = str(hypothesesGraph.node[node]["value"])
+                if withNodeValue and "value" in hypothesesGraph.nodes[node]:
+                    faceColor = colors[hypothesesGraph.nodes[node]["value"]]
+                    nodeLabel = str(hypothesesGraph.nodes[node]["value"])
 
                 # Display uuid on node labels instead
-                if withUuid and "id" in hypothesesGraph.node[node]:
-                    nodeLabel = str(hypothesesGraph.node[node]["id"])
+                if withUuid and "id" in hypothesesGraph.nodes[node]:
+                    nodeLabel = str(hypothesesGraph.nodes[node]["id"])
 
                 circle = plt.Circle(
                     nodeCoordsMap[node],
