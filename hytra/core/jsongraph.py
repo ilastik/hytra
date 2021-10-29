@@ -529,7 +529,7 @@ class JsonTrackingGraph(object):
             traxel.Id = tracklet[0][1]
             hypothesesGraph.addNodeFromTraxel(traxel, tracklet=tracklet)
             # adding nodes automatically assigns UUIDs, we replace them by the loaded one
-            hypothesesGraph._graph.node[(traxel.Timestep, traxel.Id)]["id"] = s["id"]
+            hypothesesGraph._graph.nodes[(traxel.Timestep, traxel.Id)]["id"] = s["id"]
 
         # insert edges
         for l in self.model["linkingHypotheses"]:

@@ -90,13 +90,13 @@ def constructFov(shape, t0, t1, scale=[1, 1, 1]):
 
 #     assert(hypotheses_graph.countNodes() == 14)
 #     assert(hypotheses_graph.countArcs() == 23)
-#     assert(hypotheses_graph._graph.node[(0, 1)]['traxel'].conflictingTraxelIds == [3])
-#     assert(hypotheses_graph._graph.node[(0, 3)]['traxel'].conflictingTraxelIds == [1])
-#     assert(hypotheses_graph._graph.node[(0, 2)]['traxel'].conflictingTraxelIds == [4])
-#     assert(hypotheses_graph._graph.node[(0, 4)]['traxel'].conflictingTraxelIds == [2])
-#     assert(hypotheses_graph._graph.node[(1, 1)]['traxel'].conflictingTraxelIds == [2, 3])
-#     assert(hypotheses_graph._graph.node[(1, 2)]['traxel'].conflictingTraxelIds == [1])
-#     assert(hypotheses_graph._graph.node[(1, 3)]['traxel'].conflictingTraxelIds == [1])
+#     assert(hypotheses_graph._graph.nodes[(0, 1)]['traxel'].conflictingTraxelIds == [3])
+#     assert(hypotheses_graph._graph.nodes[(0, 3)]['traxel'].conflictingTraxelIds == [1])
+#     assert(hypotheses_graph._graph.nodes[(0, 2)]['traxel'].conflictingTraxelIds == [4])
+#     assert(hypotheses_graph._graph.nodes[(0, 4)]['traxel'].conflictingTraxelIds == [2])
+#     assert(hypotheses_graph._graph.nodes[(1, 1)]['traxel'].conflictingTraxelIds == [2, 3])
+#     assert(hypotheses_graph._graph.nodes[(1, 2)]['traxel'].conflictingTraxelIds == [1])
+#     assert(hypotheses_graph._graph.nodes[(1, 3)]['traxel'].conflictingTraxelIds == [1])
 
 #     # track, but check that the right exclusion constraints are present
 #     hypotheses_graph.insertEnergies()
@@ -121,8 +121,8 @@ def constructFov(shape, t0, t1, scale=[1, 1, 1]):
 
 #     for node in hypotheses_graph.nodeIterator():
 #         timeframe = node[0]
-#         if 'value' in hypotheses_graph._graph.node[node]:
-#             value = hypotheses_graph._graph.node[node]['value']
+#         if 'value' in hypotheses_graph._graph.nodes[node]:
+#             value = hypotheses_graph._graph.nodes[node]['value']
 #         else:
 #             value = 0
 #         numActivePerFrame.setdefault(timeframe, []).append(value)

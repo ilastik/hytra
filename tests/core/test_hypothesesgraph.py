@@ -1,12 +1,13 @@
 import hytra.core.hypothesesgraph as hg
 import hytra.core.probabilitygenerator as pg
 import numpy as np
+import networkx as nx
 from hytra.core.probabilitygenerator import Traxel
 
 
 def test_trackletgraph():
     h = hg.HypothesesGraph()
-    h._graph.add_path([(0, 1), (1, 1), (2, 1), (3, 1)])
+    nx.add_path(h._graph, [(0, 1), (1, 1), (2, 1), (3, 1)])
     for i in [(0, 1), (1, 1), (2, 1), (3, 1)]:
         t = Traxel()
         t.Timestep = i[0]
@@ -21,8 +22,8 @@ def test_trackletgraph():
 
 def test_computeLineagesAndPrune():
     h = hg.HypothesesGraph()
-    h._graph.add_path([(0, 0), (1, 1), (2, 2)])
-    h._graph.add_path([(1, 1), (2, 3), (3, 4)])
+    nx.add_path(h._graph, [(0, 0), (1, 1), (2, 2)])
+    nx.add_path(h._graph, [(1, 1), (2, 3), (3, 4)])
 
     for n in h._graph.nodes:
         h._graph.nodes[n]["id"] = n[1]
@@ -55,8 +56,8 @@ def test_computeLineagesAndPrune():
 
 def test_computeLineagesWithMergers():
     h = hg.HypothesesGraph()
-    h._graph.add_path([(0, 0), (1, 1), (2, 2)])
-    h._graph.add_path([(0, 5), (1, 1), (2, 3), (3, 4)])
+    nx.add_path(h._graph, [(0, 0), (1, 1), (2, 2)])
+    nx.add_path(h._graph, [(0, 5), (1, 1), (2, 3), (3, 4)])
 
     for n in h._graph.nodes:
         h._graph.nodes[n]["id"] = n[1]
@@ -96,8 +97,8 @@ def test_computeLineagesWithMergers():
 
 def test_insertAndExtractSolution():
     h = hg.HypothesesGraph()
-    h._graph.add_path([(0, 0), (1, 1), (2, 2)])
-    h._graph.add_path([(1, 1), (2, 3), (3, 4)])
+    nx.add_path(h._graph, [(0, 0), (1, 1), (2, 2)])
+    nx.add_path(h._graph, [(1, 1), (2, 3), (3, 4)])
 
     for n in h._graph.nodes:
         h._graph.nodes[n]["id"] = n[1]
@@ -168,7 +169,7 @@ def test_insertAndExtractSolution():
 def test_insertEnergies():
     skipLinkBias = 20
     h = hg.HypothesesGraph()
-    h._graph.add_path([(0, 1), (1, 1), (2, 1), (3, 1)])
+    nx.add_path(h._graph, [(0, 1), (1, 1), (2, 1), (3, 1)])
     for uuid, i in enumerate([(0, 1), (1, 1), (2, 1), (3, 1)]):
         t = Traxel()
         t.Timestep = i[0]
