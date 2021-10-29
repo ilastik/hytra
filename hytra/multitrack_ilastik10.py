@@ -1159,7 +1159,7 @@ def write_events(events, fn):
 
 
 def save_events_parallel(
-    options, all_events, max_traxel_id_at, ilp_file, shape, t0, t1, async=True
+    options, all_events, max_traxel_id_at, ilp_file, shape, t0, t1, async_=True
 ):
     processing_pool = Pool()
 
@@ -1184,7 +1184,7 @@ def save_events_parallel(
             ),
         )
 
-    if async:
+    if async_:
         processing_pool.close()
         processing_pool.join()
     return processing_pool
