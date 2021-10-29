@@ -15,15 +15,14 @@ source:
 
 build:
   noarch: python
-  number: 1002
+  number: 0
   string: py_{{PKG_BUILDNUM}}_g{{GIT_FULL_HASH[:7]}}
   script: python -m pip install --no-deps --ignore-installed .
 
 requirements:
   build:
-    - python  {{ python }}
+    - python >=3.6
     - pip
-
   run:
     - dpct
     - h5py
