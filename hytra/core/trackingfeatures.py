@@ -320,8 +320,8 @@ class Track(LineagePart):
         and compute the mean of each feature.
         """
         t_features = track_features_h5["tracks/" + str(self.track_id) + "/"]
-        self.length = int(t_features["track_length"].value[0, 0])
-        self.traxels = t_features["traxels"].value
+        self.length = int(t_features["track_length"][()][0, 0])
+        self.traxels = t_features["traxels"][()]
         assert self.traxels.shape[1] > 0
         self.start_traxel_id = tuple(self.traxels[:, 0])
         self.end_traxel_id = tuple(self.traxels[:, -1])
@@ -329,7 +329,7 @@ class Track(LineagePart):
         # get all features from the HDF5 file
         for v in LineagePart.track_feature_map["mean_var"]:
             try:
-                feature_matrix = t_features[v].value
+                feature_matrix = t_features[v][()]
                 self.features["mean_" + v] = np.mean(feature_matrix)
                 self.features["var_" + v] = np.var(feature_matrix)
             except:
@@ -338,7 +338,7 @@ class Track(LineagePart):
         try:
             self.features["track_outlier_svm_score"] = track_features_h5[
                 "track_outliers_svm"
-            ].value.flatten()[self.track_id]
+            ][()].flatten()[self.track_id]
         except:
             self.features["track_outlier_svm_score"] = -1
 
@@ -369,7 +369,7 @@ class Division(LineagePart):
 
     def extract(self, track_features_h5):
         d_features = track_features_h5["divisions/" + str(self.division_id) + "/"]
-        traxels = d_features["traxels"].value
+        traxels = d_features["traxels"][()]
         assert traxels.shape[1] == 3
         self.parent_traxel_id = tuple(traxels[:, 0])
         self.children_traxel_ids = [tuple(traxels[:, 1]), tuple(traxels[:, 2])]
@@ -377,7 +377,7 @@ class Division(LineagePart):
         # get all features from the HDF5 file
         for v in LineagePart.division_feature_map["mean_var"]:
             try:
-                feature_matrix = d_features[v].value
+                feature_matrix = d_features[v][()]
                 self.features["mean_" + v] = np.mean(feature_matrix)
                 self.features["var_" + v] = np.var(feature_matrix)
             except:
@@ -387,7 +387,7 @@ class Division(LineagePart):
         try:
             self.features["div_outlier_svm_score"] = track_features_h5[
                 "division_outliers_svm"
-            ].value.flatten()[self.division_id]
+            ][()].flatten()[self.division_id]
         except:
             self.features["div_outlier_svm_score"] = -1
 

@@ -272,7 +272,7 @@ if __name__ == '__main__':
     for dataset in range(len(args.rawimage_filename)):
         rawimage_filename = args.rawimage_filename[dataset]
         with h5py.File(rawimage_filename, 'r') as h5raw:
-            rawimage = h5raw[args.rawimage_h5_path].value
+            rawimage = h5raw[args.rawimage_h5_path][()]
 
         # transform such that the order is the following: X,Y,(Z),T, C
         rawimage = hytra.util.axesconversion.adjustOrder(rawimage, args.rawimage_axes[dataset], 'xyztc')

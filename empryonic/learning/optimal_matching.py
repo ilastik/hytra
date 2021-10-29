@@ -135,8 +135,8 @@ def _formulate_associations( graph, solved_ilp_variables ):
     for id, var in solved_ilp_variables.items():
         if var.value() == 1:
             match = graph.edges[id]
-            lhs = graph.lhs[match.id_lhs].value
-            rhs = graph.rhs[match.id_rhs].value
+            lhs = graph.lhs[match.id_lhs][()]
+            rhs = graph.rhs[match.id_rhs][()]
             if lhs != None:
                 assoc['lhs'][lhs] = rhs  
             if rhs != None:

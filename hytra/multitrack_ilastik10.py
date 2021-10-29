@@ -946,10 +946,10 @@ def generate_traxelstore(
                 assert max_num_mergers == 1, "not implemented for max_num_mergers > 1"
                 detProbFilename = ext_probs % t
                 detProbGroup = h5py.File(detProbFilename, "r")["objects/meta"]
-                traxel_index = np.where(detProbGroup["id"].value == traxel.Id)[0][0]
+                traxel_index = np.where(detProbGroup["id"][()] == traxel.Id)[0][0]
                 detProbFeat = [
-                    detProbGroup["prediction_class0"].value[traxel_index],
-                    detProbGroup["prediction_class1"].value[traxel_index],
+                    detProbGroup["prediction_class0"][()][traxel_index],
+                    detProbGroup["prediction_class1"][()][traxel_index],
                 ]
                 traxel.add_feature_array("detProb", 2)
                 for i in xrange(len(detProbFeat)):
@@ -1038,8 +1038,8 @@ def generate_traxelstore(
 
 def write_detections(detections, fn):
     with io.LineageH5(fn, "r") as f:
-        traxel_ids = f["objects/meta/id"].value
-        valid = f["objects/meta/valid"].value
+        traxel_ids = f["objects/meta/id"][()]
+        valid = f["objects/meta/valid"][()]
     assert len(traxel_ids) == len(valid)
     assert len(detections) == len(np.flatnonzero(valid))
 
