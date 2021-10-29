@@ -1,0 +1,19 @@
+name: hytra-dev
+channels:
+  - ilastik-forge
+  - conda-forge
+  - defaults
+dependencies:
+  - black
+  - configargparse
+  - dpct
+  - h5py
+  - jinja2
+  - networkx >=2.2
+  - nose
+  - pre_commit
+  - python >=3.7
+  - scikit-image
+  - scikit-learn
+  - vigra
+  - yapsy
