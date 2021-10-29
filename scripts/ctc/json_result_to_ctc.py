@@ -11,7 +11,7 @@ import h5py
 import vigra
 import time
 import logging
-from skimage.external import tifffile
+import tifffile
 from hytra.core.jsongraph import JsonTrackingGraph
 from hytra.pluginsystem.plugin_manager import TrackingPluginManager
 

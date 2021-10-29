@@ -4,7 +4,7 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
 
-import skimage.external.tifffile as tiffile
+import tifffile
 import argparse
 import numpy as np
 import h5py
@@ -30,8 +30,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # read data
-    sporoChannel = tiffile.imread(args.sporoFilename)
-    nucleusChannel = tiffile.imread(args.nucleusFilename)
+    sporoChannel = tifffile.imread(args.sporoFilename)
+    nucleusChannel = tifffile.imread(args.nucleusFilename)
     print("Found input images of dimensions {} and {}".format(sporoChannel.shape, nucleusChannel.shape))
 
     if args.normalize:

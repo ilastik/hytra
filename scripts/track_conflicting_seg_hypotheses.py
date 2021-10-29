@@ -11,7 +11,7 @@ import gzip
 import pickle
 import numpy as np
 import logging
-from skimage.external import tifffile
+import tifffile
 import vigra
 try:
     import commentjson as json

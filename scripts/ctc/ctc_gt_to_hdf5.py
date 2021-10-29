@@ -10,7 +10,7 @@ import logging
 import numpy as np
 import h5py
 import vigra
-from skimage.external import tifffile
+import tifffile
 import glob
 import hytra.util.axesconversion
 from hytra.util.skimage_tifffile_hack import hack

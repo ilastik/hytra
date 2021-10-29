@@ -83,9 +83,9 @@ def run_pipeline(options, unknown):
         check_call(["python", os.path.abspath("run_merger_resolving.py"), "--config", options.config_file])
 
         for p in ["--out-graph-json-file", "--out-label-image-file", "--out-result-json-file"]:
-            index = unknown.index(p)
+            index = [x.startswith(p) for x in unknown].index(True)
             extra_params.append(p.replace('--out-', '--'))
-            extra_params.append(unknown[index + 1])
+            extra_params.append(unknown[index].split("=")[1])
 
     if options.export_format is not None:
         logging.info("Convert result to {}...".format(options.export_format))

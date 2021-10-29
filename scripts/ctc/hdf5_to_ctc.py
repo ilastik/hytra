@@ -12,7 +12,7 @@ import vigra
 import time
 import glob
 import logging
-from skimage.external import tifffile
+import tifffile
 
 def get_num_frames(options):
     if len(options.input_files) == 1:

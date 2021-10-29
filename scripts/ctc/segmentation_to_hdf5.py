@@ -9,7 +9,7 @@ import h5py
 import configargparse as argparse
 import logging
 import glob
-from skimage.external import tifffile
+import tifffile
 import hytra.util.axesconversion
 
 def segmentation_to_hdf5(options):

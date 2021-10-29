@@ -23,13 +23,15 @@ from hytra.core.jsonmergerresolver import JsonMergerResolver
 
 def convertToDict(unknown):
     indicesOfParameters = [i for i, p in enumerate(unknown) if p.startswith('--')]
-    keys = [u.replace('--', '') for u in [unknown[i] for i in indicesOfParameters]]
+    keys = []
     values = []
     for i in indicesOfParameters:
-        if i + 1 > len(unknown) or unknown[i + 1].startswith('--'):
+        kv = unknown[i].split("=")
+        keys.append(kv[0].replace("--", ""))
+        if len(kv) == 1:
             values.append(True)
         else:
-            values.append(unknown[i + 1])
+            values.append(kv[1])
     return dict(zip(keys, values))
 
 def constructFov(shape, t0, t1, scale=[1, 1, 1]):
