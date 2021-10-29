@@ -21,24 +21,34 @@ test_file_path = Path(__file__).parent
 
 def test_mergerResolvingTestDataset():
     check_call(
-        [
-            "python",
-            test_file_path.parent / "hytra" / "configtemplates" / "create_config.py",
-            "--in",
-            test_file_path / "mergerResolvingTestDataset" / "config_template.ini",
-            "--out",
-            test_file_path / "mergerResolvingTestDataset" / "test_config.ini",
-            "embryonicDir",
-            "..",
-        ]
+        list(
+            map(
+                str,
+                [
+                    "python",
+                    test_file_path.parent / "hytra" / "configtemplates" / "create_config.py",
+                    "--in",
+                    test_file_path / "mergerResolvingTestDataset" / "config_template.ini",
+                    "--out",
+                    test_file_path / "mergerResolvingTestDataset" / "test_config.ini",
+                    "embryonicDir",
+                    "..",
+                ],
+            )
+        )
     )
     check_call(
-        [
-            "python",
-            "pipeline.py",
-            "--config",
-            test_file_path / "mergerResolvingTestDataset" / "test_config.ini",
-        ]
+        list(
+            map(
+                str,
+                [
+                    "python",
+                    "pipeline.py",
+                    "--config",
+                    test_file_path / "mergerResolvingTestDataset" / "test_config.ini",
+                ],
+            )
+        )
     )
 
     for f in range(4):
@@ -51,24 +61,34 @@ def test_mergerResolvingTestDataset():
 
 def test_mergerResolvingTestDatasetNewLabelImage():
     check_call(
-        [
-            "python",
-            test_file_path.parent / "hytra" / "configtemplates" / "create_config.py",
-            "--in",
-            test_file_path / "mergerResolvingTestDatasetNewLabelImage" / "config_template.ini",
-            "--out",
-            test_file_path / "mergerResolvingTestDatasetNewLabelImage" / "test_config.ini",
-            "embryonicDir",
-            "..",
-        ]
+        list(
+            map(
+                str,
+                [
+                    "python",
+                    test_file_path.parent / "hytra" / "configtemplates" / "create_config.py",
+                    "--in",
+                    test_file_path / "mergerResolvingTestDatasetNewLabelImage" / "config_template.ini",
+                    "--out",
+                    test_file_path / "mergerResolvingTestDatasetNewLabelImage" / "test_config.ini",
+                    "embryonicDir",
+                    "..",
+                ],
+            )
+        )
     )
     check_call(
-        [
-            "python",
-            "pipeline.py",
-            "--config",
-            test_file_path / "mergerResolvingTestDatasetNewLabelImage" / "test_config.ini",
-        ]
+        list(
+            map(
+                str,
+                [
+                    "python",
+                    "pipeline.py",
+                    "--config",
+                    test_file_path / "mergerResolvingTestDatasetNewLabelImage" / "test_config.ini",
+                ],
+            )
+        )
     )
 
     for f in range(4):
@@ -83,25 +103,35 @@ def test_mergerResolvingTestDatasetNewLabelImage():
 
 def test_mergerResolvingTestDataset_withoutTracklets():
     check_call(
-        [
-            "python",
-            test_file_path.parent / "hytra" / "configtemplates" / "create_config.py",
-            "--in",
-            test_file_path / "mergerResolvingTestDataset" / "config_template.ini",
-            "--out",
-            test_file_path / "mergerResolvingTestDataset" / "test_config.ini",
-            "embryonicDir",
-            "..",
-        ]
+        list(
+            map(
+                str,
+                [
+                    "python",
+                    test_file_path.parent / "hytra" / "configtemplates" / "create_config.py",
+                    "--in",
+                    test_file_path / "mergerResolvingTestDataset" / "config_template.ini",
+                    "--out",
+                    test_file_path / "mergerResolvingTestDataset" / "test_config.ini",
+                    "embryonicDir",
+                    "..",
+                ],
+            )
+        )
     )
     check_call(
-        [
-            "python",
-            "pipeline.py",
-            "--config",
-            test_file_path / "mergerResolvingTestDataset" / "test_config.ini",
-            "--without-tracklets",
-        ]
+        list(
+            map(
+                str,
+                [
+                    "python",
+                    "pipeline.py",
+                    "--config",
+                    str(test_file_path / "mergerResolvingTestDataset" / "test_config.ini"),
+                    "--without-tracklets",
+                ],
+            )
+        )
     )
 
     for f in range(4):
@@ -114,24 +144,34 @@ def test_mergerResolvingTestDataset_withoutTracklets():
 
 def test_divisionTestDataset():
     check_call(
-        [
-            "python",
-            test_file_path.parent / "hytra" / "configtemplates" / "create_config.py",
-            "--in",
-            test_file_path / "divisionTestDataset" / "config_template.ini",
-            "--out",
-            test_file_path / "divisionTestDataset" / "test_config.ini",
-            "embryonicDir",
-            "..",
-        ]
+        list(
+            map(
+                str,
+                [
+                    "python",
+                    test_file_path.parent / "hytra" / "configtemplates" / "create_config.py",
+                    "--in",
+                    test_file_path / "divisionTestDataset" / "config_template.ini",
+                    "--out",
+                    test_file_path / "divisionTestDataset" / "test_config.ini",
+                    "embryonicDir",
+                    "..",
+                ],
+            )
+        )
     )
     check_call(
-        [
-            "python",
-            "pipeline.py",
-            "--config",
-            test_file_path / "divisionTestDataset" / "test_config.ini",
-        ]
+        list(
+            map(
+                str,
+                [
+                    "python",
+                    "pipeline.py",
+                    "--config",
+                    str(test_file_path / "divisionTestDataset" / "test_config.ini"),
+                ],
+            )
+        )
     )
 
     expectedIds = [[0, 1], [0, 1], [0, 2, 3], [0, 2, 3]]
@@ -145,25 +185,35 @@ def test_divisionTestDataset():
 
 def test_divisionTestDataset_withoutTracklets():
     check_call(
-        [
-            "python",
-            test_file_path.parent / "hytra" / "configtemplates" / "create_config.py",
-            "--in",
-            test_file_path / "divisionTestDataset" / "config_template.ini",
-            "--out",
-            test_file_path / "divisionTestDataset" / "test_config.ini",
-            "embryonicDir",
-            "..",
-        ]
+        list(
+            map(
+                str,
+                [
+                    "python",
+                    test_file_path.parent / "hytra" / "configtemplates" / "create_config.py",
+                    "--in",
+                    test_file_path / "divisionTestDataset" / "config_template.ini",
+                    "--out",
+                    test_file_path / "divisionTestDataset" / "test_config.ini",
+                    "embryonicDir",
+                    "..",
+                ],
+            )
+        )
     )
     check_call(
-        [
-            "python",
-            "pipeline.py",
-            "--config",
-            test_file_path / "divisionTestDataset" / "test_config.ini",
-            "--without-tracklets",
-        ]
+        list(
+            map(
+                str,
+                [
+                    "python",
+                    "pipeline.py",
+                    "--config",
+                    str(test_file_path / "divisionTestDataset" / "test_config.ini"),
+                    "--without-tracklets",
+                ],
+            )
+        )
     )
 
     expectedIds = [[0, 1], [0, 1], [0, 2, 3], [0, 2, 3]]
@@ -177,24 +227,34 @@ def test_divisionTestDataset_withoutTracklets():
 
 def test_noscripts_mergerResolvingTestDataset():
     check_call(
-        [
-            "python",
-            test_file_path.parent / "hytra" / "configtemplates" / "create_config.py",
-            "--in",
-            test_file_path / "mergerResolvingTestDataset" / "config_template.ini",
-            "--out",
-            test_file_path / "mergerResolvingTestDataset" / "test_config.ini",
-            "embryonicDir",
-            "..",
-        ]
+        list(
+            map(
+                str,
+                [
+                    "python",
+                    test_file_path.parent / "hytra" / "configtemplates" / "create_config.py",
+                    "--in",
+                    test_file_path / "mergerResolvingTestDataset" / "config_template.ini",
+                    "--out",
+                    test_file_path / "mergerResolvingTestDataset" / "test_config.ini",
+                    "embryonicDir",
+                    "..",
+                ],
+            )
+        )
     )
     check_call(
-        [
-            "python",
-            "pipelineNoScripts.py",
-            "--config",
-            test_file_path / "mergerResolvingTestDataset" / "test_config.ini",
-        ]
+        list(
+            map(
+                str,
+                [
+                    "python",
+                    "pipelineNoScripts.py",
+                    "--config",
+                    str(test_file_path / "mergerResolvingTestDataset" / "test_config.ini"),
+                ],
+            )
+        )
     )
 
     for f in range(4):
@@ -207,24 +267,34 @@ def test_noscripts_mergerResolvingTestDataset():
 
 def test_skipLinksTestDataset_withoutTracklets():
     check_call(
-        [
-            "python",
-            test_file_path.parent / "hytra" / "configtemplates" / "create_config.py",
-            "--in",
-            test_file_path / "skipLinksTestDataset" / "config_template.ini",
-            "--out",
-            test_file_path / "skipLinksTestDataset" / "test_config.ini",
-            "embryonicDir",
-            "..",
-        ]
+        list(
+            map(
+                str,
+                [
+                    "python",
+                    test_file_path.parent / "hytra" / "configtemplates" / "create_config.py",
+                    "--in",
+                    test_file_path / "skipLinksTestDataset" / "config_template.ini",
+                    "--out",
+                    test_file_path / "skipLinksTestDataset" / "test_config.ini",
+                    "embryonicDir",
+                    "..",
+                ],
+            )
+        )
     )
     check_call(
-        [
-            "python",
-            "pipeline_skip_links.py",
-            "--config",
-            test_file_path / "skipLinksTestDataset" / "test_config.ini",
-        ]
+        list(
+            map(
+                str,
+                [
+                    "python",
+                    "pipeline_skip_links.py",
+                    "--config",
+                    str(test_file_path / "skipLinksTestDataset" / "test_config.ini"),
+                ],
+            )
+        )
     )
 
     for f in range(4):
@@ -242,24 +312,34 @@ def test_skipLinksTestDataset_withoutTracklets():
 
 def test_boxesTestDataset():
     check_call(
-        [
-            "python",
-            test_file_path.parent / "hytra" / "configtemplates" / "create_config.py",
-            "--in",
-            test_file_path / "boxesTestDataset" / "config_template.ini",
-            "--out",
-            test_file_path / "boxesTestDataset" / "test_config.ini",
-            "embryonicDir",
-            "..",
-        ]
+        list(
+            map(
+                str,
+                [
+                    "python",
+                    test_file_path.parent / "hytra" / "configtemplates" / "create_config.py",
+                    "--in",
+                    test_file_path / "boxesTestDataset" / "config_template.ini",
+                    "--out",
+                    test_file_path / "boxesTestDataset" / "test_config.ini",
+                    "embryonicDir",
+                    "..",
+                ],
+            )
+        )
     )
     check_call(
-        [
-            "python",
-            "pipeline.py",
-            "--config",
-            test_file_path / "boxesTestDataset" / "test_config.ini",
-        ]
+        list(
+            map(
+                str,
+                [
+                    "python",
+                    "pipeline.py",
+                    "--config",
+                    str(test_file_path / "boxesTestDataset" / "test_config.ini"),
+                ],
+            )
+        )
     )
 
     expectedIds = [
@@ -281,24 +361,34 @@ def test_boxesTestDataset():
 
 def test_divisionMergerTestDataset():
     check_call(
-        [
-            "python",
-            test_file_path.parent / "hytra" / "configtemplates" / "create_config.py",
-            "--in",
-            test_file_path / "divisionMergerTestDataset" / "config_template.ini",
-            "--out",
-            test_file_path / "divisionMergerTestDataset" / "test_config.ini",
-            "embryonicDir",
-            "..",
-        ]
+        list(
+            map(
+                str,
+                [
+                    "python",
+                    test_file_path.parent / "hytra" / "configtemplates" / "create_config.py",
+                    "--in",
+                    test_file_path / "divisionMergerTestDataset" / "config_template.ini",
+                    "--out",
+                    test_file_path / "divisionMergerTestDataset" / "test_config.ini",
+                    "embryonicDir",
+                    "..",
+                ],
+            )
+        )
     )
     check_call(
-        [
-            "python",
-            "pipeline.py",
-            "--config",
-            test_file_path / "divisionMergerTestDataset" / "test_config.ini",
-        ]
+        list(
+            map(
+                str,
+                [
+                    "python",
+                    "pipeline.py",
+                    "--config",
+                    str(test_file_path / "divisionMergerTestDataset" / "test_config.ini"),
+                ],
+            )
+        )
     )
 
     expectedIds = [[0, 1, 2, 3], [0, 1, 3, 4, 5], [0, 1, 3, 4, 5]]
