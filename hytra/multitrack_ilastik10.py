@@ -179,12 +179,8 @@ copied but linked to the original files to improve execution speed and storage r
         default=0,
         help="forbidden cost [default: %default]",
     )
-    parser.add_option(
-        "--min-ts", type="int", dest="mints", default=0, help="[default: %default]"
-    )
-    parser.add_option(
-        "--max-ts", type="int", dest="maxts", default=-1, help="[default: %default]"
-    )
+    parser.add_option("--min-ts", type="int", dest="mints", default=0, help="[default: %default]")
+    parser.add_option("--max-ts", type="int", dest="maxts", default=-1, help="[default: %default]")
     parser.add_option(
         "--min-size",
         type="int",
@@ -338,9 +334,7 @@ copied but linked to the original files to improve execution speed and storage r
         default=0,
         help="[default: %default]",
     )
-    consopts.add_option(
-        "--without-tracklets", dest="without_tracklets", action="store_true"
-    )
+    consopts.add_option("--without-tracklets", dest="without_tracklets", action="store_true")
     consopts.add_option("--with-opt-correct", dest="woptical", action="store_true")
     consopts.add_option(
         "--det",
@@ -384,9 +378,7 @@ copied but linked to the original files to improve execution speed and storage r
         default=0.0,
         help="motion model weight [default: %default]",
     )
-    consopts.add_option(
-        "--without-divisions", dest="without_divisions", action="store_true"
-    )
+    consopts.add_option("--without-divisions", dest="without_divisions", action="store_true")
     consopts.add_option(
         "--means",
         dest="means",
@@ -407,9 +399,7 @@ copied but linked to the original files to improve execution speed and storage r
         action="store_true",
         default=False,
     )
-    consopts.add_option(
-        "--without-constraints", dest="woconstr", action="store_true", default=False
-    )
+    consopts.add_option("--without-constraints", dest="woconstr", action="store_true", default=False)
     consopts.add_option(
         "--trans-par",
         dest="trans_par",
@@ -481,9 +471,7 @@ copied but linked to the original files to improve execution speed and storage r
         help="load ground truth labeling into hypotheses graph for further evaluation on C++ side,\
                         requires gt-path to point to the groundtruth files",
     )
-    consopts.add_option(
-        "--without-swaps", dest="without_swaps", action="store_true", default=False
-    )
+    consopts.add_option("--without-swaps", dest="without_swaps", action="store_true", default=False)
     consopts.add_option(
         "--max-num-paths",
         dest="max_num_paths",
@@ -607,9 +595,7 @@ copied but linked to the original files to improve execution speed and storage r
 
 def extract_coordinates(coordinate_map, h5file, traxel, options):
     # add coordinate lists with armadillo matrixes
-    shape = list(h5file["/".join(options.label_img_path.split("/")[:-1])].values())[
-        0
-    ].shape[1:4]
+    shape = list(h5file["/".join(options.label_img_path.split("/")[:-1])].values())[0].shape[1:4]
     ndim = 2 if shape[-1] == 1 else 3
 
     # print("Extracting coordinates of potential merger: timestep {} id {}".format(traxel.Timestep, traxel.Id))
@@ -617,9 +603,7 @@ def extract_coordinates(coordinate_map, h5file, traxel, options):
     lower = get_feature_vector(traxel, "Coord< Minimum >", ndim)
     upper = get_feature_vector(traxel, "Coord< Maximum >", ndim)
 
-    limg_path_at = options.label_img_path % tuple(
-        [traxel.Timestep, traxel.Timestep + 1] + list(shape)
-    )
+    limg_path_at = options.label_img_path % tuple([traxel.Timestep, traxel.Timestep + 1] + list(shape))
     roi = [0] * 3
     roi[0] = slice(int(lower[0]), int(upper[0] + 1))
     roi[1] = slice(int(lower[1]), int(upper[1] + 1))
@@ -636,11 +620,7 @@ def extract_coordinates(coordinate_map, h5file, traxel, options):
             traxel,
         )
     except:
-        print(
-            "Could not run extract_coordinates for traxel: Id={} Timestep={}".format(
-                traxel.Id, traxel.Timestep
-            )
-        )
+        print("Could not run extract_coordinates for traxel: Id={} Timestep={}".format(traxel.Id, traxel.Timestep))
         raise Exception
 
 
@@ -656,9 +636,7 @@ def update_merger_features(
     timestep,
 ):
     # add coordinate lists with armadillo matrixes
-    shape = list(h5file["/".join(options.label_img_path.split("/")[:-1])].values())[
-        0
-    ].shape[1:4]
+    shape = list(h5file["/".join(options.label_img_path.split("/")[:-1])].values())[0].shape[1:4]
     ndim = 2 if shape[-1] == 1 else 3
 
     # print("Updating label image of merger traxel: timestep {} id {}".format(merger_traxel.Timestep, merger_traxel.Id))
@@ -666,9 +644,7 @@ def update_merger_features(
     lower = get_feature_vector(merger_traxel, "Coord< Minimum >", ndim)
     upper = get_feature_vector(merger_traxel, "Coord< Maximum >", ndim)
 
-    limg_path_at = options.label_img_path % tuple(
-        [merger_traxel.Timestep, merger_traxel.Timestep + 1] + list(shape)
-    )
+    limg_path_at = options.label_img_path % tuple([merger_traxel.Timestep, merger_traxel.Timestep + 1] + list(shape))
     roi = [0] * 3
     roi[0] = slice(int(lower[0]), int(upper[0] + 1))
     roi[1] = slice(int(lower[1]), int(upper[1] + 1))
@@ -679,9 +655,7 @@ def update_merger_features(
 
     label_image_excerpt = np.array(h5file[limg_path_at][tuple([0] + roi + [0])])
     min_new_traxel_id = min(new_traxel_ids)
-    label_image_excerpt = np.zeros(label_image_excerpt.shape, dtype=np.uint32) + (
-        min_new_traxel_id - 1
-    )
+    label_image_excerpt = np.zeros(label_image_excerpt.shape, dtype=np.uint32) + (min_new_traxel_id - 1)
 
     try:
         for traxel_id in new_traxel_ids:
@@ -709,9 +683,7 @@ def update_merger_features(
     try:
         # compute features for new traxels, which are automatically stored in featurestore
         # the 2d raw sequence is usually saved as a 2d+t+c dataset, the labelimage from ilastik as 3d+t+c
-        raw_image_excerpt = np.array(
-            raw_h5[options.raw_path][tuple([timestep] + roi[0:ndim] + [0])]
-        )
+        raw_image_excerpt = np.array(raw_h5[options.raw_path][tuple([timestep] + roi[0:ndim] + [0])])
         ri_ex = raw_image_excerpt.astype(np.float32)
         if ndim == 2:
             ri_ex = ri_ex.squeeze()
@@ -808,9 +780,7 @@ def generate_traxelstore(
     if time_range is not None:
         if time_range[1] == -1:
             time_range[1] = shape_t
-        keys_sorted = [
-            key for key in keys_sorted if time_range[0] <= int(key) < time_range[1]
-        ]
+        keys_sorted = [key for key in keys_sorted if time_range[0] <= int(key) < time_range[1]]
     else:
         time_range = (0, shape_t)
 
@@ -838,9 +808,7 @@ def generate_traxelstore(
                 feats_name = options.feats_path % (t, t + 1, "RegionCenter_corr")
                 region_centers_corr = np.array(h5file[feats_name])
             except:
-                raise Exception(
-                    "cannot consider optical correction since it has not been computed"
-                )
+                raise Exception("cannot consider optical correction since it has not been computed")
             if region_centers_corr.size:
                 region_centers_corr = region_centers_corr[1:, ...]
 
@@ -860,9 +828,7 @@ def generate_traxelstore(
             elif len(region_centers[idx]) == 3:
                 x, y, z = region_centers[idx]
             else:
-                raise Exception(
-                    "The RegionCenter feature must have dimensionality 2 or 3."
-                )
+                raise Exception("The RegionCenter feature must have dimensionality 2 or 3.")
             size = pixel_count[idx]
             if (
                 x < x_range[0]
@@ -925,22 +891,14 @@ def generate_traxelstore(
                     traxel.set_feature_value("detProb", i, float(probs[i]))
 
             if options.perturbation_distribution == "ClassifierUncertainty":
-                traxel.add_feature_array(
-                    "detProb_Var", len(detProb_Vars[str(t)][idx + 1])
-                )
+                traxel.add_feature_array("detProb_Var", len(detProb_Vars[str(t)][idx + 1]))
                 for i in range(len(detProb_Vars[str(t)][idx + 1])):
-                    traxel.set_feature_value(
-                        "detProb_Var", i, float(detProb_Vars[str(t)][idx + 1][i])
-                    )
+                    traxel.set_feature_value("detProb_Var", i, float(detProb_Vars[str(t)][idx + 1][i]))
 
                 if with_div:
-                    traxel.add_feature_array(
-                        "divProb_Var", len(divProb_Vars[str(t)][idx + 1])
-                    )
+                    traxel.add_feature_array("divProb_Var", len(divProb_Vars[str(t)][idx + 1]))
                     for i in range(len(divProb_Vars[str(t)][idx + 1])):
-                        traxel.set_feature_value(
-                            "divProb_Var", i, float(divProb_Vars[str(t)][idx + 1][i])
-                        )
+                        traxel.set_feature_value("divProb_Var", i, float(divProb_Vars[str(t)][idx + 1][i]))
 
             elif with_merger_prior and ext_probs is not None:
                 assert max_num_mergers == 1, "not implemented for max_num_mergers > 1"
@@ -974,12 +932,8 @@ def generate_traxelstore(
         start_time = time.time()
 
         with h5py.File(options.raw_filename, "r") as raw_h5:
-            shape = list(
-                h5file["/".join(options.label_img_path.split("/")[:-1])].values()
-            )[0].shape[1:4]
-            shape = (
-                len(h5file["/".join(options.label_img_path.split("/")[:-1])].values()),
-            ) + shape
+            shape = list(h5file["/".join(options.label_img_path.split("/")[:-1])].values())[0].shape[1:4]
+            shape = (len(h5file["/".join(options.label_img_path.split("/")[:-1])].values()),) + shape
             print("Shape is {}".format(shape))
 
             # loop over all frames and compute features for all traxels per frame
@@ -993,21 +947,13 @@ def generate_traxelstore(
                     shape[2],
                     shape[3],
                 )
-                label_image = (
-                    np.array(h5file[label_image_path][0, ..., 0])
-                    .squeeze()
-                    .astype(np.uint32)
-                )
+                label_image = np.array(h5file[label_image_path][0, ..., 0]).squeeze().astype(np.uint32)
                 raw_image = (
-                    np.array(
-                        raw_h5["/".join(options.raw_path.split("/"))][timestep, ..., 0]
-                    )
+                    np.array(raw_h5["/".join(options.raw_path.split("/"))][timestep, ..., 0])
                     .squeeze()
                     .astype(np.float32)
                 )
-                max_traxel_id = track.extract_region_features(
-                    raw_image, label_image, fs, timestep
-                )
+                max_traxel_id = track.extract_region_features(raw_image, label_image, fs, timestep)
 
                 # uncomment the following if no features are taken from the ilp file any more
                 #
@@ -1022,11 +968,7 @@ def generate_traxelstore(
                 #     ts.add(fs, traxel)
 
         end_time = time.time()
-        print(
-            "Feature computation for a dataset of shape {} took {} secs".format(
-                shape, end_time - start_time
-            )
-        )
+        print("Feature computation for a dataset of shape {} took {} secs".format(shape, end_time - start_time))
         # fs.dump()
 
     if median_object_size is not None:
@@ -1109,18 +1051,14 @@ def write_events(events, fn):
             ds = tg.create_dataset("Appearances", data=app[:, :-1], dtype=np.int32)
             ds.attrs["Format"] = "cell label appeared in current file"
 
-            ds = tg.create_dataset(
-                "Appearances-Energy", data=app[:, -1], dtype=np.double
-            )
+            ds = tg.create_dataset("Appearances-Energy", data=app[:, -1], dtype=np.double)
             ds.attrs["Format"] = "lower energy -> higher confidence"
 
         if len(dis):
             ds = tg.create_dataset("Disappearances", data=dis[:, :-1], dtype=np.int32)
             ds.attrs["Format"] = "cell label disappeared in current file"
 
-            ds = tg.create_dataset(
-                "Disappearances-Energy", data=dis[:, -1], dtype=np.double
-            )
+            ds = tg.create_dataset("Disappearances-Energy", data=dis[:, -1], dtype=np.double)
             ds.attrs["Format"] = "lower energy -> higher confidence"
 
         if len(mov):
@@ -1132,9 +1070,7 @@ def write_events(events, fn):
 
         if len(div):
             ds = tg.create_dataset("Splits", data=div[:, :-1], dtype=np.int32)
-            ds.attrs[
-                "Format"
-            ] = "ancestor (previous file), descendant (current file), descendant (current file)"
+            ds.attrs["Format"] = "ancestor (previous file), descendant (current file), descendant (current file)"
 
             ds = tg.create_dataset("Splits-Energy", data=div[:, -1], dtype=np.double)
             ds.attrs["Format"] = "lower energy -> higher confidence"
@@ -1150,17 +1086,13 @@ def write_events(events, fn):
             ds = tg.create_dataset("MultiFrameMoves", data=mul[:, :-1], dtype=np.int32)
             ds.attrs["Format"] = "from (given by timestep), to (current file), timestep"
 
-            ds = tg.create_dataset(
-                "MultiFrameMoves-Energy", data=mul[:, -1], dtype=np.double
-            )
+            ds = tg.create_dataset("MultiFrameMoves-Energy", data=mul[:, -1], dtype=np.double)
             ds.attrs["Format"] = "lower energy -> higher confidence"
 
     print("-> results successfully written")
 
 
-def save_events_parallel(
-    options, all_events, max_traxel_id_at, ilp_file, shape, t0, t1, async_=True
-):
+def save_events_parallel(options, all_events, max_traxel_id_at, ilp_file, shape, t0, t1, async_=True):
     processing_pool = Pool()
 
     for i in range(len(all_events)):
@@ -1270,9 +1202,7 @@ def loadGPClassifier(fn, h5_group="/TransitionGPClassifier/"):
             GaussianProcessClassifier,
         )
     except:
-        raise Exception(
-            "cannot import GP Classifier: lazyflow branch gaussianProcessClassifier must be in PYTHONPATH!"
-        )
+        raise Exception("cannot import GP Classifier: lazyflow branch gaussianProcessClassifier must be in PYTHONPATH!")
 
     with h5py.File(fn, "r") as f:
         try:
@@ -1302,9 +1232,7 @@ def train_outlier_svm(options, tracker, ts, fov):
     import pickle
     import trackingfeatures
 
-    print(
-        "Storing ground truth labels in hypotheses graph and training an outlier detector SVM from that"
-    )
+    print("Storing ground truth labels in hypotheses graph and training an outlier detector SVM from that")
     g = tracker.buildGraph(ts)
     store_label_in_hypotheses_graph(options, g, tracker)
     print("Setting injected solution as active")
@@ -1337,9 +1265,7 @@ def train_outlier_svm(options, tracker, ts, fov):
 
     # save lineage trees
     lineage_tree_dump_filename = options.out_dir.rstrip("/") + "/gt_lineage_trees.dump"
-    trackingfeatures.save_lineage_dump(
-        lineage_tree_dump_filename, tracks, divisions, lineage_trees
-    )
+    trackingfeatures.save_lineage_dump(lineage_tree_dump_filename, tracks, divisions, lineage_trees)
 
 
 def store_label_in_hypotheses_graph(options, graph, tracker):
@@ -1365,12 +1291,7 @@ def store_label_in_hypotheses_graph(options, graph, tracker):
 
     # load ground truth from hd5 files and label graph accordingly
     for i in range(graph.earliest_timestep(), graph.latest_timestep() + 1):
-        fn = (
-            options.gt_pth.rstrip("/")
-            + "/"
-            + options.gt_path_format_string.format(i)
-            + ".h5"
-        )
+        fn = options.gt_pth.rstrip("/") + "/" + options.gt_path_format_string.format(i) + ".h5"
         print("open file:", fn)
         with h5py.File(fn, "r") as f:
             print(f)
@@ -1388,9 +1309,7 @@ def store_label_in_hypotheses_graph(options, graph, tracker):
 
             for appset in applist:
                 if (i, appset[0]) in nodeTimestepIdMap:
-                    graph.addAppearanceLabel(
-                        nodeTimestepIdMap[i, appset[0]], mdic.get(appset[0], 1)
-                    )
+                    graph.addAppearanceLabel(nodeTimestepIdMap[i, appset[0]], mdic.get(appset[0], 1))
                     graph.addDisappearanceLabel(nodeTimestepIdMap[i, appset[0]], 0)
                 else:
                     print("ERROR IN app", i, appset[0])
@@ -1398,9 +1317,7 @@ def store_label_in_hypotheses_graph(options, graph, tracker):
             for disset in dislist:
                 if (i - 1, disset[0]) in nodeTimestepIdMap:
                     graph.addAppearanceLabel(nodeTimestepIdMap[i - 1, disset[0]], 0)
-                    graph.addDisappearanceLabel(
-                        nodeTimestepIdMap[i - 1, disset[0]], mdic.get(disset[0], 1)
-                    )
+                    graph.addDisappearanceLabel(nodeTimestepIdMap[i - 1, disset[0]], mdic.get(disset[0], 1))
                 else:
                     print("ERROR IN disapp", i - 1, disset[0])
 
@@ -1409,16 +1326,10 @@ def store_label_in_hypotheses_graph(options, graph, tracker):
                     i,
                     movset[1],
                 ) in nodeTimestepIdMap:
-                    graph.addAppearanceLabel(
-                        nodeTimestepIdMap[i - 1, movset[0]], mdic.get(movset[0], 1)
-                    )
-                    graph.addDisappearanceLabel(
-                        nodeTimestepIdMap[i, movset[1]], mdic.get(movset[1], 1)
-                    )
+                    graph.addAppearanceLabel(nodeTimestepIdMap[i - 1, movset[0]], mdic.get(movset[0], 1))
+                    graph.addDisappearanceLabel(nodeTimestepIdMap[i, movset[1]], mdic.get(movset[1], 1))
                     if (i - 1, movset[0], movset[1]) in arcTimestepIdMap:
-                        graph.addArcLabel(
-                            arcTimestepIdMap[i - 1, movset[0], movset[1]], 1
-                        )
+                        graph.addArcLabel(arcTimestepIdMap[i - 1, movset[0], movset[1]], 1)
                     else:
                         print(
                             "Warning IN move",
@@ -1479,9 +1390,7 @@ def loadTransClassifier(options):
             )
 
         print("load pre-trained transition classifier")
-        gpc, selected_features = loadGPClassifier(
-            fn=options.trans_fn, h5_group=options.trans_path
-        )
+        gpc, selected_features = loadGPClassifier(fn=options.trans_fn, h5_group=options.trans_path)
         trans_classifier = TransitionClassifier(gpc, selected_features)
 
     return trans_classifier
@@ -1517,14 +1426,7 @@ def getTraxelStore(options, ilp_fn, time_range, shape):
 
         print("/".join(options.label_img_path.strip("/").split("/")[:-1]))
 
-        if (
-            list(
-                h5file[
-                    "/".join(options.label_img_path.strip("/").split("/")[:-1])
-                ].values()
-            )[0].shape[3]
-            == 1
-        ):
+        if list(h5file["/".join(options.label_img_path.strip("/").split("/")[:-1])].values())[0].shape[3] == 1:
             ndim = 2
         print("ndim=", ndim)
 
@@ -1541,14 +1443,10 @@ def getTraxelStore(options, ilp_fn, time_range, shape):
 
             info = [int(x) for x in ts.bounding_box()]
             t0, t1 = (info[0], info[4])
-            if info[0] != options.mints or (
-                options.maxts != -1 and info[4] != options.maxts - 1
-            ):
+            if info[0] != options.mints or (options.maxts != -1 and info[4] != options.maxts - 1):
                 if options.maxts == -1:
                     options.maxts = info[4] + 1
-                print(
-                    "Warning: Traxelstore has different time range than requested FOV. Trimming traxels..."
-                )
+                print("Warning: Traxelstore has different time range than requested FOV. Trimming traxels...")
                 fov = getFovFromOptions(options, shape, t0, t1)
                 fov.set_time_bounds(options.mints, options.maxts - 1)
                 new_ts = track.TraxelStore()
@@ -1619,9 +1517,7 @@ def initializeConservationTracking(options, shape, t0, t1):
     fov = getFovFromOptions(options, shape, t0, t1)
     if ndim == 2:
         [xshape, yshape, zshape] = shape
-        assert (
-            options.z_scale * (zshape - 1) == 0
-        ), "fov of z must be (0,0) if ndim == 2"
+        assert options.z_scale * (zshape - 1) == 0, "fov of z must be (0,0) if ndim == 2"
 
     if options.method == "conservation":
         print(">>>>>>>>>>>>>>>>>>>>> Running CPLEX")
@@ -1770,9 +1666,7 @@ def exportFunkeyFiles(options, ts, tracker, trans_classifier):
         track.ConsTrackingSolverType.CplexSolver,
     )
 
-    tracker.writeStructuredLearningFiles(
-        features_filename, constraints_filename, labels_filename, tracking_param
-    )
+    tracker.writeStructuredLearningFiles(features_filename, constraints_filename, labels_filename, tracking_param)
 
     return outpath
 
@@ -1824,10 +1718,7 @@ def learn_perturbation_weights(ts, options, shape, trans_classifier, t0, t1):
             pert_tracker.SetFunkeyOutputFiles(
                 "",
                 "",
-                outpath
-                + "/pertubation_labels/perturbed_labeling"
-                + parameter_name
-                + ".txt",
+                outpath + "/pertubation_labels/perturbed_labeling" + parameter_name + ".txt",
                 False,
                 uncertaintyParam,
             )
@@ -1938,10 +1829,7 @@ def runMergerResolving(
                             raise Exception
                         num_mergers += 1
                 for event in timestep_events:
-                    if (
-                        event.type == track.EventType.Move
-                        and event.traxel_idx[1] in mergers
-                    ):
+                    if event.type == track.EventType.Move and event.traxel_idx[1] in mergers:
                         traxel = ts.get_traxel(event.traxel_ids[0], timestep - 1)
                         try:
                             extract_coordinates(coordinate_map, h5file, traxel, options)
@@ -1952,11 +1840,7 @@ def runMergerResolving(
                                 )
                             )
 
-            print(
-                "Found {} merger events in proposal {}. Resolving them...".format(
-                    num_mergers, i
-                )
-            )
+            print("Found {} merger events in proposal {}. Resolving them...".format(num_mergers, i))
 
             hypotheses_graph.set_solution(i)
 
@@ -1973,10 +1857,7 @@ def runMergerResolving(
             )
 
             with h5py.File(options.raw_filename, "r") as raw_h5:
-                print(
-                    "Update labelimage and compute new features after merger resolving "
-                    "for solution {}".format(i)
-                )
+                print("Update labelimage and compute new features after merger resolving " "for solution {}".format(i))
                 pb = ProgressBar(0, len(resolved_events))
                 for timestep, timestep_events in enumerate(resolved_events):
                     pb.show()
@@ -2035,9 +1916,7 @@ def runMergerResolving(
                 np.array(feature_vectors).transpose(),
             )
             print("Storing feature names")
-            with open(
-                options.out_dir.rstrip("/") + "/feature_names.txt", "w"
-            ) as feature_names_file:
+            with open(options.out_dir.rstrip("/") + "/feature_names.txt", "w") as feature_names_file:
                 for f in feature_names:
                     feature_names_file.write(f + "\n")
     return scores
@@ -2089,14 +1968,10 @@ if __name__ == "__main__":
 
     # find shape of dataset
     with h5py.File(ilp_fn, "r") as h5file:
-        shape = list(h5file["/".join(options.label_img_path.split("/")[:-1])].values())[
-            0
-        ].shape[1:4]
+        shape = list(h5file["/".join(options.label_img_path.split("/")[:-1])].values())[0].shape[1:4]
 
     # read all traxels into TraxelStore
-    ts, fs, max_traxel_id_at, ndim, t0, t1 = getTraxelStore(
-        options, ilp_fn, time_range, shape
-    )
+    ts, fs, max_traxel_id_at, ndim, t0, t1 = getTraxelStore(options, ilp_fn, time_range, shape)
 
     print("Start tracking...")
     if (
@@ -2125,7 +2000,13 @@ if __name__ == "__main__":
 
         if options.learn_funkey:
             learned_weights = learnFunkey(options, tracker, outpath)
-            w_det, w_div, w_trans, w_dis, w_app, = learned_weights
+            (
+                w_det,
+                w_div,
+                w_trans,
+                w_dis,
+                w_app,
+            ) = learned_weights
 
         if options.learn_perturbation_weights:
             learn_perturbation_weights(ts, options, shape, trans_classifier, t0, t1)
@@ -2199,9 +2080,7 @@ if __name__ == "__main__":
     )
 
     if options.motionModelWeight > 0:
-        print(
-            "Registering motion model with weight {}".format(options.motionModelWeight)
-        )
+        print("Registering motion model with weight {}".format(options.motionModelWeight))
         params.register_motion_model4_func(
             swirl_motion_func_creator(options.motionModelWeight),
             options.motionModelWeight * 25.0,
@@ -2259,11 +2138,7 @@ if __name__ == "__main__":
     #     parallel_save_process_pool = save_events_parallel(options, all_events, max_traxel_id_at, ilp_fn, t0, t1, False)
 
     # run merger resolving
-    if (
-        options.with_merger_resolution
-        and options.max_num_objects > 1
-        and len(options.raw_filename) > 0
-    ):
+    if options.with_merger_resolution and options.max_num_objects > 1 and len(options.raw_filename) > 0:
         region_features = getRegionFeatures(ndim)
         try:
             runMergerResolving(
@@ -2287,9 +2162,7 @@ if __name__ == "__main__":
     since = stop - start
 
     if options.w_labeling:
-        hypotheses_graph.write_hypotheses_graph_state(
-            options.out_dir.rstrip("/") + "/results_all.txt"
-        )
+        hypotheses_graph.write_hypotheses_graph_state(options.out_dir.rstrip("/") + "/results_all.txt")
 
     # save
     if options.save_first:
@@ -2311,9 +2184,7 @@ if __name__ == "__main__":
     elif not options.skip_saving:
         # parallel_save_process_pool.close()
         # parallel_save_process_pool.join()
-        save_events_parallel(
-            options, all_events, max_traxel_id_at, ilp_fn, shape, t0, t1, True
-        )
+        save_events_parallel(options, all_events, max_traxel_id_at, ilp_fn, shape, t0, t1, True)
 
     print("Elapsed time [s]: " + str(int(since)))
     print("Elapsed time [min]: " + str(int(since) / 60))

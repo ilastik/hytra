@@ -128,22 +128,15 @@ class LineagePart:
 
     @staticmethod
     def get_num_track_features():
-        return 2 * len(LineagePart.track_feature_map["mean_var"]) + len(
-            LineagePart.track_feature_map["single"]
-        )
+        return 2 * len(LineagePart.track_feature_map["mean_var"]) + len(LineagePart.track_feature_map["single"])
 
     @staticmethod
     def get_num_division_features():
-        return 2 * len(LineagePart.division_feature_map["mean_var"]) + len(
-            LineagePart.division_feature_map["single"]
-        )
+        return 2 * len(LineagePart.division_feature_map["mean_var"]) + len(LineagePart.division_feature_map["single"])
 
     @staticmethod
     def get_feature_vector_size():
-        return (
-            LineagePart.get_num_track_features()
-            + LineagePart.get_num_division_features()
-        )
+        return LineagePart.get_num_track_features() + LineagePart.get_num_division_features()
 
     @staticmethod
     def weight_idx_to_feature(idx):
@@ -192,18 +185,14 @@ class LineagePart:
         num_expansions = series_expansion_range[1] - series_expansion_range[0]
         len_track_feat = LineagePart.get_num_track_features()
 
-        result = np.zeros(
-            num_expansions * len_track_feat + LineagePart.get_num_division_features()
-        )
+        result = np.zeros(num_expansions * len_track_feat + LineagePart.get_num_division_features())
 
         # insert duplicated and modified track features
         # (from [f1, f2, f3] to [f'1, f''1, f'''1, f'2, f''2, f'''2, f'3, f''3, f'''3]
         for i, k in enumerate(LineagePart.all_feature_names[:len_track_feat]):
             if k in self.features:
                 for e in range(num_expansions):
-                    result[i * num_expansions + e] = self.features[
-                        k
-                    ] * self.expansion_factor(e)
+                    result[i * num_expansions + e] = self.features[k] * self.expansion_factor(e)
 
         # insert division features just once
         for i, k in enumerate(LineagePart.all_feature_names[len_track_feat:]):
@@ -241,9 +230,7 @@ class LineagePart:
         feature_vec = self.get_expanded_feature_vector(series_expansion_range)
         feature_vec = np.expand_dims(feature_vec, axis=1)
         if feature_means != None and feature_variances != None:
-            structsvm.utils.apply_feature_normalization(
-                feat_vec, feature_means, feature_variances
-            )
+            structsvm.utils.apply_feature_normalization(feat_vec, feature_means, feature_variances)
         return np.dot(weights, feature_vec[:, 0])
 
 
@@ -336,9 +323,9 @@ class Track(LineagePart):
                 # print("Could not find feature {} for track {}".format(v, self.track_id))
                 pass
         try:
-            self.features["track_outlier_svm_score"] = track_features_h5[
-                "track_outliers_svm"
-            ][()].flatten()[self.track_id]
+            self.features["track_outlier_svm_score"] = track_features_h5["track_outliers_svm"][()].flatten()[
+                self.track_id
+            ]
         except:
             self.features["track_outlier_svm_score"] = -1
 
@@ -385,9 +372,9 @@ class Division(LineagePart):
                 pass
 
         try:
-            self.features["div_outlier_svm_score"] = track_features_h5[
-                "division_outliers_svm"
-            ][()].flatten()[self.division_id]
+            self.features["div_outlier_svm_score"] = track_features_h5["division_outliers_svm"][()].flatten()[
+                self.division_id
+            ]
         except:
             self.features["div_outlier_svm_score"] = -1
 
@@ -419,9 +406,7 @@ class LineageTree(LineagePart):
                     if next_track_id == -1:
                         print(
                             "Warning: lineage tree could not find child {} of division {}, "
-                            "discarding branch.".format(
-                                i, self.divisions[-1].division_id
-                            )
+                            "discarding branch.".format(i, self.divisions[-1].division_id)
                         )
                         continue
                     self.tracks.append(tracks[next_track_id])
@@ -440,20 +425,13 @@ class LineageTree(LineagePart):
 
     def get_expanded_feature_vector(self, series_expansion_range):
         num_expansions = series_expansion_range[1] - series_expansion_range[0]
-        result = np.zeros(
-            num_expansions * self.get_num_track_features()
-            + self.get_num_division_features()
-        )
+        result = np.zeros(num_expansions * self.get_num_track_features() + self.get_num_division_features())
 
         for t in self.tracks:
-            result += t.get_expanded_feature_vector(series_expansion_range) / len(
-                self.tracks
-            )
+            result += t.get_expanded_feature_vector(series_expansion_range) / len(self.tracks)
 
         for d in self.divisions:
-            result += d.get_expanded_feature_vector(series_expansion_range) / len(
-                self.divisions
-            )
+            result += d.get_expanded_feature_vector(series_expansion_range) / len(self.divisions)
 
         return result
 
@@ -481,8 +459,7 @@ def create_and_link_tracks_and_divisions(track_features_h5, ts, region_features)
 
     pb = ProgressBar(
         0,
-        len(track_features_h5["tracks"].keys())
-        + len(track_features_h5["divisions"].keys()),
+        len(track_features_h5["tracks"].keys()) + len(track_features_h5["divisions"].keys()),
     )
     print("Extracting Tracks and Divisions")
 
@@ -523,9 +500,7 @@ def create_and_link_tracks_and_divisions(track_features_h5, ts, region_features)
 
         for i in [0, 1]:
             try:
-                d.children_track_ids[i] = track_starts_with_traxel_id[
-                    d.children_traxel_ids[i]
-                ]
+                d.children_track_ids[i] = track_starts_with_traxel_id[d.children_traxel_ids[i]]
                 tracks[d.children_track_ids[i]].start_division_id = division_id_int
             except KeyError as e:
                 print(
@@ -543,9 +518,7 @@ def build_lineage_trees(tracks, divisions):
     appearances = [t for t in tracks.values() if t.start_division_id == -1]
 
     # create a new lineage tree for each of those
-    lineageTrees = [
-        LineageTree(l_id, t, tracks, divisions) for l_id, t in enumerate(appearances)
-    ]
+    lineageTrees = [LineageTree(l_id, t, tracks, divisions) for l_id, t in enumerate(appearances)]
 
     return lineageTrees
 
@@ -562,18 +535,9 @@ def score_solutions(
     if reranker_weight_filename and len(reranker_weight_filename) > 0:
         reranker_weights = np.loadtxt(reranker_weight_filename)
 
-        track_scores = [
-            t.compute_score(reranker_weights, series_expansion_range)
-            for t in tracks.values()
-        ]
-        division_scores = [
-            d.compute_score(reranker_weights, series_expansion_range)
-            for d in divisions.values()
-        ]
-        lineage_scores = [
-            l.compute_score(reranker_weights, series_expansion_range)
-            for l in lineage_trees
-        ]
+        track_scores = [t.compute_score(reranker_weights, series_expansion_range) for t in tracks.values()]
+        division_scores = [d.compute_score(reranker_weights, series_expansion_range) for d in divisions.values()]
+        lineage_scores = [l.compute_score(reranker_weights, series_expansion_range) for l in lineage_trees]
         overall_score = sum(lineage_scores)
 
         for s_name, scores in [
@@ -630,15 +594,11 @@ def compare_lineage_trees_to_gt(gt_dir, proposal_dir, lineage_trees):
     print("Parallelizing over {} cores".format(cpu_count()))
     processing_pool = Pool(cpu_count())
 
-    gt_filenames, proposal_filenames = compare_tracking.get_tracking_filenames(
-        gt_dir, proposal_dir
-    )
+    gt_filenames, proposal_filenames = compare_tracking.get_tracking_filenames(gt_dir, proposal_dir)
     first_timestep = int(os.path.splitext(os.path.basename(gt_filenames[0]))[0])
 
     timesteps = min(len(gt_filenames), len(proposal_filenames))
-    associations = compare_tracking.construct_associations(
-        gt_filenames, proposal_filenames, timesteps
-    )
+    associations = compare_tracking.construct_associations(gt_filenames, proposal_filenames, timesteps)
 
     filename_pairs = zip(gt_filenames[0:timesteps], proposal_filenames[0:timesteps])
     lineage_tree_traxels = [lt.get_all_traxels() for lt in lineage_trees]
@@ -674,20 +634,12 @@ def extract_features_and_compute_score(
 ):
 
     # extract higher order features and per-track features
-    print(
-        "Extracting features of solution {}\n\tCreating Feature extractor...".format(
-            iteration
-        )
-    )
-    track_features_filename = (
-        out_dir.rstrip("/") + "/iter_" + str(iteration) + "/track_features.h5"
-    )
+    print("Extracting features of solution {}\n\tCreating Feature extractor...".format(iteration))
+    track_features_filename = out_dir.rstrip("/") + "/iter_" + str(iteration) + "/track_features.h5"
     feature_extractor = track.TrackingFeatureExtractor(hypotheses_graph, fov)
 
     # load outlier SVMs if available
-    if (
-        len(outlier_svm_filename) > 0
-    ):  # when the svm was trained in this run, it automatically sets load_outlier_svm
+    if len(outlier_svm_filename) > 0:  # when the svm was trained in this run, it automatically sets load_outlier_svm
         with open(outlier_svm_filename, "r") as svm_dump:
             import pickle
 
@@ -710,21 +662,15 @@ def extract_features_and_compute_score(
 
     # create complete lineage trees with extracted features:
     with h5py.File(track_features_filename, "r") as track_features_h5:
-        tracks, divisions = create_and_link_tracks_and_divisions(
-            track_features_h5, ts, region_features
-        )
+        tracks, divisions = create_and_link_tracks_and_divisions(track_features_h5, ts, region_features)
         lineage_trees = build_lineage_trees(tracks, divisions)
 
     # save lineage trees
-    lineage_tree_dump_filename = (
-        out_dir.rstrip("/") + "/iter_" + str(iteration) + "/lineage_trees.dump"
-    )
+    lineage_tree_dump_filename = out_dir.rstrip("/") + "/iter_" + str(iteration) + "/lineage_trees.dump"
     save_lineage_dump(lineage_tree_dump_filename, tracks, divisions, lineage_trees)
 
     # accumulate feature vectors
-    feature_vector = lineage_trees[0].get_expanded_feature_vector(
-        series_expansion_range
-    )
+    feature_vector = lineage_trees[0].get_expanded_feature_vector(series_expansion_range)
     for lt in lineage_trees[1:]:
         feature_vector += lt.get_expanded_feature_vector(series_expansion_range)
 
@@ -779,9 +725,7 @@ def analyze_lineage_dump(args):
 
     # evaluate
     print("Analyzing {} lineage trees".format(len(lineage_trees)))
-    taxonomies = compare_lineage_trees_to_gt(
-        args.gt_path, args.proposal_path, lineage_trees
-    )
+    taxonomies = compare_lineage_trees_to_gt(args.gt_path, args.proposal_path, lineage_trees)
     precisions = [t.precision() for t in taxonomies]
     recalls = [t.recall() for t in taxonomies]
     fmeasures = [t.f_measure() for t in taxonomies]
@@ -877,10 +821,7 @@ if __name__ == "__main__":
     quality of each lineage independently.
     """
 
-    parser = argparse.ArgumentParser(
-        description="Evaluate precision/recall/f-measure"
-        "for each lineage independently"
-    )
+    parser = argparse.ArgumentParser(description="Evaluate precision/recall/f-measure" "for each lineage independently")
     parser.add_argument(
         "--lineage-dump",
         required=True,
@@ -902,9 +843,7 @@ if __name__ == "__main__":
         dest="proposal_path",
         help="Path to folder containing the proposal .h5 files",
     )
-    parser.add_argument(
-        "--out", type=str, dest="out_dir", default=".", help="Output directory"
-    )
+    parser.add_argument("--out", type=str, dest="out_dir", default=".", help="Output directory")
     parser.add_argument(
         "--weights",
         type=str,

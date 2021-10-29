@@ -170,10 +170,8 @@ class FeatureManager(object):
         self.size_filter = size_filter
         self.squared_distance_default = squared_distance_default
 
-    def _getBestSquaredDistances(
-        self, com_cur, coms_next, size_filter=None, sizes_next=[], default_value=9999
-    ):
-        """ returns the squared distances to the objects in the neighborhood of com_curr, optionally with size filter """
+    def _getBestSquaredDistances(self, com_cur, coms_next, size_filter=None, sizes_next=[], default_value=9999):
+        """returns the squared distances to the objects in the neighborhood of com_curr, optionally with size filter"""
         squaredDistances = []
 
         for label_next in coms_next.keys():
@@ -184,29 +182,23 @@ class FeatureManager(object):
 
         squaredDistances = np.array(squaredDistances)
         # sort the array in the second column in ascending order
-        squaredDistances = np.array(
-            sorted(squaredDistances, key=lambda a_entry: a_entry[1])
-        )
+        squaredDistances = np.array(sorted(squaredDistances, key=lambda a_entry: a_entry[1]))
 
         # initialize with label -1 and default value
-        result = np.array(
-            [[-1, default_value] for x in range(self.n_best)], dtype=np.float32
-        )
+        result = np.array([[-1, default_value] for x in range(self.n_best)], dtype=np.float32)
         if squaredDistances.shape[0] != 0:
-            result[
+            result[0 : min(squaredDistances.shape[0], result.shape[0]), :] = squaredDistances[
                 0 : min(squaredDistances.shape[0], result.shape[0]), :
-            ] = squaredDistances[0 : min(squaredDistances.shape[0], result.shape[0]), :]
+            ]
 
         return result
 
-    def computeFeatures_at(
-        self, feats_cur, feats_next, img_next, feat_names, label_image_filename=None
-    ):
+    def computeFeatures_at(self, feats_cur, feats_next, img_next, feat_names, label_image_filename=None):
         """
         **Parameters:**
-    
-        * if `label_image_filename` is given, it is used to filter the objects from the feature dictionaries 
-          that belong to that label image only (in the JST setting) 
+
+        * if `label_image_filename` is given, it is used to filter the objects from the feature dictionaries
+          that belong to that label image only (in the JST setting)
         """
 
         #        n_labels = list(feats_cur.values())[0].shape[0]
@@ -223,9 +215,7 @@ class FeatureManager(object):
 
             if len(name_split) != 2:
                 raise ValueError(
-                    "tracking features consist of an operator and a feature name only, given name={}".format(
-                        name_split
-                    )
+                    "tracking features consist of an operator and a feature name only, given name={}".format(name_split)
                 )
             if len(feats_cur[name_split[1]].shape) > 1:
                 feat_dim = feats_cur[name_split[1]].shape[1]
@@ -243,27 +233,15 @@ class FeatureManager(object):
         # initialize squared distances
         for idx in range(self.n_best):
             name = "SquaredDistances_" + str(idx)
-            result[name] = (
-                np.ones((list(feats_cur.values())[0].shape[0], 1))
-                * self.squared_distance_default
-            )
+            result[name] = np.ones((list(feats_cur.values())[0].shape[0], 1)) * self.squared_distance_default
 
         # construct mapping which we only need if label_image_filename was given and the features 'filename' and 'id' exist
-        if (
-            label_image_filename is not None
-            and "filename" in feats_next
-            and "id" in feats_next
-        ):
+        if label_image_filename is not None and "filename" in feats_next and "id" in feats_next:
             global_indices_current_label_image_only = [
-                l
-                for l, f in enumerate(feats_next["filename"])
-                if f == label_image_filename
+                l for l, f in enumerate(feats_next["filename"]) if f == label_image_filename
             ]
             local_to_global_index_map = dict(
-                [
-                    (feats_next["id"][l], l)
-                    for l in global_indices_current_label_image_only
-                ]
+                [(feats_next["id"][l], l) for l in global_indices_current_label_image_only]
             )
 
         # for every object in this frame, check which objects are in the vicinity in the next frame
@@ -301,16 +279,12 @@ class FeatureManager(object):
                 # if 'id' in features, map the labels first -- because labels_next refers image object ids,
                 # whereas the features are the union of objects from several segmentations
                 if "id" in feats_next:
-                    labels_next = [
-                        local_to_global_index_map[l] for l in labels_next if l != 0
-                    ]
+                    labels_next = [local_to_global_index_map[l] for l in labels_next if l != 0]
 
                 for l in labels_next:
                     if l != 0:
                         for n in vigra_feat_names:
-                            feats_next_subset[n][l] = np.array(
-                                [feats_next[n][l]]
-                            ).flatten()
+                            feats_next_subset[n][l] = np.array([feats_next[n][l]]).flatten()
 
             sq_dist_label = self._getBestSquaredDistances(
                 com_cur,
@@ -339,12 +313,8 @@ class FeatureManager(object):
                     f_next = sq_dist_label[0:2, 1]
                     f_cur = None
                 else:
-                    f_cur = np.array(
-                        [feats_cur[feat_class.feats_name][label_cur]]
-                    ).flatten()
-                    f_next = np.array(
-                        [feats_next_subset_best[feat_class.feats_name]]
-                    ).reshape((-1, f_cur.shape[0]))
+                    f_cur = np.array([feats_cur[feat_class.feats_name][label_cur]]).flatten()
+                    f_next = np.array([feats_next_subset_best[feat_class.feats_name]]).reshape((-1, f_cur.shape[0]))
                 result[name][label_cur] = feat_class.compute(f_cur, f_next)
 
         # return only valid labels

@@ -15,7 +15,7 @@ logger = logging.getLogger("ProbabilityGenerator")
 
 class Traxel(object):
     """
-    A simple Python variant of the C++ traxel with the same interface 
+    A simple Python variant of the C++ traxel with the same interface
     of the one of pgmlink so it can act as drop-in replacement.
 
     A `Traxel` is a detection with unique label `Id` at a certain `Timestep`,  with position
@@ -106,9 +106,7 @@ def computeRegionFeaturesOnCloud(
     # set up plugin manager
     from hytra.pluginsystem.plugin_manager import TrackingPluginManager
 
-    pluginManager = TrackingPluginManager(
-        pluginPaths=pluginPaths, turnOffFeatures=turnOffFeatures, verbose=False
-    )
+    pluginManager = TrackingPluginManager(pluginPaths=pluginPaths, turnOffFeatures=turnOffFeatures, verbose=False)
     pluginManager.setImageProvider(imageProviderPluginName)
     pluginManager.setFeatureSerializer(featureSerializerPluginName)
 
@@ -116,15 +114,10 @@ def computeRegionFeaturesOnCloud(
     rawImage = pluginManager.getImageProvider().getImageDataAtTimeFrame(
         rawImageFilename, rawImagePath, rawImageAxes, frame
     )
-    labelImage = pluginManager.getImageProvider().getLabelImageForFrame(
-        labelImageFilename, labelImagePath, frame
-    )
+    labelImage = pluginManager.getImageProvider().getLabelImageForFrame(labelImageFilename, labelImagePath, frame)
 
     # untwist axes, if just x and y are messed up
-    if (
-        rawImage.shape[0] == labelImage.shape[1]
-        and rawImage.shape[1] == labelImage.shape[0]
-    ):
+    if rawImage.shape[0] == labelImage.shape[1] and rawImage.shape[1] == labelImage.shape[0]:
         labelImage = np.transpose(labelImage, axes=[1, 0])
 
     # compute features
@@ -146,7 +139,7 @@ def computeRegionFeaturesOnCloud(
 
     # return or save features
     if featuresPerFrame is None and featureSerializerPluginName in [
-        u"LocalFeatureSerializer",
+        "LocalFeatureSerializer",
         "LocalFeatureSerializer",
     ]:
         # simply return resulting dict
@@ -188,19 +181,14 @@ def computeDivisionFeaturesOnCloud(
     * `numDimensions`: number of dimensions of the dataset
     * `divisionFeatureNames`: list of feature names for the `hytra.divisionfeatures.FeatureManager`
 
-    **returns** a tuple of `frameT` and the dictionary of the newly computed division 
+    **returns** a tuple of `frameT` and the dictionary of the newly computed division
     features for `frameT`
     """
     imageProviderPlugin = pluginManager.getImageProvider()
 
     # get the label image of the next frame
-    if (
-        frameT + 1
-        < imageProviderPlugin.getTimeRange(labelImageFilename, labelImagePath)[1]
-    ):
-        labelImageAtTPlus1 = imageProviderPlugin.getLabelImageForFrame(
-            labelImageFilename, labelImagePath, frameT + 1
-        )
+    if frameT + 1 < imageProviderPlugin.getTimeRange(labelImageFilename, labelImagePath)[1]:
+        labelImageAtTPlus1 = imageProviderPlugin.getLabelImageForFrame(labelImageFilename, labelImagePath, frameT + 1)
 
     # compute features
     fm = hytra.core.divisionfeatures.FeatureManager(ndim=numDimensions)
@@ -217,7 +205,7 @@ def computeDivisionFeaturesOnCloud(
 
 class DummyExecutor(object):
     """
-    Class that mimics the API of concurrent.futures.ProcessPoolExecutor and 
+    Class that mimics the API of concurrent.futures.ProcessPoolExecutor and
     concurrent.futures.ThreadPoolExecutor, so that the methods can be called locally
     without threading or processing as well.
     """
@@ -226,11 +214,11 @@ class DummyExecutor(object):
         pass
 
     def __enter__(self):
-        """ implementing enter and exit methods allows to use the `with` statement """
+        """implementing enter and exit methods allows to use the `with` statement"""
         return self
 
     def __exit__(self, *args):
-        """ Returning false means exceptions are propagated as always """
+        """Returning false means exceptions are propagated as always"""
         return False
 
     def submit(self, func, *args, **kwargs):
@@ -247,7 +235,7 @@ class DummyExecutor(object):
 
 class ProbabilityGenerator(object):
     """
-    The ProbabilityGenerator contains a dictionary of all traxels. The traxels themself contain the 
+    The ProbabilityGenerator contains a dictionary of all traxels. The traxels themself contain the
     probability estimates for detection and division. Any derived class will need to populate this
     dictionary.
     """
@@ -259,7 +247,7 @@ class ProbabilityGenerator(object):
 class IlpProbabilityGenerator(ProbabilityGenerator):
     """
     The IlpProbabilityGenerator is a python wrapper around pgmlink's C++ traxelstore,
-    but with the functionality to compute all region features 
+    but with the functionality to compute all region features
     and evaluate the division/count/transition classifiers.
     """
 
@@ -309,28 +297,19 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
         """ this public variable contains all traxels if we're not using pgmlink """
 
     def _loadClassifiers(self):
-        if (
-            self._options.objectCountClassifierPath != None
-            and self._options.objectCountClassifierFilename != None
-        ):
+        if self._options.objectCountClassifierPath != None and self._options.objectCountClassifierFilename != None:
             self._countClassifier = RandomForestClassifier(
                 self._options.objectCountClassifierPath,
                 self._options.objectCountClassifierFilename,
                 self._options,
             )
-        if (
-            self._options.divisionClassifierPath != None
-            and self._options.divisionClassifierFilename != None
-        ):
+        if self._options.divisionClassifierPath != None and self._options.divisionClassifierFilename != None:
             self._divisionClassifier = RandomForestClassifier(
                 self._options.divisionClassifierPath,
                 self._options.divisionClassifierFilename,
                 self._options,
             )
-        if (
-            self._options.transitionClassifierPath != None
-            and self._options.transitionClassifierFilename != None
-        ):
+        if self._options.transitionClassifierPath != None and self._options.transitionClassifierFilename != None:
             self._transitionClassifier = RandomForestClassifier(
                 self._options.transitionClassifierPath,
                 self._options.transitionClassifierFilename,
@@ -385,9 +364,7 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
 
         return frameFeatures
 
-    def computeDivisionFeatures(
-        self, featuresAtT, featuresAtTPlus1, labelImageAtTPlus1
-    ):
+    def computeDivisionFeatures(self, featuresAtT, featuresAtTPlus1, labelImageAtTPlus1):
         """
         Computes the division features for all objects in the images
         """
@@ -453,7 +430,7 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
     def _extractFeaturesForFrame(self, timeframe):
         """
         extract the features of one frame, return a dictionary of features,
-        where each feature vector contains N entries per object 
+        where each feature vector contains N entries per object
         (where N is the dimensionality of the feature)
         """
         rawImage = self.getRawImageForFrame(timeframe)
@@ -478,9 +455,9 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
 
     def _extractAllFeatures(self, dispyNodeIps=[], turnOffFeatures=[]):
         """
-        Extract the features of all frames. 
+        Extract the features of all frames.
 
-        If a list of IP addresses is given e.g. as `dispyNodeIps = ["104.197.178.206","104.196.46.138"]`, 
+        If a list of IP addresses is given e.g. as `dispyNodeIps = ["104.197.178.206","104.196.46.138"]`,
         then the computation will be distributed across these nodes. Otherwise, multiprocessing will
         be used if `self._useMultiprocessing=True`, which it is by default.
 
@@ -509,9 +486,7 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
                 )
             else:
                 ExecutorType = DummyExecutor
-                logging.getLogger("Traxelstore").info(
-                    "Running feature extraction on single core!"
-                )
+                logging.getLogger("Traxelstore").info("Running feature extraction on single core!")
 
             featuresPerFrame = {}
             progressBar = ProgressBar(stop=numSteps)
@@ -569,9 +544,7 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
 
             import logging
 
-            logging.getLogger("Traxelstore").warning(
-                "Parallelization with dispy is WORK IN PROGRESS!"
-            )
+            logging.getLogger("Traxelstore").warning("Parallelization with dispy is WORK IN PROGRESS!")
             import random
             import dispy
 
@@ -605,9 +578,7 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
                 print(job.stderr)
                 print(job.id)
 
-            logging.getLogger("Traxelstore").warning(
-                "Using dispy we cannot compute division features yet!"
-            )
+            logging.getLogger("Traxelstore").warning("Using dispy we cannot compute division features yet!")
             # # 2nd pass for division features
             # if self._divisionClassifier is not None:
             #     for frame in range(self.timeRange[0], self.timeRange[1]):
@@ -620,16 +591,14 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
         return featuresPerFrame
 
     def _setTraxelFeatureArray(self, traxel, featureArray, name):
-        """ store the specified `featureArray` in a `traxel`'s feature dictionary under the specified key=`name` """
+        """store the specified `featureArray` in a `traxel`'s feature dictionary under the specified key=`name`"""
         if isinstance(featureArray, np.ndarray):
             featureArray = featureArray.flatten()
         traxel.add_feature_array(name, len(featureArray))
         for i, v in enumerate(featureArray):
             traxel.set_feature_value(name, i, float(v))
 
-    def fillTraxels(
-        self, usePgmlink=True, ts=None, fs=None, dispyNodeIps=[], turnOffFeatures=[]
-    ):
+    def fillTraxels(self, usePgmlink=True, ts=None, fs=None, dispyNodeIps=[], turnOffFeatures=[]):
         """
         Compute all the features and predict object count as well as division probabilities.
         Store the resulting information (and all other features) in the given pgmlink::TraxelStore,
@@ -651,9 +620,7 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
                 assert fs is not None
 
         logger.info("Extracting features...")
-        self._featuresPerFrame = self._extractAllFeatures(
-            dispyNodeIps=dispyNodeIps, turnOffFeatures=turnOffFeatures
-        )
+        self._featuresPerFrame = self._extractAllFeatures(dispyNodeIps=dispyNodeIps, turnOffFeatures=turnOffFeatures)
 
         logger.info("Creating traxels...")
         progressBar = ProgressBar(stop=len(self._featuresPerFrame))
@@ -677,10 +644,7 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
                 pixelSize = features["Count"][objectId]
                 if pixelSize == 0 or (
                     self._options.sizeFilter is not None
-                    and (
-                        pixelSize < self._options.sizeFilter[0]
-                        or pixelSize > self._options.sizeFilter[1]
-                    )
+                    and (pixelSize < self._options.sizeFilter[0] or pixelSize > self._options.sizeFilter[1])
                 ):
                     continue
 
@@ -714,15 +678,9 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
                         try:
                             self._setTraxelFeatureArray(traxel, featureValues, key)
                             if key == "RegionCenter":
-                                self._setTraxelFeatureArray(
-                                    traxel, featureValues, "com"
-                                )
+                                self._setTraxelFeatureArray(traxel, featureValues, "com")
                         except:
-                            logger.error(
-                                "Could not add feature array {} for {}".format(
-                                    featureValues, key
-                                )
-                            )
+                            logger.error("Could not add feature array {} for {}".format(featureValues, key))
                             raise AssertionError()
 
                 # add random forest predictions
@@ -733,10 +691,7 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
                         self.detectionProbabilityFeatureName,
                     )
 
-                if (
-                    self._divisionClassifier is not None
-                    and frame + 1 < self.timeRange[1]
-                ):
+                if self._divisionClassifier is not None and frame + 1 < self.timeRange[1]:
                     self._setTraxelFeatureArray(
                         traxel,
                         divisionProbabilities[objectId, :],
@@ -771,9 +726,7 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
                 traxelFeatureDict[k] = v[objectId, ...]
         return traxelFeatureDict
 
-    def getTransitionFeatureVector(
-        self, featureDictObjectA, featureDictObjectB, selectedFeatures
-    ):
+    def getTransitionFeatureVector(self, featureDictObjectA, featureDictObjectB, selectedFeatures):
         """
         Return component wise difference and product of the selected features as input for the TransitionClassifier
         """

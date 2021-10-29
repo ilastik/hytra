@@ -44,9 +44,7 @@ class RandomForestClassifier:
             if self._classifierPath == "/":
                 fullPath = "/" + self._options.classifierForestsGroupName
             else:
-                fullPath = "/".join(
-                    [self._classifierPath, self._options.classifierForestsGroupName]
-                )
+                fullPath = "/".join([self._classifierPath, self._options.classifierForestsGroupName])
             randomForests = []
             logger.info(
                 " Attempting to read {} classifier(s) in {} from {}".format(
@@ -58,12 +56,8 @@ class RandomForestClassifier:
 
             for k in h5file[fullPath].keys():
                 if "Forest" in k:
-                    logger.info(
-                        " Reading forest: {}".format(str("/".join([fullPath, k])))
-                    )
-                    rf = vigra.learning.RandomForest(
-                        str(self._ilpFilename), str("/".join([fullPath, k]))
-                    )
+                    logger.info(" Reading forest: {}".format(str("/".join([fullPath, k]))))
+                    rf = vigra.learning.RandomForest(str(self._ilpFilename), str("/".join([fullPath, k])))
                     randomForests.append(rf)
             return randomForests
 
@@ -75,9 +69,7 @@ class RandomForestClassifier:
             if self._classifierPath == "/":
                 fullPath = "/" + self._options.selectedFeaturesGroupName
             else:
-                fullPath = "/".join(
-                    [self._classifierPath, self._options.selectedFeaturesGroupName]
-                )
+                fullPath = "/".join([self._classifierPath, self._options.selectedFeaturesGroupName])
             featureNameList = []
 
             for feature_group_name in h5file[fullPath].keys():
@@ -103,9 +95,7 @@ class RandomForestClassifier:
         featureVectors = None
         for f in self.selectedFeatures:
             if f not in featureDict:
-                raise AssertionError(
-                    "Feature '{}' not present in object features!".format(f)
-                )
+                raise AssertionError("Feature '{}' not present in object features!".format(f))
             vec = featureDict[f]
             if len(vec.shape) == 1:
                 if singleObject:
@@ -119,9 +109,7 @@ class RandomForestClassifier:
                     for row in range(vec.shape[2]):
                         featureVectors = np.hstack([featureVectors, vec[..., row]])
                 elif len(vec.shape) > 3:
-                    raise ValueError(
-                        "Cannot deal with features of more than two dimensions yet"
-                    )
+                    raise ValueError("Cannot deal with features of more than two dimensions yet")
                 else:
                     featureVectors = np.hstack([featureVectors, vec])
 
@@ -151,9 +139,7 @@ class RandomForestClassifier:
             raise AssertionError()
 
         # predict by summing the probabilities of all the given random forests (not in parallel - not optimized for speed)
-        probabilities = np.zeros(
-            (features.shape[0], self._randomForests[0].labelCount())
-        )
+        probabilities = np.zeros((features.shape[0], self._randomForests[0].labelCount()))
         for rf in self._randomForests:
             probabilities += rf.predictProbabilities(features.astype("float32"))
 
@@ -169,11 +155,7 @@ class RandomForestClassifier:
                 len(labels) - np.count_nonzero(np.asarray(labels)),
             )
         )
-        logger.info(
-            "Training classifier from a feature vector of length {}".format(
-                featureMatrix.shape
-            )
-        )
+        logger.info("Training classifier from a feature vector of length {}".format(featureMatrix.shape))
 
         self._randomForests = [vigra.learning.RandomForest()]
         oob = self._randomForests[0].learnRF(
@@ -197,13 +179,9 @@ class RandomForestClassifier:
             classifierPath = self._classifierPath
 
         if classifierPath == "/":
-            fullPath = "/" + os.path.join(
-                self._options.classifierForestsGroupName, "Forest0000"
-            )
+            fullPath = "/" + os.path.join(self._options.classifierForestsGroupName, "Forest0000")
         else:
-            fullPath = os.path.join(
-                classifierPath, self._options.classifierForestsGroupName, "Forest0000"
-            )
+            fullPath = os.path.join(classifierPath, self._options.classifierForestsGroupName, "Forest0000")
         self._randomForests[0].writeHDF5(outputFilename, pathInFile=fullPath)
 
         if classifierPath == "/":

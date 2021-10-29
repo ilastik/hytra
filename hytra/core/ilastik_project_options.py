@@ -27,9 +27,7 @@ class IlastikProjectOptions:
         self.sizeFilter = None  # set to tuple with min,max pixel count
 
 
-def extractWeightDictFromIlastikProject(
-    ilpFilename, basePath="/ConservationTracking/Parameters/0000"
-):
+def extractWeightDictFromIlastikProject(ilpFilename, basePath="/ConservationTracking/Parameters/0000"):
     """
     Open an ilastik tracking project and extract the conservation tracking parameters
     that weigh the contribution of the different energies/classifiers.

@@ -19,13 +19,13 @@ logger = logging.getLogger(__name__)
 
 
 def readFromJSON(filename):
-    """ Read a dictionary from JSON """
+    """Read a dictionary from JSON"""
     with open(filename, "r") as f:
         return json.load(f)
 
 
 def writeToFormattedJSON(filename, dictionary):
-    """ Write a dictionary to JSON, but use proper readable formatting  """
+    """Write a dictionary to JSON, but use proper readable formatting"""
     with open(filename, "w") as f:
         json.dump(dictionary, f, indent=4, separators=(",", ": "))
 
@@ -70,9 +70,7 @@ def getMergersDetectionsLinksDivisions(result, uuidToTraxelMap):
     ]
     if "divisionResults" in result and result["divisionResults"] is not None:
         divisions = [
-            uuidToTraxelMap[int(entry["id"])][-1]
-            for entry in result["divisionResults"]
-            if entry["value"] == True
+            uuidToTraxelMap[int(entry["id"])][-1] for entry in result["divisionResults"] if entry["value"] == True
         ]
     else:
         divisions = None
@@ -94,7 +92,7 @@ def getMergersDetectionsLinksDivisions(result, uuidToTraxelMap):
 
 
 def getMergersPerTimestep(mergers, timesteps):
-    """ returns mergersPerTimestep = { "<timestep>": {<idx>: <count>, <idx>: <count>, ...}, "<timestep>": {...}, ... } """
+    """returns mergersPerTimestep = { "<timestep>": {<idx>: <count>, <idx>: <count>, ...}, "<timestep>": {...}, ... }"""
 
     """
     TODO: We're storing all the mergers in a dict in order to increase speed at the expense of efficiency. 
@@ -121,7 +119,7 @@ def getMergersPerTimestep(mergers, timesteps):
 
 
 def getDetectionsPerTimestep(detections, timesteps):
-    """ returns detectionsPerTimestep = { "<timestep>": [<idx>, <idx>, ...], "<timestep>": [...], ...} """
+    """returns detectionsPerTimestep = { "<timestep>": [<idx>, <idx>, ...], "<timestep>": [...], ...}"""
 
     """
     TODO: We're storing all the detections in a dict in order to increase speed at the expense of efficiency. 
@@ -147,7 +145,7 @@ def getDetectionsPerTimestep(detections, timesteps):
 
 
 def getLinksPerTimestep(links, timesteps):
-    """ returns linksPerTimestep = { "<timestep>": [(<idxA> (at previous timestep), <idxB> (at timestep)), (<idxA>, <idxB>), ...], ...} """
+    """returns linksPerTimestep = { "<timestep>": [(<idxA> (at previous timestep), <idxB> (at timestep)), (<idxA>, <idxB>), ...], ...}"""
 
     """
     TODO: We're storing all the links in a dict in order to increase speed at the expense of efficiency. 
@@ -173,7 +171,7 @@ def getLinksPerTimestep(links, timesteps):
 
 
 def getMergerLinks(linksPerTimestep, mergersPerTimestep, timesteps):
-    """ returns merger links as triplets [("timestep", (sourceIdAtTMinus1, destIdAtT)), (), ...]"""
+    """returns merger links as triplets [("timestep", (sourceIdAtTMinus1, destIdAtT)), (), ...]"""
     # filter links: at least one of the two incident nodes must be a merger
     # for it to be added to the merger resolving graph
     mergerLinks = [
@@ -186,7 +184,7 @@ def getMergerLinks(linksPerTimestep, mergersPerTimestep, timesteps):
 
 
 def getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps):
-    """ returns divisionsPerTimestep = { "<timestep>": {<parentIdx>: [<childIdx>, <childIdx>], ...}, "<timestep>": {...}, ... } """
+    """returns divisionsPerTimestep = { "<timestep>": {<parentIdx>: [<childIdx>, <childIdx>], ...}, "<timestep>": {...}, ... }"""
     if divisions is not None:
         # find children of divisions by looking for the active links
         divisionsPerTimestep = {}
@@ -196,9 +194,7 @@ def getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps):
                 if div_timestep == int(t) - 1:
                     # we have an active division of the mother cell "div_idx" in the previous frame
                     children = [b for a, b in linksPerTimestep[t] if a == div_idx]
-                    assert (
-                        len(children) == 2
-                    ), "Expected two children of {}, but found {}".format(
+                    assert len(children) == 2, "Expected two children of {}, but found {}".format(
                         (div_timestep, div_idx), children
                     )
                     divisionsPerTimestep[t][div_idx] = children
@@ -209,24 +205,24 @@ def getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps):
 
 
 def negLog(features):
-    """ compute the (clamped) negative log of every entry in the list/array """
+    """compute the (clamped) negative log of every entry in the list/array"""
     fa = np.array(features)
     fa[fa < 0.0000000001] = 0.0000000001
     return list(np.log(fa) * -1.0)
 
 
 def listify(l):
-    """ put every element of the list in it's own list, and thus extends the depth of nested lists by one """
+    """put every element of the list in it's own list, and thus extends the depth of nested lists by one"""
     return [[e] for e in l]
 
 
 def delistify(l):
-    """ take every element out of it's own list """
+    """take every element out of it's own list"""
     return [e[0] for e in l]
 
 
 def checkForConvexity(feats):
-    """ check whether the given array of numbers is convex, meaning that the difference between consecutive numbers never decreases """
+    """check whether the given array of numbers is convex, meaning that the difference between consecutive numbers never decreases"""
     grad = feats[1:] - feats[0:-1]
     for i in range(len(grad) - 1):
         assert grad[i + 1] > grad[i]
@@ -235,9 +231,7 @@ def checkForConvexity(feats):
 def convexify(listOfNumbers, eps):
     features = np.array(listOfNumbers)
     if features.shape[1] != 1:
-        raise ValueError(
-            "This script can only convexify feature vectors with one feature per state!"
-        )
+        raise ValueError("This script can only convexify feature vectors with one feature per state!")
 
     # Note from Numpy Docs: In case of multiple occurrences of the minimum values, the indices corresponding to the first occurrence are returned.
     bestState = np.argmin(features)
@@ -333,9 +327,7 @@ class JsonTrackingGraph(object):
 
         # further initializations
         if model is not None or model_filename is not None:
-            self.traxelIdPerTimestepToUniqueIdMap, self.uuidToTraxelMap = getMappingsBetweenUUIDsAndTraxels(
-                self.model
-            )
+            self.traxelIdPerTimestepToUniqueIdMap, self.uuidToTraxelMap = getMappingsBetweenUUIDsAndTraxels(self.model)
 
         self._nextUuid = 0
 
@@ -348,10 +340,10 @@ class JsonTrackingGraph(object):
         divisionFeatures=None,
         appearanceFeatures=None,
         disappearanceFeatures=None,
-        **kwargs
+        **kwargs,
     ):
         """
-        Create a detection based on a `listOfTraxels` (because we can have tracklets). 
+        Create a detection based on a `listOfTraxels` (because we can have tracklets).
         Generates a new unique ID that represents this detection in the graph as one node and sets up the respective mappings
         in `JsonTrackingGraph.traxelIdPerTimestepToUniqueIdMap` and `JsonTrackingGraph.uuidToTraxelMap`.
 
@@ -362,9 +354,7 @@ class JsonTrackingGraph(object):
         # store mapping of all contained traxels to this detection uuid
         self.uuidToTraxelMap[self._nextUuid] = []
         for t in listOfTraxels:
-            self.traxelIdPerTimestepToUniqueIdMap.setdefault(str(t.Timestep), {})[
-                str(t.Id)
-            ] = self._nextUuid
+            self.traxelIdPerTimestepToUniqueIdMap.setdefault(str(t.Timestep), {})[str(t.Id)] = self._nextUuid
             self.uuidToTraxelMap[self._nextUuid].append((int(t.Timestep), int(t.Id)))
 
         return self.addDetectionHypotheses(
@@ -372,18 +362,15 @@ class JsonTrackingGraph(object):
             divisionFeatures=divisionFeatures,
             appearanceFeatures=appearanceFeatures,
             disappearanceFeatures=disappearanceFeatures,
-            **kwargs
+            **kwargs,
         )
 
     def hasDivisions(self):
         """
         check all division and segmentation hypotheses whether there is any possible division present,
-        because only then we need the division weight to be passed in. 
+        because only then we need the division weight to be passed in.
         """
-        if (
-            "divisionHypotheses" in self.model
-            and len(self.model["divisionHypotheses"]) > 0
-        ):
+        if "divisionHypotheses" in self.model and len(self.model["divisionHypotheses"]) > 0:
             return True
 
         for s in self.model["segmentationHypotheses"]:
@@ -404,7 +391,7 @@ class JsonTrackingGraph(object):
 
     def weightsDictToList(self, weightsDict):
         """
-        **return** a 5-element list for [transWeight, detWeight, divWeight, appearance_cost, disappearance_cost], given a dict of weights. 
+        **return** a 5-element list for [transWeight, detWeight, divWeight, appearance_cost, disappearance_cost], given a dict of weights.
         """
         assert "weights" in weightsDict
         w = copy.deepcopy(weightsDict["weights"])
@@ -455,9 +442,7 @@ class JsonTrackingGraph(object):
         Needed to run the flow solver afterwards
         """
         if not self.model["settings"]["statesShareWeights"]:
-            raise ValueError(
-                "This script can only convexify feature vectors with shared weights!"
-            )
+            raise ValueError("This script can only convexify feature vectors with shared weights!")
 
         if "segmentationHypotheses" in self.model:
             segmentationHypotheses = self.model["segmentationHypotheses"]
@@ -475,11 +460,7 @@ class JsonTrackingGraph(object):
             divisionHypotheses = []
 
         self.progressVisitor.showState("Convexify costs")
-        numElements = (
-            len(segmentationHypotheses)
-            + len(linkingHypotheses)
-            + len(divisionHypotheses)
-        )
+        numElements = len(segmentationHypotheses) + len(linkingHypotheses) + len(divisionHypotheses)
         countElements = 0
         for seg in segmentationHypotheses:
             countElements += 1
@@ -489,11 +470,7 @@ class JsonTrackingGraph(object):
                     try:
                         seg[f] = convexify(seg[f], epsilon)
                     except:
-                        logger.warning(
-                            "Convexification failed for feature {} of :{}".format(
-                                f, seg
-                            )
-                        )
+                        logger.warning("Convexification failed for feature {} of :{}".format(f, seg))
                         exit(0)
             # division features are always convex (2 values defines just a line)
 
@@ -509,10 +486,10 @@ class JsonTrackingGraph(object):
 
     def toHypothesesGraph(self):
         """
-        From a json graph representation (and possibly a json result), 
+        From a json graph representation (and possibly a json result),
         set up a hypotheses graph with the respective links.
 
-        WARNING: only builds the structure of the graph at the moment, 
+        WARNING: only builds the structure of the graph at the moment,
                  features/probabilities are not inserted!
         WARNING: builds the trackletgraph, not the full graph!
         """
@@ -538,9 +515,7 @@ class JsonTrackingGraph(object):
                 destTracklet = self.uuidToTraxelMap[l["dest"]]
             except:
                 logger.warning(
-                    "Failed finding {} from JSON['linkingHypotheses'] in uuidToTraxelMap".format(
-                        (l["dest"], l["src"])
-                    )
+                    "Failed finding {} from JSON['linkingHypotheses'] in uuidToTraxelMap".format((l["dest"], l["src"]))
                 )
             hypothesesGraph._graph.add_edge(
                 (srcTracklet[0][0], srcTracklet[0][1]),

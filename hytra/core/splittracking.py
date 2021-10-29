@@ -17,24 +17,20 @@ logger = logging.getLogger("split-track-stitch")
 class SplitTracking:
     """
     Run DPCT flow-based tracking solveron sub-sections of video in order to parallelize tracking and speed up processing.
-    NOTE: This solver doesn't gurantee a global minimum! 
+    NOTE: This solver doesn't gurantee a global minimum!
     """
 
     def __init__(self):
         pass
 
     @staticmethod
-    def trackFlowBasedWithSplits(
-        model, weights, numFramesPerSplit, numThreads=None, withMergerResolver=None
-    ):
+    def trackFlowBasedWithSplits(model, weights, numFramesPerSplit, numThreads=None, withMergerResolver=None):
         """
         Splits video and runs tracking separately for each sub-section, followed by stitching together the results.
         """
         logging.basicConfig(level=logging.INFO)
 
-        _, uuidToTraxelMap = hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(
-            model
-        )
+        _, uuidToTraxelMap = hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(model)
 
         detectionTimestepTuples = [
             (timestepIdTuple, entry)
@@ -77,34 +73,23 @@ class SplitTracking:
 
         # create a list of the sum of 2 neighboring elements (has len = len(nonSingletonCostsPerFrame) - 1)
         nonSingletonCostsPerFrameGap = [
-            i + j
-            for i, j in zip(
-                nonSingletonCostsPerFrame[:-1], nonSingletonCostsPerFrame[1:]
-            )
+            i + j for i, j in zip(nonSingletonCostsPerFrame[:-1], nonSingletonCostsPerFrame[1:])
         ]
 
         # Check that number of frames per split is more than 2
-        assert (
-            numFramesPerSplit > 2
-        ), "The number of splits is too large; submodel has less than 2 frames"
+        assert numFramesPerSplit > 2, "The number of splits is too large; submodel has less than 2 frames"
 
         # find points where TWO consecutive frames have a low merger score together!
         # find split points in a range of 10 frames before/after the desired split location
         # TODO: also consider divisions!
         splitPoints = []
-        border = (
-            10
-        )  # TODO: Adjust border according to size of video and number of prames per split
+        border = 10  # TODO: Adjust border according to size of video and number of prames per split
         if numFramesPerSplit < border * 2:
             border = 1
 
         for s in range(1, numSplits):
             desiredSplitPoint = s * numFramesPerSplit
-            subrange = np.array(
-                nonSingletonCostsPerFrameGap[
-                    desiredSplitPoint - border : desiredSplitPoint + border
-                ]
-            )
+            subrange = np.array(nonSingletonCostsPerFrameGap[desiredSplitPoint - border : desiredSplitPoint + border])
             splitPoints.append(desiredSplitPoint - border + np.argmax(subrange))
 
         logger.info("Going to split hypotheses graph at frames {}".format(splitPoints))
@@ -122,16 +107,14 @@ class SplitTracking:
                     for d in detectionsPerTimestep[f]:
                         newD = copy.deepcopy(d)
                         newD["appearanceFeatures"] = [
-                            [0.0000001 * sum(range(i + 1))]
-                            for i in range(len(d["features"]))
+                            [0.0000001 * sum(range(i + 1))] for i in range(len(d["features"]))
                         ]
                         segmentationHypotheses.append(newD)
                 elif f + 1 == endTime:
                     for d in detectionsPerTimestep[f]:
                         newD = copy.deepcopy(d)
                         newD["disappearanceFeatures"] = [
-                            [0.0000001 * sum(range(i + 1))]
-                            for i in range(len(d["features"]))
+                            [0.0000001 * sum(range(i + 1))] for i in range(len(d["features"]))
                         ]
                         segmentationHypotheses.append(newD)
                 else:
@@ -139,11 +122,7 @@ class SplitTracking:
 
             submodel["segmentationHypotheses"] = segmentationHypotheses
             uuidsInSubmodel = set(
-                [
-                    d["id"]
-                    for f in range(startTime, endTime)
-                    for d in detectionsPerTimestep[f]
-                ]
+                [d["id"] for f in range(startTime, endTime) for d in detectionsPerTimestep[f]]
             )  # TODO: This line can be optimized
             submodel["linkingHypotheses"] = [
                 l
@@ -158,11 +137,7 @@ class SplitTracking:
         lastSplit = 0
         splitPoints.append(lastFrame)  # so that we get the last split as well
         for splitPoint in splitPoints:
-            logger.info(
-                "Creating submodel from t={} to t={}...".format(
-                    lastSplit, splitPoint + 1
-                )
-            )
+            logger.info("Creating submodel from t={} to t={}...".format(lastSplit, splitPoint + 1))
             submodels.append(getSubmodel(lastSplit, splitPoint + 1))
             logger.info(
                 "\t contains {} nodes and {} edges".format(
@@ -262,23 +237,16 @@ class SplitTracking:
 
             # for every connected component, insert a node into the stitching graph
             connectedComponents = nx.connected_components(g)
-            logger.info(
-                "Contracting tracks of submodel {}/{}".format(modelIdx, len(submodels))
-            )
+            logger.info("Contracting tracks of submodel {}/{}".format(modelIdx, len(submodels)))
 
             for c in connectedComponents:
                 # sum over features of dets + links
                 linkFeatures = [
-                    link["features"]
-                    for idTuple, link in linksByIdTuple.items()
-                    if idTuple[0] in c and idTuple[1] in c
+                    link["features"] for idTuple, link in linksByIdTuple.items() if idTuple[0] in c and idTuple[1] in c
                 ]
                 detFeatures = [detectionsById[i]["features"] for i in c]
                 accumulatedFeatures = np.sum(
-                    [
-                        hytra.core.jsongraph.delistify(f)
-                        for f in linkFeatures + detFeatures
-                    ],
+                    [hytra.core.jsongraph.delistify(f) for f in linkFeatures + detFeatures],
                     axis=0,
                 )
 
@@ -307,18 +275,12 @@ class SplitTracking:
                 # Add appearance/disappearance features of endpoints
                 # TODO: Check if this is correct for the case of mergers
                 if "appearanceFeatures" in detectionsById[minTrackletId]:  # min(c)]:
-                    contractedNode["appearanceFeatures"] = detectionsById[
-                        minTrackletId
-                    ]["appearanceFeatures"]
+                    contractedNode["appearanceFeatures"] = detectionsById[minTrackletId]["appearanceFeatures"]
                 if "disappearanceFeatures" in detectionsById[maxTrackletId]:  # max(c)
-                    contractedNode["disappearanceFeatures"] = detectionsById[
-                        maxTrackletId
-                    ]["disappearanceFeatures"]
+                    contractedNode["disappearanceFeatures"] = detectionsById[maxTrackletId]["disappearanceFeatures"]
 
                 if "divisionFeatures" in detectionsById[max(c)]:
-                    contractedNode["divisionFeatures"] = detectionsById[max(c)][
-                        "divisionFeatures"
-                    ]
+                    contractedNode["divisionFeatures"] = detectionsById[max(c)]["divisionFeatures"]
                 tracklets.append(contractedNode)
 
                 for n in c:
@@ -328,9 +290,7 @@ class SplitTracking:
             for l in result["linkingResults"]:
                 s, d = l["src"], l["dest"]
                 if l["value"] > 0 and (
-                    valuePerDetection[s] != l["value"]
-                    or valuePerDetection[d] != l["value"]
-                    or divisionsPerDetection[s]
+                    valuePerDetection[s] != l["value"] or valuePerDetection[d] != l["value"] or divisionsPerDetection[s]
                 ):
                     newL = {
                         "src": nodeIdRemapping[s],
@@ -343,9 +303,7 @@ class SplitTracking:
         logger.info("\tgot {} links from within the submodels".format(len(links)))
 
         # insert all edges crossing the splits that connect active detections
-        detectionIdsPerTimestep = dict(
-            [(k, [d["id"] for d in v]) for k, v in detectionsPerTimestep.items()]
-        )
+        detectionIdsPerTimestep = dict([(k, [d["id"] for d in v]) for k, v in detectionsPerTimestep.items()])
         for splitPoint in splitPoints[:-1]:
             for idTuple, link in linksByIdTuple.items():
                 s, d = idTuple
@@ -361,9 +319,7 @@ class SplitTracking:
                     links.append(newL)
 
         # Running solver for compressed tracklet model
-        logger.info(
-            "\t contains {} nodes and {} edges".format(len(tracklets), len(links))
-        )
+        logger.info("\t contains {} nodes and {} edges".format(len(tracklets), len(links)))
         if withMergerResolver:
             stitchingResult = dpct.trackMaxFlow(stitchingModel, weights)
         else:
@@ -382,14 +338,10 @@ class SplitTracking:
             t = trackletsById[dr["id"]]
             if v > 0:
                 for originalUuid in t["contains"]:
-                    fullResult["detectionResults"].append(
-                        {"id": originalUuid, "value": v}
-                    )
+                    fullResult["detectionResults"].append({"id": originalUuid, "value": v})
                 for s, d in linksByIdTuple.keys():
                     if s in t["contains"] and d in t["contains"]:
-                        fullResult["linkingResults"].append(
-                            {"src": s, "dest": d, "value": v}
-                        )
+                        fullResult["linkingResults"].append({"src": s, "dest": d, "value": v})
             else:
                 logger.warning("Skipped detection {} while stitching!".format(t))
 
@@ -399,31 +351,18 @@ class SplitTracking:
             dt = trackletsById[lr["dest"]]
 
             if v > 0:
-                fullResult["linkingResults"].append(
-                    {"src": st["maxUid"], "dest": dt["minUid"], "value": v}
-                )
+                fullResult["linkingResults"].append({"src": st["maxUid"], "dest": dt["minUid"], "value": v})
 
         # Adding missing links with value set to 0 to the final result
-        nodeFlowMap = dict(
-            [(int(d["id"]), int(d["value"])) for d in fullResult["detectionResults"]]
-        )
-        arcFlowMap = dict(
-            [
-                ((int(l["src"]), int(l["dest"])), int(l["value"]))
-                for l in fullResult["linkingResults"]
-            ]
-        )
+        nodeFlowMap = dict([(int(d["id"]), int(d["value"])) for d in fullResult["detectionResults"]])
+        arcFlowMap = dict([((int(l["src"]), int(l["dest"])), int(l["value"])) for l in fullResult["linkingResults"]])
 
         for detection in model["segmentationHypotheses"]:
             if int(detection["id"]) not in nodeFlowMap:
-                fullResult["detectionResults"].append(
-                    {"id": detection["id"], "value": 0}
-                )
+                fullResult["detectionResults"].append({"id": detection["id"], "value": 0})
 
         for link in model["linkingHypotheses"]:
             if (int(link["src"]), int(link["dest"])) not in arcFlowMap:
-                fullResult["linkingResults"].append(
-                    {"src": link["src"], "dest": link["dest"], "value": 0}
-                )
+                fullResult["linkingResults"].append({"src": link["src"], "dest": link["dest"], "value": 0})
 
         return fullResult

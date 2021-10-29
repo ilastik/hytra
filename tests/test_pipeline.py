@@ -42,9 +42,7 @@ def test_mergerResolvingTestDataset():
     )
 
     for f in range(4):
-        frame = vigra.impex.readImage(
-            str(test_file_path / "mergerResolvingTestDataset" / "ctc_RES" / f"mask00{f}.tif")
-        )
+        frame = vigra.impex.readImage(str(test_file_path / "mergerResolvingTestDataset" / "ctc_RES" / f"mask00{f}.tif"))
         assert np.all(np.unique(frame) == [0, 1, 2])
 
     resultFile = test_file_path / "mergerResolvingTestDataset" / "ctc_RES" / "res_track.txt"
@@ -107,9 +105,7 @@ def test_mergerResolvingTestDataset_withoutTracklets():
     )
 
     for f in range(4):
-        frame = vigra.impex.readImage(
-            str(test_file_path / "mergerResolvingTestDataset" / "ctc_RES" / f"mask00{f}.tif")
-        )
+        frame = vigra.impex.readImage(str(test_file_path / "mergerResolvingTestDataset" / "ctc_RES" / f"mask00{f}.tif"))
         assert np.all(np.unique(frame) == [0, 1, 2])
 
     resultFile = test_file_path / "mergerResolvingTestDataset" / "ctc_RES" / "res_track.txt"
@@ -140,9 +136,7 @@ def test_divisionTestDataset():
 
     expectedIds = [[0, 1], [0, 1], [0, 2, 3], [0, 2, 3]]
     for f in range(4):
-        frame = vigra.impex.readImage(
-            str(test_file_path / "divisionTestDataset" / "ctc_RES" / f"mask00{f}.tif")
-        )
+        frame = vigra.impex.readImage(str(test_file_path / "divisionTestDataset" / "ctc_RES" / f"mask00{f}.tif"))
         assert np.all(np.unique(frame) == expectedIds[f])
 
     resultFile = test_file_path / "divisionTestDataset" / "ctc_RES" / "res_track.txt"
@@ -174,9 +168,7 @@ def test_divisionTestDataset_withoutTracklets():
 
     expectedIds = [[0, 1], [0, 1], [0, 2, 3], [0, 2, 3]]
     for f in range(4):
-        frame = vigra.impex.readImage(
-            str(test_file_path / "divisionTestDataset" / "ctc_RES" / f"mask00{f}.tif")
-        )
+        frame = vigra.impex.readImage(str(test_file_path / "divisionTestDataset" / "ctc_RES" / f"mask00{f}.tif"))
         assert np.all(np.unique(frame) == expectedIds[f])
 
     resultFile = test_file_path / "divisionTestDataset" / "ctc_RES" / "res_track.txt"
@@ -206,9 +198,7 @@ def test_noscripts_mergerResolvingTestDataset():
     )
 
     for f in range(4):
-        frame = vigra.impex.readImage(
-            str(test_file_path / "mergerResolvingTestDataset" / "ctc_RES" / f"mask00{f}.tif")
-        )
+        frame = vigra.impex.readImage(str(test_file_path / "mergerResolvingTestDataset" / "ctc_RES" / f"mask00{f}.tif"))
         assert np.all(np.unique(frame) == [0, 1, 2])
 
     resultFile = test_file_path / "mergerResolvingTestDataset" / "ctc_RES" / "res_track.txt"
@@ -238,9 +228,7 @@ def test_skipLinksTestDataset_withoutTracklets():
     )
 
     for f in range(4):
-        frame = vigra.impex.readImage(
-            str(test_file_path / "skipLinksTestDataset" / "ctc_RES" / f"mask00{f}.tif")
-        )
+        frame = vigra.impex.readImage(str(test_file_path / "skipLinksTestDataset" / "ctc_RES" / f"mask00{f}.tif"))
         if f == 1:  # the second frame is empty
             assert np.all(np.unique(frame) == [0])
         elif f == 0:
@@ -284,9 +272,7 @@ def test_boxesTestDataset():
         [0, 2, 3, 4, 5],
     ]
     for f in range(4):
-        frame = vigra.impex.readImage(
-            str(test_file_path / "boxesTestDataset" / "ctc_RES" / f"mask00{f}.tif")
-        )
+        frame = vigra.impex.readImage(str(test_file_path / "boxesTestDataset" / "ctc_RES" / f"mask00{f}.tif"))
         assert np.all(np.unique(frame) == expectedIds[f])
 
     resultFile = test_file_path / "boxesTestDataset" / "ctc_RES" / "res_track.txt"
@@ -317,9 +303,7 @@ def test_divisionMergerTestDataset():
 
     expectedIds = [[0, 1, 2, 3], [0, 1, 3, 4, 5], [0, 1, 3, 4, 5]]
     for f in range(3):
-        frame = vigra.impex.readImage(
-            str(test_file_path / "divisionMergerTestDataset" / "ctc_RES" / f"mask00{f}.tif")
-        )
+        frame = vigra.impex.readImage(str(test_file_path / "divisionMergerTestDataset" / "ctc_RES" / f"mask00{f}.tif"))
         assert np.all(np.unique(frame) == expectedIds[f])
 
     resultFile = test_file_path / "divisionMergerTestDataset" / "ctc_RES" / "res_track.txt"

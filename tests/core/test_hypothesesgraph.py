@@ -193,14 +193,10 @@ def test_insertEnergies():
         return 1.0
 
     def transProbFunc(traxelA, traxelB):
-        dist = np.linalg.norm(
-            np.array(traxelA.Features["com"]) - np.array(traxelB.Features["com"])
-        )
+        dist = np.linalg.norm(np.array(traxelA.Features["com"]) - np.array(traxelB.Features["com"]))
         return [1.0 - np.exp(-dist), np.exp(-dist)]
 
-    h.insertEnergies(
-        1, detProbFunc, transProbFunc, boundaryCostFunc, divProbFunc, skipLinkBias
-    )
+    h.insertEnergies(1, detProbFunc, transProbFunc, boundaryCostFunc, divProbFunc, skipLinkBias)
 
     for n in h.nodeIterator():
         assert "features" in h._graph.nodes[n]

@@ -24,7 +24,7 @@ class DvidImageLoader(image_provider_plugin.ImageProviderPlugin):
     def getImageDataAtTimeFrame(self, Resource, PathInResource, axes, timeframe):
         """
         Loads image data from local resource file in hdf5 format.
-        PathInResource provides the internal image path 
+        PathInResource provides the internal image path
         Return numpy array of image data at timeframe.
         """
         node_service = DVIDNodeService(Resource, PathInResource)
@@ -32,15 +32,13 @@ class DvidImageLoader(image_provider_plugin.ImageProviderPlugin):
         if self.shape == None:
             self.getImageShape(Resource, PathInResource)
 
-        raw_frame = node_service.get_gray3D(
-            self._getRawImageName(timeframe), tuple(self.shape), (0, 0, 0)
-        )
+        raw_frame = node_service.get_gray3D(self._getRawImageName(timeframe), tuple(self.shape), (0, 0, 0))
         return raw_frame
 
     def getLabelImageForFrame(self, Resource, PathInResource, timeframe):
         """
         Loads label image data from local resource file in hdf5 format.
-        PathInResource provides the internal image path 
+        PathInResource provides the internal image path
         Return numpy array of image data at timeframe.
         """
 
@@ -49,9 +47,7 @@ class DvidImageLoader(image_provider_plugin.ImageProviderPlugin):
 
         node_service = DVIDNodeService(Resource, PathInResource)
         seg_frame = np.array(
-            node_service.get_labels3D(
-                self._getSegmentationName(timeframe), tuple(self.shape), (0, 0, 0)
-            )
+            node_service.get_labels3D(self._getSegmentationName(timeframe), tuple(self.shape), (0, 0, 0))
         ).astype(np.uint32)
         return seg_frame
 
@@ -59,7 +55,7 @@ class DvidImageLoader(image_provider_plugin.ImageProviderPlugin):
         """
         Derive Image Shape from label image.
         Loads label image data from local resource file in hdf5 format.
-        PathInResource provides the internal image path 
+        PathInResource provides the internal image path
         Return list with image dimensions
         """
 
@@ -72,7 +68,7 @@ class DvidImageLoader(image_provider_plugin.ImageProviderPlugin):
         """
         Count Label images to derive the total number of frames
         Loads label image data from local resource file in hdf5 format.
-        PathInResource provides the internal image path 
+        PathInResource provides the internal image path
         Return tuple of (first frame, last frame)
         """
         node_service = DVIDNodeService(Resource, PathInResource)

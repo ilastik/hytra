@@ -9,9 +9,7 @@ class TransitionFeaturesDistance(
     Computes distance based features for transitions
     """
 
-    def constructFeatureVector(
-        self, featureDictObjectA, featureDictObjectB, selectedFeatures
-    ):
+    def constructFeatureVector(self, featureDictObjectA, featureDictObjectB, selectedFeatures):
         key = "RegionCenter"
         if key in selectedFeatures:
             return [
@@ -23,7 +21,5 @@ class TransitionFeaturesDistance(
     def getFeatureNames(self, featureDictObjectA, featureDictObjectB, selectedFeatures):
         key = "RegionCenter"
         if key in selectedFeatures:
-            return [
-                "norm(A[RegionCenter]-B[RegionCenter]), norm(A[RegionCenter]*B[RegionCenter])"
-            ]
+            return ["norm(A[RegionCenter]-B[RegionCenter]), norm(A[RegionCenter]*B[RegionCenter])"]
         return []

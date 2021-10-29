@@ -66,9 +66,7 @@ if __name__ == "__main__":
         dest="timeRange",
         help="Set time range to download (inclusive!)",
     )
-    parser.add_argument(
-        "--verbose", type=bool, dest="verbose", default=False, help="verbose logs"
-    )
+    parser.add_argument("--verbose", type=bool, dest="verbose", default=False, help="verbose logs")
 
     args = parser.parse_args()
     if args.verbose:
@@ -91,11 +89,7 @@ if __name__ == "__main__":
             min(time_range[1], args.timeRange[1]),
         )
 
-    logging.info(
-        "Downloading time range {} to {} of shape {}".format(
-            time_range, server_address, shape
-        )
-    )
+    logging.info("Downloading time range {} to {} of shape {}".format(time_range, server_address, shape))
 
     raw_data = np.zeros((time_range[1] - time_range[0], shape[0], shape[1], shape[2]))
 

@@ -10,9 +10,7 @@ class TransitionFeaturesMultiplication(
     Computes the product of features in the feature vector
     """
 
-    def constructFeatureVector(
-        self, featureDictObjectA, featureDictObjectB, selectedFeatures
-    ):
+    def constructFeatureVector(self, featureDictObjectA, featureDictObjectB, selectedFeatures):
         assert "Global<Maximum >" not in selectedFeatures
         assert "Global<Minimum >" not in selectedFeatures
         assert "Histrogram" not in selectedFeatures
@@ -24,19 +22,13 @@ class TransitionFeaturesMultiplication(
             if key == "RegionCenter":
                 continue
             else:
-                if (
-                    not isinstance(featureDictObjectA[key], np.ndarray)
-                    or featureDictObjectA[key].size == 1
-                ):
-                    features.append(
-                        float(featureDictObjectA[key]) * float(featureDictObjectB[key])
-                    )
+                if not isinstance(featureDictObjectA[key], np.ndarray) or featureDictObjectA[key].size == 1:
+                    features.append(float(featureDictObjectA[key]) * float(featureDictObjectB[key]))
                 else:
                     features.extend(
                         flatten(
                             (
-                                featureDictObjectA[key].astype("float32")
-                                * featureDictObjectB[key].astype("float32")
+                                featureDictObjectA[key].astype("float32") * featureDictObjectB[key].astype("float32")
                             ).tolist()
                         )
                     )
@@ -58,23 +50,13 @@ class TransitionFeaturesMultiplication(
             if key == "RegionCenter":
                 continue
             else:
-                if (
-                    not isinstance(featureDictObjectA[key], np.ndarray)
-                    or featureDictObjectA[key].size == 1
-                ):
+                if not isinstance(featureDictObjectA[key], np.ndarray) or featureDictObjectA[key].size == 1:
                     featuresNames.append("A[{key}]*B[{key}]".format(key=key))
                 else:
                     featuresNames.extend(
                         [
                             "A[{key}][{i}]*B[{key}][{i}]".format(key=key, i=i)
-                            for i in range(
-                                len(
-                                    (
-                                        featureDictObjectA[key]
-                                        - featureDictObjectB[key]
-                                    ).tolist()
-                                )
-                            )
+                            for i in range(len((featureDictObjectA[key] - featureDictObjectB[key]).tolist()))
                         ]
                     )
 
