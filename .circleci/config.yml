@@ -36,19 +36,5 @@ jobs:
         - /home/ubuntu/miniconda
 
     - run:
-        name: build
-        command: conda build --no-test -c ilastik-forge -c conda-forge conda-recipe
-
-    - run:
-        name: create test environment
-        command: |
-          if [ ! -d ${TEST_ENV_PREFIX} ]; then
-              conda create -n ${TEST_ENV_NAME} -c local -c ilastik-forge -c conda-forge hytra nose jinja2 configargparse;
-          else
-              conda install -n ${TEST_ENV_NAME} -c local -c ilastik-forge -c conda-forge hytra nose jinja2 configargparse;
-          fi
-    - run:
-        name: test
-        command: |
-          conda activate ${TEST_ENV_NAME}  &&
-          nosetests tests;
+        name: conda-build-w-tests
+        command: conda build -c ilastik-forge -c conda-forge conda-recipe
