@@ -200,15 +200,21 @@ def test_insertEnergies():
 
     for n in h.nodeIterator():
         assert "features" in h._graph.nodes[n]
-        assert h._graph.nodes[n]["features"] == [
-            [1.6094379124341003],
-            [0.22314355131420971],
-        ]
+        np.testing.assert_array_max_ulp(
+            h._graph.nodes[n]["features"],
+            [
+                [1.6094379124341003],
+                [0.22314355131420971],
+            ],
+        )
         assert "divisionFeatures" in h._graph.nodes[n]
-        assert h._graph.nodes[n]["divisionFeatures"] == [
-            [1.6094379124341003],
-            [0.22314355131420971],
-        ]
+        np.testing.assert_array_max_ulp(
+            h._graph.nodes[n]["divisionFeatures"],
+            [
+                [1.6094379124341003],
+                [0.22314355131420971],
+            ],
+        )
         assert "appearanceFeatures" in h._graph.nodes[n]
         assert h._graph.nodes[n]["appearanceFeatures"] == [[0.0], [1.0]]
         assert "disappearanceFeatures" in h._graph.nodes[n]
@@ -219,10 +225,13 @@ def test_insertEnergies():
         srcTraxel = h._graph.nodes[h.source(a)]["traxel"]
         destTraxel = h._graph.nodes[h.target(a)]["traxel"]
         frame_gap = destTraxel.Timestep - srcTraxel.Timestep
-        assert h._graph.edges[a[0], a[1]]["features"] == [
-            [0.45867514538708193],
-            [1.0 + skipLinkBias * (frame_gap - 1)],
-        ]
+        np.testing.assert_array_max_ulp(
+            h._graph.edges[a[0], a[1]]["features"],
+            [
+                [0.45867514538708193],
+                [1.0 + skipLinkBias * (frame_gap - 1)],
+            ],
+        )
 
 
 if __name__ == "__main__":
