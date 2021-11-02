@@ -2,7 +2,7 @@ import numpy as np
 import logging
 import configargparse as argparse
 import glob
-from skimage.external import tifffile
+import tifffile
 import matplotlib.pyplot as plt
 import matplotlib
 from math import ceil

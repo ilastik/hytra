@@ -11,7 +11,7 @@ import gzip
 import pickle
 import numpy as np
 import logging
-from skimage.external import tifffile
+import tifffile
 import vigra
 try:
     import commentjson as json
@@ -280,19 +280,19 @@ def run_pipeline(options):
 
     for n in hypotheses_graph.nodeIterator():
         frameMapping = mappings.setdefault(n[0], {})
-        if 'trackId' not in hypotheses_graph._graph.node[n]:
+        if 'trackId' not in hypotheses_graph._graph.nodes[n]:
             raise ValueError("You need to compute the Lineage of every node before accessing the trackId!")
-        trackId = hypotheses_graph._graph.node[n]['trackId']
-        traxel = hypotheses_graph._graph.node[n]['traxel']
+        trackId = hypotheses_graph._graph.nodes[n]['trackId']
+        traxel = hypotheses_graph._graph.nodes[n]['traxel']
         if trackId is not None:
             frameMapping[(traxel.idInSegmentation, traxel.segmentationFilename)] = trackId
         if trackId in tracks:
             tracks[trackId].append(n[0])
         else:
             tracks[trackId] = [n[0]]
-        if 'parent' in hypotheses_graph._graph.node[n]:
+        if 'parent' in hypotheses_graph._graph.nodes[n]:
             assert(trackId not in trackParents)
-            trackParents[trackId] = hypotheses_graph._graph.node[hypotheses_graph._graph.node[n]['parent']]['trackId']
+            trackParents[trackId] = hypotheses_graph._graph.nodes[hypotheses_graph._graph.nodes[n]['parent']]['trackId']
 
     # write res_track.txt
     logger.info("Writing track text file")

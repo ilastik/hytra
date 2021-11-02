@@ -21,7 +21,7 @@ def trainDetectionClassifier(
     Finds the given number of training examples, half as positive and half as negative examples, from the
     given graph and mapping.
 
-    Positive examples are those with the highest jaccard score, while negative examples can either 
+    Positive examples are those with the highest jaccard score, while negative examples can either
     just not be the best match for a GT label, or also be not matched at all.
 
     **Returns**: a trained random forest
@@ -32,7 +32,7 @@ def trainDetectionClassifier(
     # create helper class for candidates, and store a list of these
     @attr.s
     class Candidate(object):
-        """ Helper class to combine a hytpotheses graph `node` and its `score` to find the proper samples for classifier training """
+        """Helper class to combine a hytpotheses graph `node` and its `score` to find the proper samples for classifier training"""
 
         node = attr.ib()
         score = attr.ib(validator=attr.validators.instance_of(float))
@@ -41,10 +41,7 @@ def trainDetectionClassifier(
 
     nodeTraxelMap = hypothesesGraph.getNodeTraxelMap()
     for node in hypothesesGraph.nodeIterator():
-        if (
-            "JaccardScores" in nodeTraxelMap[node].Features
-            and len(nodeTraxelMap[node].Features["JaccardScores"]) > 0
-        ):
+        if "JaccardScores" in nodeTraxelMap[node].Features and len(nodeTraxelMap[node].Features["JaccardScores"]) > 0:
             globalIdsAndScores = nodeTraxelMap[node].Features["JaccardScores"]
             globalIdsAndScores = sorted(globalIdsAndScores, key=lambda x: x[1])
             bestScore = globalIdsAndScores[-1][1]
@@ -55,13 +52,9 @@ def trainDetectionClassifier(
 
     # pick the first and last numSamples/2, and extract their features?
     # use RandomForestClassifier's method "extractFeatureVector"
-    selectedSamples = (
-        candidates[0 : numSamples // 2] + candidates[-numSamples // 2 - 1 : -1]
-    )
+    selectedSamples = candidates[0 : numSamples // 2] + candidates[-numSamples // 2 - 1 : -1]
     labels = np.hstack([np.zeros(numSamples // 2), np.ones(numSamples // 2)])
-    logger.info(
-        "Using {} of {} available training examples".format(numSamples, len(candidates))
-    )
+    logger.info("Using {} of {} available training examples".format(numSamples, len(candidates)))
 
     # TODO: make sure that the positive examples were all selected in the GT mapping
 
@@ -82,20 +75,14 @@ def trainDetectionClassifier(
         for f in forbidden:
             if f in selectedFeatures:
                 selectedFeatures.remove(f)
-        logger.info(
-            "No list of selected features was specified, using {}".format(
-                selectedFeatures
-            )
-        )
+        logger.info("No list of selected features was specified, using {}".format(selectedFeatures))
 
     rf = RandomForestClassifier(selectedFeatures=selectedFeatures)
     features = rf.extractFeatureVector(nodeTraxelMap[node].Features, singleObject=True)
     featureMatrix = np.zeros([len(selectedSamples), features.shape[1]])
     featureMatrix[0, :] = features
     for idx, candidate in enumerate(selectedSamples[1:]):
-        features = rf.extractFeatureVector(
-            nodeTraxelMap[candidate.node].Features, singleObject=True
-        )
+        features = rf.extractFeatureVector(nodeTraxelMap[candidate.node].Features, singleObject=True)
         featureMatrix[idx + 1, :] = features
 
     rf.train(featureMatrix, labels)

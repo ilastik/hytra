@@ -28,9 +28,7 @@ def getTraxelFeatureVector(traxel, featureName, maxNumDimensions=3):
                 logger.error(traxel.print_available_features())
                 raise Exception
             else:
-                logger.error(
-                    f"Error: Classifier was trained with less merger than maxNumObjects {maxNumDimensions}."
-                )
+                logger.error(f"Error: Classifier was trained with less merger than maxNumObjects {maxNumDimensions}.")
                 raise Exception
     return result
 
@@ -98,23 +96,17 @@ class HypothesesGraph:
     def target(edge):
         return edge[1]
 
-    def _findNearestNeighbors(
-        self, kdtreeObjectPair, traxel, numNeighbors, maxNeighborDist
-    ):
+    def _findNearestNeighbors(self, kdtreeObjectPair, traxel, numNeighbors, maxNeighborDist):
         """
-        Return a list of object IDs which are the 'numNeighbors' closest elements 
+        Return a list of object IDs which are the 'numNeighbors' closest elements
         in the kdtree less than maxNeighborDist away of the traxel.
         """
         kdtree, objectIdList = kdtreeObjectPair
         if len(objectIdList) <= numNeighbors:
             return objectIdList
-        distances, neighbors = kdtree.query(
-            [self._extractCenter(traxel)], k=numNeighbors, return_distance=True
-        )
+        distances, neighbors = kdtree.query([self._extractCenter(traxel)], k=numNeighbors, return_distance=True)
         return [
-            objectIdList[index]
-            for distance, index in zip(distances[0], neighbors[0])
-            if distance < maxNeighborDist
+            objectIdList[index] for distance, index in zip(distances[0], neighbors[0]) if distance < maxNeighborDist
         ]
 
     def _extractCenter(self, traxel):
@@ -174,9 +166,7 @@ class HypothesesGraph:
         """
         assert traxel is not None
         assert not self.withTracklets
-        self._graph.add_node(
-            (traxel.Timestep, traxel.Id), traxel=traxel, id=self._nextNodeUuid, **kwargs
-        )
+        self._graph.add_node((traxel.Timestep, traxel.Id), traxel=traxel, id=self._nextNodeUuid, **kwargs)
         self._nextNodeUuid += 1
 
     def buildFromProbabilityGenerator(
@@ -200,9 +190,7 @@ class HypothesesGraph:
 
         def checkNodeWhileAddingLinks(frame, obj):
             if (frame, obj) not in self._graph:
-                logger.warning(
-                    "Adding node ({}, {}) when setting up links".format(frame, obj)
-                )
+                logger.warning("Adding node ({}, {}) when setting up links".format(frame, obj))
 
         kdTreeFrames = [None] * (skipLinks + 1)
         # len(probabilityGenerator.TraxelsPerFrame.keys()) is NOT an indicator for the total number of frames,
@@ -223,28 +211,18 @@ class HypothesesGraph:
                 del kdTreeFrames[0]  # this is the current frame
                 if (
                     frame + skipLinks < numFrames
-                    and frameMin + frame + skipLinks
-                    in probabilityGenerator.TraxelsPerFrame.keys()
+                    and frameMin + frame + skipLinks in probabilityGenerator.TraxelsPerFrame.keys()
                 ):
                     kdTreeFrames.append(
-                        self._buildFrameKdTree(
-                            probabilityGenerator.TraxelsPerFrame[
-                                frameMin + frame + skipLinks
-                            ]
-                        )
+                        self._buildFrameKdTree(probabilityGenerator.TraxelsPerFrame[frameMin + frame + skipLinks])
                     )
                     self._addNodesForFrame(
                         frameMin + frame + skipLinks,
-                        probabilityGenerator.TraxelsPerFrame[
-                            frameMin + frame + skipLinks
-                        ],
+                        probabilityGenerator.TraxelsPerFrame[frameMin + frame + skipLinks],
                     )
             else:
                 for i in range(0, skipLinks + 1):
-                    if (
-                        frameMin + frame + i
-                        in probabilityGenerator.TraxelsPerFrame.keys()
-                    ):  # empty frame
+                    if frameMin + frame + i in probabilityGenerator.TraxelsPerFrame.keys():  # empty frame
                         kdTreeFrames[i] = self._buildFrameKdTree(
                             probabilityGenerator.TraxelsPerFrame[frameMin + frame + i]
                         )
@@ -254,12 +232,8 @@ class HypothesesGraph:
                         )
 
             # find forward links
-            if (
-                frameMin + frame in probabilityGenerator.TraxelsPerFrame.keys()
-            ):  # 'frame' could be empty
-                for obj, traxel in probabilityGenerator.TraxelsPerFrame[
-                    frameMin + frame
-                ].items():
+            if frameMin + frame in probabilityGenerator.TraxelsPerFrame.keys():  # 'frame' could be empty
+                for obj, traxel in probabilityGenerator.TraxelsPerFrame[frameMin + frame].items():
                     divisionPreservingNumNearestNeighbors = numNearestNeighbors
                     if (
                         divisionPreservingNumNearestNeighbors < 2
@@ -270,8 +244,7 @@ class HypothesesGraph:
                     for i in range(1, skipLinks + 1):
                         if (
                             frame + i < numFrames
-                            and frameMin + frame + i
-                            in probabilityGenerator.TraxelsPerFrame.keys()
+                            and frameMin + frame + i in probabilityGenerator.TraxelsPerFrame.keys()
                         ):
                             neighbors = self._findNearestNeighbors(
                                 kdTreeFrames[i],
@@ -286,24 +259,15 @@ class HypothesesGraph:
                                 checkNodeWhileAddingLinks(*edge_start)
                                 checkNodeWhileAddingLinks(*edge_end)
                                 self._graph.add_edge(edge_start, edge_end)
-                                self._graph.edges[edge_start, edge_end][
-                                    "src"
-                                ] = self._graph.nodes[edge_start]["id"]
-                                self._graph.edges[edge_start, edge_end][
-                                    "dest"
-                                ] = self._graph.nodes[edge_end]["id"]
+                                self._graph.edges[edge_start, edge_end]["src"] = self._graph.nodes[edge_start]["id"]
+                                self._graph.edges[edge_start, edge_end]["dest"] = self._graph.nodes[edge_end]["id"]
 
             # find backward links
             if forwardBackwardCheck:
                 for i in range(1, skipLinks + 1):
                     if frame + i < numFrames:
-                        if (
-                            frameMin + frame + i
-                            in probabilityGenerator.TraxelsPerFrame.keys()
-                        ):  # empty frame
-                            for obj, traxel in probabilityGenerator.TraxelsPerFrame[
-                                frameMin + frame + i
-                            ].items():
+                        if frameMin + frame + i in probabilityGenerator.TraxelsPerFrame.keys():  # empty frame
+                            for obj, traxel in probabilityGenerator.TraxelsPerFrame[frameMin + frame + i].items():
                                 if kdTreeFrames[0] is not None:
                                     neighbors = self._findNearestNeighbors(
                                         kdTreeFrames[0],
@@ -317,16 +281,16 @@ class HypothesesGraph:
                                         checkNodeWhileAddingLinks(*edge_start)
                                         checkNodeWhileAddingLinks(*edge_end)
                                         self._graph.add_edge(edge_start, edge_end)
-                                        self._graph.edges[edge_start, edge_end][
-                                            "src"
-                                        ] = self._graph.nodes[edge_start]["id"]
-                                        self._graph.edges[edge_start, edge_end][
-                                            "dest"
-                                        ] = self._graph.nodes[edge_end]["id"]
+                                        self._graph.edges[edge_start, edge_end]["src"] = self._graph.nodes[edge_start][
+                                            "id"
+                                        ]
+                                        self._graph.edges[edge_start, edge_end]["dest"] = self._graph.nodes[edge_end][
+                                            "id"
+                                        ]
 
     def generateTrackletGraph(self):
         """
-        **Return** a new hypotheses graph where chains of detections with only one possible 
+        **Return** a new hypotheses graph where chains of detections with only one possible
         incoming/outgoing transition are contracted into one node in the graph.
         The returned graph will have `withTracklets` set to `True`!
 
@@ -346,9 +310,7 @@ class HypothesesGraph:
         for node in tracklet_graph._graph.nodes():
             countNodes += 1
             self.progressVisitor.showProgress(countNodes / float(numNodes))
-            tracklet_graph._graph.nodes[node]["tracklet"] = [
-                tracklet_graph._graph.nodes[node]["traxel"]
-            ]
+            tracklet_graph._graph.nodes[node]["tracklet"] = [tracklet_graph._graph.nodes[node]["traxel"]]
             del tracklet_graph._graph.nodes[node]["traxel"]
 
         # set up a list of links that indicates whether the target's in- and source's out-degree
@@ -361,10 +323,7 @@ class HypothesesGraph:
         for edge in tracklet_graph._graph.edges():
             countEdges += 1
             self.progressVisitor.showProgress(countEdges / float(numEdges))
-            if (
-                tracklet_graph._graph.out_degree(edge[0]) == 1
-                and tracklet_graph._graph.in_degree(edge[1]) == 1
-            ):
+            if tracklet_graph._graph.out_degree(edge[0]) == 1 and tracklet_graph._graph.in_degree(edge[1]) == 1:
                 links_to_be_contracted.append(edge)
                 for i in [0, 1]:
                     node_remapping[edge[i]] = edge[i]
@@ -378,17 +337,12 @@ class HypothesesGraph:
             self.progressVisitor.showProgress(countLinks / float(numLinks))
             src = node_remapping[edge[0]]
             dest = node_remapping[edge[1]]
-            if (
-                tracklet_graph._graph.in_degree(src) == 0
-                and tracklet_graph._graph.out_degree(dest) == 0
-            ):
+            if tracklet_graph._graph.in_degree(src) == 0 and tracklet_graph._graph.out_degree(dest) == 0:
                 # if this tracklet would contract to a single node without incoming or outgoing edges,
                 # then do NOT contract, as our tracking cannot handle length-one-tracks
                 continue
 
-            tracklet_graph._graph.nodes[src]["tracklet"].extend(
-                tracklet_graph._graph.nodes[dest]["tracklet"]
-            )
+            tracklet_graph._graph.nodes[src]["tracklet"].extend(tracklet_graph._graph.nodes[dest]["tracklet"])
             # duplicate out arcs with new source
             for out_edge in tracklet_graph._graph.out_edges(dest):
                 tracklet_graph._graph.add_edge(src, out_edge[1])
@@ -424,7 +378,7 @@ class HypothesesGraph:
         skipLinksBias,
     ):
         """
-        Insert energies for detections, divisions and links into the hypotheses graph, 
+        Insert energies for detections, divisions and links into the hypotheses graph,
         by transforming the probabilities for certain
         events (given by the `*ProbabilityFunc`-functions per traxel) into energies. If the given graph
         contained tracklets (`self.withTracklets is True`), then also the probabilities over all contained traxels will be
@@ -445,7 +399,7 @@ class HypothesesGraph:
          ([prob0objects, prob1object,...])
         * `transitionProbabilityFunc`: should take two traxels and return this link's probabilities
          ([prob0objectsInTransition, prob1objectsInTransition,...])
-        * `boundaryCostMultiplierFunc`: should take a traxel and a boolean that is true if we are seeking for an appearance cost multiplier, 
+        * `boundaryCostMultiplierFunc`: should take a traxel and a boolean that is true if we are seeking for an appearance cost multiplier,
          false for disappearance, and return a scalar multiplier between 0 and 1 for the
          appearance/disappearance cost that depends on the traxel's distance to the spacial and time boundary
         * `divisionProbabilityFunc`: should take a traxel and return its division probabilities ([probNoDiv, probDiv])
@@ -469,9 +423,7 @@ class HypothesesGraph:
             for t in traxels:
                 detectionFeatures += np.array(negLog(detectionProbabilityFunc(t)))
                 if previousTraxel is not None:
-                    detectionFeatures += np.array(
-                        negLog(transitionProbabilityFunc(previousTraxel, t))
-                    )
+                    detectionFeatures += np.array(negLog(transitionProbabilityFunc(previousTraxel, t)))
                 previousTraxel = t
 
             detectionFeatures = listify(list(detectionFeatures))
@@ -482,12 +434,8 @@ class HypothesesGraph:
                 divisionFeatures = listify(negLog(divisionFeatures))
 
             # appearance/disappearance
-            appearanceFeatures = listify(
-                [0.0] + [boundaryCostMultiplierFunc(traxels[0], True)] * maxNumObjects
-            )
-            disappearanceFeatures = listify(
-                [0.0] + [boundaryCostMultiplierFunc(traxels[-1], False)] * maxNumObjects
-            )
+            appearanceFeatures = listify([0.0] + [boundaryCostMultiplierFunc(traxels[0], True)] * maxNumObjects)
+            disappearanceFeatures = listify([0.0] + [boundaryCostMultiplierFunc(traxels[-1], False)] * maxNumObjects)
 
             self._graph.nodes[n]["features"] = detectionFeatures
             if divisionFeatures is not None:
@@ -547,7 +495,7 @@ class HypothesesGraph:
 
         ** Returns: a tuple of **
 
-        * `traxelIdPerTimestepToUniqueIdMap`: a dictionary of the structure `{str(timestep):{str(labelimageId):int(uuid), 
+        * `traxelIdPerTimestepToUniqueIdMap`: a dictionary of the structure `{str(timestep):{str(labelimageId):int(uuid),
          str(labelimageId):int(uuid), ...}, str(nextTimestep):{}, ...}`
         * `uuidToTraxelMap`: a dictionary with keys = int(uuid), values = list(of timestep-Id-tuples (int(Timestep), int(Id)))
         """
@@ -565,9 +513,7 @@ class HypothesesGraph:
             uuidToTraxelMap[uuid] = [(t.Timestep, t.Id) for t in traxels]
 
             for t in uuidToTraxelMap[uuid]:
-                traxelIdPerTimestepToUniqueIdMap.setdefault(str(t[0]), {})[
-                    str(t[1])
-                ] = uuid
+                traxelIdPerTimestepToUniqueIdMap.setdefault(str(t[0]), {})[str(t[1])] = uuid
 
         # sort the list of traxels per UUID by their timesteps
         for v in uuidToTraxelMap.values():
@@ -621,9 +567,7 @@ class HypothesesGraph:
 
         traxelIdPerTimestepToUniqueIdMap, _ = self.getMappingsBetweenUUIDsAndTraxels()
         model = {
-            "segmentationHypotheses": [
-                translateNodeToDict(n) for n in self._graph.nodes()
-            ],
+            "segmentationHypotheses": [translateNodeToDict(n) for n in self._graph.nodes()],
             "linkingHypotheses": [translateLinkToDict(e) for e in self._graph.edges()],
             "divisionHypotheses": [],
             "traxelToUniqueId": traxelIdPerTimestepToUniqueIdMap,
@@ -647,17 +591,12 @@ class HypothesesGraph:
 
             if traxel.conflictingTraxelIds is not None:
                 if self.withTracklets:
-                    logger.error(
-                        "Exclusion constraints do not work with tracklets yet!"
-                    )
+                    logger.error("Exclusion constraints do not work with tracklets yet!")
 
                 conflictingIds = [
-                    traxelIdPerTimestepToUniqueIdMap[str(traxel.Timestep)][str(i)]
-                    for i in traxel.conflictingTraxelIds
+                    traxelIdPerTimestepToUniqueIdMap[str(traxel.Timestep)][str(i)] for i in traxel.conflictingTraxelIds
                 ]
-                myId = traxelIdPerTimestepToUniqueIdMap[str(traxel.Timestep)][
-                    str(traxel.Id)
-                ]
+                myId = traxelIdPerTimestepToUniqueIdMap[str(traxel.Timestep)][str(traxel.Id)]
                 for ci in conflictingIds:
                     # insert pairwise exclusion constraints only, and always put the lower id first
                     if ci < myId:
@@ -668,9 +607,7 @@ class HypothesesGraph:
         model["exclusions"] = [list(t) for t in exclusions]
 
         # TODO: this recomputes the uuidToTraxelMap even though we have it already...
-        trackingGraph = hytra.core.jsongraph.JsonTrackingGraph(
-            model=model, progressVisitor=self.progressVisitor
-        )
+        trackingGraph = hytra.core.jsongraph.JsonTrackingGraph(model=model, progressVisitor=self.progressVisitor)
         return trackingGraph
 
     def insertSolution(self, resultDictionary):
@@ -702,33 +639,21 @@ class HypothesesGraph:
             for traxel in traxels:
                 traxelgraph._graph.nodes[traxel]["value"] = detection["value"]
             for internal_edge in zip(traxels, traxels[1:]):
-                traxelgraph._graph.edges[internal_edge[0], internal_edge[1]][
-                    "value"
-                ] = detection["value"]
+                traxelgraph._graph.edges[internal_edge[0], internal_edge[1]]["value"] = detection["value"]
 
-        if (
-            "linkingResults" in resultDictionary
-            and resultDictionary["linkingResults"] is not None
-        ):
+        if "linkingResults" in resultDictionary and resultDictionary["linkingResults"] is not None:
             for link in resultDictionary["linkingResults"]:
                 source, dest = (
                     uuidToTraxelMap[link["src"]][-1],
                     uuidToTraxelMap[link["dest"]][0],
                 )
-                if (source in traxelgraph._graph.predecessors(dest)) and (
-                    dest in traxelgraph._graph.neighbors(source)
-                ):
+                if (source in traxelgraph._graph.predecessors(dest)) and (dest in traxelgraph._graph.neighbors(source)):
                     traxelgraph._graph.edges[source, dest]["value"] = link["value"]
                     traxelgraph._graph.edges[source, dest]["gap"] = dest[0] - source[0]
 
-        if (
-            "divisionResults" in resultDictionary
-            and resultDictionary["divisionResults"] is not None
-        ):
+        if "divisionResults" in resultDictionary and resultDictionary["divisionResults"] is not None:
             for division in resultDictionary["divisionResults"]:
-                traxelgraph._graph.nodes[uuidToTraxelMap[division["id"]][-1]][
-                    "divisionValue"
-                ] = division["value"]
+                traxelgraph._graph.nodes[uuidToTraxelMap[division["id"]][-1]]["divisionValue"] = division["value"]
 
     def getSolutionDictionary(self):
         """
@@ -755,16 +680,12 @@ class HypothesesGraph:
         for n in traxelgraph._graph.nodes():
             newDetection = {}
             newDetection["id"] = traxelgraph._graph.nodes[n]["id"]
-            newDetection["value"] = checkAttributeValue(
-                traxelgraph._graph.nodes[n], "value", 0
-            )
+            newDetection["value"] = checkAttributeValue(traxelgraph._graph.nodes[n], "value", 0)
             detectionList.append(newDetection)
             if "divisionValue" in traxelgraph._graph.nodes[n]:
                 newDivsion = {}
                 newDivsion["id"] = traxelgraph._graph.nodes[n]["id"]
-                newDivsion["value"] = checkAttributeValue(
-                    traxelgraph._graph.nodes[n], "divisionValue", False
-                )
+                newDivsion["value"] = checkAttributeValue(traxelgraph._graph.nodes[n], "divisionValue", False)
                 divisionList.append(newDivsion)
 
         for a in traxelgraph.arcIterator():
@@ -773,12 +694,8 @@ class HypothesesGraph:
             dest = self.target(a)
             newLink["src"] = traxelgraph._graph.nodes[src]["id"]
             newLink["dest"] = traxelgraph._graph.nodes[dest]["id"]
-            newLink["value"] = checkAttributeValue(
-                traxelgraph._graph.edges[src, dest], "value", 0
-            )
-            newLink["gap"] = checkAttributeValue(
-                traxelgraph._graph.edges[src, dest], "gap", 1
-            )
+            newLink["value"] = checkAttributeValue(traxelgraph._graph.edges[src, dest], "value", 0)
+            newLink["gap"] = checkAttributeValue(traxelgraph._graph.edges[src, dest], "gap", 1)
 
             linkList.append(newLink)
 
@@ -811,10 +728,7 @@ class HypothesesGraph:
         numberOfOutgoingObject = 0
         numberOfOutgoingEdges = 0
         for out_edge in self._graph.out_edges(node):
-            if (
-                "value" in self._graph.edges[node, out_edge[1]]
-                and self._graph.edges[node, out_edge[1]]["value"] > 0
-            ):
+            if "value" in self._graph.edges[node, out_edge[1]] and self._graph.edges[node, out_edge[1]]["value"] > 0:
                 numberOfOutgoingObject += self._graph.edges[node, out_edge[1]]["value"]
                 numberOfOutgoingEdges += 1
         return numberOfOutgoingObject, numberOfOutgoingEdges
@@ -847,10 +761,7 @@ class HypothesesGraph:
                 traxelgraph.countIncomingObjects(n)[0] == 0
                 and "value" in traxelgraph._graph.nodes[n]
                 and traxelgraph._graph.nodes[n]["value"] > 0
-                and (
-                    self.allowLengthOneTracks
-                    or traxelgraph.countOutgoingObjects(n)[0] > 0
-                )
+                and (self.allowLengthOneTracks or traxelgraph.countOutgoingObjects(n)[0] > 0)
             ):
                 # found start of a track
                 update_queue.append((n, max_lineage_id, max_track_id))
@@ -869,10 +780,8 @@ class HypothesesGraph:
             # and would propagate the new lineage+track IDs to all descendants again! We simply
             # stop propagating in that case and just use the lineageID that reached the node first.
             if (
-                traxelgraph._graph.nodes[current_node].get("lineageId", None)
-                is not None
-                and traxelgraph._graph.nodes[current_node].get("trackId", None)
-                is not None
+                traxelgraph._graph.nodes[current_node].get("lineageId", None) is not None
+                and traxelgraph._graph.nodes[current_node].get("trackId", None) is not None
             ):
                 logger.debug("Several tracks are merging here, stopping a later one")
                 continue
@@ -881,14 +790,10 @@ class HypothesesGraph:
             traxelgraph._graph.nodes[current_node]["lineageId"] = lineage_id
             traxelgraph._graph.nodes[current_node]["trackId"] = track_id
 
-            numberOfOutgoingObject, numberOfOutgoingEdges = traxelgraph.countOutgoingObjects(
-                current_node
-            )
+            numberOfOutgoingObject, numberOfOutgoingEdges = traxelgraph.countOutgoingObjects(current_node)
 
             if numberOfOutgoingObject != numberOfOutgoingEdges:
-                logger.warning(
-                    "running lineage computation on unresolved graphs depends on a race condition"
-                )
+                logger.warning("running lineage computation on unresolved graphs depends on a race condition")
 
             if (
                 "divisionValue" in traxelgraph._graph.nodes[current_node]
@@ -905,9 +810,7 @@ class HypothesesGraph:
                         traxelgraph._graph.nodes[a[1]]["gap"] = skipLinks
                         traxelgraph._graph.nodes[current_node]["children"].append(a[1])
                         traxelgraph._graph.nodes[a[1]]["parent"] = current_node
-                        update_queue.append(
-                            (traxelgraph.target(a), lineage_id, max_track_id)
-                        )
+                        update_queue.append((traxelgraph.target(a), lineage_id, max_track_id))
                         max_track_id += 1
             else:
                 if traxelgraph.countOutgoingObjects(current_node)[1] > 1:
@@ -925,18 +828,14 @@ class HypothesesGraph:
                             and traxelgraph._graph.edges[current_node, a[1]]["gap"] == 1
                         ) or "gap" not in traxelgraph._graph.edges[current_node, a[1]]:
                             traxelgraph._graph.nodes[a[1]]["gap"] = 1
-                            update_queue.append(
-                                (traxelgraph.target(a), lineage_id, track_id)
-                            )
+                            update_queue.append((traxelgraph.target(a), lineage_id, track_id))
                         if (
                             "gap" in traxelgraph._graph.edges[current_node, a[1]]
                             and traxelgraph._graph.edges[current_node, a[1]]["gap"] > 1
                         ):
                             traxelgraph._graph.nodes[a[1]]["gap"] = skipLinks
                             traxelgraph._graph.nodes[a[1]]["gap_parent"] = current_node
-                            update_queue.append(
-                                (traxelgraph.target(a), lineage_id, max_track_id)
-                            )
+                            update_queue.append((traxelgraph.target(a), lineage_id, max_track_id))
                             max_track_id += 1
 
     def pruneGraphToSolution(self, distanceToSolution=0):
@@ -957,9 +856,7 @@ class HypothesesGraph:
             dest = self.target(e)
             if distanceToSolution == 0:
                 if src in prunedGraph._graph and dest in prunedGraph._graph:
-                    prunedGraph._graph.add_edge(
-                        src, dest, **self._graph.edges[src, dest]
-                    )
+                    prunedGraph._graph.add_edge(src, dest, **self._graph.edges[src, dest])
 
         # TODO: can be optimized by looping over the pruned graph nodes(might sacrifice readability)
         for distance in range(1, distanceToSolution + 1):
@@ -969,9 +866,7 @@ class HypothesesGraph:
                 if src in prunedGraph._graph or dest in prunedGraph._graph:
                     prunedGraph._graph.add_node(src, **self._graph.nodes[src])
                     prunedGraph._graph.add_node(dest, **self._graph.nodes[dest])
-                    prunedGraph._graph.add_edge(
-                        src, dest, **self._graph.edges[src, dest]
-                    )
+                    prunedGraph._graph.add_edge(src, dest, **self._graph.edges[src, dest])
 
         # in case a node is NOT an appearance and
         # has all the incoming edges with value 0, we remove all these incoming edges
@@ -994,18 +889,14 @@ class HypothesesGraph:
                     maxNumObjectsAppearance = maxNumObjectsApp
                 elif not maxNumObjectsApp == maxNumObjectsAppearance:
                     correctAppearanceFeatureLength = False
-                    logger.info(
-                        "Appearance/disappearance features have different lengths!"
-                    )
+                    logger.info("Appearance/disappearance features have different lengths!")
             except:
                 withAppearanceFeatures = False
                 logger.info("There are no appearance features in node properties!")
                 break
 
             try:
-                maxNumObjectsDis = (
-                    len(self._graph.nodes[n]["disappearanceFeatures"]) - 1
-                )
+                maxNumObjectsDis = len(self._graph.nodes[n]["disappearanceFeatures"]) - 1
                 if maxNumObjectsDisappearance is None:
                     maxNumObjectsDisappearance = maxNumObjectsDis
                 elif not maxNumObjectsDis == maxNumObjectsDisappearance:
@@ -1025,18 +916,13 @@ class HypothesesGraph:
                 maxNumObjects = maxNumObjectsAppearance
             else:
                 correctFeatureLength = False
-                logger.info(
-                    "Appearance and disappearance features have different lengths!"
-                )
+                logger.info("Appearance and disappearance features have different lengths!")
         else:
             withFeatures = False
 
         if withFeatures and correctFeatureLength:
             for n in self.nodeIterator():
-                if not (
-                    "appearance" in self._graph.nodes[n].keys()
-                    and self._graph.nodes[n]["appearance"]
-                ):
+                if not ("appearance" in self._graph.nodes[n].keys() and self._graph.nodes[n]["appearance"]):
                     allArcsWithValueZero = True
                     in_edges = list(self._graph.in_edges(n))
                     for edge in in_edges:
@@ -1047,17 +933,12 @@ class HypothesesGraph:
                             allArcsWithValueZero = False
                             break
 
-                    self._graph.nodes[n]["appearanceFeatures"] = listify(
-                        [0.0] + [0.0] * maxNumObjects
-                    )
+                    self._graph.nodes[n]["appearanceFeatures"] = listify([0.0] + [0.0] * maxNumObjects)
                     if allArcsWithValueZero:
                         if not in_edges == []:
                             self._graph.remove_edges_from(in_edges)
 
-                if not (
-                    "disappearance" in self._graph.nodes[n].keys()
-                    and self._graph.nodes[n]["disappearance"]
-                ):
+                if not ("disappearance" in self._graph.nodes[n].keys() and self._graph.nodes[n]["disappearance"]):
                     allArcsWithValueZero = True
                     out_edges = list(self._graph.out_edges(n))
                     for edge in out_edges:
@@ -1068,9 +949,7 @@ class HypothesesGraph:
                             allArcsWithValueZero = False
                             break
 
-                    self._graph.nodes[n]["disappearanceFeatures"] = listify(
-                        [0.0] + [0.0] * maxNumObjects
-                    )
+                    self._graph.nodes[n]["disappearanceFeatures"] = listify([0.0] + [0.0] * maxNumObjects)
                     if allArcsWithValueZero:
                         if not out_edges == []:
                             self._graph.remove_edges_from(out_edges)
@@ -1084,10 +963,7 @@ class HypothesesGraph:
         try:
             return self._graph.nodes[(int(timestep), int(objectId))][attribute]
         except KeyError:
-            logger.error(
-                attribute
-                + " not found in graph node properties, call computeLineage() first!"
-            )
+            logger.error(attribute + " not found in graph node properties, call computeLineage() first!")
             raise
 
     def getLineageId(self, timestep, objectId):

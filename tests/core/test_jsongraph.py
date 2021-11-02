@@ -148,9 +148,7 @@ def test_loading_no_divisions():
     result = return_example_result()
 
     # traxel <=> uuid mappings
-    traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = jg.getMappingsBetweenUUIDsAndTraxels(
-        model
-    )
+    traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = jg.getMappingsBetweenUUIDsAndTraxels(model)
     assert traxelIdPerTimestepToUniqueIdMap == {
         "0": {"1": 0, "2": 5},
         "1": {"1": 4},
@@ -167,9 +165,7 @@ def test_loading_no_divisions():
     }
 
     # get lists
-    mergers, detections, links, divisions = jg.getMergersDetectionsLinksDivisions(
-        result, uuidToTraxelMap
-    )
+    mergers, detections, links, divisions = jg.getMergersDetectionsLinksDivisions(result, uuidToTraxelMap)
     assert divisions is None
     assert mergers == [(2, 1, 2), (1, 1, 2)]
     assert detections == [(0, 1), (3, 2), (3, 1), (2, 1), (1, 1), (0, 2)]
@@ -217,9 +213,7 @@ def test_toHypoGraph():
     assert hypothesesGraph.countArcs() == 5
 
     # traxel <=> uuid mappings
-    traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = (
-        hypothesesGraph.getMappingsBetweenUUIDsAndTraxels()
-    )
+    traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = hypothesesGraph.getMappingsBetweenUUIDsAndTraxels()
     assert traxelIdPerTimestepToUniqueIdMap == {
         "0": {"1": 0, "2": 5},
         "1": {"1": 4},

@@ -15,21 +15,15 @@ class LocalImageLoader(image_provider_plugin.ImageProviderPlugin):
     def getImageDataAtTimeFrame(self, Resource, PathInResource, axes, timeframe):
         """
         Loads image data from local resource file in hdf5 format.
-        PathInResource provides the internal image path 
+        PathInResource provides the internal image path
         Return numpy array of image data at timeframe.
         """
         logging.getLogger("LocalImageLoader").debug("opening {}".format(Resource))
         with h5py.File(Resource, "r") as rawH5:
-            logging.getLogger("LocalImageLoader").debug(
-                "PathInResource {}".format(timeframe)
-            )
-            rawImage = rawH5[PathInResource][
-                hytra.util.axesconversion.getFrameSlicing(axes, timeframe)
-            ]
+            logging.getLogger("LocalImageLoader").debug("PathInResource {}".format(timeframe))
+            rawImage = rawH5[PathInResource][hytra.util.axesconversion.getFrameSlicing(axes, timeframe)]
             remainingAxes = axes.replace("t", "")
-            rawImage = hytra.util.axesconversion.adjustOrder(
-                rawImage, remainingAxes
-            ).squeeze()
+            rawImage = hytra.util.axesconversion.adjustOrder(rawImage, remainingAxes).squeeze()
             return rawImage
 
     def getLabelImageForFrame(self, Resource, PathInResource, timeframe):
@@ -54,9 +48,7 @@ class LocalImageLoader(image_provider_plugin.ImageProviderPlugin):
                     self.shape[1],
                     self.shape[2],
                 )
-                logging.getLogger("LocalImageLoader").debug(
-                    "Opening label image at {}".format(internalPath)
-                )
+                logging.getLogger("LocalImageLoader").debug("Opening label image at {}".format(internalPath))
                 labelImage = h5file[internalPath][0, ..., 0]
             elif "LabelImage_v2" in PathInResource:
                 # loop though all blocks in h5 file and read the blockshape, and figure out whether this frame is in there.
@@ -68,10 +60,7 @@ class LocalImageLoader(image_provider_plugin.ImageProviderPlugin):
                     if isinstance(bs, bytes):
                         bs = bs.decode()
 
-                    roi = [
-                        (int(r.split(":")[0]), int(r.split(":")[1]))
-                        for r in bs.split(",")
-                    ]
+                    roi = [(int(r.split(":")[0]), int(r.split(":")[1])) for r in bs.split(",")]
                     if timeframe in range(roi[0][0], roi[0][1]):
                         timeStart = timeframe - roi[0][0]
                         # WARNING we assume that every block captures the full image extent or more timeframes,
@@ -87,15 +76,13 @@ class LocalImageLoader(image_provider_plugin.ImageProviderPlugin):
         """
         Derive Image Shape from label image.
         Loads label image data from local resource file in hdf5 format.
-        PathInResource provides the internal image path 
+        PathInResource provides the internal image path
         Return list with image dimensions.
 
         Works with both `PathInResource` styles: LabelImage and LabelImage_v2
         """
         with h5py.File(Resource, "r") as h5file:
-            shape = list(h5file["/".join(PathInResource.split("/")[:-1])].values())[
-                0
-            ].shape[1:4]
+            shape = list(h5file["/".join(PathInResource.split("/")[:-1])].values())[0].shape[1:4]
             self.shape = shape
             return shape
 

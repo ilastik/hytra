@@ -92,9 +92,7 @@ class HypothesesGraphDiagram(object):
             uuid = node["id"]
 
             # Node is inactive
-            if results and not (
-                uuid in detResultsByUuid and detResultsByUuid[uuid] > 0
-            ):
+            if results and not (uuid in detResultsByUuid and detResultsByUuid[uuid] > 0):
                 continue
 
             # Verify that node is within time ranges and plot nodes
@@ -146,8 +144,7 @@ class HypothesesGraphDiagram(object):
             uuidTarget = link["dest"]
 
             if results and not (
-                (uuidSource, uuidTarget) in linkResultsByUuid
-                and linkResultsByUuid[(uuidSource, uuidTarget)] > 0
+                (uuidSource, uuidTarget) in linkResultsByUuid and linkResultsByUuid[(uuidSource, uuidTarget)] > 0
             ):
                 continue
 
@@ -278,13 +275,13 @@ class HypothesesGraphDiagram(object):
                 edgeColor = "k"
 
                 # Display label and color from node value
-                if withNodeValue and "value" in hypothesesGraph.node[node]:
-                    faceColor = colors[hypothesesGraph.node[node]["value"]]
-                    nodeLabel = str(hypothesesGraph.node[node]["value"])
+                if withNodeValue and "value" in hypothesesGraph.nodes[node]:
+                    faceColor = colors[hypothesesGraph.nodes[node]["value"]]
+                    nodeLabel = str(hypothesesGraph.nodes[node]["value"])
 
                 # Display uuid on node labels instead
-                if withUuid and "id" in hypothesesGraph.node[node]:
-                    nodeLabel = str(hypothesesGraph.node[node]["id"])
+                if withUuid and "id" in hypothesesGraph.nodes[node]:
+                    nodeLabel = str(hypothesesGraph.nodes[node]["id"])
 
                 circle = plt.Circle(
                     nodeCoordsMap[node],
@@ -324,22 +321,12 @@ class HypothesesGraphDiagram(object):
                 linestyle = "solid"
                 linewidth = 0.1
 
-                if (
-                    withArcValue
-                    and "value" in hypothesesGraph.edges[sourceNode, targetNode]
-                ):
-                    linewidth += 1.5 * float(
-                        hypothesesGraph.edges[sourceNode, targetNode]["value"]
-                    )
+                if withArcValue and "value" in hypothesesGraph.edges[sourceNode, targetNode]:
+                    linewidth += 1.5 * float(hypothesesGraph.edges[sourceNode, targetNode]["value"])
                     if hypothesesGraph.edges[sourceNode, targetNode]["value"] == 0:
                         color = "g"
-                elif (
-                    withArcFeatures
-                    and "features" in hypothesesGraph.edges[sourceNode, targetNode]
-                ):
-                    linewidth += 10.0 * float(
-                        hypothesesGraph.edges[sourceNode, targetNode]["features"][0][0]
-                    )
+                elif withArcFeatures and "features" in hypothesesGraph.edges[sourceNode, targetNode]:
+                    linewidth += 10.0 * float(hypothesesGraph.edges[sourceNode, targetNode]["features"][0][0])
                 else:
                     linewidth = 1.0
 

@@ -107,9 +107,7 @@ if __name__ == "__main__":
         dest="timeRange",
         help="Set time range to upload (inclusive!)",
     )
-    parser.add_argument(
-        "--verbose", type=bool, dest="verbose", default=False, help="verbose logs"
-    )
+    parser.add_argument("--verbose", type=bool, dest="verbose", default=False, help="verbose logs")
 
     args = parser.parse_args()
     if args.verbose:
@@ -147,22 +145,14 @@ if __name__ == "__main__":
     # upload all frames
     for frame in range(time_range[0], time_range[1]):
         logging.info("Uploading frame {}".format(frame))
-        label_image = image_provider.getLabelImageForFrame(
-            args.ilpFilename, args.labelImagePath, frame
-        )
-        raw_image = image_provider.getImageDataAtTimeFrame(
-            args.rawFilename, args.rawPath, frame
-        )
+        label_image = image_provider.getLabelImageForFrame(args.ilpFilename, args.labelImagePath, frame)
+        raw_image = image_provider.getImageDataAtTimeFrame(args.rawFilename, args.rawPath, frame)
 
         raw_name = "raw-{}".format(frame)
         seg_name = "seg-{}".format(frame)
         node_service.create_grayscale8(raw_name)
-        node_service.put_gray3D(
-            raw_name, dataToBlock(raw_image, dtype=np.uint8), (0, 0, 0)
-        )
+        node_service.put_gray3D(raw_name, dataToBlock(raw_image, dtype=np.uint8), (0, 0, 0))
         node_service.create_labelblk(seg_name)
-        node_service.put_labels3D(
-            seg_name, dataToBlock(label_image, dtype=np.uint64), (0, 0, 0)
-        )
+        node_service.put_labels3D(seg_name, dataToBlock(label_image, dtype=np.uint64), (0, 0, 0))
 
     # TODO: upload classifier

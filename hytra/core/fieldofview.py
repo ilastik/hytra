@@ -54,18 +54,10 @@ class FieldOfView:
             vlen = 6
 
         # the eight corners of the fov cube
-        c1 = np.array(
-            [self.__lowerBound[1], self.__lowerBound[2], self.__lowerBound[3]]
-        )
-        c2 = np.array(
-            [self.__upperBound[1], self.__lowerBound[2], self.__lowerBound[3]]
-        )
-        c3 = np.array(
-            [self.__upperBound[1], self.__upperBound[2], self.__lowerBound[3]]
-        )
-        c4 = np.array(
-            [self.__lowerBound[1], self.__upperBound[2], self.__lowerBound[3]]
-        )
+        c1 = np.array([self.__lowerBound[1], self.__lowerBound[2], self.__lowerBound[3]])
+        c2 = np.array([self.__upperBound[1], self.__lowerBound[2], self.__lowerBound[3]])
+        c3 = np.array([self.__upperBound[1], self.__upperBound[2], self.__lowerBound[3]])
+        c4 = np.array([self.__lowerBound[1], self.__upperBound[2], self.__lowerBound[3]])
 
         c5 = np.array([self.__lowerBound[1], self.__lowerBound[2], zub])
         c6 = np.array([self.__upperBound[1], self.__lowerBound[2], zub])

@@ -27,9 +27,7 @@ class TransitionFeatureVectorConstructionPlugin(IPlugin):
         raise NotImplementedError()
         return []
 
-    def constructFeatureVector(
-        self, featureDictObjectA, featureDictObjectB, selectedFeatures
-    ):
+    def constructFeatureVector(self, featureDictObjectA, featureDictObjectB, selectedFeatures):
         """
         Set up a feature vector using the selected features of both objects.
         Return a list, not a numpy array!

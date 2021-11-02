@@ -26,20 +26,18 @@ class MergerResolverPlugin(IPlugin):
         new segments by fitting some kind of model. The `initializations` provide fits
         in the preceding frame of all possible incomings (list may be empty, but could
         also be more than `mergerCount`).
-  
+
         `coordinates` pixel coordinates that belong to a merger ID in labelImage
-        
+
         `mergerCount` number of gaussians to fit
-  
+
         **returns** a list of fitted objects
         """
         raise NotImplementedError()
 
         return []
 
-    def resolveMerger(
-        self, labelImage, objectId, nextId, mergerCount, initializations=None
-    ):
+    def resolveMerger(self, labelImage, objectId, nextId, mergerCount, initializations=None):
         """
         Resolve the object with the ID `objectId` in the `labelImage` into `mergerCount`
         new segments by fitting some kind of model. The `initializations` provide fits

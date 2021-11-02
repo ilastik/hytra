@@ -22,9 +22,7 @@ class DvidFeatureSerializer(feature_serializer_plugin.FeatureSerializerPlugin):
         assert self.uuid is not None
         node_service = DVIDNodeService(self.server_address, self.uuid)
         node_service.create_keyvalue(self.keyvalue_store)
-        node_service.put(
-            self.keyvalue_store, "frame-{}".format(timeframe), json.dumps(features)
-        )
+        node_service.put(self.keyvalue_store, "frame-{}".format(timeframe), json.dumps(features))
 
     def loadFeaturesForFrame(self, features, timeframe):
         """
@@ -34,6 +32,4 @@ class DvidFeatureSerializer(feature_serializer_plugin.FeatureSerializerPlugin):
         assert self.uuid is not None
         node_service = DVIDNodeService(self.server_address, self.uuid)
         node_service.create_keyvalue(self.keyvalue_store)
-        return json.loads(
-            node_service.get(self.keyvalue_store, "frame-{}".format(timeframe))
-        )
+        return json.loads(node_service.get(self.keyvalue_store, "frame-{}".format(timeframe)))

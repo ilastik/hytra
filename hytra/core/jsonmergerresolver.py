@@ -33,9 +33,7 @@ class JsonMergerResolver(hytra.core.mergerresolver.MergerResolver):
         # copy model and result because we will modify it here
         assert isinstance(jsonTrackingGraph, JsonTrackingGraph)
         assert jsonTrackingGraph.model is not None and len(jsonTrackingGraph.model) > 0
-        assert (
-            jsonTrackingGraph.result is not None and len(jsonTrackingGraph.result) > 0
-        )
+        assert jsonTrackingGraph.result is not None and len(jsonTrackingGraph.result) > 0
         self.model = copy.copy(jsonTrackingGraph.model)
         self.result = copy.copy(jsonTrackingGraph.result)
 
@@ -77,9 +75,7 @@ class JsonMergerResolver(hytra.core.mergerresolver.MergerResolver):
 
         logger.info("Computing object features")
         objectFeatures = {}
-        imageShape = self.imageProvider.getImageShape(
-            self.label_image_filename, self.label_image_path
-        )
+        imageShape = self.imageProvider.getImageShape(self.label_image_filename, self.label_image_path)
         logger.info("Found image of shape {}".format(imageShape))
         # ndims = len(np.array(imageShape).squeeze()) - 1 # get rid of axes with length 1, and minus time axis
         # there is no time axis...
@@ -121,15 +117,11 @@ class JsonMergerResolver(hytra.core.mergerresolver.MergerResolver):
         """
         Returns the labelimage for the given timeframe
         """
-        return self.imageProvider.getLabelImageForFrame(
-            self.label_image_filename, self.label_image_path, timeframe
-        )
+        return self.imageProvider.getLabelImageForFrame(self.label_image_filename, self.label_image_path, timeframe)
 
     def _exportRefinedSegmentation(self, timesteps):
         h5py.File(self.out_label_image, "w").close()
         for t in timesteps:
             labelImage = self._readLabelImage(int(t))
             self.relabelMergers(labelImage, int(t))
-            self.imageProvider.exportLabelImage(
-                labelImage, int(t), self.out_label_image, self.label_image_path
-            )
+            self.imageProvider.exportLabelImage(labelImage, int(t), self.out_label_image, self.label_image_path)

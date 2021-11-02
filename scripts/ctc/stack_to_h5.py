@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.abspath('..'))
 import vigra
 import configargparse as argparse
 import logging
-from skimage.external import tifffile
+import tifffile
 import hytra.util.axesconversion
 import glob
 from hytra.util.skimage_tifffile_hack import hack

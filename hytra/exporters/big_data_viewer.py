@@ -7,8 +7,7 @@ if __name__ == "__main__":
     Transform tracking result and ilastik raw + segmentation data to the BigDataViewer format
     """
     parser = argparse.ArgumentParser(
-        description="Transform tracking result and ilastik raw"
-        "+ segmentation data to the BigDataViewer format",
+        description="Transform tracking result and ilastik raw" "+ segmentation data to the BigDataViewer format",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(

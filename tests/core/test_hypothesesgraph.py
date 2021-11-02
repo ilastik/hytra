@@ -1,12 +1,13 @@
 import hytra.core.hypothesesgraph as hg
 import hytra.core.probabilitygenerator as pg
 import numpy as np
+import networkx as nx
 from hytra.core.probabilitygenerator import Traxel
 
 
 def test_trackletgraph():
     h = hg.HypothesesGraph()
-    h._graph.add_path([(0, 1), (1, 1), (2, 1), (3, 1)])
+    nx.add_path(h._graph, [(0, 1), (1, 1), (2, 1), (3, 1)])
     for i in [(0, 1), (1, 1), (2, 1), (3, 1)]:
         t = Traxel()
         t.Timestep = i[0]
@@ -21,8 +22,8 @@ def test_trackletgraph():
 
 def test_computeLineagesAndPrune():
     h = hg.HypothesesGraph()
-    h._graph.add_path([(0, 0), (1, 1), (2, 2)])
-    h._graph.add_path([(1, 1), (2, 3), (3, 4)])
+    nx.add_path(h._graph, [(0, 0), (1, 1), (2, 2)])
+    nx.add_path(h._graph, [(1, 1), (2, 3), (3, 4)])
 
     for n in h._graph.nodes:
         h._graph.nodes[n]["id"] = n[1]
@@ -55,8 +56,8 @@ def test_computeLineagesAndPrune():
 
 def test_computeLineagesWithMergers():
     h = hg.HypothesesGraph()
-    h._graph.add_path([(0, 0), (1, 1), (2, 2)])
-    h._graph.add_path([(0, 5), (1, 1), (2, 3), (3, 4)])
+    nx.add_path(h._graph, [(0, 0), (1, 1), (2, 2)])
+    nx.add_path(h._graph, [(0, 5), (1, 1), (2, 3), (3, 4)])
 
     for n in h._graph.nodes:
         h._graph.nodes[n]["id"] = n[1]
@@ -96,8 +97,8 @@ def test_computeLineagesWithMergers():
 
 def test_insertAndExtractSolution():
     h = hg.HypothesesGraph()
-    h._graph.add_path([(0, 0), (1, 1), (2, 2)])
-    h._graph.add_path([(1, 1), (2, 3), (3, 4)])
+    nx.add_path(h._graph, [(0, 0), (1, 1), (2, 2)])
+    nx.add_path(h._graph, [(1, 1), (2, 3), (3, 4)])
 
     for n in h._graph.nodes:
         h._graph.nodes[n]["id"] = n[1]
@@ -168,7 +169,7 @@ def test_insertAndExtractSolution():
 def test_insertEnergies():
     skipLinkBias = 20
     h = hg.HypothesesGraph()
-    h._graph.add_path([(0, 1), (1, 1), (2, 1), (3, 1)])
+    nx.add_path(h._graph, [(0, 1), (1, 1), (2, 1), (3, 1)])
     for uuid, i in enumerate([(0, 1), (1, 1), (2, 1), (3, 1)]):
         t = Traxel()
         t.Timestep = i[0]
@@ -192,26 +193,28 @@ def test_insertEnergies():
         return 1.0
 
     def transProbFunc(traxelA, traxelB):
-        dist = np.linalg.norm(
-            np.array(traxelA.Features["com"]) - np.array(traxelB.Features["com"])
-        )
+        dist = np.linalg.norm(np.array(traxelA.Features["com"]) - np.array(traxelB.Features["com"]))
         return [1.0 - np.exp(-dist), np.exp(-dist)]
 
-    h.insertEnergies(
-        1, detProbFunc, transProbFunc, boundaryCostFunc, divProbFunc, skipLinkBias
-    )
+    h.insertEnergies(1, detProbFunc, transProbFunc, boundaryCostFunc, divProbFunc, skipLinkBias)
 
     for n in h.nodeIterator():
         assert "features" in h._graph.nodes[n]
-        assert h._graph.nodes[n]["features"] == [
-            [1.6094379124341003],
-            [0.22314355131420971],
-        ]
+        np.testing.assert_array_max_ulp(
+            h._graph.nodes[n]["features"],
+            [
+                [1.6094379124341003],
+                [0.22314355131420971],
+            ],
+        )
         assert "divisionFeatures" in h._graph.nodes[n]
-        assert h._graph.nodes[n]["divisionFeatures"] == [
-            [1.6094379124341003],
-            [0.22314355131420971],
-        ]
+        np.testing.assert_array_max_ulp(
+            h._graph.nodes[n]["divisionFeatures"],
+            [
+                [1.6094379124341003],
+                [0.22314355131420971],
+            ],
+        )
         assert "appearanceFeatures" in h._graph.nodes[n]
         assert h._graph.nodes[n]["appearanceFeatures"] == [[0.0], [1.0]]
         assert "disappearanceFeatures" in h._graph.nodes[n]
@@ -222,10 +225,13 @@ def test_insertEnergies():
         srcTraxel = h._graph.nodes[h.source(a)]["traxel"]
         destTraxel = h._graph.nodes[h.target(a)]["traxel"]
         frame_gap = destTraxel.Timestep - srcTraxel.Timestep
-        assert h._graph.edges[a[0], a[1]]["features"] == [
-            [0.45867514538708193],
-            [1.0 + skipLinkBias * (frame_gap - 1)],
-        ]
+        np.testing.assert_array_max_ulp(
+            h._graph.edges[a[0], a[1]]["features"],
+            [
+                [0.45867514538708193],
+                [1.0 + skipLinkBias * (frame_gap - 1)],
+            ],
+        )
 
 
 if __name__ == "__main__":
