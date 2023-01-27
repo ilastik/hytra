@@ -9,8 +9,8 @@ class GMMMergerResolver(merger_resolver_plugin.MergerResolverPlugin):
     Computes the subtraction of features in the feature vector
     """
 
-    def initGMM(self, mergerCount, object_init_list=None):
-        gmm = mixture.GaussianMixture(n_components=mergerCount)
+    def initGMM(self, mergerCount, object_init_list=None, random_state=None):
+        gmm = mixture.GaussianMixture(n_components=mergerCount, random_state=random_state)
         if object_init_list is not None and len(object_init_list) > 0:
             gmm.weights_ = np.array([o[0] for o in object_init_list])
             gmm.covariances_ = np.array([o[1] for o in object_init_list])
@@ -23,12 +23,13 @@ class GMMMergerResolver(merger_resolver_plugin.MergerResolverPlugin):
     def getObjectInitializationList(self, gmm):
         return zip(gmm.weights_, gmm.covariances_, gmm.means_, gmm.precisions_cholesky_)
 
-    def resolveMergerForCoords(self, coordinates, mergerCount, initializations=None):
+    def resolveMergerForCoords(self, coordinates, mergerCount, initializations=None, random_state=None):
         """
         Resolve the pixel coordinates belonging to an object ID, into `mergerCount`
         new segments by fitting some kind of model. The `initializations` provide fits
         in the preceding frame of all possible incomings (list may be empty, but could
-        also be more than `mergerCount`).
+        also be more than `mergerCount`). `random_state` can be supplied for consistent
+        results.
 
         `coordinates` pixel coordinates that belong to a merger ID in labelImage
 
@@ -38,7 +39,7 @@ class GMMMergerResolver(merger_resolver_plugin.MergerResolverPlugin):
         """
 
         # fit GMM to label image data
-        gmm = self.initGMM(mergerCount, initializations)
+        gmm = self.initGMM(mergerCount, initializations, random_state)
         gmm.fit(coordinates)
         assert gmm.converged_
 

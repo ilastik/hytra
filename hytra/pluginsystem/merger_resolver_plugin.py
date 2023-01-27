@@ -20,12 +20,13 @@ class MergerResolverPlugin(IPlugin):
         """
         pass
 
-    def resolveMergerForCoords(self, coordinates, mergerCount, initializations=None):
+    def resolveMergerForCoords(self, coordinates, mergerCount, initializations=None, random_state=None):
         """
         Resolve the pixel coordinates belonging to an object ID, into `mergerCount`
         new segments by fitting some kind of model. The `initializations` provide fits
         in the preceding frame of all possible incomings (list may be empty, but could
-        also be more than `mergerCount`).
+        also be more than `mergerCount`). `random_state` can be supplied for consistent
+        results.
 
         `coordinates` pixel coordinates that belong to a merger ID in labelImage
 
