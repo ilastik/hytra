@@ -1,0 +1,39 @@
+name: test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-w-conda-recipe:
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          activate-environment: ""
+          auto-activate-base: true
+          auto-update-conda: true
+          miniforge-variant: Mambaforge
+          use-mamba: true
+      - name: install build deps
+        run: mamba install -n base -c conda-forge boa setuptools_scm -y
+      - name: linux conda build test
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash -l {0}
+        run: conda mambabuild -c ilastik-forge -c conda-forge conda-recipe
+      - name: osx test
+        if: matrix.os == 'macos-latest'
+        shell: bash -l {0}
+        run: conda mambabuild -c ilastik-forge -c conda-forge conda-recipe
+      - name: windows conda-build
+        if: matrix.os == 'windows-latest'
+        shell: cmd /C CALL {0}
+        run: conda mambabuild -c ilastik-forge -c conda-forge conda-recipe
