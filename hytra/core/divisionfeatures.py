@@ -266,11 +266,13 @@ class FeatureManager(object):
                 # find roi around the center of the current object
                 idx_cur = [round(x) for x in com_cur]
 
-                roi = []
-                for idx, coord in enumerate(idx_cur):
-                    start = max(coord - self.template_size / 2, 0)
-                    stop = min(coord + self.template_size / 2, img_next.shape[idx])
-                    roi.append(slice(int(start), int(stop)))
+                roi = tuple(
+                    slice(
+                        int(max(coord - self.template_size / 2, 0)),
+                        int(min(coord + self.template_size / 2, img_next.shape[idx])),
+                    )
+                    for idx, coord in enumerate(idx_cur)
+                )
 
                 # find all coms in the neighborhood of com_cur by checking the next frame's labelimage in the roi
                 subimg_next = img_next[roi]

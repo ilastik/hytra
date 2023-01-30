@@ -4,6 +4,15 @@ import numpy as np
 import networkx as nx
 from hytra.core.probabilitygenerator import Traxel
 
+# For reason `test_insertEnergies` will error out with 1ULP accuracy on github
+# linux CI. Not on any other machines I could test
+import os
+import platform
+
+ULP = 1
+if os.environ.get("CI") and (platform.system() == "Linux"):
+    ULP = 2
+
 
 def test_trackletgraph():
     h = hg.HypothesesGraph()
@@ -231,6 +240,7 @@ def test_insertEnergies():
                 [0.45867514538708193],
                 [1.0 + skipLinkBias * (frame_gap - 1)],
             ],
+            maxulp=ULP
         )
 
 

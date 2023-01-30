@@ -22,12 +22,14 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
         withFullGraph=False,
         numSplits=None,
         verbose=False,
+        random_state=None,
     ):
         super(IlastikMergerResolver, self).__init__(pluginPaths, numSplits, verbose)
         trackingGraph = hypothesesGraph.toTrackingGraph(noFeatures=True)
         self.model = trackingGraph.model
         self.result = hypothesesGraph.getSolutionDictionary()
         self.hypothesesGraph = hypothesesGraph
+        self._random_state = random_state
 
         # Find mergers in the given model and result
         traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(
@@ -205,9 +207,8 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
         nextObjectId = maxObjectId + 1
 
         t = str(timestep)
-        detections = self.detectionsPerTimestep[t]
 
-        for idx, coordinates in coordinatesForObjectIds.items():
+        for idx, coordinates in sorted(coordinatesForObjectIds.items(), key=lambda x: x[0]):
             node = (timestep, idx)
             if node not in self.resolvedGraph:
                 continue
@@ -228,7 +229,11 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
             logger.debug("Looking at node {} in timestep {} with count {}".format(idx, t, count))
 
             # use merger resolving plugin to fit `count` objects
-            fittedObjects = list(self.mergerResolverPlugin.resolveMergerForCoords(coordinates, count, initializations))
+            fittedObjects = list(
+                self.mergerResolverPlugin.resolveMergerForCoords(
+                    coordinates, count, initializations, random_state=self._random_state
+                )
+            )
 
             assert len(fittedObjects) == count
 

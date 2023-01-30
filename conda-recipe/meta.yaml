@@ -49,6 +49,6 @@ test:
     - nosetests tests
 
 about:
-  home: https://github.com/chaubold/hytra
+  home: https://github.com/ilastik/hytra
   license: MIT
   summary: 'Python tracking framework developed at the IAL lab @ University of Heidelberg'
