@@ -1,9 +1,8 @@
-from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 import numpy as np
 import logging
 import configargparse as argparse
 import glob
-from skimage.external import tifffile
+import tifffile
 import matplotlib.pyplot as plt
 import matplotlib
 from math import ceil

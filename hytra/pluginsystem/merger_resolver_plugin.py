@@ -1,4 +1,3 @@
-from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 from yapsy.IPlugin import IPlugin
 
 
@@ -21,17 +20,18 @@ class MergerResolverPlugin(IPlugin):
         """
         pass
 
-    def resolveMergerForCoords(self, coordinates, mergerCount, initializations=None):
+    def resolveMergerForCoords(self, coordinates, mergerCount, initializations=None, random_state=None):
         """
         Resolve the pixel coordinates belonging to an object ID, into `mergerCount`
         new segments by fitting some kind of model. The `initializations` provide fits
         in the preceding frame of all possible incomings (list may be empty, but could
-        also be more than `mergerCount`).
-  
+        also be more than `mergerCount`). `random_state` can be supplied for consistent
+        results.
+
         `coordinates` pixel coordinates that belong to a merger ID in labelImage
-        
+
         `mergerCount` number of gaussians to fit
-  
+
         **returns** a list of fitted objects
         """
         raise NotImplementedError()
@@ -52,7 +52,7 @@ class MergerResolverPlugin(IPlugin):
         raise NotImplementedError()
 
         return []
-    
+
     def updateLabelImage(self, labelImage, objectId, fits, newIds, offset=None):
         """
         Resolve the object with the ID `objectId` in the `labelImage` into the fitted models with the given new IDs.

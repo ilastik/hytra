@@ -1,0 +1,35 @@
+name: deploy
+
+on:
+  push:
+    tags:
+      - '*'
+
+
+jobs:
+  deploy-to-ilastik-forge:
+    # noarch build - build on linux, only
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: actions/checkout@v3
+        with:
+          repository: ilastik/ilastik-conda-recipes
+          path: ilastik-conda-recipes
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-update-conda: true
+          auto-activate-base: true
+          activate-environment: ""
+          miniforge-variant: Mambaforge
+          use-mamba: true
+      - name: linux conda build and upload
+        shell: bash -l {0}
+        env:
+          ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
+        run: |
+          mamba install -n base -c conda-forge boa setuptools_scm anaconda-client -y
+          mamba config --set anaconda_upload yes
+          conda mambabuild -c ilastik-forge -c conda-forge -m ilastik-conda-recipes/ilastik-pins.yaml --user ilastik-forge conda-recipe

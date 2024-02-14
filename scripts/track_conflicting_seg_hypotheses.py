@@ -5,14 +5,13 @@ track them, and create a final result by cherry-picking the segments that were p
 
 # pythonpath modification to make hytra available
 # for import without requiring it to be installed
-from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 import os
 import sys
 import gzip
 import pickle
 import numpy as np
 import logging
-from skimage.external import tifffile
+import tifffile
 import vigra
 try:
     import commentjson as json
@@ -28,8 +27,9 @@ import hytra.jst.conflictingsegmentsprobabilitygenerator as probabilitygenerator
 import hytra.jst.classifiertrainingexampleextractor
 from hytra.core.ilastik_project_options import IlastikProjectOptions
 
-def getLogger():
-    return logging.getLogger("track_conflicting_seg_hypotheses")
+
+logger = logging.getLogger("track_conflicting_seg_hypotheses")
+
 
 def constructFov(shape, t0, t1, scale=[1, 1, 1]):
     [xshape, yshape, zshape] = shape
@@ -87,7 +87,7 @@ def mapGroundTruth(options, hypotheses_graph, trackingGraph, probGenerator):
     If we were given a ground truth, we can map it to the graph and either train new classifiers,
     or run structured learning to find the optimal weights. 
     """
-    getLogger().info("Map ground truth")
+    logger.info("Map ground truth")
     jsonGT = probGenerator.findGroundTruthJaccardScoreAndMapping(
         hypotheses_graph,
         options.gt_label_image_file,
@@ -97,11 +97,11 @@ def mapGroundTruth(options, hypotheses_graph, trackingGraph, probGenerator):
     )
 
     if options.out_obj_count_classifier_file is not None and options.out_obj_count_classifier_path is not None:
-        getLogger().info("Training Random Forest detection classifier")
+        logger.info("Training Random Forest detection classifier")
         rf = hytra.jst.classifiertrainingexampleextractor.trainDetectionClassifier(hypotheses_graph, jsonGT, numSamples=100)
         rf.save(options.out_obj_count_classifier_file, options.out_obj_count_classifier_path)
 
-        getLogger().info("Quitting, because you probably want to set up a new graph using the new classifiers...")
+        logger.info("Quitting, because you probably want to set up a new graph using the new classifiers...")
         sys.exit(0)
 
     try:
@@ -112,7 +112,7 @@ def mapGroundTruth(options, hypotheses_graph, trackingGraph, probGenerator):
         except ImportError:
             pass
     if mht:
-        getLogger().info("Learn weights")
+        logger.info("Learn weights")
         weights = mht.train(trackingGraph.model, jsonGT)
 
         if options.learned_weights_json_filename is not None:
@@ -144,7 +144,7 @@ def setupGraph(options):
     else:
         ilpOptions.divisionClassifierFilename = None
 
-    getLogger().info("Extracting traxels from images")
+    logger.info("Extracting traxels from images")
     probGenerator = probabilitygenerator.ConflictingSegmentsProbabilityGenerator(
         ilpOptions, 
         options.label_image_files[1:],
@@ -167,7 +167,7 @@ def setupGraph(options):
                             probGenerator.y_scale,
                             probGenerator.z_scale])
 
-    getLogger().info("Building hypotheses graph")
+    logger.info("Building hypotheses graph")
     hypotheses_graph = IlastikHypothesesGraph(
         probabilityGenerator=probGenerator,
         timeRange=probGenerator.timeRange,
@@ -182,12 +182,12 @@ def setupGraph(options):
     # if options.with_tracklets:
     #     hypotheses_graph = hypotheses_graph.generateTrackletGraph()
 
-    getLogger().info("Preparing for tracking")
+    logger.info("Preparing for tracking")
     hypotheses_graph.insertEnergies()
     trackingGraph = hypotheses_graph.toTrackingGraph()
     
     if options.do_convexify or options.use_flow_solver:
-        getLogger().info("Convexifying graph energies...")
+        logger.info("Convexifying graph energies...")
         trackingGraph.convexifyCosts()
 
     if options.graph_json_filename is not None:
@@ -201,9 +201,9 @@ def runTracking(options, trackingGraph, weights=None):
     **Returns** the tracking result dictionary
     """
 
-    getLogger().info("Run tracking...")
+    logger.info("Run tracking...")
     if weights is None:
-        getLogger().info("Loading weights from " + options.weight_json_filename)
+        logger.info("Loading weights from " + options.weight_json_filename)
         with open(options.weight_json_filename, 'r') as f:
             weights = json.load(f)
 
@@ -212,7 +212,7 @@ def runTracking(options, trackingGraph, weights=None):
         # else:
         #     weights = {"weights" : [10, 10, 500, 500]}
     else:
-        getLogger().info("Using learned weights!")
+        logger.info("Using learned weights!")
 
     if options.use_flow_solver:
         import dpct
@@ -239,26 +239,26 @@ def run_pipeline(options):
 
     # set up probabilitygenerator (aka traxelstore) and hypothesesgraph or load them from a dump
     if options.load_graph_filename is not None:
-        getLogger().info("Loading state from file: " + options.load_graph_filename)
+        logger.info("Loading state from file: " + options.load_graph_filename)
         with gzip.open(options.load_graph_filename, 'r') as graphDump:
             ilpOptions = pickle.load(graphDump)
             probGenerator = pickle.load(graphDump)
             fieldOfView = pickle.load(graphDump)
             hypotheses_graph = pickle.load(graphDump)
             trackingGraph = pickle.load(graphDump)
-        getLogger().info("Done loading state from file")
+        logger.info("Done loading state from file")
     else:
         fieldOfView, hypotheses_graph, ilpOptions, probGenerator, trackingGraph = setupGraph(options)
         
         if options.dump_graph_filename is not None:
-            getLogger().info("Saving state to file: " + options.dump_graph_filename)
+            logger.info("Saving state to file: " + options.dump_graph_filename)
             with gzip.open(options.dump_graph_filename, 'w') as graphDump:
                 pickle.dump(ilpOptions, graphDump)
                 pickle.dump(probGenerator, graphDump)
                 pickle.dump(fieldOfView, graphDump)
                 pickle.dump(hypotheses_graph, graphDump)
                 pickle.dump(trackingGraph, graphDump)
-            getLogger().info("Done saving state to file")
+            logger.info("Done saving state to file")
 
     # map groundtruth to hypothesesgraph if all required variables are specified
     weights = None
@@ -270,7 +270,7 @@ def run_pipeline(options):
     result = runTracking(options, trackingGraph, weights)
 
     # insert the solution into the hypotheses graph and from that deduce the lineages
-    getLogger().info("Inserting solution into graph")
+    logger.info("Inserting solution into graph")
     hypotheses_graph.insertSolution(result)
     hypotheses_graph.computeLineage()
 
@@ -280,22 +280,22 @@ def run_pipeline(options):
 
     for n in hypotheses_graph.nodeIterator():
         frameMapping = mappings.setdefault(n[0], {})
-        if 'trackId' not in hypotheses_graph._graph.node[n]:
+        if 'trackId' not in hypotheses_graph._graph.nodes[n]:
             raise ValueError("You need to compute the Lineage of every node before accessing the trackId!")
-        trackId = hypotheses_graph._graph.node[n]['trackId']
-        traxel = hypotheses_graph._graph.node[n]['traxel']
+        trackId = hypotheses_graph._graph.nodes[n]['trackId']
+        traxel = hypotheses_graph._graph.nodes[n]['traxel']
         if trackId is not None:
             frameMapping[(traxel.idInSegmentation, traxel.segmentationFilename)] = trackId
         if trackId in tracks:
             tracks[trackId].append(n[0])
         else:
             tracks[trackId] = [n[0]]
-        if 'parent' in hypotheses_graph._graph.node[n]:
+        if 'parent' in hypotheses_graph._graph.nodes[n]:
             assert(trackId not in trackParents)
-            trackParents[trackId] = hypotheses_graph._graph.node[hypotheses_graph._graph.node[n]['parent']]['trackId']
+            trackParents[trackId] = hypotheses_graph._graph.nodes[hypotheses_graph._graph.nodes[n]['parent']]['trackId']
 
     # write res_track.txt
-    getLogger().info("Writing track text file")
+    logger.info("Writing track text file")
     trackDict = {}
     for trackId, timestepList in tracks.items():
         timestepList.sort()
@@ -307,7 +307,7 @@ def run_pipeline(options):
     save_tracks(trackDict, options) 
 
     # export results
-    getLogger().info("Saving relabeled images")
+    logger.info("Saving relabeled images")
     pluginManager = TrackingPluginManager(verbose=options.verbose, pluginPaths=options.pluginPaths)
     pluginManager.setImageProvider('LocalImageLoader')
     imageProvider = pluginManager.getImageProvider()

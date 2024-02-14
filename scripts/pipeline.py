@@ -1,7 +1,6 @@
 """
 Run the full pipeline, configured by a config file
 """
-from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 # pythonpath modification to make hytra available 
 # for import without requiring it to be installed
 import os
@@ -94,9 +93,9 @@ def run_pipeline(options, unknown):
         check_call(["python", os.path.abspath("run_merger_resolving.py"), "--config", options.config_file])
 
         for p in ["--out-graph-json-file", "--out-label-image-file", "--out-result-json-file"]:
-            index = unknown.index(p)
+            index = [x.startswith(p) for x in unknown].index(True)
             extra_params.append(p.replace('--out-', '--'))
-            extra_params.append(unknown[index + 1])
+            extra_params.append(unknown[index].split("=")[1])
 
     if options.export_format is not None:
         logging.info("Convert result to {}...".format(options.export_format))
@@ -141,7 +140,6 @@ if __name__ == "__main__":
 
     # parse command line
     options, unknown = parser.parse_known_args()
-
     if options.verbose:
         logging.basicConfig(level=logging.DEBUG)
     else:

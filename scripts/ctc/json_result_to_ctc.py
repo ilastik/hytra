@@ -11,12 +11,13 @@ import h5py
 import vigra
 import time
 import logging
-from skimage.external import tifffile
+import tifffile
 from hytra.core.jsongraph import JsonTrackingGraph
 from hytra.pluginsystem.plugin_manager import TrackingPluginManager
 
-def getLogger():
-    return logging.getLogger(__name__)
+
+logger = logging.getLogger(__name__)
+
 
 def save_frame_to_tif(timestep, label_image, options):
     if len(options.label_image_filename) == 1:
@@ -95,14 +96,14 @@ if __name__ == "__main__":
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.INFO)
-    getLogger().debug("Ignoring unknown parameters: {}".format(unknown))
+    logger.debug("Ignoring unknown parameters: {}".format(unknown))
 
     # make sure output directory exists
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
     # load graph and compute lineages
-    getLogger().debug("Loading graph and result")
+    logger.debug("Loading graph and result")
     trackingGraph = JsonTrackingGraph(model_filename=args.model_filename, result_filename=args.result_filename)
     hypothesesGraph = trackingGraph.toHypothesesGraph()
     hypothesesGraph.computeLineage(1, 1, args.linksToNumNextFrames)
@@ -114,24 +115,24 @@ if __name__ == "__main__":
 
     for n in hypothesesGraph.nodeIterator():
         frameMapping = mappings.setdefault(n[0], {})
-        if 'trackId' not in hypothesesGraph._graph.node[n]:
+        if 'trackId' not in hypothesesGraph._graph.nodes[n]:
             raise ValueError("You need to compute the Lineage of every node before accessing the trackId!")
-        trackId = hypothesesGraph._graph.node[n]['trackId']
+        trackId = hypothesesGraph._graph.nodes[n]['trackId']
         if trackId is not None:
             frameMapping[n[1]] = trackId
         if trackId in tracks.keys():
             tracks[trackId].append(n[0])
         else:
             tracks[trackId] = [n[0]]
-        if 'parent' in hypothesesGraph._graph.node[n]:
+        if 'parent' in hypothesesGraph._graph.nodes[n]:
             assert(trackId not in trackParents)
-            trackParents[trackId] = hypothesesGraph._graph.node[hypothesesGraph._graph.node[n]['parent']]['trackId']
-        if 'gap_parent' in hypothesesGraph._graph.node[n]:
+            trackParents[trackId] = hypothesesGraph._graph.nodes[hypothesesGraph._graph.nodes[n]['parent']]['trackId']
+        if 'gap_parent' in hypothesesGraph._graph.nodes[n]:
             assert(trackId not in trackParents)
-            gapTrackParents[trackId] = hypothesesGraph._graph.node[hypothesesGraph._graph.node[n]['gap_parent']]['trackId']
+            gapTrackParents[trackId] = hypothesesGraph._graph.nodes[hypothesesGraph._graph.nodes[n]['gap_parent']]['trackId']
 
     # write res_track.txt
-    getLogger().debug("Writing track text file")
+    logger.debug("Writing track text file")
     trackDict = {}
     for trackId, timestepList in tracks.items():
         timestepList.sort()
@@ -143,12 +144,12 @@ if __name__ == "__main__":
         if trackId in gapTrackParents.keys():
             if gapTrackParents[trackId] != trackId:
                 parent = gapTrackParents[trackId]
-                getLogger().info("Jumping over one time frame in this link: trackid: {}, parent: {}, time: {}".format(trackId, parent, min(timestepList)))
+                logger.info("Jumping over one time frame in this link: trackid: {}, parent: {}, time: {}".format(trackId, parent, min(timestepList)))
         trackDict[trackId] = [parent, min(timestepList), max(timestepList)]
     save_tracks(trackDict, args) 
 
     # load images, relabel, and export relabeled result
-    getLogger().debug("Saving relabeled images")
+    logger.debug("Saving relabeled images")
     pluginManager = TrackingPluginManager(verbose=args.verbose, pluginPaths=args.pluginPaths)
     pluginManager.setImageProvider('LocalImageLoader')
     imageProvider = pluginManager.getImageProvider()

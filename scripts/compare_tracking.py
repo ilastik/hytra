@@ -1,6 +1,5 @@
 # pythonpath modification to make hytra available 
 # for import without requiring it to be installed
-from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
@@ -26,11 +25,11 @@ def match(fn_pair):
 
 def getIdsAndValidity(h5file):
     try:
-        ids = np.sort(h5file['objects/meta/id'].value)            
-        valid = h5file['objects/meta/valid'].value
+        ids = np.sort(h5file['objects/meta/id'][()])            
+        valid = h5file['objects/meta/valid'][()]
     except:
         print("Warning: could not load ids and validity from hdf5 file. Reconstructing from segmentation...")
-        labelImage = h5file['segmentation/labels'].value
+        labelImage = h5file['segmentation/labels'][()]
         ids = np.unique(labelImage)
         ids = ids[ids > 0]
         valid = np.ones(ids.shape)
@@ -44,11 +43,11 @@ def construct_associations(base_fns, cont_fns, timesteps, verbose=False):
         assert(int(os.path.splitext(os.path.basename(base_fn))[0]) == int(os.path.splitext(os.path.basename(cont_fn))[0]))
         with h5py.File(base_fn, 'r') as f:
             base_ids, base_valid = getIdsAndValidity(f)
-            # base_detection = f['objects/meta/detection'].value
+            # base_detection = f['objects/meta/detection'][()]
 
         with h5py.File(cont_fn, 'r') as f:
             cont_ids, cont_valid = getIdsAndValidity(f)
-            # cont_detection = f['objects/meta/detection'].value
+            # cont_detection = f['objects/meta/detection'][()]
 
         if verbose:
             print("sanity checking %d" % t)

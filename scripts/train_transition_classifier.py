@@ -1,6 +1,5 @@
 # pythonpath modification to make hytra and empryonic available 
 # for import without requiring it to be installed
-from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
@@ -273,7 +272,7 @@ if __name__ == '__main__':
     for dataset in range(len(args.rawimage_filename)):
         rawimage_filename = args.rawimage_filename[dataset]
         with h5py.File(rawimage_filename, 'r') as h5raw:
-            rawimage = h5raw[args.rawimage_h5_path].value
+            rawimage = h5raw[args.rawimage_h5_path][()]
 
         # transform such that the order is the following: X,Y,(Z),T, C
         rawimage = hytra.util.axesconversion.adjustOrder(rawimage, args.rawimage_axes[dataset], 'xyztc')

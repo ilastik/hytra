@@ -1,6 +1,5 @@
 # pythonpath modification to make hytra available 
 # for import without requiring it to be installed
-from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
@@ -62,19 +61,21 @@ if __name__ == "__main__":
     args, _ = parser.parse_known_args()
     
     # load threshold settings
-    with h5py.File(args.ilpFilename, 'r') as h5file:
-        threshold_level = h5file['ThresholdTwoLevels/SingleThreshold'].value
-        threshold_channel = h5file['ThresholdTwoLevels/Channel'].value
-        threshold_sigmas = [h5file['ThresholdTwoLevels/SmootherSigma/x'].value, 
-                            h5file['ThresholdTwoLevels/SmootherSigma/y'].value, 
-                            h5file['ThresholdTwoLevels/SmootherSigma/z'].value]
-        threshold_min_size = h5file['ThresholdTwoLevels/MinSize'].value
-        threshold_max_size = h5file['ThresholdTwoLevels/MaxSize'].value
+    with h5py.File(args.ilpFilename, "r") as h5file:
+        threshold_level = h5file["ThresholdTwoLevels/SingleThreshold"][()]
+        threshold_channel = h5file["ThresholdTwoLevels/Channel"][()]
+        threshold_sigmas = [
+            h5file["ThresholdTwoLevels/SmootherSigma/x"][()],
+            h5file["ThresholdTwoLevels/SmootherSigma/y"][()],
+            h5file["ThresholdTwoLevels/SmootherSigma/z"][()],
+        ]
+        threshold_min_size = h5file["ThresholdTwoLevels/MinSize"][()]
+        threshold_max_size = h5file["ThresholdTwoLevels/MaxSize"][()]
 
     # load prediction maps
     # predictionMaps = vigra.impex.readHDF5(args.predictionMapFilename, args.predictionPath)
     with h5py.File(args.predictionMapFilename) as f:
-        predictionMaps = f[args.predictionPath].value
+        predictionMaps = f[args.predictionPath][()]
 
     predictionMaps = hytra.util.axesconversion.adjustOrder(predictionMaps, args.prediction_axes, 'txyzc')
     shape = predictionMaps.shape

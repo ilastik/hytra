@@ -24,7 +24,7 @@ def filterFeaturesByIntensity(h5In, h5Out, threshold = 1500):
     h5Out: output path; file will be overwritten if already existing
     '''
     def intensityFilter(labelGroup):
-        intMaximum = labelGroup[intminmax].value[1]
+        intMaximum = labelGroup[intminmax][()][1]
         return (intMaximum >= threshold)
     filterFeaturesByPredicate(h5In, h5Out, intensityFilter)
 
@@ -81,17 +81,17 @@ def filterFeaturesByPredicate(h5In, h5Out, predicate):
 
     # supervoxels
     print "labelcount = ", labelcount
-    outFeaturesGroup.create_dataset(labelcount, data=featuresGroup[labelcount].value)
+    outFeaturesGroup.create_dataset(labelcount, data=featuresGroup[labelcount][()])
 
     # featureconfig
-    outFeaturesGroup.create_dataset(featureconfig, data=featuresGroup[featureconfig].value)
+    outFeaturesGroup.create_dataset(featureconfig, data=featuresGroup[featureconfig][()])
 
     # labels
     for labelGroup in validLabelGroups:
         outFile.copy(labelGroup, outFeaturesGroup)
 
     # labelcontent
-    inLabelcontent = featuresGroup[labelcontent].value
+    inLabelcontent = featuresGroup[labelcontent][()]
     outLabelcontent = np.zeros(inLabelcontent.shape, dtype=inLabelcontent.dtype)
 
     validLabels = filter(lambda item: item.isdigit(), outFeaturesGroup.keys())

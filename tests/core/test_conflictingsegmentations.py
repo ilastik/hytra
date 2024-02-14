@@ -1,8 +1,9 @@
-from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 import logging
 
 from hytra.core.ilastik_project_options import IlastikProjectOptions
-from hytra.jst.conflictingsegmentsprobabilitygenerator import ConflictingSegmentsProbabilityGenerator
+from hytra.jst.conflictingsegmentsprobabilitygenerator import (
+    ConflictingSegmentsProbabilityGenerator,
+)
 from hytra.core.ilastikhypothesesgraph import IlastikHypothesesGraph
 from hytra.core.fieldofview import FieldOfView
 
@@ -20,16 +21,25 @@ def constructFov(shape, t0, t1, scale=[1, 1, 1]):
     [xshape, yshape, zshape] = shape
     [xscale, yscale, zscale] = scale
 
-    fov = FieldOfView(t0, 0, 0, 0, t1, xscale * (xshape - 1), yscale * (yshape - 1),
-                      zscale * (zshape - 1))
+    fov = FieldOfView(
+        t0,
+        0,
+        0,
+        0,
+        t1,
+        xscale * (xshape - 1),
+        yscale * (yshape - 1),
+        zscale * (zshape - 1),
+    )
     return fov
+
 
 # def test_twoSegmentations():
 #     # set up ConflictingSegmentsProbabilityGenerator
 #     ilpOptions = IlastikProjectOptions()
 #     ilpOptions.divisionClassifierPath = None
 #     ilpOptions.divisionClassifierFilename = None
-    
+
 #     ilpOptions.rawImageFilename = 'tests/multiSegmentationHypothesesTestDataset/Raw.h5'
 #     ilpOptions.rawImagePath = 'exported_data'
 #     ilpOptions.rawImageAxes = 'txyzc'
@@ -42,7 +52,7 @@ def constructFov(shape, t0, t1, scale=[1, 1, 1]):
 #     additionalLabelImagePaths = [ilpOptions.labelImagePath]
 
 #     probabilityGenerator = ConflictingSegmentsProbabilityGenerator(
-#         ilpOptions, 
+#         ilpOptions,
 #         additionalLabelImageFilenames,
 #         additionalLabelImagePaths,
 #         useMultiprocessing=False,
@@ -67,7 +77,7 @@ def constructFov(shape, t0, t1, scale=[1, 1, 1]):
 #                                [probabilityGenerator.x_scale,
 #                                 probabilityGenerator.y_scale,
 #                                 probabilityGenerator.z_scale])
- 
+
 #     hypotheses_graph = IlastikHypothesesGraph(
 #         probabilityGenerator=probabilityGenerator,
 #         timeRange=probabilityGenerator.timeRange,
@@ -80,13 +90,13 @@ def constructFov(shape, t0, t1, scale=[1, 1, 1]):
 
 #     assert(hypotheses_graph.countNodes() == 14)
 #     assert(hypotheses_graph.countArcs() == 23)
-#     assert(hypotheses_graph._graph.node[(0, 1)]['traxel'].conflictingTraxelIds == [3])
-#     assert(hypotheses_graph._graph.node[(0, 3)]['traxel'].conflictingTraxelIds == [1])
-#     assert(hypotheses_graph._graph.node[(0, 2)]['traxel'].conflictingTraxelIds == [4])
-#     assert(hypotheses_graph._graph.node[(0, 4)]['traxel'].conflictingTraxelIds == [2])
-#     assert(hypotheses_graph._graph.node[(1, 1)]['traxel'].conflictingTraxelIds == [2, 3])
-#     assert(hypotheses_graph._graph.node[(1, 2)]['traxel'].conflictingTraxelIds == [1])
-#     assert(hypotheses_graph._graph.node[(1, 3)]['traxel'].conflictingTraxelIds == [1])
+#     assert(hypotheses_graph._graph.nodes[(0, 1)]['traxel'].conflictingTraxelIds == [3])
+#     assert(hypotheses_graph._graph.nodes[(0, 3)]['traxel'].conflictingTraxelIds == [1])
+#     assert(hypotheses_graph._graph.nodes[(0, 2)]['traxel'].conflictingTraxelIds == [4])
+#     assert(hypotheses_graph._graph.nodes[(0, 4)]['traxel'].conflictingTraxelIds == [2])
+#     assert(hypotheses_graph._graph.nodes[(1, 1)]['traxel'].conflictingTraxelIds == [2, 3])
+#     assert(hypotheses_graph._graph.nodes[(1, 2)]['traxel'].conflictingTraxelIds == [1])
+#     assert(hypotheses_graph._graph.nodes[(1, 3)]['traxel'].conflictingTraxelIds == [1])
 
 #     # track, but check that the right exclusion constraints are present
 #     hypotheses_graph.insertEnergies()
@@ -111,14 +121,14 @@ def constructFov(shape, t0, t1, scale=[1, 1, 1]):
 
 #     for node in hypotheses_graph.nodeIterator():
 #         timeframe = node[0]
-#         if 'value' in hypotheses_graph._graph.node[node]: 
-#             value = hypotheses_graph._graph.node[node]['value']
+#         if 'value' in hypotheses_graph._graph.nodes[node]:
+#             value = hypotheses_graph._graph.nodes[node]['value']
 #         else:
-#             value = 0 
-#         numActivePerFrame.setdefault(timeframe, []).append(value) 
+#             value = 0
+#         numActivePerFrame.setdefault(timeframe, []).append(value)
 
 #     for _, v in numActivePerFrame.items():
-#         assert(sum(v) == 2)        
+#         assert(sum(v) == 2)
 
 #     edgeFlow = 0
 #     for edge in hypotheses_graph.arcIterator():

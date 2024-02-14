@@ -1,22 +1,25 @@
-from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 from hytra.pluginsystem import feature_serializer_plugin
-import numpy as np
-import json_tricks as json
-from libdvid import DVIDNodeService, DVIDServerService
+from libdvid import DVIDNodeService
+
+try:
+    import json_tricks as json
+except ImportError:
+    import json
+
 
 class DvidFeatureSerializer(feature_serializer_plugin.FeatureSerializerPlugin):
     """
     serializes features to dvid
     """
 
-    keyvalue_store = 'features'
-    
+    keyvalue_store = "features"
+
     def storeFeaturesForFrame(self, features, timeframe):
         """
         Stores feature data
         """
-        assert(self.server_address is not None)
-        assert(self.uuid is not None)
+        assert self.server_address is not None
+        assert self.uuid is not None
         node_service = DVIDNodeService(self.server_address, self.uuid)
         node_service.create_keyvalue(self.keyvalue_store)
         node_service.put(self.keyvalue_store, "frame-{}".format(timeframe), json.dumps(features))
@@ -25,8 +28,8 @@ class DvidFeatureSerializer(feature_serializer_plugin.FeatureSerializerPlugin):
         """
         loads feature data
         """
-        assert(self.server_address is not None)
-        assert(self.uuid is not None)
+        assert self.server_address is not None
+        assert self.uuid is not None
         node_service = DVIDNodeService(self.server_address, self.uuid)
         node_service.create_keyvalue(self.keyvalue_store)
         return json.loads(node_service.get(self.keyvalue_store, "frame-{}".format(timeframe)))

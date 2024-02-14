@@ -1,6 +1,5 @@
 # pythonpath modification to make hytra and empryonic available 
 # for import without requiring it to be installed
-from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
@@ -20,7 +19,7 @@ def segmentation_to_hdf5(options):
     in_h5 = h5py.File(options.segmentation_file, 'r')
     out_h5 = h5py.File(options.hdf5Path, 'w')
     
-    data = in_h5[options.segmentation_path].value
+    data = in_h5[options.segmentation_path][()]
     logging.getLogger('segmentation_to_labelimage.py').info("Found image of shape {}".format(data.shape))    
     data = hytra.util.axesconversion.adjustOrder(data, options.segmentation_axes, 'txyzc')
     logging.getLogger('segmentation_to_labelimage.py').info("Changed into shape {}".format(data.shape))

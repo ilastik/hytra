@@ -6,6 +6,7 @@
 CMakeCache*
 *.pyc
 *_test
+__pycache__
 tags*
 Testing
 CMakeFiles

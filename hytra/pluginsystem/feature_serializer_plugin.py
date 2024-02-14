@@ -1,5 +1,3 @@
-from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
-
 from yapsy.IPlugin import IPlugin
 
 
@@ -9,13 +7,13 @@ class FeatureSerializerPlugin(IPlugin):
     """
 
     server_address = None
-    ''' Address of the dvid server (only used by the dvid serializer plugin) '''
+    """ Address of the dvid server (only used by the dvid serializer plugin) """
 
     uuid = None
-    ''' Address of the dataset uuid on the dvid server (only used by the dvid serializer plugin) '''
+    """ Address of the dataset uuid on the dvid server (only used by the dvid serializer plugin) """
 
     features_per_frame = None
-    ''' dictionary of features per frame (only used by local serializer plugin) '''
+    """ dictionary of features per frame (only used by local serializer plugin) """
 
     def activate(self):
         """
