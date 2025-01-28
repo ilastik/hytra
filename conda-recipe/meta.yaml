@@ -23,6 +23,7 @@ requirements:
   host:
     - python >=3.6
     - setuptools
+    - setuptools_scm
     - pip
   run:
     - dpct
