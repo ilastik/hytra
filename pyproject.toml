@@ -1,3 +1,33 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hytra"
+version = "0.1.1"
+description = "Tracking pipeline of the IAL lab at the University of Heidelberg"
+authors = [
+    { name = "Carsten Haubold", email = "team@ilastik.org" }
+]
+license = { text = "BSD" }
+keywords = ["cell", "tracking", "divisions", "ilastik"]
+
+[project.urls]
+Homepage = "http://github.com/ilastik/hytra"
+
+[tool.setuptools]
+packages = [
+    "hytra",
+    "hytra.core",
+    "hytra.util",
+    "hytra.pluginsystem",
+    "hytra.dvid",
+]
+include-package-data = true
+
+[tool.setuptools.package-data]
+hytra = ["plugins/*/*"]
+
 [tool.black]
 line-length = 120
-target-version = ['py37', 'py38', 'py39']
+target-version = ['py310', 'py311', 'py312', 'py313']
