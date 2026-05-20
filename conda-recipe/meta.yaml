@@ -21,9 +21,8 @@ build:
 
 requirements:
   host:
-    - python >=3.6
+    - python >=3.10
     - setuptools
-    - setuptools_scm
     - pip
   run:
     - dpct
@@ -41,14 +40,16 @@ test:
     - scripts/*
     - empryonic/*
     - hytra/*
+    - pyproject.toml
   requires:
     - configargparse
-    - nose
+    - python 3.11
+    - pytest
     - jinja2
   imports:
     - hytra
   commands:
-    - nosetests tests
+    - pytest -v
 
 about:
   home: https://github.com/ilastik/hytra

@@ -19,9 +19,10 @@ Homepage = "http://github.com/ilastik/hytra"
 packages = [
     "hytra",
     "hytra.core",
-    "hytra.util",
-    "hytra.pluginsystem",
     "hytra.dvid",
+    "hytra.jst",
+    "hytra.pluginsystem",
+    "hytra.util",
 ]
 include-package-data = true
 
@@ -31,3 +32,6 @@ hytra = ["plugins/*/*"]
 [tool.black]
 line-length = 120
 target-version = ['py310', 'py311', 'py312', 'py313']
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
