@@ -1,9 +1,0 @@
-[Core]
-Name = GMMMergerResolver
-Module = gmm_merger_resolver
-
-[Documentation]
-Description = Use GMM to resolve Mergers in label image
-Author = The other one
-Version = the_version_number_of_the_plugin
-Website = My very own website
