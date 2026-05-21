@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 
 
-class ImageProviderPlugin(ABC):
+class ImageProviderBase(ABC):
     """
-    This is the base class for all plugins that load images from a given location
+    This is the base class for all image providers that load data from a given location
     """
 
     @abstractmethod

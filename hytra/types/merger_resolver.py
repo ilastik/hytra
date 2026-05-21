@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 
 
-class MergerResolverPlugin(ABC):
+class MergerResolverBase(ABC):
     """
-    This is the base class for all plugins that can resolve mergers in an image,
+    This is the base class for all types that can resolve mergers in an image,
     using some initialization.
     They should implement the functions below.
     """

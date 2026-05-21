@@ -4,9 +4,9 @@ import numpy as np
 import numpy.typing as npt
 
 
-class TransitionFeatureVectorConstructionPlugin(ABC):
+class TransitionFeatureVectorConstructionBase(ABC):
     """
-    This is the base class for all plugins that construct a feature vector for a transition
+    This is the base class for all types that construct a feature vector for a transition
     based on the feature dictionaries of two objects
     """
 

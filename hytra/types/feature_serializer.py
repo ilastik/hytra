@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 
 
-class FeatureSerializerPlugin(ABC):
+class FeatureSerializerBase(ABC):
     """
-    This is the base class for all plugins that load/store the features to/from different locations
+    This is the base class for all types that load/store the features to/from different locations
     """
 
     server_address = None

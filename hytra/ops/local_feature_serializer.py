@@ -1,7 +1,7 @@
-from hytra.pluginsystem import feature_serializer_plugin
+from ..types.feature_serializer import FeatureSerializerBase
 
 
-class LoadFeatureSerializer(feature_serializer_plugin.FeatureSerializerPlugin):
+class LoadFeatureSerializer(FeatureSerializerBase):
     """
     serializes features into local dict
     """

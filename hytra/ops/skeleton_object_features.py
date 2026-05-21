@@ -1,9 +1,10 @@
-from hytra.pluginsystem import object_feature_computation_plugin
 import vigra
 from vigra import numpy as np
 
+from ..types.object_feature_computation import ObjectFeatureComputationBase
 
-class SkeletonObjectFeatures(object_feature_computation_plugin.ObjectFeatureComputationPlugin):
+
+class SkeletonObjectFeatures(ObjectFeatureComputationBase):
     """
     Computes the skeleton based vigra features
     """

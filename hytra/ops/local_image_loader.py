@@ -1,11 +1,13 @@
-from hytra.pluginsystem import image_provider_plugin
-import hytra.util.axesconversion
-import numpy as np
-import h5py
 import logging
 
+import h5py
+import hytra.util.axesconversion
+import numpy as np
 
-class LocalImageLoader(image_provider_plugin.ImageProviderPlugin):
+from ..types.image_provider import ImageProviderBase
+
+
+class LocalImageLoader(ImageProviderBase):
     """
     Computes the subtraction of features in the feature vector
     """

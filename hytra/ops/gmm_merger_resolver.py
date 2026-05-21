@@ -1,10 +1,10 @@
-from hytra.pluginsystem import merger_resolver_plugin
 import numpy as np
-
 from sklearn import mixture
 
+from ..types.merger_resolver import MergerResolverBase
 
-class GMMMergerResolver(merger_resolver_plugin.MergerResolverPlugin):
+
+class GMMMergerResolver(MergerResolverBase):
     """
     Computes the subtraction of features in the feature vector
     """

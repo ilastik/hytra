@@ -4,9 +4,9 @@ import numpy as np
 import numpy.typing as npt
 
 
-class ObjectFeatureComputationPlugin(ABC):
+class ObjectFeatureComputationBase(ABC):
     """
-    This is the base class for all plugins that can do feature computation based on an image,
+    This is the base class for all types that can do feature computation based on an image,
     which is a certain frame of the image sequence.
     They should implement the functions below.
     """

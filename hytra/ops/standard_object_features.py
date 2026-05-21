@@ -1,8 +1,9 @@
-from hytra.pluginsystem import object_feature_computation_plugin
 import vigra
 
+from ..types.object_feature_computation import ObjectFeatureComputationBase
 
-class StandardObjectFeatures(object_feature_computation_plugin.ObjectFeatureComputationPlugin):
+
+class StandardObjectFeatures(ObjectFeatureComputationBase):
     """
     Computes the standard vigra region features
     """
