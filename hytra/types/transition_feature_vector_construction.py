@@ -1,33 +1,26 @@
-from yapsy.IPlugin import IPlugin
+from abc import ABC, abstractmethod
+
+import numpy as np
+import numpy.typing as npt
 
 
-class TransitionFeatureVectorConstructionPlugin(IPlugin):
+class TransitionFeatureVectorConstructionPlugin(ABC):
     """
     This is the base class for all plugins that construct a feature vector for a transition
     based on the feature dictionaries of two objects
     """
 
-    def activate(self):
-        """
-        Activation of plugin could do something, but not needed here
-        """
-        pass
-
-    def deactivate(self):
-        """
-        Deactivation of plugin could do something, but not needed here
-        """
-        pass
-
-    def getFeatureNames(self, featureDictObjectA, featureDictObjectB, selectedFeatures):
+    @abstractmethod
+    def getFeatureNames(self, featureDictObjectA, featureDictObjectB, selectedFeatures) -> list[str]:
         """
         Get a list of feature names describing which features were combined and how.
         e.g. return ['meanIntensityA-meanIntensityB', 'meanIntensityA*meanIntensityB']
         """
-        raise NotImplementedError()
-        return []
 
-    def constructFeatureVector(self, featureDictObjectA, featureDictObjectB, selectedFeatures):
+    @abstractmethod
+    def constructFeatureVector(
+        self, featureDictObjectA, featureDictObjectB, selectedFeatures
+    ) -> list[npt.NDArray[np.float32]]:
         """
         Set up a feature vector using the selected features of both objects.
         Return a list, not a numpy array!
@@ -38,5 +31,3 @@ class TransitionFeatureVectorConstructionPlugin(IPlugin):
         e.g. return [featureDictObjectA['meanIntensity']-featureDictObjectB['meanIntensity'],
                     featureDictObjectA['meanIntensity']*featureDictObjectB['meanIntensity']]
         """
-        raise NotImplementedError()
-        return []

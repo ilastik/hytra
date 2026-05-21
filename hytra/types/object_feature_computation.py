@@ -1,7 +1,10 @@
-from yapsy.IPlugin import IPlugin
+from abc import ABC, abstractmethod
+
+import numpy as np
+import numpy.typing as npt
 
 
-class ObjectFeatureComputationPlugin(IPlugin):
+class ObjectFeatureComputationPlugin(ABC):
     """
     This is the base class for all plugins that can do feature computation based on an image,
     which is a certain frame of the image sequence.
@@ -14,19 +17,8 @@ class ObjectFeatureComputationPlugin(IPlugin):
     # specify for which dimensionality these features work
     worksForDimensions = [2, 3]
 
-    def activate(self):
-        """
-        Activation of plugin could do something, but not needed here
-        """
-        pass
-
-    def deactivate(self):
-        """
-        Deactivation of plugin could do something, but not needed here
-        """
-        pass
-
-    def computeFeatures(self, rawImage, labelImage, frameNumber, rawFilename):
+    @abstractmethod
+    def computeFeatures(self, rawImage, labelImage, frameNumber, rawFilename) -> dict[str, npt.NDArray[np.float32]]:
         """
         Compute new features based on the raw and labelimage, for the given frame number.
         Should return a dict that has each computed feature as key, and as value a list
@@ -36,6 +28,3 @@ class ObjectFeatureComputationPlugin(IPlugin):
         return {'meanIntensity': [0.1, 2.0, 2.7, 1.6],
                 'center' : [np.array([100,100]), np.array([24,87]), np.array([65,12]), np.array([99,33])]}
         """
-        raise NotImplementedError()
-
-        return dict()

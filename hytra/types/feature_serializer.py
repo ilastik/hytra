@@ -1,7 +1,7 @@
-from yapsy.IPlugin import IPlugin
+from abc import ABC, abstractmethod
 
 
-class FeatureSerializerPlugin(IPlugin):
+class FeatureSerializerPlugin(ABC):
     """
     This is the base class for all plugins that load/store the features to/from different locations
     """
@@ -15,28 +15,14 @@ class FeatureSerializerPlugin(IPlugin):
     features_per_frame = None
     """ dictionary of features per frame (only used by local serializer plugin) """
 
-    def activate(self):
-        """
-        Activation of plugin could do something, but not needed here
-        """
-        pass
-
-    def deactivate(self):
-        """
-        Deactivation of plugin could do something, but not needed here
-        """
-        pass
-
+    @abstractmethod
     def storeFeaturesForFrame(self, features, timeframe):
         """
         Stores feature data
         """
-        raise NotImplementedError()
-        return []
 
+    @abstractmethod
     def loadFeaturesForFrame(self, features, timeframe):
         """
         loads feature data
         """
-        raise NotImplementedError()
-        return []
