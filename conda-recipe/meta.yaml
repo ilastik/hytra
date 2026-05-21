@@ -28,6 +28,7 @@ requirements:
     - dpct
     - h5py
     - networkx >1,<4
+    - numpy>1.19,<2
     - python >=3.10
     - scikit-image
     - scikit-learn
