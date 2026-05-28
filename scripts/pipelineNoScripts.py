@@ -94,8 +94,7 @@ def run_pipeline(options, unknown):
         else:
             ilpOptions.divisionClassifierFilename = None
 
-        probGenerator = probabilitygenerator.IlpProbabilityGenerator(ilpOptions, 
-                                              pluginPaths=[str('../hytra/plugins')],
+        probGenerator = probabilitygenerator.IlpProbabilityGenerator(ilpOptions,
                                               useMultiprocessing=False)
 
         # if time_range is not None:

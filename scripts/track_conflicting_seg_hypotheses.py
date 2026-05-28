@@ -13,6 +13,7 @@ import numpy as np
 import logging
 import tifffile
 import vigra
+
 try:
     import commentjson as json
 except ImportError:
@@ -21,7 +22,7 @@ import configargparse as argparse
 sys.path.insert(0, os.path.abspath('..'))
 from hytra.core.ilastikhypothesesgraph import IlastikHypothesesGraph
 from hytra.core.fieldofview import FieldOfView
-from hytra.pluginsystem.plugin_manager import TrackingPluginManager
+from hytra.ops.local_image_loader import LocalImageLoader
 from hytra.core.jsongraph import writeToFormattedJSON
 import hytra.jst.conflictingsegmentsprobabilitygenerator as probabilitygenerator
 import hytra.jst.classifiertrainingexampleextractor
@@ -308,9 +309,7 @@ def run_pipeline(options):
 
     # export results
     logger.info("Saving relabeled images")
-    pluginManager = TrackingPluginManager(verbose=options.verbose, pluginPaths=options.pluginPaths)
-    pluginManager.setImageProvider('LocalImageLoader')
-    imageProvider = pluginManager.getImageProvider()
+    imageProvider = LocalImageLoader()
     timeRange = probGenerator.timeRange
 
     for timeframe in range(timeRange[0], timeRange[1]):

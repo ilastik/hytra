@@ -2,10 +2,12 @@ import logging
 import os
 import numpy as np
 import networkx as nx
-from hytra.pluginsystem.plugin_manager import TrackingPluginManager
 import hytra.core.probabilitygenerator as probabilitygenerator
 import hytra.core.jsongraph
 from hytra.core.jsongraph import negLog, listify, JsonTrackingGraph
+from hytra.ops.gmm_merger_resolver import GMMMergerResolver
+from hytra.ops.transition_feature_distance import TransitionFeaturesDistance
+from hytra.types.plugin_manager import apply_transition_feature_vector_construction
 from hytra.util.progressbar import DefaultProgressVisitor
 from hytra.core.splittracking import SplitTracking
 
@@ -34,8 +36,7 @@ class MergerResolver(object):
         self.resolvedGraph = None
         self.mergersPerTimestep = None
         self.detectionsPerTimestep = None
-        self.pluginManager = TrackingPluginManager(verbose=verbose, pluginPaths=pluginPaths)
-        self.mergerResolverPlugin = self.pluginManager.getMergerResolver()
+        self.mergerResolverPlugin = GMMMergerResolver()
         self.numSplits = numSplits
 
         # should be filled by constructors of derived classes!
@@ -250,10 +251,11 @@ class MergerResolver(object):
 
             if transitionClassifier is not None:
                 try:
-                    featVec = self.pluginManager.applyTransitionFeatureVectorConstructionPlugins(
+                    featVec = apply_transition_feature_vector_construction(
                         featuresAtSrc,
                         featuresAtDest,
                         transitionClassifier.selectedFeatures,
+                        feature_ops=[TransitionFeaturesDistance]
                     )
                 except:
                     logger.error("Could not compute transition features of link {}->{}:".format(src, dest))

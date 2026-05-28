@@ -4,6 +4,16 @@ from compiler.ast import flatten
 from ..types.transition_feature_vector_construction import TransitionFeatureVectorConstructionBase
 
 
+def flatten(seq):
+    result = []
+    for item in seq:
+        if isinstance(item, (list, tuple)):
+            result.extend(flatten(item))
+        else:
+            result.append(item)
+    return result
+
+
 class TransitionFeaturesMultiplication(TransitionFeatureVectorConstructionBase):
     """
     Computes the product of features in the feature vector

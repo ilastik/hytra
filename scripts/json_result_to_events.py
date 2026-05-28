@@ -2,6 +2,7 @@
 # for import without requiring it to be installed
 import os
 import sys
+
 sys.path.insert(0, os.path.abspath('..'))
 # standard imports
 try:
@@ -14,7 +15,7 @@ import numpy as np
 import h5py
 from multiprocessing import Pool
 import hytra.core.jsongraph
-from hytra.pluginsystem.plugin_manager import TrackingPluginManager
+from hytra.ops.local_image_loader import LocalImageLoader
 
 def writeEvents(timestep, activeLinks, activeDivisions, mergers, detections, fn, labelImagePath, ilpFilename, verbose, pluginPaths):
     dis = []
@@ -24,8 +25,6 @@ def writeEvents(timestep, activeLinks, activeDivisions, mergers, detections, fn,
     mer = []
     mul = []
 
-    pluginManager = TrackingPluginManager(verbose=verbose, pluginPaths=pluginPaths)
-    
     logging.getLogger('json_result_to_events.py').debug("-- Writing results to {}".format(fn))
     try:
         # convert to ndarray for better indexing
@@ -36,8 +35,8 @@ def writeEvents(timestep, activeLinks, activeDivisions, mergers, detections, fn,
         mer = np.asarray([[k,v] for k,v in mergers.items()])
         mul = np.asarray(mul)
 
-        shape = pluginManager.getImageProvider().getImageShape(ilpFilename, labelImagePath)
-        label_img = pluginManager.getImageProvider().getLabelImageForFrame(ilpFilename, labelImagePath, timestep)
+        shape = LocalImageLoader().getImageShape(ilpFilename, labelImagePath)
+        label_img = LocalImageLoader().getLabelImageForFrame(ilpFilename, labelImagePath, timestep)
         
         with h5py.File(fn, 'w') as dest_file:
             # write meta fields and copy segmentation from project

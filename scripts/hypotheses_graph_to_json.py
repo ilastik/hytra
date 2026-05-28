@@ -2,6 +2,7 @@
 # for import without requiring it to be installed
 import os
 import sys
+
 sys.path.insert(0, os.path.abspath('..'))
 # standard imports
 import logging
@@ -11,7 +12,7 @@ import numpy as np
 import configargparse
 import hytra.core.hypothesesgraph as hypothesesgraph
 import hytra.core.ilastikhypothesesgraph as ilastikhypothesesgraph
-from hytra.pluginsystem.plugin_manager import TrackingPluginManager
+from hytra.ops.local_image_loader import LocalImageLoader
 import hytra.core.jsongraph
 
 def getConfigAndCommandLineArguments():
@@ -496,7 +497,6 @@ def loadProbabilityGenerator(options,
 
     probGenerator = traxelstore.IlpProbabilityGenerator(ilpOptions, 
                                             turnOffFeatures=options.turnOffFeatures, 
-                                            pluginPaths=options.pluginPaths,
                                             useMultiprocessing=not options.disableMultiprocessing)
     if time_range is not None:
         probGenerator.timeRange = time_range
@@ -690,9 +690,8 @@ if __name__ == "__main__":
     
     try:
         # find shape of dataset
-        pluginManager = TrackingPluginManager(verbose=options.verbose, pluginPaths=options.pluginPaths)
-        shape = pluginManager.getImageProvider().getImageShape(ilp_fn, options.label_img_path)
-        data_time_range = pluginManager.getImageProvider().getTimeRange(ilp_fn, options.label_img_path)
+        shape = LocalImageLoader().getImageShape(ilp_fn, options.label_img_path)
+        data_time_range = LocalImageLoader().getTimeRange(ilp_fn, options.label_img_path)
         
         if time_range is not None and time_range[1] < 0:
             time_range[1] += data_time_range[1]
