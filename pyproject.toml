@@ -9,7 +9,8 @@ description = "Tracking pipeline of the IAL lab at the University of Heidelberg"
 authors = [
     { name = "Carsten Haubold", email = "team@ilastik.org" }
 ]
-license = { text = "BSD" }
+license = "MIT"
+license-files = ["LICENSE"]
 keywords = ["cell", "tracking", "divisions", "ilastik"]
 
 [project.urls]
