@@ -2,6 +2,7 @@
 # for import without requiring it to be installed
 import os
 import sys
+
 sys.path.insert(0, os.path.abspath('..'))
 # standard imports
 try:
@@ -14,9 +15,11 @@ import numpy as np
 import h5py
 from multiprocessing import Pool
 import hytra.core.jsongraph
-from hytra.pluginsystem.plugin_manager import TrackingPluginManager
+from hytra.ops.local_image_loader import LocalImageLoader
 
-def writeEvents(timestep, activeLinks, activeDivisions, mergers, detections, fn, labelImagePath, ilpFilename, verbose, pluginPaths):
+def writeEvents(timestep, activeLinks, activeDivisions, mergers, detections, fn, labelImagePath, ilpFilename, verbose, pluginPaths=None):
+    if pluginPaths:
+        raise ValueError(f"plugin paths are not used anymore, got {pluginPaths=}")
     dis = []
     app = []
     div = []
@@ -24,8 +27,6 @@ def writeEvents(timestep, activeLinks, activeDivisions, mergers, detections, fn,
     mer = []
     mul = []
 
-    pluginManager = TrackingPluginManager(verbose=verbose, pluginPaths=pluginPaths)
-    
     logging.getLogger('json_result_to_events.py').debug("-- Writing results to {}".format(fn))
     try:
         # convert to ndarray for better indexing
@@ -36,8 +37,8 @@ def writeEvents(timestep, activeLinks, activeDivisions, mergers, detections, fn,
         mer = np.asarray([[k,v] for k,v in mergers.items()])
         mul = np.asarray(mul)
 
-        shape = pluginManager.getImageProvider().getImageShape(ilpFilename, labelImagePath)
-        label_img = pluginManager.getImageProvider().getLabelImageForFrame(ilpFilename, labelImagePath, timestep)
+        shape = LocalImageLoader().getImageShape(ilpFilename, labelImagePath)
+        label_img = LocalImageLoader().getLabelImageForFrame(ilpFilename, labelImagePath, timestep)
         
         with h5py.File(fn, 'w') as dest_file:
             # write meta fields and copy segmentation from project
@@ -95,9 +96,6 @@ if __name__ == "__main__":
     parser.add_argument('--label-image-path', dest='label_img_path', type=str,
                         default='/ObjectExtraction/LabelImage/0/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]',
                         help='internal hdf5 path to label image')
-    parser.add_argument('--plugin-paths', dest='pluginPaths', type=str, nargs='+',
-                        default=[os.path.abspath('../hytra/plugins')],
-                        help='A list of paths to search for plugins for the tracking pipeline.')
     parser.add_argument('--h5-event-out-dir', type=str, dest='out_dir', default='.', help='Output directory for HDF5 files')
     parser.add_argument("--verbose", dest='verbose', action='store_true', default=False)
     
@@ -146,8 +144,7 @@ if __name__ == "__main__":
                                      fn, 
                                      args.label_img_path, 
                                      args.ilp_filename,
-                                     args.verbose,
-                                     args.pluginPaths))
+                                     args.verbose))
 
     processing_pool.close()
     processing_pool.join()

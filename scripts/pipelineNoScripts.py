@@ -94,8 +94,7 @@ def run_pipeline(options, unknown):
         else:
             ilpOptions.divisionClassifierFilename = None
 
-        probGenerator = probabilitygenerator.IlpProbabilityGenerator(ilpOptions, 
-                                              pluginPaths=[str('../hytra/plugins')],
+        probGenerator = probabilitygenerator.IlpProbabilityGenerator(ilpOptions,
                                               useMultiprocessing=False)
 
         # if time_range is not None:
@@ -167,8 +166,7 @@ def run_pipeline(options, unknown):
             ilpOptions.rawImageFilename,
             ilpOptions.rawImagePath,
             ilpOptions.rawImageAxes,
-            [str('../hytra/plugins')],
-            True)
+            verbose=True)
         ilpOptions.labelImagePath = params[str('label-image-path')]
         ilpOptions.labelImageFilename = params[str('label-image-file')]
         ilpOptions.rawImagePath = params[str('raw-data-path')]

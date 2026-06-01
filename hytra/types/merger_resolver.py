@@ -1,25 +1,14 @@
-from yapsy.IPlugin import IPlugin
+from abc import ABC, abstractmethod
 
 
-class MergerResolverPlugin(IPlugin):
+class MergerResolverBase(ABC):
     """
-    This is the base class for all plugins that can resolve mergers in an image,
+    This is the base class for all types that can resolve mergers in an image,
     using some initialization.
     They should implement the functions below.
     """
 
-    def activate(self):
-        """
-        Activation of plugin could do something, but not needed here
-        """
-        pass
-
-    def deactivate(self):
-        """
-        Deactivation of plugin could do something, but not needed here
-        """
-        pass
-
+    @abstractmethod
     def resolveMergerForCoords(self, coordinates, mergerCount, initializations=None, random_state=None):
         """
         Resolve the pixel coordinates belonging to an object ID, into `mergerCount`
@@ -34,10 +23,8 @@ class MergerResolverPlugin(IPlugin):
 
         **returns** a list of fitted objects
         """
-        raise NotImplementedError()
 
-        return []
-
+    @abstractmethod
     def resolveMerger(self, labelImage, objectId, nextId, mergerCount, initializations=None):
         """
         Resolve the object with the ID `objectId` in the `labelImage` into `mergerCount`
@@ -49,14 +36,11 @@ class MergerResolverPlugin(IPlugin):
 
         **returns** a list of fitted objects
         """
-        raise NotImplementedError()
 
-        return []
-
+    @abstractmethod
     def updateLabelImage(self, labelImage, objectId, fits, newIds, offset=None):
         """
         Resolve the object with the ID `objectId` in the `labelImage` into the fitted models with the given new IDs.
         `labelImage` should be updated by replacing all pixels that were labelled with `objectId`
         to get a new Id depending on the fit.
         """
-        raise NotImplementedError()

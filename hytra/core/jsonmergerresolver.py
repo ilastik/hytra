@@ -5,6 +5,11 @@ import numpy as np
 import os
 import hytra.core.mergerresolver
 from hytra.core.jsongraph import JsonTrackingGraph
+from hytra.ops.convex_hull_object_features import ConvexHullObjectFeatures
+from hytra.ops.local_image_loader import LocalImageLoader
+from hytra.ops.skeleton_object_features import SkeletonObjectFeatures
+from hytra.ops.standard_object_features import StandardObjectFeatures
+from hytra.types.plugin_manager import apply_object_feature_computation
 
 
 logger = logging.getLogger(__name__)
@@ -25,7 +30,7 @@ class JsonMergerResolver(hytra.core.mergerresolver.MergerResolver):
         raw_filename,
         raw_path,
         raw_axes,
-        pluginPaths=[os.path.abspath("../hytra/plugins")],
+        pluginPaths=None,
         verbose=False,
     ):
         super(JsonMergerResolver, self).__init__(pluginPaths, verbose=verbose)
@@ -47,8 +52,7 @@ class JsonMergerResolver(hytra.core.mergerresolver.MergerResolver):
         self.raw_filename = raw_filename
         self.raw_path = raw_path
         self.raw_axes = raw_axes
-        self.pluginManager.setImageProvider("LocalImageLoader")
-        self.imageProvider = self.pluginManager.getImageProvider()
+        self.imageProvider = LocalImageLoader()
 
     def _computeObjectFeatures(self, timesteps):
         """
@@ -92,8 +96,8 @@ class JsonMergerResolver(hytra.core.mergerresolver.MergerResolver):
             mask[mask == idx] = 1
 
             # compute features, transform to one dict for frame
-            frameFeatureDicts, ignoreNames = self.pluginManager.applyObjectFeatureComputationPlugins(
-                ndims, rawImages[str(intT)], mask, intT, self.raw_filename
+            frameFeatureDicts, ignoreNames =  apply_object_feature_computation(
+                ndims, rawImages[str(intT)], mask, intT, self.raw_filename, feature_ops=[ConvexHullObjectFeatures, SkeletonObjectFeatures, StandardObjectFeatures]
             )
             frameFeatureItems = []
             for f in frameFeatureDicts:

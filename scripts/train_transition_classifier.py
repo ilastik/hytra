@@ -2,6 +2,14 @@
 # for import without requiring it to be installed
 import os
 import sys
+
+from hytra.ops.convex_hull_object_features import ConvexHullObjectFeatures
+from hytra.ops.skeleton_object_features import SkeletonObjectFeatures
+from hytra.ops.standard_object_features import StandardObjectFeatures
+from hytra.ops.transition_feature_distance import TransitionFeaturesDistance
+from hytra.ops.transition_feature_multiplication import TransitionFeaturesMultiplication
+from hytra.ops.transition_feature_subtraction import TransitionFeaturesSubtraction
+from hytra.types.plugin_manager import apply_object_feature_computation, apply_transition_feature_vector_construction
 sys.path.insert(0, os.path.abspath('..'))
 # standard imports
 from compiler.ast import flatten
@@ -11,7 +19,6 @@ import vigra
 from vigra import numpy as np
 import h5py
 from sklearn.neighbors import KDTree
-from hytra.pluginsystem.plugin_manager import TrackingPluginManager
 import hytra.util.axesconversion
 
 logger = logging.getLogger('TransitionClassifier')
@@ -27,13 +34,13 @@ def read_in_images(n1, n2, files, axes):
     return gt_labelimage
 
 # compute features from input data and return them
-def compute_features(raw_image, labeled_image, n1, n2, pluginManager, filepath):
+def compute_features(raw_image, labeled_image, n1, n2, filepath):
     # perhaps there is an elegant way to get into the RegionFeatureAccumulator.
     # For now, the new feature are a separate vector
     allFeat = []
     for i in range(0, n2 - n1):
-        moreFeats, _ = pluginManager.applyObjectFeatureComputationPlugins(
-            len(raw_image.squeeze().shape)-1, raw_image[..., i, 0], labeled_image[i][..., 0], i, filepath)
+        moreFeats, _ = apply_object_feature_computation(
+            len(raw_image.squeeze().shape)-1, raw_image[..., i, 0], labeled_image[i][..., 0], i, filepath, feature_ops=[ConvexHullObjectFeatures, SkeletonObjectFeatures, StandardObjectFeatures])
         frameFeatureItems = []
         for f in moreFeats:
             frameFeatureItems = frameFeatureItems + f.items()
@@ -135,12 +142,12 @@ class TransitionClassifier:
         self._nextIdx = 0
         # TODO: check whether prediction here and in hypotheses graph script are the same!
 
-    def addSample(self, f1, f2, label, pluginManager):
+    def addSample(self, f1, f2, label):
         # if self.labels == []:
         self.labels.append(label)
         # else:
         #    self.labels = np.concatenate((np.array(self.labels),label)) # for adding batches of features
-        features = self.constructSampleFeatureVector(f1, f2, pluginManager)
+        features = self.constructSampleFeatureVector(f1, f2)
 
         if self._numSamples is None:
             # use vstack
@@ -157,8 +164,8 @@ class TransitionClassifier:
             self.mydata[self._nextIdx, :] = features
             self._nextIdx += 1
 
-    def constructSampleFeatureVector(self, f1, f2, pluginManager):
-        featVec = pluginManager.applyTransitionFeatureVectorConstructionPlugins(f1, f2, self.selectedFeatures)
+    def constructSampleFeatureVector(self, f1, f2):
+        featVec = apply_transition_feature_vector_construction(f1, f2, self.selectedFeatures, feature_ops=[TransitionFeaturesDistance, TransitionFeaturesMultiplication, TransitionFeaturesSubtraction])
         return np.array(featVec)
 
     # adding a comfortable function, where one can easily introduce the data
@@ -249,9 +256,7 @@ if __name__ == '__main__':
     parser.add_argument("--filepattern", dest='filepattern', type=str, nargs='+', default=['0*.h5'],
                         help="File pattern of the ground truth files. Can be also a list of paths, to train from more datasets.")
     parser.add_argument("--verbose", dest='verbose', action='store_true', default=False)
-    parser.add_argument('--plugin-paths', dest='pluginPaths', type=str, nargs='+',
-                        default=[os.path.abspath('../hytra/plugins')],
-                        help='A list of paths to search for plugins for the tracking pipeline.')
+
 
     args, unknown = parser.parse_known_args()
 
@@ -289,14 +294,10 @@ if __name__ == '__main__':
         if endFrame < 0:
             endFrame += len(files)
     
-        # compute features
-        trackingPluginManager = TrackingPluginManager(verbose=args.verbose, 
-                                                      pluginPaths=args.pluginPaths)
         features = compute_features(rawimage,
                                     read_in_images(initFrame, endFrame, files, args.groundtruth_axes[dataset]),
                                     initFrame,
                                     endFrame,
-                                    trackingPluginManager,
                                     rawimage_filename)
         logger.info('Done computing features from dataset {}'.format(dataset))
 
@@ -326,16 +327,16 @@ if __name__ == '__main__':
                 logger.debug("Adding positive sample {} from pos {} to {}".format(
                     i, features[k]['RegionCenter'][i[0]], features[k + 1]['RegionCenter'][i[1]]))
                 TC.addSample(compute_ObjFeatures(
-                    features[k], i[0]), compute_ObjFeatures(features[k + 1], i[1]), 1, trackingPluginManager)
+                    features[k], i[0]), compute_ObjFeatures(features[k + 1], i[1]), 1)
                 TC.addSample(compute_ObjFeatures(
-                    features[k + 1], i[1]), compute_ObjFeatures(features[k], i[0]), 1, trackingPluginManager)
+                    features[k + 1], i[1]), compute_ObjFeatures(features[k], i[0]), 1)
             
             for i in neg_labels[k]:
                 # negative
                 logger.debug("Adding negative sample {} from pos {} to {}".format(i,
                               features[k]['RegionCenter'][i[0]], features[k + 1]['RegionCenter'][i[1]]))
                 TC.addSample(compute_ObjFeatures(
-                    features[k], i[0]), compute_ObjFeatures(features[k + 1], i[1]), 0, trackingPluginManager)
+                    features[k], i[0]), compute_ObjFeatures(features[k + 1], i[1]), 0)
         mlabels =TC.labels
 
     logger.info('Done adding samples to RF. Beginning training...')

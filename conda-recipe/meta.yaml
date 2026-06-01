@@ -21,15 +21,15 @@ build:
 
 requirements:
   host:
-    - python >=3.6
+    - python >=3.10
     - setuptools
-    - setuptools_scm
     - pip
   run:
     - dpct
     - h5py
-    - networkx >={{ networkx }}
-    - python >=3.6
+    - networkx >1,<4
+    - numpy>1.19,<2
+    - python >=3.10
     - scikit-image
     - scikit-learn
     - vigra
@@ -41,14 +41,20 @@ test:
     - scripts/*
     - empryonic/*
     - hytra/*
+    - pyproject.toml
   requires:
     - configargparse
-    - nose
+    - python 3.11
+    - pytest
     - jinja2
   imports:
     - hytra
+    - hytra.core
+    - hytra.ops
+    - hytra.types
+    - hytra.util
   commands:
-    - nosetests tests
+    - pytest -v
 
 about:
   home: https://github.com/ilastik/hytra

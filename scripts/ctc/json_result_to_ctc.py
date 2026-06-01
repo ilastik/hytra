@@ -2,6 +2,7 @@
 # for import without requiring it to be installed
 import os
 import sys
+
 sys.path.insert(0, os.path.abspath('../..'))
 sys.path.insert(0, os.path.abspath('..'))
 # standard imports
@@ -13,7 +14,7 @@ import time
 import logging
 import tifffile
 from hytra.core.jsongraph import JsonTrackingGraph
-from hytra.pluginsystem.plugin_manager import TrackingPluginManager
+from hytra.ops.local_image_loader import LocalImageLoader
 
 
 logger = logging.getLogger(__name__)
@@ -81,9 +82,6 @@ if __name__ == "__main__":
     parser.add_argument('--label-image-path', dest='label_image_path', type=str,
                         default='/TrackingFeatureExtraction/LabelImage/0000/[[%d, 0, 0, 0, 0], [%d, %d, %d, %d, 1]]',
                         help='internal hdf5 path to label image')
-    parser.add_argument('--plugin-paths', dest='pluginPaths', type=str, nargs='+',
-                        default=[os.path.abspath('../../hytra/plugins'), os.path.abspath('../hytra/plugins')],
-                        help='A list of paths to search for plugins for the tracking pipeline.')
     parser.add_argument("--is-ground-truth", dest='is_ground_truth', action='store_true', default=False)
     parser.add_argument('--links-to-num-next-frames', dest='linksToNumNextFrames', type=int, default=1)
 
@@ -150,9 +148,7 @@ if __name__ == "__main__":
 
     # load images, relabel, and export relabeled result
     logger.debug("Saving relabeled images")
-    pluginManager = TrackingPluginManager(verbose=args.verbose, pluginPaths=args.pluginPaths)
-    pluginManager.setImageProvider('LocalImageLoader')
-    imageProvider = pluginManager.getImageProvider()
+    imageProvider = LocalImageLoader()
     timeRange = imageProvider.getTimeRange(args.label_image_filename, args.label_image_path)
 
     for timeframe in range(timeRange[0], timeRange[1]):

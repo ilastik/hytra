@@ -1,11 +1,20 @@
-from hytra.pluginsystem import transition_feature_vector_construction_plugin
 import numpy as np
 from compiler.ast import flatten
 
+from ..types.transition_feature_vector_construction import TransitionFeatureVectorConstructionBase
 
-class TransitionFeaturesMultiplication(
-    transition_feature_vector_construction_plugin.TransitionFeatureVectorConstructionPlugin
-):
+
+def flatten(seq):
+    result = []
+    for item in seq:
+        if isinstance(item, (list, tuple)):
+            result.extend(flatten(item))
+        else:
+            result.append(item)
+    return result
+
+
+class TransitionFeaturesMultiplication(TransitionFeatureVectorConstructionBase):
     """
     Computes the product of features in the feature vector
     """

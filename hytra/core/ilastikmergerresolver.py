@@ -18,7 +18,7 @@ class IlastikMergerResolver(hytra.core.mergerresolver.MergerResolver):
     def __init__(
         self,
         hypothesesGraph,
-        pluginPaths=[os.path.abspath("../hytra/plugins")],
+        pluginPaths=None,
         withFullGraph=False,
         numSplits=None,
         verbose=False,

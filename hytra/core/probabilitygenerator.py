@@ -1,11 +1,18 @@
+import warnings
 import numpy as np
 import logging
 import time
 import concurrent.futures
 
 import hytra.core.divisionfeatures
+from hytra.ops.convex_hull_object_features import ConvexHullObjectFeatures
+from hytra.ops.local_feature_serializer import LoadFeatureSerializer
+from hytra.ops.local_image_loader import LocalImageLoader
+from hytra.ops.skeleton_object_features import SkeletonObjectFeatures
+from hytra.ops.standard_object_features import StandardObjectFeatures
+from hytra.ops.transition_feature_distance import TransitionFeaturesDistance
+from hytra.types.plugin_manager import apply_object_feature_computation, apply_transition_feature_vector_construction
 from hytra.util.progressbar import ProgressBar
-from hytra.pluginsystem.plugin_manager import TrackingPluginManager
 from hytra.core.random_forest_classifier import RandomForestClassifier
 from hytra.core.ilastik_project_options import IlastikProjectOptions
 
@@ -80,10 +87,7 @@ def computeRegionFeaturesOnCloud(
     labelImageFilename,
     labelImagePath,
     turnOffFeatures,
-    pluginPaths=["hytra/plugins"],
     featuresPerFrame=None,
-    imageProviderPluginName="LocalImageLoader",
-    featureSerializerPluginName="LocalFeatureSerializer",
 ):
     """
     Allow to use dispy to schedule feature computation to nodes running a dispynode,
@@ -97,32 +101,26 @@ def computeRegionFeaturesOnCloud(
     * `rawImageAxes`: axes configuration of the raw data
     * `labelImageFilename`: the base filename of the label image volume, or a dvid server address
     * `labelImagePath`: path inside the label image HDF5 file, or DVID dataset UUID
-    * `pluginPaths`: where all yapsy plugins are stored (should be absolute for DVID)
 
     **returns** the feature dictionary for this frame if `featureSerializerPluginName == 'LocalFeatureSerializer'`
     and `featuresPerFrame == None`.
     """
 
     # set up plugin manager
-    from hytra.pluginsystem.plugin_manager import TrackingPluginManager
-
-    pluginManager = TrackingPluginManager(pluginPaths=pluginPaths, turnOffFeatures=turnOffFeatures, verbose=False)
-    pluginManager.setImageProvider(imageProviderPluginName)
-    pluginManager.setFeatureSerializer(featureSerializerPluginName)
 
     # load raw and label image (depending on chosen plugin this works via DVID or locally)
-    rawImage = pluginManager.getImageProvider().getImageDataAtTimeFrame(
+    rawImage = LocalImageLoader().getImageDataAtTimeFrame(
         rawImageFilename, rawImagePath, rawImageAxes, frame
     )
-    labelImage = pluginManager.getImageProvider().getLabelImageForFrame(labelImageFilename, labelImagePath, frame)
+    labelImage = LocalImageLoader().getLabelImageForFrame(labelImageFilename, labelImagePath, frame)
 
     # untwist axes, if just x and y are messed up
     if rawImage.shape[0] == labelImage.shape[1] and rawImage.shape[1] == labelImage.shape[0]:
         labelImage = np.transpose(labelImage, axes=[1, 0])
 
     # compute features
-    moreFeats, ignoreNames = pluginManager.applyObjectFeatureComputationPlugins(
-        len(labelImage.shape), rawImage, labelImage, frame, rawImageFilename
+    moreFeats, ignoreNames = apply_object_feature_computation(
+        len(labelImage.shape), rawImage, labelImage, frame, rawImageFilename, feature_ops=[ConvexHullObjectFeatures, SkeletonObjectFeatures, StandardObjectFeatures]
     )
 
     # combine into one dictionary
@@ -138,15 +136,11 @@ def computeRegionFeaturesOnCloud(
             del frameFeatures[k]
 
     # return or save features
-    if featuresPerFrame is None and featureSerializerPluginName in [
-        "LocalFeatureSerializer",
-        "LocalFeatureSerializer",
-    ]:
-        # simply return resulting dict
+    if featuresPerFrame is None:
         return frame, frameFeatures
     else:
         # set up feature serializer (local or DVID for now)
-        featureSerializer = pluginManager.getFeatureSerializer()
+        featureSerializer = LoadFeatureSerializer()
 
         # server address and uuid are only used by the DVID serializer
         featureSerializer.server_address = labelImageFilename
@@ -163,7 +157,6 @@ def computeDivisionFeaturesOnCloud(
     frameT,
     featuresAtT,
     featuresAtTPlus1,
-    pluginManager,
     labelImageFilename,
     labelImagePath,
     numDimensions,
@@ -184,11 +177,11 @@ def computeDivisionFeaturesOnCloud(
     **returns** a tuple of `frameT` and the dictionary of the newly computed division
     features for `frameT`
     """
-    imageProviderPlugin = pluginManager.getImageProvider()
+    imageProvider = LocalImageLoader()
 
     # get the label image of the next frame
-    if frameT + 1 < imageProviderPlugin.getTimeRange(labelImageFilename, labelImagePath)[1]:
-        labelImageAtTPlus1 = imageProviderPlugin.getLabelImageForFrame(labelImageFilename, labelImagePath, frameT + 1)
+    if frameT + 1 < imageProvider.getTimeRange(labelImageFilename, labelImagePath)[1]:
+        labelImageAtTPlus1 = imageProvider.getLabelImageForFrame(labelImageFilename, labelImagePath, frameT + 1)
 
     # compute features
     fm = hytra.core.divisionfeatures.FeatureManager(ndim=numDimensions)
@@ -256,18 +249,12 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
         ilpOptions,
         turnOffFeatures=[],
         useMultiprocessing=True,
-        pluginPaths=["hytra/plugins"],
         verbose=False,
     ):
         self._useMultiprocessing = useMultiprocessing
         self._options = ilpOptions
-        self._pluginPaths = pluginPaths
-        self._pluginManager = TrackingPluginManager(
-            turnOffFeatures=turnOffFeatures, verbose=verbose, pluginPaths=pluginPaths
-        )
-        self._pluginManager.setImageProvider(ilpOptions.imageProviderName)
-        self._pluginManager.setFeatureSerializer(ilpOptions.featureSerializerName)
-
+        if turnOffFeatures:
+            warnings.warn("turnOffFeatures has been removed!")
         self._countClassifier = None
         self._divisionClassifier = None
         self._transitionClassifier = None
@@ -345,12 +332,13 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
         """
         assert labelImage.dtype == np.uint32
 
-        moreFeats, ignoreNames = self._pluginManager.applyObjectFeatureComputationPlugins(
+        moreFeats, ignoreNames = apply_object_feature_computation(
             len(labelImage.shape),
             rawImage,
             labelImage,
             frameNumber,
             self._options.rawImageFilename,
+            feature_ops=[]
         )
         frameFeatureItems = []
         for f in moreFeats:
@@ -401,10 +389,10 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
         """
         extract the shape from the labelimage
         """
-        shape = self._pluginManager.getImageProvider().getImageShape(
+        shape = LocalImageLoader().getImageShape(
             self._options.labelImageFilename, self._options.labelImagePath
         )
-        timerange = self._pluginManager.getImageProvider().getTimeRange(
+        timerange = LocalImageLoader().getTimeRange(
             self._options.labelImageFilename, self._options.labelImagePath
         )
         return shape, timerange
@@ -413,7 +401,7 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
         """
         Get the label image(volume) of one time frame
         """
-        rawImage = self._pluginManager.getImageProvider().getLabelImageForFrame(
+        rawImage = LocalImageLoader().getLabelImageForFrame(
             self._options.labelImageFilename, self._options.labelImagePath, timeframe
         )
         return rawImage
@@ -422,7 +410,7 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
         """
         Get the raw image(volume) of one time frame
         """
-        rawImage = self._pluginManager.getImageProvider().getImageDataAtTimeFrame(
+        rawImage = LocalImageLoader().getImageDataAtTimeFrame(
             self._options.rawImageFilename, self._options.rawImagePath, timeframe
         )
         return rawImage
@@ -506,7 +494,6 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
                             self._options.labelImageFilename,
                             self._options.labelImagePath,
                             turnOffFeatures,
-                            self._pluginPaths,
                         )
                     )
                 for job in concurrent.futures.as_completed(jobs):
@@ -524,7 +511,6 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
                                 frame,
                                 featuresPerFrame[frame],
                                 featuresPerFrame[frame + 1],
-                                self._pluginManager,
                                 self._options.labelImageFilename,
                                 self._options.labelImagePath,
                                 self.getNumDimensions(),
@@ -552,7 +538,6 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
                 computeRegionFeaturesOnCloud,
                 nodes=dispyNodeIps,
                 loglevel=logging.DEBUG,
-                depends=[self._pluginManager],
                 secret="teamtracking",
             )
 
@@ -566,7 +551,6 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
                     self._options.labelImageFilename,
                     self._options.labelImagePath,
                     turnOffFeatures,
-                    pluginPaths=["/home/carstenhaubold/embryonic/plugins"],
                 )
                 job.id = frame
                 jobs.append(job)
@@ -731,8 +715,8 @@ class IlpProbabilityGenerator(ProbabilityGenerator):
         Return component wise difference and product of the selected features as input for the TransitionClassifier
         """
         features = np.array(
-            self._pluginManager.applyTransitionFeatureVectorConstructionPlugins(
-                featureDictObjectA, featureDictObjectB, selectedFeatures
+            apply_transition_feature_vector_construction(
+                featureDictObjectA, featureDictObjectB, selectedFeatures, feature_ops=[TransitionFeaturesDistance]
             )
         )
         features = np.expand_dims(features, axis=0)

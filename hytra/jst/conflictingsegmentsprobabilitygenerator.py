@@ -9,6 +9,7 @@ from hytra.core.probabilitygenerator import (
     computeRegionFeaturesOnCloud,
     DummyExecutor,
 )
+from hytra.ops.local_image_loader import LocalImageLoader
 from hytra.util.progressbar import ProgressBar
 
 
@@ -20,8 +21,6 @@ def findConflictingHypothesesInSeparateProcess(
     labelImageFilenames,
     labelImagePaths,
     labelImageFrameIdToGlobalId,
-    pluginPaths=["hytra/plugins"],
-    imageProviderPluginName="LocalImageLoader",
 ):
     """
     Look which objects between different segmentation hypotheses (given as different labelImages)
@@ -31,21 +30,17 @@ def findConflictingHypothesesInSeparateProcess(
     """
 
     # set up plugin manager
-    from hytra.pluginsystem.plugin_manager import TrackingPluginManager
-
-    pluginManager = TrackingPluginManager(pluginPaths=pluginPaths, verbose=False)
-    pluginManager.setImageProvider(imageProviderPluginName)
 
     overlaps = {}  # overlap dict: key=globalId, value=[list of globalIds]
 
     for labelImageIndexA in range(len(labelImageFilenames)):
-        labelImageA = pluginManager.getImageProvider().getLabelImageForFrame(
+        labelImageA = LocalImageLoader().getLabelImageForFrame(
             labelImageFilenames[labelImageIndexA],
             labelImagePaths[labelImageIndexA],
             frame,
         )
         for labelImageIndexB in range(labelImageIndexA + 1, len(labelImageFilenames)):
-            labelImageB = pluginManager.getImageProvider().getLabelImageForFrame(
+            labelImageB = LocalImageLoader().getLabelImageForFrame(
                 labelImageFilenames[labelImageIndexB],
                 labelImagePaths[labelImageIndexB],
                 frame,
@@ -74,8 +69,6 @@ def computeJaccardScoresOnCloud(
     groundTruthFilename,
     groundTruthPath,
     groundTruthMinJaccardScore,
-    pluginPaths=["hytra/plugins"],
-    imageProviderPluginName="LocalImageLoader",
 ):
     """
     Compute jaccard scores of all objects in the different segmentations with the ground truth for that frame.
@@ -86,20 +79,15 @@ def computeJaccardScoresOnCloud(
     """
 
     # set up plugin manager
-    from hytra.pluginsystem.plugin_manager import TrackingPluginManager
-
-    pluginManager = TrackingPluginManager(pluginPaths=pluginPaths, verbose=False)
-    pluginManager.setImageProvider(imageProviderPluginName)
-
     scores = {}
     gtToGlobalIdMap = {}
 
-    groundTruthLabelImage = pluginManager.getImageProvider().getLabelImageForFrame(
+    groundTruthLabelImage = LocalImageLoader().getLabelImageForFrame(
         groundTruthFilename, groundTruthPath, frame
     )
 
     for labelImageIndexA in range(len(labelImageFilenames)):
-        labelImageA = pluginManager.getImageProvider().getLabelImageForFrame(
+        labelImageA = LocalImageLoader().getLabelImageForFrame(
             labelImageFilenames[labelImageIndexA],
             labelImagePaths[labelImageIndexA],
             frame,
@@ -154,12 +142,15 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
         additionalLabelImagePaths,
         turnOffFeatures=[],
         useMultiprocessing=True,
-        pluginPaths=["hytra/plugins"],
+        pluginPaths=None,
         verbose=False,
     ):
         """ """
+        if pluginPaths:
+            raise ValueError(f"plugin paths are not used anymore, got {pluginPaths=}")
+
         super(ConflictingSegmentsProbabilityGenerator, self).__init__(
-            ilpOptions, turnOffFeatures, useMultiprocessing, pluginPaths, verbose
+            ilpOptions, turnOffFeatures, useMultiprocessing, verbose
         )
 
         # store the additional segmentation hypotheses and check that they are of the same size
@@ -224,7 +215,6 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
                         self._labelImageFilenames,
                         self._labelImagePaths,
                         self._labelImageFrameIdToGlobalId,
-                        self._pluginPaths,
                     )
                 )
             for job in concurrent.futures.as_completed(jobs):
@@ -291,7 +281,6 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
                         groundTruthSegmentationFilename,
                         groundTruthSegmentationPath,
                         groundTruthMinJaccardScore,
-                        self._pluginPaths,
                     )
                 )
             for job in concurrent.futures.as_completed(jobs):
@@ -527,7 +516,6 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
                             filename,
                             path,
                             turnOffFeatures,
-                            self._pluginPaths,
                         )
                     )
                 for job in concurrent.futures.as_completed(jobs):

@@ -1,11 +1,10 @@
-from hytra.pluginsystem import transition_feature_vector_construction_plugin
 import numpy as np
 from compiler.ast import flatten
 
+from ..types.transition_feature_vector_construction import TransitionFeatureVectorConstructionBase
 
-class TransitionFeaturesSubtraction(
-    transition_feature_vector_construction_plugin.TransitionFeatureVectorConstructionPlugin
-):
+
+class TransitionFeaturesSubtraction(TransitionFeatureVectorConstructionBase):
     """
     Computes the subtraction of features in the feature vector
     """

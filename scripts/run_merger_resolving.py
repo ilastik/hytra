@@ -44,9 +44,6 @@ if __name__ == "__main__":
                         help='alpha for the transition prior')
     parser.add_argument('--verbose', dest='verbose', action='store_true',
                         help='Turn on verbose logging', default=False)
-    parser.add_argument('--plugin-paths', dest='pluginPaths', type=str, nargs='+',
-                        default=[os.path.abspath('../hytra/plugins')],
-                        help='A list of paths to search for plugins for the tracking pipeline.')
     args, _ = parser.parse_known_args()
 
     if args.verbose:
@@ -63,7 +60,6 @@ if __name__ == "__main__":
         args.raw_filename,
         args.raw_path,
         args.raw_axes,
-        args.pluginPaths,
         args.verbose)
     merger_resolver.run(
         args.transition_classifier_filename,

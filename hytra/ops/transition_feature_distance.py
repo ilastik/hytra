@@ -1,10 +1,9 @@
-from hytra.pluginsystem import transition_feature_vector_construction_plugin
 import numpy as np
 
+from ..types.transition_feature_vector_construction import TransitionFeatureVectorConstructionBase
 
-class TransitionFeaturesDistance(
-    transition_feature_vector_construction_plugin.TransitionFeatureVectorConstructionPlugin
-):
+
+class TransitionFeaturesDistance(TransitionFeatureVectorConstructionBase):
     """
     Computes distance based features for transitions
     """
