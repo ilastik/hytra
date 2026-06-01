@@ -49,6 +49,10 @@ test:
     - jinja2
   imports:
     - hytra
+    - hytra.core
+    - hytra.ops
+    - hytra.types
+    - hytra.util
   commands:
     - pytest -v
 

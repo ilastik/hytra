@@ -30,7 +30,7 @@ class JsonMergerResolver(hytra.core.mergerresolver.MergerResolver):
         raw_filename,
         raw_path,
         raw_axes,
-        pluginPaths=[os.path.abspath("../hytra/plugins")],
+        pluginPaths=None,
         verbose=False,
     ):
         super(JsonMergerResolver, self).__init__(pluginPaths, verbose=verbose)

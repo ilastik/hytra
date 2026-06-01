@@ -27,11 +27,13 @@ class MergerResolver(object):
 
     def __init__(
         self,
-        pluginPaths=[os.path.abspath("../hytra/plugins")],
+        pluginPaths=None,
         numSplits=None,
         verbose=False,
         progressVisitor=DefaultProgressVisitor(),
     ):
+        if pluginPaths:
+            raise ValueError(f"plugin paths are not used anymore, got {pluginPaths=}")
         self.unresolvedGraph = None
         self.resolvedGraph = None
         self.mergersPerTimestep = None

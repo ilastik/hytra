@@ -150,7 +150,6 @@ def setupGraph(options):
         ilpOptions, 
         options.label_image_files[1:],
         options.label_image_paths[1:],
-        pluginPaths=['../hytra/plugins'],
         useMultiprocessing=not options.disableMultiprocessing)
 
     # restrict range of timeframes used for learning and tracking

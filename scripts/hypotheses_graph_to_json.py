@@ -106,9 +106,6 @@ def getConfigAndCommandLineArguments():
     parser.add_argument('--skip-links-bias', dest='skipLinksBias', type=int, default=20)
     parser.add_argument('--verbose', dest='verbose', action='store_true',
                         help='Turn on verbose logging', default=False)
-    parser.add_argument('--plugin-paths', dest='pluginPaths', type=str, nargs='+',
-                        default=[os.path.abspath('../hytra/plugins')],
-                        help='A list of paths to search for plugins for the tracking pipeline.')
 
     options, unknown = parser.parse_known_args()
 

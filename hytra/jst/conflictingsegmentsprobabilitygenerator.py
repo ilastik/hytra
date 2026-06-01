@@ -142,12 +142,15 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
         additionalLabelImagePaths,
         turnOffFeatures=[],
         useMultiprocessing=True,
-        pluginPaths=["hytra/plugins"],
+        pluginPaths=None,
         verbose=False,
     ):
         """ """
+        if pluginPaths:
+            raise ValueError(f"plugin paths are not used anymore, got {pluginPaths=}")
+
         super(ConflictingSegmentsProbabilityGenerator, self).__init__(
-            ilpOptions, turnOffFeatures, useMultiprocessing, pluginPaths, verbose
+            ilpOptions, turnOffFeatures, useMultiprocessing, verbose
         )
 
         # store the additional segmentation hypotheses and check that they are of the same size
@@ -513,7 +516,6 @@ class ConflictingSegmentsProbabilityGenerator(IlpProbabilityGenerator):
                             filename,
                             path,
                             turnOffFeatures,
-                            self._pluginPaths,
                         )
                     )
                 for job in concurrent.futures.as_completed(jobs):
