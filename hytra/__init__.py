@@ -21,7 +21,4 @@ The important **modules** are:
 * `hytra.divisionfeatures`
 * `hytra.progressbar`
 
-The traxelstore and some of the scripts use the `hytra.pluginsystem` and 
-[`yapsy`](http://yapsy.sourceforge.net/) to make the pipeline easy to extend.
-
 """

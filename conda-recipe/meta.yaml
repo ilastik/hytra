@@ -33,7 +33,6 @@ requirements:
     - scikit-image
     - scikit-learn
     - vigra
-    - yapsy
 
 test:
   source_files:
