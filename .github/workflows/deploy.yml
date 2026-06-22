@@ -11,10 +11,10 @@ jobs:
     # noarch build - build on linux, only
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: ilastik/ilastik-conda-recipes
           path: ilastik-conda-recipes
